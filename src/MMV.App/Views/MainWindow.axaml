@@ -1,0 +1,88 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="using:MMV.App"
+        xmlns:vm="using:MMV.App.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="1400" d:DesignHeight="900"
+        x:Class="MMV.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="ManageMyVision - Gestion Optique"
+        Width="1400" Height="900"
+        Background="#F5F5F5">
+
+    <DockPanel>
+        <!-- En-tête (Header) -->
+        <Border DockPanel.Dock="Top" Background="#2D3E50" Height="60" Padding="20">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="📊 ManageMyVision" 
+                          FontSize="24" FontWeight="Bold" 
+                          Foreground="White" VerticalAlignment="Center"/>
+                <TextBlock Text="Gestion Complète pour Opticiens" 
+                          FontSize="12" Foreground="#BDC3C7"
+                          Margin="20,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Contenu principal avec Navigation -->
+        <DockPanel>
+            <!-- Barre latérale de navigation -->
+            <Border DockPanel.Dock="Left" Width="280" Background="#34495E" BorderBrush="#2C3E50" BorderThickness="0,0,1,0">
+                <ScrollViewer>
+                    <StackPanel Spacing="0">
+                        <Button Content="📊 Tableau de Bord"
+                               Padding="20,15" HorizontalAlignment="Stretch"
+                               HorizontalContentAlignment="Left"
+                               Foreground="White" Background="Transparent"/>
+                        <Button Content="👥 Clients"
+                               Padding="20,15" HorizontalAlignment="Stretch"
+                               HorizontalContentAlignment="Left"
+                               Foreground="White" Background="Transparent"/>
+                        <Button Content="📦 Produits"
+                               Padding="20,15" HorizontalAlignment="Stretch"
+                               HorizontalContentAlignment="Left"
+                               Foreground="White" Background="Transparent"/>
+                        <Button Content="📋 Ordonnances"
+                               Padding="20,15" HorizontalAlignment="Stretch"
+                               HorizontalContentAlignment="Left"
+                               Foreground="White" Background="Transparent"/>
+                        <Button Content="🏭 Commandes"
+                               Padding="20,15" HorizontalAlignment="Stretch"
+                               HorizontalContentAlignment="Left"
+                               Foreground="White" Background="Transparent"/>
+                        <Button Content="💰 Point de Vente"
+                               Padding="20,15" HorizontalAlignment="Stretch"
+                               HorizontalContentAlignment="Left"
+                               Foreground="White" Background="Transparent"/>
+                        <Button Content="📈 Rapports"
+                               Padding="20,15" HorizontalAlignment="Stretch"
+                               HorizontalContentAlignment="Left"
+                               Foreground="White" Background="Transparent"/>
+                        <Button Content="⚙️ Paramètres"
+                               Padding="20,15" HorizontalAlignment="Stretch"
+                               HorizontalContentAlignment="Left"
+                               Foreground="White" Background="Transparent"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Zone de contenu principal -->
+            <Border Background="White" Margin="20">
+                <Grid RowDefinitions="Auto,*">
+                    <!-- Chargement -->
+                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" 
+                                VerticalAlignment="Top" Height="3" Foreground="#3498DB"/>
+                    
+                    <!-- Erreur -->
+                    <Border Grid.Row="0" Background="#E74C3C" Padding="15" IsVisible="{Binding ErrorMessage}">
+                        <TextBlock Text="{Binding ErrorMessage}" Foreground="White"/>
+                    </Border>
+
+                    <!-- Vue principale -->
+                    <ContentControl Grid.Row="1" Content="{Binding CurrentView}"/>
+                </Grid>
+            </Border>
+        </DockPanel>
+    </DockPanel>
+
+</Window>
