@@ -78,36 +78,26 @@ MMV.Domain/
 │
 ├── Interfaces/            # Contrats (repositories, services)
 │   ├── IRepositories/
+│   │   ├── IGenericRepository.cs
 │   │   ├── IUserRepository.cs
 │   │   ├── ICustomerRepository.cs
+│   │   ├── IProductCategoryRepository.cs
+│   │   ├── ISupplierRepository.cs
 │   │   ├── IProductRepository.cs
 │   │   ├── IPrescriptionRepository.cs
 │   │   ├── IOrderRepository.cs
 │   │   ├── ISaleRepository.cs
+│   │   ├── IStockMovementRepository.cs
 │   │   └── IUnitOfWork.cs
-│   └── IServices/
+│   └── IServices/ (prévu Sprint 3)
 │       ├── IAuthenticationService.cs
 │       ├── ICustomerService.cs
 │       └── IProductService.cs
 │
-├── ValueObjects/          # Objets-valeur (immuables)
-│   ├── Money.cs           # Gestion montant + devise
-│   ├── Email.cs           # Validation email
-│   ├── PhoneNumber.cs     # Validation téléphone
-│   └── Address.cs         # Adresse structurée
-│
-├── Validators/            # FluentValidation
-│   ├── CustomerValidator.cs
-│   ├── ProductValidator.cs
-│   └── PrescriptionValidator.cs
-│
-├── Exceptions/            # Exceptions métier personnalisées
-│   ├── DomainException.cs
-│   ├── EntityNotFoundException.cs
-│   └── ValidationException.cs
-│
-└── Services/              # Logique métier (si nécessaire)
-    └── PrescriptionCalculator.cs  # Calculs optiques
+├── ValueObjects/          # Objets-valeur (prévu Sprint 3)
+├── Validators/            # FluentValidation (prévu Sprint 3)
+├── Exceptions/            # Exceptions métier personnalisées (prévu Sprint 3)
+└── Services/              # Logique métier (prévu Sprint 3)
 ```
 
 ### Règles Métier Clés
@@ -163,29 +153,40 @@ src/MMV.Infrastructure/
 MMV.Infrastructure/
 ├── Data/
 │   ├── OpticDbContext.cs            # DbContext principal
-│   ├── DbSeeder.cs                  # Données de test/démo
-│   └── Configurations/              # Fluent API par entité
+│   ├── OpticDbContextFactory.cs     # Factory design-time pour les migrations
+│   ├── Seeders/DbSeeder.cs          # Données de test/démo
+│   └── Configurations/              # Fluent API par entité (11 fichiers)
 │       ├── UserConfiguration.cs
-│       ├── CustomerConfiguration.cs
+│       ├── SupplierConfiguration.cs
+│       ├── ProductCategoryConfiguration.cs
 │       ├── ProductConfiguration.cs
+│       ├── CustomerConfiguration.cs
 │       ├── PrescriptionConfiguration.cs
 │       ├── OrderConfiguration.cs
-│       └── SaleConfiguration.cs
+│       ├── OrderItemConfiguration.cs
+│       ├── SaleConfiguration.cs
+│       ├── SaleItemConfiguration.cs
+│       └── StockMovementConfiguration.cs
 │
 ├── Repositories/                     # Implémentations
 │   ├── BaseRepository.cs             # Repository générique
 │   ├── UserRepository.cs
 │   ├── CustomerRepository.cs
+│   ├── ProductCategoryRepository.cs
+│   ├── SupplierRepository.cs
 │   ├── ProductRepository.cs
 │   ├── PrescriptionRepository.cs
 │   ├── OrderRepository.cs
 │   ├── SaleRepository.cs
+│   ├── StockMovementRepository.cs
 │   └── UnitOfWork.cs                 # Pattern UnitOfWork
 │
 ├── Migrations/                       # Migrations EF Core
-│   └── 20260127_InitialCreate.cs
+│   ├── 20260127184542_InitialCreate.cs
+│   ├── 20260127184542_InitialCreate.Designer.cs
+│   └── OpticDbContextModelSnapshot.cs
 │
-└── DependencyInjection.cs           # Configuration MS.DI
+└── DependencyInjection.cs           # Configuration MS.DI (à créer Sprint 3)
 ```
 
 ---

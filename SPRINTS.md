@@ -12,8 +12,8 @@
 | Sprint | Statut | Objectif Principal | Durée Estimée |
 |--------|--------|-------------------|---------------|
 | **Sprint 1** | ✅ **TERMINÉ** | Infrastructure + Entities | 1 semaine |
-| **Sprint 2** | 🚧 **EN COURS** | DbContext + Migrations + Repositories | 1-2 semaines |
-| **Sprint 3** | ⏳ Planifié | Configuration DI + Services Métier | 1-2 semaines |
+| **Sprint 2** | ✅ **TERMINÉ** | DbContext + Migrations + Repositories | 1-2 semaines |
+| **Sprint 3** | 🚧 **EN COURS** | Configuration DI + Services Métier | 1-2 semaines |
 | **Sprint 4** | ⏳ Planifié | Interface Avalonia - Structure & Navigation | 2 semaines |
 | **Sprint 5** | ⏳ Planifié | Module Gestion Clients (CRM) | 2 semaines |
 | **Sprint 6** | ⏳ Planifié | Module Gestion Produits & Stock | 2 semaines |
@@ -55,27 +55,28 @@
 
 ---
 
-## Sprint 2 : DbContext + Migrations + Repositories 🚧 **EN COURS**
+## Sprint 2 : DbContext + Migrations + Repositories ✅ **TERMINÉ**
 
 ### Objectifs
-- [ ] Créer `OpticDbContext` avec configuration EF Core
-- [ ] Configurer le mapping Fluent API pour toutes les entités
-- [ ] Gérer les conversions Enum ↔ String
-- [ ] Configurer les relations (FK, cascades)
-- [ ] Créer la première migration EF Core
-- [ ] Implémenter les interfaces de repository (Domain)
-- [ ] Implémenter les repositories concrets (Infrastructure)
-- [ ] Créer une classe de seed (données de test)
-- [ ] Tests unitaires des repositories
+- [x] Créer `OpticDbContext` avec configuration EF Core
+- [x] Configurer le mapping Fluent API pour toutes les entités
+- [x] Gérer les conversions Enum ↔ String
+- [x] Configurer les relations (FK, cascades)
+- [x] Créer la première migration EF Core
+- [x] Implémenter les interfaces de repository (Domain)
+- [x] Implémenter les repositories concrets (Infrastructure)
+- [x] Créer une classe de seed (données de test)
+- [ ] Tests unitaires des repositories (reportés Sprint 3)
 
 ### Livrables
 - `MMV.Infrastructure/Data/OpticDbContext.cs`
-- `MMV.Infrastructure/Data/Configurations/` (EntityTypeConfiguration)
-- `MMV.Infrastructure/Migrations/` (migration initiale)
-- `MMV.Domain/Interfaces/IRepositories/` (12 interfaces)
-- `MMV.Infrastructure/Repositories/` (12 implémentations)
-- `MMV.Infrastructure/Data/DbSeeder.cs`
-- Tests dans `MMV.Domain.Tests/RepositoryTests/`
+- `MMV.Infrastructure/Data/Configurations/` (11 EntityTypeConfiguration)
+- `MMV.Infrastructure/Migrations/20260127184542_InitialCreate.*`
+- `MMV.Infrastructure/Data/OpticDbContextFactory.cs`
+- `MMV.Infrastructure/Seeders/DbSeeder.cs`
+- `MMV.Domain/Interfaces/Repositories/` (10 interfaces + IUnitOfWork)
+- `MMV.Infrastructure/Repositories/` (9 implémentations + BaseRepository + UnitOfWork)
+- Tests dans `MMV.Domain.Tests/RepositoryTests/` (à ajouter)
 
 ### Tâches Détaillées
 
@@ -124,15 +125,15 @@ Interfaces à créer :
 
 ---
 
-## Sprint 3 : Configuration DI + Services Métier
+## Sprint 3 : Configuration DI + Services Métier 🚧 **EN COURS**
 
 ### Objectifs
-- [ ] Configurer Microsoft.Extensions.DependencyInjection
-- [ ] Créer les services métier (Domain ou Application Layer)
+- [ ] Configurer Microsoft.Extensions.DependencyInjection (MMV.Infrastructure/DependencyInjection.cs)
+- [ ] Créer les services métier (Domain/Application Layer)
 - [ ] Implémenter les validations (FluentValidation)
 - [ ] Créer des Value Objects (Money, Email, PhoneNumber)
 - [ ] Gestion des erreurs et exceptions personnalisées
-- [ ] Tests unitaires des services
+- [ ] Tests unitaires des services et des repositories (retard sprint 2)
 
 ### Livrables
 - `MMV.Infrastructure/DependencyInjection.cs`

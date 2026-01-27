@@ -27,8 +27,8 @@
 | Sprint | Tests Ajoutés | Couverture Cumulée | Statut |
 |--------|---------------|-------------------|--------|
 | Sprint 1 | 0 | 0% | ✅ Terminé (Entities créées, tests à venir) |
-| Sprint 2 | - | - | 🚧 En cours |
-| Sprint 3 | - | - | ⏳ Planifié |
+| Sprint 2 | 0 | 0% | ✅ Terminé (code livré, tests reportés Sprint 3) |
+| Sprint 3 | - | - | 🚧 En cours |
 | Sprint 4 | - | - | ⏳ Planifié |
 
 ---
@@ -53,7 +53,9 @@ Les entités créées devront être testées lors de l'implémentation des repos
 
 ## 🧪 Sprint 2 : DbContext + Migrations + Repositories
 
-### Statut : 🚧 **EN COURS**
+### Statut : ✅ **TERMINÉ (tests à écrire en Sprint 3)**
+
+> Les cas de tests listés ci-dessous restent à implémenter en priorité au Sprint 3 (DbContext + repositories).
 
 ### Plan de Tests
 
