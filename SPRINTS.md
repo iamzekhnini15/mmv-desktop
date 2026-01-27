@@ -14,7 +14,7 @@
 | **Sprint 1** | ✅ **TERMINÉ** | Infrastructure + Entities | 1 semaine |
 | **Sprint 2** | ✅ **TERMINÉ** | DbContext + Migrations + Repositories | 1-2 semaines |
 | **Sprint 3** | ✅ **TERMINÉ** | Configuration DI + Services Métier | 1-2 semaines |
-| **Sprint 4** | ⏳ Planifié | Interface Avalonia - Structure & Navigation | 2 semaines |
+| **Sprint 4** | 🚧 **EN COURS** | Interface Avalonia - Structure & Navigation | 2 semaines |
 | **Sprint 5** | ⏳ Planifié | Module Gestion Clients (CRM) | 2 semaines |
 | **Sprint 6** | ⏳ Planifié | Module Gestion Produits & Stock | 2 semaines |
 | **Sprint 7** | ⏳ Planifié | Module Ordonnances Médicales | 1-2 semaines |
@@ -169,35 +169,117 @@ Interfaces à créer :
 
 ---
 
-## Sprint 4 : Interface Avalonia - Structure & Navigation
+## Sprint 4 : Interface Avalonia - Structure & Navigation 🚧 **EN COURS**
 
 ### Objectifs
+- [x] Créer la fenêtre principale (MainWindow) avec layout professionnel
+- [x] Implémenter MVVM pattern avec BaseViewModel
+- [x] Mettre en place le ViewLocator pour résolution automatique des vues
+- [x] Créer NavigationService pour navigation type-safe
+- [x] Page Dashboard avec statistiques
+- [x] Créer 8 vues placeholder pour tous les modules
+- [x] Fixer les erreurs XAML de compilation (Grid Padding, x:DataType)
+- [x] Build réussi et application lancée
 - [ ] Configurer le thème FluentAvalonia
-- [ ] Créer la fenêtre principale (MainWindow)
-- [ ] Implémenter la navigation (NavigationView)
-- [ ] Créer le ViewModel de base (BaseViewModel)
-- [ ] Mettre en place le ViewLocator
-- [ ] Page d'accueil/Dashboard
 - [ ] Écran de connexion (Login)
+- [ ] Commandes de navigation fonctionnelles
+- [ ] Transitions entre vues
 
 ### Livrables
-- `MMV.App/Views/MainWindow.axaml`
-- `MMV.App/ViewModels/MainWindowViewModel.cs`
-- `MMV.App/Views/LoginView.axaml`
-- `MMV.App/ViewModels/LoginViewModel.cs`
-- `MMV.App/ViewModels/BaseViewModel.cs`
-- `MMV.App/Services/NavigationService.cs`
-- `MMV.App/Styles/CustomTheme.axaml`
+- ✅ `MMV.App/Views/MainWindow.axaml` - Fenêtre principale avec header, sidebar, content area
+- ✅ `MMV.App/ViewModels/MainWindowViewModel.cs` - Gestion navigation + état global
+- ✅ `MMV.App/ViewModels/BaseViewModel.cs` - Base MVVM (INotifyPropertyChanged)
+- ✅ `MMV.App/Services/NavigationService.cs` - Navigation type-safe avec historique
+- ✅ `MMV.App/ViewLocator.cs` - Résolution automatique View/ViewModel
+- ✅ `MMV.App/Views/DashboardView.axaml` - Dashboard avec 4 cartes statistiques
+- ✅ `MMV.App/ViewModels/DashboardViewModel.cs` - Stats (Clients, Produits, Ventes, Commandes)
+- ✅ `MMV.App/ViewModels/PageViewModels.cs` - 7 ViewModels pour modules
+- ✅ `MMV.App/Views/CustomersView.axaml` - Vue Clients (placeholder)
+- ✅ `MMV.App/Views/ProductsView.axaml` - Vue Produits (placeholder)
+- ✅ `MMV.App/Views/PrescriptionsView.axaml` - Vue Ordonnances (placeholder)
+- ✅ `MMV.App/Views/OrdersView.axaml` - Vue Commandes (placeholder)
+- ✅ `MMV.App/Views/SalesView.axaml` - Vue Point de Vente (placeholder)
+- ✅ `MMV.App/Views/ReportsView.axaml` - Vue Rapports (placeholder)
+- ✅ `MMV.App/Views/SettingsView.axaml` - Vue Paramètres (placeholder)
+- [ ] `MMV.App/Views/LoginView.axaml` (à faire)
+- [ ] `MMV.App/Styles/CustomTheme.axaml` (à faire)
+
+### Architecture Implémentée
+
+#### MVVM Pattern
+```
+BaseViewModel (INotifyPropertyChanged)
+├── Title, IsLoading, ErrorMessage
+├── SetProperty<T>() helper
+└── OnPropertyChanged() notifications
+
+MainWindowViewModel : BaseViewModel
+├── NavigationItems (ObservableCollection)
+├── CurrentView (BaseViewModel)
+└── NavigateTo(type) method
+
+DashboardViewModel : BaseViewModel
+├── TotalCustomers
+├── TotalProducts
+├── TotalSales
+└── PendingOrders
+```
+
+#### Navigation System
+```csharp
+INavigationService
+├── RegisterViewModel<T>()
+├── NavigateTo<T>()
+├── GoBack()
+└── NavigationHistory (Stack)
+
+ViewLocator : IDataTemplate
+└── Build(ViewModel) → View (convention-based)
+```
 
 ### Structure de Navigation
 ```
 MainWindow
-├── NavigationView (Menu latéral)
+├── Header (#2D3E50 - Dark Blue Grey)
+│   └── "📊 ManageMyVision - Gestion Complète pour Opticiens"
+├── Sidebar (#34495E - Sidebar Grey)
 │   ├── 📊 Tableau de Bord
 │   ├── 👥 Clients
 │   ├── 📦 Produits
 │   ├── 📋 Ordonnances
 │   ├── 🏭 Commandes (Atelier)
+│   ├── 💰 Ventes (POS)
+│   ├── 📈 Rapports
+│   └── ⚙️ Paramètres
+└── ContentControl (Zone de contenu dynamique)
+```
+
+### Dashboard - Cartes Statistiques
+- **Carte Clients** : #3498DB (Bleu) - Affiche nombre total clients
+- **Carte Produits** : #2ECC71 (Vert) - Affiche nombre total produits
+- **Carte Ventes** : #F39C12 (Orange) - Affiche chiffre d'affaires total
+- **Carte Commandes** : #E74C3C (Rouge) - Affiche nombre commandes en attente
+
+### Correctifs Techniques Appliqués
+1. **Grid Padding** : Remplacé Grid.Padding par Border avec Padding (Avalonia ne supporte pas Padding sur Grid)
+2. **ColumnSpacing** : Remplacé par margins individuelles sur les enfants Border
+3. **x:DataType** : Ajouté déclarations pour bindings compilés (MainWindowViewModel, DashboardViewModel)
+4. **ViewLocator** : Ajouté `using Avalonia.Controls.Templates;` pour IDataTemplate
+5. **StringFormat Currency** : Simplifié `{Binding TotalSales}` (format C causait erreurs XAML)
+
+### Tests & Validation
+- ✅ Build : 0 erreurs, 1 warning mineur (nullable reference)
+- ✅ Application lancée avec succès
+- ✅ UI affichée correctement
+- ⏳ Navigation entre vues (à tester après implémentation des commandes)
+
+### Tâches Restantes Sprint 4
+1. Implémenter RelayCommand/DelegateCommand pour navigation buttons
+2. Lier les boutons sidebar aux commandes NavigateTo
+3. Ajouter transitions/animations entre vues
+4. Créer LoginView avec authentification
+5. Configurer thème FluentAvalonia
+6. Tests UI (navigation, bindings, états)
 │   ├── 💰 Ventes (POS)
 │   ├── 📈 Rapports
 │   └── ⚙️ Paramètres
