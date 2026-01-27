@@ -1,0 +1,86 @@
+using Microsoft.EntityFrameworkCore;
+using MMV.Domain.Entities;
+using MMV.Domain.Interfaces.Repositories;
+using MMV.Infrastructure.Data;
+
+namespace MMV.Infrastructure.Repositories;
+
+/// <summary>
+/// Implémentation du repository pour la gestion des clients.
+/// </summary>
+public class CustomerRepository : BaseRepository<Customer, long>, ICustomerRepository
+{
+    public CustomerRepository(OpticDbContext context) : base(context) { }
+
+    /// <summary>
+    /// Recherche des clients par nom (partiel).
+    /// </summary>
+    public async Task<IList<Customer>> SearchByNameAsync(string searchTerm, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(searchTerm);
+        
+        var lowerSearchTerm = searchTerm.ToLower();
+        
+        return await GetQueryable()
+            .Where(c => c.FirstName.ToLower().Contains(lowerSearchTerm) ||
+                        c.LastName.ToLower().Contains(lowerSearchTerm))
+            .OrderBy(c => c.LastName)
+            .ThenBy(c => c.FirstName)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Recherche un client par numéro de téléphone.
+    /// </summary>
+    public async Task<Customer?> GetByPhoneAsync(string phone, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(phone);
+        
+        return await GetQueryable()
+            .FirstOrDefaultAsync(c => c.Phone == phone, cancellationToken);
+    }
+
+    /// <summary>
+    /// Recherche un client par email.
+    /// </summary>
+    public async Task<Customer?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(email);
+        
+        return await GetQueryable()
+            .FirstOrDefaultAsync(c => c.Email == email, cancellationToken);
+    }
+
+    /// <summary>
+    /// Récupère un client avec toutes ses prescriptions.
+    /// </summary>
+    public async Task<Customer?> GetWithPrescriptionsAsync(long customerId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Customers
+            .Include(c => c.Prescriptions)
+            .FirstOrDefaultAsync(c => c.CustomerId == customerId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Récupère un client avec tout son historique (commandes et ventes).
+    /// </summary>
+    public async Task<Customer?> GetWithHistoryAsync(long customerId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Customers
+            .Include(c => c.Prescriptions)
+            .Include(c => c.Orders)
+            .Include(c => c.Sales)
+            .FirstOrDefaultAsync(c => c.CustomerId == customerId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Récupère tous les clients créés entre deux dates.
+    /// </summary>
+    public async Task<IList<Customer>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+    {
+        return await GetQueryable()
+            .Where(c => c.CreatedAt >= startDate && c.CreatedAt <= endDate)
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+}
