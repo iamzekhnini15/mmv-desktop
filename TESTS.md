@@ -15,19 +15,19 @@
 | **Domain (Entities)** | 0 | 0 | 0 | 0% |
 | **Domain (Services)** | 0 | 0 | 0 | 0% |
 | **Domain (Validators)** | 0 | 0 | 0 | 0% |
-| **Infrastructure (Repositories)** | 0 | 0 | 0 | 0% |
-| **Infrastructure (DbContext)** | 0 | 0 | 0 | 0% |
+| **Infrastructure (Repositories)** | 4 | 4 | 0 | ~5% |
+| **Infrastructure (DbContext)** | 1 | 1 | 0 | ~5% |
 | **App (ViewModels)** | 0 | 0 | 0 | 0% |
 | **App (Services UI)** | 0 | 0 | 0 | 0% |
 | **App (Navigation)** | 0 | 0 | 0 | 0% |
-| **TOTAL** | **0** | **0** | **0** | **0%** |
+| **TOTAL** | **5** | **5** | **0** | **~5%** |
 
 ### Métriques par Sprint
 
 | Sprint | Tests Ajoutés | Couverture Cumulée | Statut |
 |--------|---------------|-------------------|--------|
 | Sprint 1 | 0 | 0% | ✅ Terminé (Entities créées, tests à venir) |
-| Sprint 2 | 0 | 0% | ✅ Terminé (code livré, tests reportés Sprint 3) |
+| Sprint 2 | 5 | ~5% | ✅ Terminé (code + premiers tests) |
 | Sprint 3 | - | - | 🚧 En cours |
 | Sprint 4 | - | - | ⏳ Planifié |
 
@@ -53,9 +53,9 @@ Les entités créées devront être testées lors de l'implémentation des repos
 
 ## 🧪 Sprint 2 : DbContext + Migrations + Repositories
 
-### Statut : ✅ **TERMINÉ (tests à écrire en Sprint 3)**
+### Statut : ✅ **TERMINÉ (premiers tests écrits)**
 
-> Les cas de tests listés ci-dessous restent à implémenter en priorité au Sprint 3 (DbContext + repositories).
+> Tests réalisés : création DB + seed admin, UserRepository (CRUD/filtrage). Reste à compléter au Sprint 3 : conversions enums, indexes uniques, relations FK, autres repositories.
 
 ### Plan de Tests
 
@@ -63,7 +63,7 @@ Les entités créées devront être testées lors de l'implémentation des repos
 
 | Test | Fichier | Statut | Notes |
 |------|---------|--------|-------|
-| OpticDbContext crée toutes les tables | `DbContextTests.cs` | ⏳ À écrire | Vérifier les 9 tables |
+| Création DB + seed admin | `DbContextTests.cs` | ✅ Fait | Vérifie la présence de l'admin (seed) |
 | Conversions Enum → String fonctionnent | `DbContextTests.cs` | ⏳ À écrire | UserRole, OrderStatus, etc. |
 | Index uniques sont créés | `DbContextTests.cs` | ⏳ À écrire | Username, Reference, OrderNumber |
 | Relations FK configurées correctement | `DbContextTests.cs` | ⏳ À écrire | Vérifier ON DELETE CASCADE |
@@ -130,12 +130,14 @@ public async Task InitialMigration_ShouldCreateAdminUser()
 |------|--------|-------------|
 | `GetByIdAsync_ExistingUser_ReturnsUser` | ⏳ À écrire | Récupération par ID |
 | `GetByIdAsync_NonExistingUser_ReturnsNull` | ⏳ À écrire | Gestion ID inexistant |
-| `GetByUsernameAsync_ReturnsCorrectUser` | ⏳ À écrire | Recherche par username |
-| `CreateAsync_ValidUser_SavesSuccessfully` | ⏳ À écrire | Création utilisateur |
+| `GetByUsernameAsync_ReturnsCorrectUser` | ✅ Fait | Recherche par username |
+| `CreateAsync_ValidUser_SavesSuccessfully` | ✅ Fait | Création utilisateur |
 | `CreateAsync_DuplicateUsername_ThrowsException` | ⏳ À écrire | Contrainte UNIQUE |
 | `UpdateAsync_ExistingUser_UpdatesSuccessfully` | ⏳ À écrire | Mise à jour |
 | `DeleteAsync_ExistingUser_DeletesSuccessfully` | ⏳ À écrire | Suppression |
 | `GetAllAsync_ReturnsAllUsers` | ⏳ À écrire | Liste complète |
+| `GetActiveUsersAsync_ReturnsOnlyActive` | ✅ Fait | Filtrage sur IsActive (inclut admin seed) |
+| `GetByRoleAsync_FiltersByRole` | ✅ Fait | Filtrage par rôle |
 
 **Fichier** : `tests/MMV.Domain.Tests/RepositoryTests/UserRepositoryTests.cs`
 
