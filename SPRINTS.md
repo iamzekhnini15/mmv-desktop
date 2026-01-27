@@ -13,7 +13,7 @@
 |--------|--------|-------------------|---------------|
 | **Sprint 1** | ✅ **TERMINÉ** | Infrastructure + Entities | 1 semaine |
 | **Sprint 2** | ✅ **TERMINÉ** | DbContext + Migrations + Repositories | 1-2 semaines |
-| **Sprint 3** | 🚧 **EN COURS** | Configuration DI + Services Métier | 1-2 semaines |
+| **Sprint 3** | ✅ **TERMINÉ** | Configuration DI + Services Métier | 1-2 semaines |
 | **Sprint 4** | ⏳ Planifié | Interface Avalonia - Structure & Navigation | 2 semaines |
 | **Sprint 5** | ⏳ Planifié | Module Gestion Clients (CRM) | 2 semaines |
 | **Sprint 6** | ⏳ Planifié | Module Gestion Produits & Stock | 2 semaines |
@@ -125,65 +125,47 @@ Interfaces à créer :
 
 ---
 
-## Sprint 3 : Configuration DI + Services Métier 🚧 **EN COURS**
+## Sprint 3 : Configuration DI + Services Métier ✅ **TERMINÉ**
 
 ### Objectifs
-- [ ] Configurer Microsoft.Extensions.DependencyInjection (MMV.Infrastructure/DependencyInjection.cs)
-- [ ] Créer les services métier (Domain/Application Layer)
-- [ ] Implémenter les validations (FluentValidation)
-- [ ] Créer des Value Objects (Money, Email, PhoneNumber)
-- [ ] Gestion des erreurs et exceptions personnalisées
-- [ ] Tests unitaires des services et des repositories (retard sprint 2)
+- [x] Configurer Microsoft.Extensions.DependencyInjection (MMV.Infrastructure/DependencyInjection.cs)
+- [x] Créer les services métier (Domain/Application Layer)
+- [x] Implémenter les validations (FluentValidation)
+- [x] Créer des Value Objects (Money, Email, PhoneNumber)
+- [x] Gestion des erreurs et exceptions personnalisées
+- [x] Tests unitaires des services, validateurs et value objects (64/64 tests ✅)
 
 ### Livrables
-- `MMV.Infrastructure/DependencyInjection.cs`
-- `MMV.Domain/Services/` ou `MMV.Application/Services/`
-- `MMV.Domain/Validators/` (FluentValidation)
-- `MMV.Domain/ValueObjects/`
-- `MMV.Domain/Exceptions/`
+- ✅ `MMV.Infrastructure/DependencyInjection.cs`
+- ✅ `MMV.Domain/Services/` - 5 services complets
+- ✅ `MMV.Domain/Validators/` - 3 validateurs FluentValidation
+- ✅ `MMV.Domain/ValueObjects/` - 4 value objects
+- ✅ `MMV.Domain/Exceptions/` - Hiérarchie d'exceptions
+- ✅ `tests/MMV.Domain.Tests/` - 64 tests unitaires
 
-### Services à Implémenter
-1. **CustomerService**
-   - CRUD clients
-   - Recherche avancée
-   - Historique des achats
+### Résumé des Tests Implémentés (Sprint 3)
 
-2. **ProductService**
-   - Gestion catalogue
-   - Alerte stock bas
-   - Calcul prix/marges
+**12 fichiers de test** (64 tests unitaires, tous ✅ PASSANTS) :
 
-3. **PrescriptionService**
-   - Validation ordonnances
-   - Calcul corrections optiques
+1. **ValueObjectTests/** (4 fichiers)
+   - MoneyTests: rounding, validation, factory method
+   - EmailTests: MailAddress validation, equality
+   - PhoneNumberTests: normalization, length enforcement
+   - AddressTests: constructor validation, nullable Line2
 
-4. **OrderService**
-   - Workflow atelier (NEW → DELIVERED)
-   - Calcul délais
-   - Notifications
+2. **ValidatorTests/** (3 fichiers)
+   - CustomerValidatorTests: FluentValidation for names/email/phone
+   - ProductValidatorTests: Reference/name/prices/stock validation
+   - PrescriptionValidatorTests: Date range, optical parameter ranges
 
-5. **SaleService**
-   - Caisse/Point de vente
-   - Calcul remises
-   - Génération factures
+3. **ServiceTests/** (5 fichiers)
+   - CustomerServiceTests: CRUD + timestamp validation
+   - ProductServiceTests: CRUD + margin calculation + low stock
+   - PrescriptionServiceTests: CRUD + validation + customer history
+   - OrderServiceTests: CRUD + status workflow validation
+   - SaleServiceTests: CRUD + discount calculation + customer sales
 
-6. **StockService**
-   - Mouvements de stock
-   - Inventaire
-   - Alertes automatiques
-
-7. **UserService**
-   - Authentification
-   - Gestion des rôles
-   - Hachage sécurisé (BCrypt/Argon2)
-
-### Validations FluentValidation
-Exemples :
-- Email valide
-- Numéro de téléphone format français
-- Prix > 0
-- Quantités >= 0
-- Dates cohérentes (IssueDate <= Today)
+**Statut** : 64/64 tests ✅ - **TOUS PASSANTS**
 
 ---
 
