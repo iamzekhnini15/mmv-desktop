@@ -15,7 +15,7 @@
 | **Sprint 2** | ✅ **TERMINÉ** | DbContext + Migrations + Repositories | 1-2 semaines |
 | **Sprint 3** | ✅ **TERMINÉ** | Configuration DI + Services Métier | 1-2 semaines |
 | **Sprint 4** | ✅ **TERMINÉ** | Interface Avalonia - Structure & Navigation | 2 semaines |
-| **Sprint 5** | ⏳ Planifié | Module Gestion Clients (CRM) | 2 semaines |
+| **Sprint 5** | ⏳ **EN COURS** | Module Gestion Clients (CRM) | 2 semaines |
 | **Sprint 6** | ⏳ Planifié | Module Gestion Produits & Stock | 2 semaines |
 | **Sprint 7** | ⏳ Planifié | Module Ordonnances Médicales | 1-2 semaines |
 | **Sprint 8** | ⏳ Planifié | Module Commandes (Workflow Atelier) | 2-3 semaines |
@@ -326,31 +326,90 @@ MainWindow
 
 ---
 
-## Sprint 5 : Module Gestion Clients (CRM)
+## Sprint 5 : Module Gestion Clients (CRM) ⏳ **EN COURS**
 
 ### Objectifs
-- [ ] Liste des clients (DataGrid paginé + recherche)
-- [ ] Formulaire création/édition client
+- [x] Liste des clients (DataGrid paginé + recherche)
+- [x] Formulaire création/édition client
 - [ ] Fiche détaillée client
 - [ ] Historique d'achats du client
 - [ ] Export Excel/PDF de la liste
 - [ ] Import CSV de clients
 
 ### Écrans
-1. **CustomersListView** : Liste + filtres + recherche
-2. **CustomerFormView** : Formulaire CRUD
-3. **CustomerDetailView** : Fiche complète + onglets
+1. ✅ **CustomersListView** : Liste + filtres + recherche
+   - DataGrid avec 7 colonnes (Prénom, Nom, Email, Téléphone, Date naissance, Ville, Créé le)
+   - Barre de recherche en temps réel (Nom, Email, Téléphone)
+   - Pagination avec boutons Précédent/Suivant
+   - Boutons CRUD (Nouveau, Modifier, Supprimer, Actualiser, Voir détails)
+   - Indicateur de résultats filtrés
+
+2. ✅ **CustomerFormView** : Formulaire CRUD
+   - Section Informations personnelles (Prénom*, Nom*, Date naissance)
+   - Section Coordonnées (Email, Téléphone)
+   - Section Adresse (Adresse, Ville, Code postal)
+   - Section Informations médicales (N° Sécu, Mutuelle)
+   - Section Notes (Zone de texte multi-lignes)
+   - Validation en temps réel avec messages d'erreur
+   - Mode création/édition avec titre dynamique
+
+3. ⏳ **CustomerDetailView** : Fiche complète + onglets (À VENIR)
    - Informations générales
    - Ordonnances
    - Historique commandes
    - Historique ventes
    - Notes
 
-### Fonctionnalités Clés
-- Validation en temps réel (CommunityToolkit.Mvvm)
-- Auto-complétion sur champs (ville, assurance)
-- Calcul automatique de l'âge depuis date naissance
-- Liaison avec prescriptions
+### Livrables Actuels
+
+#### ViewModels (2 fichiers)
+- ✅ `CustomersListViewModel.cs` (324 lignes)
+  - Gestion de la liste avec `ObservableCollection<Customer>`
+  - Filtrage en temps réel via `SearchText` property
+  - Pagination (CurrentPage, PageSize, TotalPages)
+  - 7 Commands (Create, Edit, Delete, Refresh, ViewDetails, NextPage, PreviousPage)
+  - 3 Events pour navigation inter-vues
+  - Intégration avec `ICustomerRepository` et `IUnitOfWork`
+
+- ✅ `CustomerFormViewModel.cs` (408 lignes)
+  - Propriétés pour tous les champs du formulaire
+  - Validation en temps réel (FirstName, LastName, Email, Phone)
+  - Mode création/édition avec `IsEditMode` flag
+  - Commands Save/Cancel avec gestion async
+  - Events `CustomerSaved` et `Cancelled`
+  - Gestion des erreurs par champ (FirstNameError, LastNameError, etc.)
+
+#### Views (2 fichiers)
+- ✅ `CustomersView.axaml` (186 lignes)
+  - En-tête avec titre et statistiques (Total clients)
+  - Barre d'actions (4 boutons CRUD stylisés)
+  - Barre de recherche avec compteur de résultats
+  - DataGrid professionnel avec styles hover/selected
+  - Footer avec indicateur de chargement et pagination
+
+- ✅ `CustomerFormView.axaml` (243 lignes)
+  - Window dialog avec header coloré (#0071E3)
+  - 5 sections organisées en cards
+  - Tous les champs avec labels et watermarks
+  - Validation visuelle (bordures rouges + messages)
+  - Footer avec boutons Annuler/Enregistrer
+  - Indicateur de chargement pendant sauvegarde
+
+### Fonctionnalités Clés Implémentées
+- ✅ Validation en temps réel avec affichage des erreurs
+- ✅ Calcul automatique du nombre de résultats filtrés
+- ✅ Navigation par événements entre ViewModels
+- ⏳ Auto-complétion sur champs (ville, assurance) - À VENIR
+- ⏳ Calcul automatique de l'âge depuis date naissance - À VENIR
+- ⏳ Liaison avec prescriptions - À VENIR
+
+### Prochaines Étapes
+1. Créer CustomerDetailViewModel avec onglets
+2. Créer CustomerDetailView (TabControl avec 5 onglets)
+3. Intégrer les ViewModels dans le système de navigation
+4. Créer tests unitaires pour CustomersListViewModel
+5. Créer tests unitaires pour CustomerFormViewModel
+6. Tests manuels du module complet
 
 ---
 

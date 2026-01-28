@@ -9,94 +9,69 @@
         x:DataType="vm:MainWindowViewModel"
         Title="ManageMyVision"
         Width="1600" Height="900"
-        Background="#FFFFFF">
+        Background="#1D1D1D">
 
-    <DockPanel Background="#FFFFFF">
-        <!-- En-tête professionnel -->
-        <Border DockPanel.Dock="Top" Background="#FFFFFF" BorderBrush="#D5D5D7" BorderThickness="0,0,0,1" Padding="20,16">
+    <DockPanel Background="#1D1D1D">
+        <!-- Header professionnel Apple style -->
+        <Border DockPanel.Dock="Top" Background="#2D2D2D" BorderBrush="#424245" BorderThickness="0,0,0,1" Padding="28,16">
             <Grid ColumnDefinitions="1*,Auto">
-                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                    <TextBlock Text="📊" FontSize="28"/>
-                    <StackPanel VerticalAlignment="Center" Spacing="2">
-                        <TextBlock Text="ManageMyVision" Classes="Heading2"/>
-                        <TextBlock Text="Gestion Optique Professionnelle" Classes="SecondaryText" FontSize="12"/>
+                <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                    <TextBlock Text="👓" FontSize="32"/>
+                    <StackPanel VerticalAlignment="Center" Spacing="3">
+                        <TextBlock Text="ManageMyVision" FontSize="22" FontWeight="700" Foreground="#FFFFFF"/>
+                        <TextBlock Text="Gestion Optique Professionnelle" FontSize="12" Foreground="#A1A1A6"/>
                     </StackPanel>
                 </StackPanel>
                 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                    <TextBlock Text="Utilisateur: admin" Classes="SecondaryText"/>
-                    <Button Content="Déconnexion" Padding="12,8" Background="#F5F5F7" BorderThickness="0" CornerRadius="6"/>
+                    <TextBlock Text="Admin" FontSize="13" Foreground="#A1A1A6"/>
+                    <Button Content="Déconnexion" Padding="14,9" Background="#2D2D2D" Foreground="#FFFFFF" 
+                           BorderThickness="1" BorderBrush="#424245" CornerRadius="8" FontSize="13" FontWeight="500" Cursor="Hand"/>
                 </StackPanel>
             </Grid>
         </Border>
 
         <!-- Contenu principal -->
-        <DockPanel Background="#F5F5F7">
-            <!-- Sidebar professionnel -->
-            <Border DockPanel.Dock="Left" Width="260" Background="#FFFFFF" BorderBrush="#D5D5D7" BorderThickness="0,0,1,0" Padding="12">
-                <StackPanel Spacing="8">
-                    <!-- Titre du menu -->
-                    <TextBlock Text="MENU" Classes="SecondaryText" Margin="8,0" FontSize="11" FontWeight="600"/>
-                    
-                    <!-- Boutons de navigation -->
-                    <Button Content="📊 Tableau de Bord"
-                           Classes="NavButton"
-                           Command="{Binding NavigateCommand}"
-                           CommandParameter="Dashboard"/>
-                    <Button Content="👥 Clients"
-                           Classes="NavButton"
-                           Command="{Binding NavigateCommand}"
-                           CommandParameter="Customers"/>
-                    <Button Content="📦 Produits"
-                           Classes="NavButton"
-                           Command="{Binding NavigateCommand}"
-                           CommandParameter="Products"/>
-                    <Button Content="📋 Ordonnances"
-                           Classes="NavButton"
-                           Command="{Binding NavigateCommand}"
-                           CommandParameter="Prescriptions"/>
-                    <Button Content="🏭 Commandes"
-                           Classes="NavButton"
-                           Command="{Binding NavigateCommand}"
-                           CommandParameter="Orders"/>
-                    <Button Content="💰 Ventes"
-                           Classes="NavButton"
-                           Command="{Binding NavigateCommand}"
-                           CommandParameter="Sales"/>
-                    <Button Content="📈 Rapports"
-                           Classes="NavButton"
-                           Command="{Binding NavigateCommand}"
-                           CommandParameter="Reports"/>
-                    <Button Content="⚙️ Paramètres"
-                           Classes="NavButton"
-                           Command="{Binding NavigateCommand}"
-                           CommandParameter="Settings"/>
-                </StackPanel>
+        <DockPanel Background="#1D1D1D">
+            <!-- Sidebar Apple style -->
+            <Border DockPanel.Dock="Left" Width="280" Background="#2D2D2D" BorderBrush="#424245" BorderThickness="0,0,1,0" Padding="16">
+                <ScrollViewer>
+                    <StackPanel Spacing="3">
+                        <!-- Titre du menu -->
+                        <TextBlock Text="MENU" FontSize="11" FontWeight="700" Foreground="#A1A1A6" Margin="12,16,0,12" LetterSpacing="0.8"/>
+                        
+                        <!-- Boutons de navigation avec icônes -->
+                        <Button Content="📊  Tableau de Bord" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Dashboard"/>
+                        <Button Content="👥  Clients" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Customers"/>
+                        <Button Content="📦  Produits" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Products"/>
+                        <Button Content="🔖  Ordonnances" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Prescriptions"/>
+                        <Button Content="📋  Commandes" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Orders"/>
+                        <Button Content="💳  Ventes" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Sales"/>
+                        <Button Content="📈  Rapports" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Reports"/>
+                        
+                        <!-- Séparateur -->
+                        <Separator Margin="0,12" Background="#424245"/>
+                        
+                        <Button Content="⚙️  Paramètres" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Settings"/>
+                    </StackPanel>
+                </ScrollViewer>
             </Border>
 
             <!-- Zone de contenu principal -->
-            <Border Background="#F5F5F7" Padding="24">
+            <Border Background="#1D1D1D" Padding="28">
                 <Grid RowDefinitions="Auto,*">
-                    <!-- Indicateur de chargement et erreur -->
-                    <StackPanel Spacing="8">
-                        <ProgressBar IsIndeterminate="True" 
-                                    IsVisible="{Binding IsLoading}" 
-                                    Height="2" 
-                                    Foreground="#0071E3"/>
-                        
-                        <Border Background="#FFF0F0" 
-                               CornerRadius="8" 
-                               Padding="12"
-                               IsVisible="{Binding ErrorMessage}"
-                               BorderBrush="#FFE5E5"
-                               BorderThickness="1">
-                            <TextBlock Text="{Binding ErrorMessage}" 
-                                      Foreground="#D70015" 
-                                      TextWrapping="Wrap"/>
+                    <!-- Barre d'erreur Apple style -->
+                    <StackPanel Spacing="12" IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <Border Background="#3A1010" CornerRadius="10" Padding="16" BorderBrush="#652020" BorderThickness="1">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <TextBlock Text="⚠️" FontSize="18" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding ErrorMessage}" Foreground="#FF3B30" TextWrapping="Wrap" Margin="12,0,0,0" FontSize="13" FontWeight="500"/>
+                                <Button Grid.Column="2" Content="×" Foreground="#FF3B30" Background="Transparent" BorderThickness="0" FontSize="22" Padding="0" Cursor="Hand"/>
+                            </Grid>
                         </Border>
                     </StackPanel>
 
-                    <!-- Contenu principal -->
+                    <!-- Contenu dynamique (CurrentView) -->
                     <ContentControl Grid.Row="1" Content="{Binding CurrentView}" Margin="0,12,0,0"/>
                 </Grid>
             </Border>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.DependencyInjection;
 using MMV.App.ViewModels;
 
 namespace MMV.App.Services;
@@ -50,12 +51,18 @@ public class NavigationEventArgs : EventArgs
 public class NavigationService : INavigationService
 {
     private readonly Dictionary<string, Type> _viewModelRegistry = new();
+    private readonly IServiceProvider _serviceProvider;
     private BaseViewModel? _currentViewModel;
     private readonly Stack<string> _navigationHistory = new();
 
     public BaseViewModel? CurrentViewModel => _currentViewModel;
 
     public event EventHandler<NavigationEventArgs>? NavigationChanged;
+
+    public NavigationService(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+    }
 
     /// <summary>
     /// Enregistre un ViewModel pour une vue donnée.
@@ -79,7 +86,8 @@ public class NavigationService : INavigationService
             
             try
             {
-                _currentViewModel = Activator.CreateInstance(viewModelType) as BaseViewModel;
+                // Utiliser ActivatorUtilities pour supporter l'injection de dépendances
+                _currentViewModel = ActivatorUtilities.CreateInstance(_serviceProvider, viewModelType) as BaseViewModel;
                 NavigationChanged?.Invoke(this, new NavigationEventArgs 
                 { 
                     ViewName = viewName, 

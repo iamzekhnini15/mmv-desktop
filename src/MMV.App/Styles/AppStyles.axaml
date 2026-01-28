@@ -1,10 +1,22 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Style pour les boutons de navigation -->
+    <!-- Color Palette Apple Dark Mode -->
+    <!-- 
+        Primary BG: #1D1D1D (pure black for contrast)
+        Secondary BG: #2D2D2D (darker sections)
+        Tertiary BG: #424245 (even darker)
+        Separator: #424245 (subtle dividers)
+        Text Primary: #FFFFFF (white text)
+        Text Secondary: #A1A1A6 (secondary text)
+        Accent: #0A84FF (Apple blue)
+        Error: #FF3B30 (Apple red)
+    -->
+
+    <!-- ===== NAVIGATION BUTTONS ===== -->
     <Style Selector="Button.NavButton">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="#1D1D1F"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding" Value="16,12"/>
         <Setter Property="FontSize" Value="14"/>
@@ -16,88 +28,116 @@
     </Style>
     
     <Style Selector="Button.NavButton:pointerover">
-        <Setter Property="Background" Value="#F5F5F7"/>
+        <Setter Property="Background" Value="#2D2D2D"/>
     </Style>
     
     <Style Selector="Button.NavButton:pressed">
-        <Setter Property="Background" Value="#EBEBF0"/>
+        <Setter Property="Background" Value="#3A3A3C"/>
     </Style>
 
-    <!-- Style pour les boutons primaires -->
+    <!-- ===== PRIMARY BUTTONS ===== -->
     <Style Selector="Button.PrimaryButton">
-        <Setter Property="Background" Value="#0071E3"/>
+        <Setter Property="Background" Value="#0A84FF"/>
         <Setter Property="Foreground" Value="White"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="0,12"/>
-        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="Padding" Value="16,10"/>
+        <Setter Property="FontSize" Value="13"/>
         <Setter Property="FontWeight" Value="600"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="HorizontalAlignment" Value="Stretch"/>
     </Style>
     
     <Style Selector="Button.PrimaryButton:pointerover">
-        <Setter Property="Background" Value="#0056B3"/>
+        <Setter Property="Background" Value="#1B92FF"/>
     </Style>
 
-    <!-- AJOUT ICI : État désactivé -->
-    <Style Selector="Button.PrimaryButton:disabled">
-        <Setter Property="Background" Value="#E5E5E5"/>
-        <Setter Property="Foreground" Value="#86868B"/>
-        <Setter Property="Opacity" Value="1"/>
+    <Style Selector="Button.PrimaryButton:pressed">
+        <Setter Property="Background" Value="#0073D6"/>
     </Style>
 
-    <!-- Style pour les champs de texte -->
+    <!-- ===== SECONDARY BUTTONS ===== -->
+    <Style Selector="Button.SecondaryButton">
+        <Setter Property="Background" Value="#2D2D2D"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="#424245"/>
+        <Setter Property="Padding" Value="16,10"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="500"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    
+    <Style Selector="Button.SecondaryButton:pointerover">
+        <Setter Property="Background" Value="#3A3A3C"/>
+    </Style>
+
+    <!-- ===== TEXTBOX / INPUT FIELDS ===== -->
     <Style Selector="TextBox">
-        <Setter Property="Background" Value="#F9F9FB"/>
-        <Setter Property="Foreground" Value="#1D1D1F"/>
-        <Setter Property="BorderBrush" Value="#D5D5D7"/>
+        <Setter Property="Background" Value="#2D2D2D"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#424245"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="12,10"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="CaretBrush" Value="#0A84FF"/>
     </Style>
     
     <Style Selector="TextBox:focus">
-        <Setter Property="BorderBrush" Value="#0071E3"/>
+        <Setter Property="BorderBrush" Value="#0A84FF"/>
         <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="Background" Value="#2D2D2D"/>
+    </Style>
+    
+    <Style Selector="TextBox:pointerover">
+        <Setter Property="BorderBrush" Value="#5A5A5F"/>
+        <Setter Property="Background" Value="#2D2D2D"/>
     </Style>
 
-    <!-- Style pour les cartes -->
+    <!-- ===== CARD / BORDER STYLES ===== -->
     <Style Selector="Border.Card">
-        <Setter Property="Background" Value="#FFFFFF"/>
+        <Setter Property="Background" Value="#2D2D2D"/>
         <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="BorderBrush" Value="#D5D5D7"/>
+        <Setter Property="BorderBrush" Value="#424245"/>
         <Setter Property="BorderThickness" Value="1"/>
     </Style>
 
-    <!-- Style pour les textes -->
+    <!-- ===== TYPOGRAPHY ===== -->
     <Style Selector="TextBlock.Heading1">
         <Setter Property="FontSize" Value="28"/>
         <Setter Property="FontWeight" Value="700"/>
-        <Setter Property="Foreground" Value="#1D1D1F"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
     </Style>
 
     <Style Selector="TextBlock.Heading2">
         <Setter Property="FontSize" Value="22"/>
         <Setter Property="FontWeight" Value="600"/>
-        <Setter Property="Foreground" Value="#1D1D1F"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
     </Style>
 
     <Style Selector="TextBlock.Heading3">
         <Setter Property="FontSize" Value="18"/>
         <Setter Property="FontWeight" Value="600"/>
-        <Setter Property="Foreground" Value="#1D1D1F"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
     </Style>
 
     <Style Selector="TextBlock.BodyText">
         <Setter Property="FontSize" Value="14"/>
-        <Setter Property="Foreground" Value="#1D1D1F"/>
+        <Setter Property="FontWeight" Value="400"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
     </Style>
 
     <Style Selector="TextBlock.SecondaryText">
         <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Foreground" Value="#86868B"/>
+        <Setter Property="FontWeight" Value="400"/>
+        <Setter Property="Foreground" Value="#A1A1A6"/>
+    </Style>
+
+    <Style Selector="TextBlock.SmallText">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="400"/>
+        <Setter Property="Foreground" Value="#A1A1A6"/>
     </Style>
 
 </Styles>
