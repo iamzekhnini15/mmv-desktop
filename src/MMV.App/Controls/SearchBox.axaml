@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="40"
+             x:Class="MMV.App.Controls.SearchBox">
+    
+    <Border Background="#F9F9FB" 
+            BorderBrush="#D5D5D7" 
+            BorderThickness="1" 
+            CornerRadius="8"
+            Padding="12,8">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+            <!-- Icône de recherche -->
+            <TextBlock Grid.Column="0" 
+                      Text="🔍" 
+                      VerticalAlignment="Center"
+                      Margin="0,0,8,0"
+                      FontSize="16"
+                      Foreground="#86868B"/>
+            
+            <!-- Champ de texte -->
+            <TextBox Grid.Column="1" 
+                    x:Name="SearchTextBox"
+                    Watermark="Rechercher..."
+                    Background="Transparent"
+                    BorderThickness="0"
+                    VerticalAlignment="Center"
+                    FontSize="14"/>
+            
+            <!-- Bouton clear (visible si texte présent) -->
+            <Button Grid.Column="2"
+                   x:Name="ClearButton"
+                   Content="✕"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   Padding="8,4"
+                   VerticalAlignment="Center"
+                   Foreground="#86868B"
+                   FontSize="16"
+                   IsVisible="False"
+                   Cursor="Hand"/>
+        </Grid>
+    </Border>
+</UserControl>

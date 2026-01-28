@@ -1,6 +1,9 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using MMV.App.ViewModels;
+using MMV.App.Views;
 
 namespace MMV.App;
 
@@ -18,11 +21,31 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // TODO: Injection de dépendances et création de la fenêtre principale
-            // desktop.MainWindow = new MainWindow
-            // {
-            //     DataContext = new MainWindowViewModel(),
-            // };
+            // Créer la fenêtre de connexion
+            var loginViewModel = new LoginViewModel();
+            var loginWindow = new Window
+            {
+                Title = "Connexion - ManageMyVision",
+                Width = 1000,
+                Height = 700,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                Content = new LoginView { DataContext = loginViewModel }
+            };
+
+            // Quand la connexion réussit, afficher la fenêtre principale
+            loginViewModel.LoginSuccessful += (s, e) =>
+            {
+                var mainWindow = new MainWindow
+                {
+                    DataContext = new MainWindowViewModel()
+                };
+                
+                desktop.MainWindow = mainWindow;
+                mainWindow.Show();
+                loginWindow.Close();
+            };
+
+            desktop.MainWindow = loginWindow;
         }
 
         base.OnFrameworkInitializationCompleted();

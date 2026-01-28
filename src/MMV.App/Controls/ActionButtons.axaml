@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="50"
+             x:Class="MMV.App.Controls.ActionButtons">
+    
+    <StackPanel Orientation="Horizontal" Spacing="12">
+        <!-- Bouton Créer -->
+        <Button x:Name="CreateButton"
+               Classes="PrimaryButton"
+               Content="➕ Créer"
+               Padding="16,10"
+               FontSize="14"
+               CornerRadius="6"/>
+        
+        <!-- Bouton Modifier -->
+        <Button x:Name="EditButton"
+               Background="#F39C12"
+               Foreground="White"
+               Content="✏️ Modifier"
+               Padding="16,10"
+               FontSize="14"
+               BorderThickness="0"
+               CornerRadius="6"
+               Cursor="Hand"/>
+        
+        <!-- Bouton Supprimer -->
+        <Button x:Name="DeleteButton"
+               Background="#E74C3C"
+               Foreground="White"
+               Content="🗑️ Supprimer"
+               Padding="16,10"
+               FontSize="14"
+               BorderThickness="0"
+               CornerRadius="6"
+               Cursor="Hand"/>
+        
+        <!-- Bouton Actualiser -->
+        <Button x:Name="RefreshButton"
+               Background="#F5F5F7"
+               Foreground="#1D1D1F"
+               Content="🔄 Actualiser"
+               Padding="16,10"
+               FontSize="14"
+               BorderThickness="1"
+               BorderBrush="#D5D5D7"
+               CornerRadius="6"
+               Cursor="Hand"/>
+    </StackPanel>
+</UserControl>

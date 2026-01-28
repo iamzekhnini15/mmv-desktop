@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            x:Class="MMV.App.Views.SalesView">
+    <Border Padding="20">
+        <StackPanel Spacing="10" VerticalAlignment="Center">
+            <TextBlock Text="💰 Point de Vente" FontSize="28" FontWeight="Bold"/>
+            <TextBlock Text="Module point de vente / caisse - En cours de développement..." Opacity="0.7"/>
+        </StackPanel>
+    </Border>
+</UserControl>

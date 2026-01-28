@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+            xmlns:local="using:MMV.App.ViewModels"
+            mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+            x:Class="MMV.App.Views.DashboardView"
+            x:DataType="local:DashboardViewModel"
+            Background="#F5F5F7">
+    
+    <ScrollViewer>
+        <Border Padding="0,0,0,0">
+            <StackPanel Spacing="24" Margin="0,0,0,0">
+                <!-- Titre de la page -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Tableau de Bord" Classes="Heading2"/>
+                    <TextBlock Text="Aperçu des performances et statistiques clés" Classes="SecondaryText"/>
+                </StackPanel>
+
+                <!-- Grille de statistiques -->
+                <Grid ColumnDefinitions="1*,1*,1*,1*" RowDefinitions="Auto">
+                
+                    <!-- Carte Clients -->
+                    <Border Grid.Column="0" Classes="Card" Background="#0071E3" Padding="20">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="👥 Clients" FontSize="14" Foreground="White" Opacity="0.9"/>
+                            <TextBlock Text="{Binding TotalCustomers}" FontSize="36" FontWeight="700" Foreground="White"/>
+                            <TextBlock Text="Total des clients" FontSize="12" Foreground="White" Opacity="0.8"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Carte Produits -->
+                    <Border Grid.Column="1" Classes="Card" Background="#34C759" Padding="20">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="📦 Produits" FontSize="14" Foreground="White" Opacity="0.9"/>
+                            <TextBlock Text="{Binding TotalProducts}" FontSize="36" FontWeight="700" Foreground="White"/>
+                            <TextBlock Text="Articles en stock" FontSize="12" Foreground="White" Opacity="0.8"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Carte Ventes -->
+                    <Border Grid.Column="2" Classes="Card" Background="#FF9500" Padding="20">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="💰 Chiffre d'affaires" FontSize="14" Foreground="White" Opacity="0.9"/>
+                            <TextBlock Text="{Binding TotalSales}" FontSize="36" FontWeight="700" Foreground="White"/>
+                            <TextBlock Text="Ventes totales" FontSize="12" Foreground="White" Opacity="0.8"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Carte Commandes en attente -->
+                    <Border Grid.Column="3" Classes="Card" Background="#FF3B30" Padding="20">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="🔔 En attente" FontSize="14" Foreground="White" Opacity="0.9"/>
+                            <TextBlock Text="{Binding PendingOrders}" FontSize="36" FontWeight="700" Foreground="White"/>
+                            <TextBlock Text="Commandes en cours" FontSize="12" Foreground="White" Opacity="0.8"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Section info -->
+                <Border Background="#FFFFFF" CornerRadius="12" Padding="20" BorderBrush="#D5D5D7" BorderThickness="1">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Bienvenue dans ManageMyVision" Classes="Heading3"/>
+                        <TextBlock Text="Votre solution complète de gestion pour opticiens. Utilisez le menu pour accéder aux différents modules de gestion de votre activité." 
+                                  Classes="BodyText"
+                                  TextWrapping="Wrap"
+                                  Foreground="#86868B"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
+    </ScrollViewer>
+
+</UserControl>

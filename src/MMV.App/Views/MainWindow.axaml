@@ -1,0 +1,106 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="using:MMV.App"
+        xmlns:vm="using:MMV.App.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="1600" d:DesignHeight="900"
+        x:Class="MMV.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="ManageMyVision"
+        Width="1600" Height="900"
+        Background="#FFFFFF">
+
+    <DockPanel Background="#FFFFFF">
+        <!-- En-tête professionnel -->
+        <Border DockPanel.Dock="Top" Background="#FFFFFF" BorderBrush="#D5D5D7" BorderThickness="0,0,0,1" Padding="20,16">
+            <Grid ColumnDefinitions="1*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <TextBlock Text="📊" FontSize="28"/>
+                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="ManageMyVision" Classes="Heading2"/>
+                        <TextBlock Text="Gestion Optique Professionnelle" Classes="SecondaryText" FontSize="12"/>
+                    </StackPanel>
+                </StackPanel>
+                
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <TextBlock Text="Utilisateur: admin" Classes="SecondaryText"/>
+                    <Button Content="Déconnexion" Padding="12,8" Background="#F5F5F7" BorderThickness="0" CornerRadius="6"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Contenu principal -->
+        <DockPanel Background="#F5F5F7">
+            <!-- Sidebar professionnel -->
+            <Border DockPanel.Dock="Left" Width="260" Background="#FFFFFF" BorderBrush="#D5D5D7" BorderThickness="0,0,1,0" Padding="12">
+                <StackPanel Spacing="8">
+                    <!-- Titre du menu -->
+                    <TextBlock Text="MENU" Classes="SecondaryText" Margin="8,0" FontSize="11" FontWeight="600"/>
+                    
+                    <!-- Boutons de navigation -->
+                    <Button Content="📊 Tableau de Bord"
+                           Classes="NavButton"
+                           Command="{Binding NavigateCommand}"
+                           CommandParameter="Dashboard"/>
+                    <Button Content="👥 Clients"
+                           Classes="NavButton"
+                           Command="{Binding NavigateCommand}"
+                           CommandParameter="Customers"/>
+                    <Button Content="📦 Produits"
+                           Classes="NavButton"
+                           Command="{Binding NavigateCommand}"
+                           CommandParameter="Products"/>
+                    <Button Content="📋 Ordonnances"
+                           Classes="NavButton"
+                           Command="{Binding NavigateCommand}"
+                           CommandParameter="Prescriptions"/>
+                    <Button Content="🏭 Commandes"
+                           Classes="NavButton"
+                           Command="{Binding NavigateCommand}"
+                           CommandParameter="Orders"/>
+                    <Button Content="💰 Ventes"
+                           Classes="NavButton"
+                           Command="{Binding NavigateCommand}"
+                           CommandParameter="Sales"/>
+                    <Button Content="📈 Rapports"
+                           Classes="NavButton"
+                           Command="{Binding NavigateCommand}"
+                           CommandParameter="Reports"/>
+                    <Button Content="⚙️ Paramètres"
+                           Classes="NavButton"
+                           Command="{Binding NavigateCommand}"
+                           CommandParameter="Settings"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Zone de contenu principal -->
+            <Border Background="#F5F5F7" Padding="24">
+                <Grid RowDefinitions="Auto,*">
+                    <!-- Indicateur de chargement et erreur -->
+                    <StackPanel Spacing="8">
+                        <ProgressBar IsIndeterminate="True" 
+                                    IsVisible="{Binding IsLoading}" 
+                                    Height="2" 
+                                    Foreground="#0071E3"/>
+                        
+                        <Border Background="#FFF0F0" 
+                               CornerRadius="8" 
+                               Padding="12"
+                               IsVisible="{Binding ErrorMessage}"
+                               BorderBrush="#FFE5E5"
+                               BorderThickness="1">
+                            <TextBlock Text="{Binding ErrorMessage}" 
+                                      Foreground="#D70015" 
+                                      TextWrapping="Wrap"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Contenu principal -->
+                    <ContentControl Grid.Row="1" Content="{Binding CurrentView}" Margin="0,12,0,0"/>
+                </Grid>
+            </Border>
+        </DockPanel>
+    </DockPanel>
+
+</Window>
