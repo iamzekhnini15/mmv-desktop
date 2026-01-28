@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Windows.Input;
+using MMV.App.Commands;
 using MMV.App.Services;
 
 namespace MMV.App.ViewModels;
@@ -26,10 +28,17 @@ public class MainWindowViewModel : BaseViewModel
         set => SetProperty(ref _currentView, value);
     }
 
+    /// <summary>
+    /// Commande pour naviguer vers une vue.
+    /// </summary>
+    public ICommand NavigateCommand { get; }
+
     public MainWindowViewModel()
     {
         _navigationService = new NavigationService();
         Title = "ManageMyVision";
+        
+        NavigateCommand = new RelayCommand<string>(ExecuteNavigate, CanNavigate);
         
         InitializeNavigation();
         RegisterViewModels();
@@ -120,8 +129,26 @@ public class MainWindowViewModel : BaseViewModel
     /// </summary>
     public void NavigateTo(string viewName)
     {
+        ExecuteNavigate(viewName);
+    }
+
+    /// <summary>
+    /// Exécute la commande de navigation.
+    /// </summary>
+    private void ExecuteNavigate(string? viewName)
+    {
+        if (string.IsNullOrEmpty(viewName)) return;
+        
         _navigationService.Navigate(viewName);
         CurrentView = _navigationService.CurrentViewModel;
+    }
+
+    /// <summary>
+    /// Vérifie si la navigation est possible.
+    /// </summary>
+    private bool CanNavigate(string? viewName)
+    {
+        return !string.IsNullOrEmpty(viewName);
     }
 }
 

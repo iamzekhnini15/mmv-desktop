@@ -49,13 +49,16 @@ public class BaseViewModel : INotifyPropertyChanged
     /// <summary>
     /// Modifie une propriété et déclenche l'événement PropertyChanged si nécessaire.
     /// </summary>
-    protected void SetProperty<T>(ref T field, T newValue, [CallerMemberName] string propertyName = "")
+    /// <returns>True si la propriété a changé, False sinon.</returns>
+    protected bool SetProperty<T>(ref T field, T newValue, [CallerMemberName] string propertyName = "")
     {
         if (!EqualityComparer<T>.Default.Equals(field, newValue))
         {
             field = newValue;
             OnPropertyChanged(propertyName);
+            return true;
         }
+        return false;
     }
 
     /// <summary>

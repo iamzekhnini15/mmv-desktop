@@ -1,0 +1,145 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+            xmlns:vm="using:MMV.App.ViewModels"
+            mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+            x:Class="MMV.App.Views.LoginView"
+            x:DataType="vm:LoginViewModel"
+            Background="#FFFFFF">
+    
+    <!-- Layout: Image (gauche) + Formulaire (droite) style Apple -->
+    <Grid ColumnDefinitions="1*,1*" Background="#F5F5F7">
+        
+        <!-- Section gauche: Marque + Message -->
+        <Border Grid.Column="0" Background="#FFFFFF" Padding="40">
+            <StackPanel Spacing="20" VerticalAlignment="Center">
+                <!-- Logo -->
+                <TextBlock Text="📊" FontSize="72" HorizontalAlignment="Center"/>
+                
+                <!-- Titre principal -->
+                <TextBlock Text="ManageMyVision" 
+                          Classes="Heading1"
+                          HorizontalAlignment="Center"/>
+                
+                <!-- Sous-titre -->
+                <TextBlock Text="Gestion Optique Professionnelle" 
+                          Classes="SecondaryText"
+                          HorizontalAlignment="Center"/>
+                
+                <!-- Description -->
+                <Border Background="#F5F5F7" CornerRadius="12" Padding="16" Margin="0,20,0,0">
+                    <StackPanel Spacing="12">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="✓ Gestion Clients" Classes="BodyText"/>
+                            <TextBlock Text="Référencez et suivez vos clients" Classes="SecondaryText"/>
+                        </StackPanel>
+                        
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="✓ Stock &amp; Inventaire" Classes="BodyText"/>
+                            <TextBlock Text="Gérez votre inventaire en temps réel" Classes="SecondaryText"/>
+                        </StackPanel>
+                        
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="✓ Commandes &amp; Ventes" Classes="BodyText"/>
+                            <TextBlock Text="Ordonnances et point de vente intégrés" Classes="SecondaryText"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
+
+        <!-- Section droite: Formulaire de connexion -->
+        <Border Grid.Column="1" Background="#FFFFFF">
+            <StackPanel Margin="60,40" Spacing="24" VerticalAlignment="Center">
+                
+                <!-- En-tête du formulaire -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Bienvenue" Classes="Heading2"/>
+                    <TextBlock Text="Connectez-vous à votre compte" Classes="SecondaryText"/>
+                </StackPanel>
+
+                <!-- Formulaire -->
+                <StackPanel Spacing="16">
+                    
+                    <!-- Champ Utilisateur -->
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Identifiant" 
+                                  Classes="BodyText"
+                                  FontWeight="600"
+                                  Foreground="#1D1D1F"/>
+                        <TextBox x:Name="UsernameBox"
+                                Text="{Binding Username}"
+                                Watermark="Nom d'utilisateur"
+                                FontSize="15"
+                                Padding="12,12"/>
+                    </StackPanel>
+
+                    <!-- Champ Mot de passe -->
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Mot de passe" 
+                                  Classes="BodyText"
+                                  FontWeight="600"
+                                  Foreground="#1D1D1F"/>
+                        <TextBox x:Name="PasswordBox"
+                                PasswordChar="•"
+                                Watermark="Mot de passe"
+                                FontSize="15"
+                                Padding="12,12"/>
+                    </StackPanel>
+
+                    <!-- Message d'erreur -->
+                    <Border Background="#FFF0F0" 
+                           CornerRadius="8" 
+                           Padding="12"
+                           IsVisible="{Binding LoginError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           BorderBrush="#FFE5E5"
+                           BorderThickness="1">
+                        <TextBlock Text="{Binding LoginError}" 
+                                  Foreground="#D70015" 
+                                  TextWrapping="Wrap"
+                                  FontSize="13"/>
+                    </Border>
+
+                    <!-- Bouton de connexion -->
+                    <Button x:Name="LoginButton"
+                           Content="Se connecter"
+                           Command="{Binding LoginCommand}"
+                           Classes="PrimaryButton"
+                           HorizontalAlignment="Stretch"
+                           HorizontalContentAlignment="Center"
+                           IsEnabled="{Binding !IsLoggingIn}"
+                           Margin="0,8,0,0"/>
+
+                    <!-- Indicateur de chargement -->
+                    <ProgressBar IsIndeterminate="True"
+                                IsVisible="{Binding IsLoggingIn}"
+                                Height="2"
+                                Foreground="#0071E3"
+                                Background="#F0F0F2"
+                                CornerRadius="1"/>
+                </StackPanel>
+
+                <!-- Info de connexion (DEMO) -->
+                <Border Background="#F5F5F7" 
+                       CornerRadius="8" 
+                       Padding="12"
+                       Margin="0,12,0,0"
+                       BorderBrush="#E5E5E7"
+                       BorderThickness="1">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Identifiant de démo" 
+                                  FontWeight="600" 
+                                  Foreground="#1D1D1F"
+                                  FontSize="13"/>
+                        <TextBlock Text="Utilisateur: admin | Mot de passe: admin" 
+                                  FontSize="12" 
+                                  Foreground="#86868B"
+                                  FontFamily="monospace"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
+    </Grid>
+
+</UserControl>

@@ -3,59 +3,72 @@
             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
             xmlns:local="using:MMV.App.ViewModels"
-            mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+            mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
             x:Class="MMV.App.Views.DashboardView"
-            x:DataType="local:DashboardViewModel">
+            x:DataType="local:DashboardViewModel"
+            Background="#F5F5F7">
     
-    <Grid RowDefinitions="Auto,*">
-        <!-- Titre -->
-        <TextBlock Text="Tableau de Bord" FontSize="28" FontWeight="Bold" Foreground="#2D3E50" Margin="20,20,0,20"/>
+    <ScrollViewer>
+        <Border Padding="0,0,0,0">
+            <StackPanel Spacing="24" Margin="0,0,0,0">
+                <!-- Titre de la page -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Tableau de Bord" Classes="Heading2"/>
+                    <TextBlock Text="Aperçu des performances et statistiques clés" Classes="SecondaryText"/>
+                </StackPanel>
 
-        <!-- Contenu du tableau de bord -->
-        <ScrollViewer Grid.Row="1">
-            <StackPanel Spacing="20" Margin="20">
-                <!-- Cartes de statistiques -->
+                <!-- Grille de statistiques -->
                 <Grid ColumnDefinitions="1*,1*,1*,1*" RowDefinitions="Auto">
+                
                     <!-- Carte Clients -->
-                    <Border Grid.Column="0" Background="#3498DB" CornerRadius="8" Padding="20">
-                        <StackPanel Spacing="10">
-                            <TextBlock Text="👥 Clients" FontSize="14" Foreground="White" Opacity="0.8"/>
-                            <TextBlock Text="{Binding TotalCustomers}" FontSize="32" FontWeight="Bold" Foreground="White"/>
+                    <Border Grid.Column="0" Classes="Card" Background="#0071E3" Padding="20">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="👥 Clients" FontSize="14" Foreground="White" Opacity="0.9"/>
+                            <TextBlock Text="{Binding TotalCustomers}" FontSize="36" FontWeight="700" Foreground="White"/>
+                            <TextBlock Text="Total des clients" FontSize="12" Foreground="White" Opacity="0.8"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Carte Produits -->
-                    <Border Grid.Column="1" Background="#2ECC71" CornerRadius="8" Padding="20">
-                        <StackPanel Spacing="10">
-                            <TextBlock Text="📦 Produits" FontSize="14" Foreground="White" Opacity="0.8"/>
-                            <TextBlock Text="{Binding TotalProducts}" FontSize="32" FontWeight="Bold" Foreground="White"/>
+                    <Border Grid.Column="1" Classes="Card" Background="#34C759" Padding="20">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="📦 Produits" FontSize="14" Foreground="White" Opacity="0.9"/>
+                            <TextBlock Text="{Binding TotalProducts}" FontSize="36" FontWeight="700" Foreground="White"/>
+                            <TextBlock Text="Articles en stock" FontSize="12" Foreground="White" Opacity="0.8"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Carte Ventes -->
-                    <Border Grid.Column="2" Background="#F39C12" CornerRadius="8" Padding="20">
-                        <StackPanel Spacing="10">
-                            <TextBlock Text="💰 Ventes" FontSize="14" Foreground="White" Opacity="0.8"/>
-                            <TextBlock Text="{Binding TotalSales}" FontSize="32" FontWeight="Bold" Foreground="White"/>
+                    <Border Grid.Column="2" Classes="Card" Background="#FF9500" Padding="20">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="💰 Chiffre d'affaires" FontSize="14" Foreground="White" Opacity="0.9"/>
+                            <TextBlock Text="{Binding TotalSales}" FontSize="36" FontWeight="700" Foreground="White"/>
+                            <TextBlock Text="Ventes totales" FontSize="12" Foreground="White" Opacity="0.8"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Carte Commandes en attente -->
-                    <Border Grid.Column="3" Background="#E74C3C" CornerRadius="8" Padding="20">
-                        <StackPanel Spacing="10">
-                            <TextBlock Text="🏭 En attente" FontSize="14" Foreground="White" Opacity="0.8"/>
-                            <TextBlock Text="{Binding PendingOrders}" FontSize="32" FontWeight="Bold" Foreground="White"/>
+                    <Border Grid.Column="3" Classes="Card" Background="#FF3B30" Padding="20">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="🔔 En attente" FontSize="14" Foreground="White" Opacity="0.9"/>
+                            <TextBlock Text="{Binding PendingOrders}" FontSize="36" FontWeight="700" Foreground="White"/>
+                            <TextBlock Text="Commandes en cours" FontSize="12" Foreground="White" Opacity="0.8"/>
                         </StackPanel>
                     </Border>
                 </Grid>
 
-                <!-- Bienvenue -->
-                <Border Background="#ECF0F1" CornerRadius="8" Padding="20">
-                    <TextBlock Text="Bienvenue dans ManageMyVision! Utilisez le menu latéral pour accéder aux différents modules de gestion." 
-                              TextWrapping="Wrap" Foreground="#34495E"/>
+                <!-- Section info -->
+                <Border Background="#FFFFFF" CornerRadius="12" Padding="20" BorderBrush="#D5D5D7" BorderThickness="1">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Bienvenue dans ManageMyVision" Classes="Heading3"/>
+                        <TextBlock Text="Votre solution complète de gestion pour opticiens. Utilisez le menu pour accéder aux différents modules de gestion de votre activité." 
+                                  Classes="BodyText"
+                                  TextWrapping="Wrap"
+                                  Foreground="#86868B"/>
+                    </StackPanel>
                 </Border>
             </StackPanel>
-        </ScrollViewer>
-    </Grid>
+        </Border>
+    </ScrollViewer>
 
 </UserControl>
