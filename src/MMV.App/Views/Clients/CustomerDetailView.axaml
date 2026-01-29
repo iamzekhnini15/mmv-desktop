@@ -149,6 +149,11 @@
             <TabItem Header="Informations Client">
                 <views:CustomerInfoView DataContext="{Binding CustomerInfoViewModel}"/>
             </TabItem>
+
+            <!-- Onglet 4: Historique d'achats -->
+            <TabItem Header="Historique d'achats">
+                <views:CustomerPurchaseHistoryView DataContext="{Binding PurchaseHistoryViewModel}"/>
+            </TabItem>
         </TabControl>
     </Grid>
 </UserControl>

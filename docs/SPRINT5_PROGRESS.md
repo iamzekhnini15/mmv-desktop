@@ -1,10 +1,10 @@
 # Sprint 5 - Module Gestion Clients (CRM) 
 ## Rapport d'Avancement (Partie 1/2)
 
-> **Date** : Janvier 2026  
+> **Date** : 29 Janvier 2026  
 > **Branche** : `sprint-5`  
-> **Statut** : ⏳ EN COURS (50% complété)  
-> **Build** : ✅ 0 erreurs, 0 warnings
+> **Statut** : ✅ **TERMINÉ** (100% complété)  
+> **Build** : ✅ 0 erreurs, 8 warnings (nullability)
 
 ---
 
@@ -17,14 +17,25 @@ Le Sprint 5 vise à créer un **module complet de gestion des clients (CRM)** av
 - Fiche détaillée client avec onglets (infos, prescriptions, historique)
 
 ### Progrès Actuel
+- ✅ **CustomersViewModel** - Coordinateur principal
 - ✅ **CustomersListViewModel** (324 lignes)
-- ✅ **CustomersListView** (186 lignes)
+- ✅ **CustomersView** - Vue principale avec gestion de visibilité
 - ✅ **CustomerFormViewModel** (408 lignes)
 - ✅ **CustomerFormView** (243 lignes)
-- ⏳ **CustomerDetailViewModel** (À VENIR)
-- ⏳ **CustomerDetailView** (À VENIR)
+- ✅ **CustomerDetailViewModel** - Parent des onglets
+- ✅ **CustomerDetailView** - TabControl 4 onglets
+- ✅ **CustomerPurchaseHistoryViewModel** - Historique commandes
+- ✅ **CustomerPurchaseHistoryView** - DataGrid historique
+- ✅ **GUIDE_BOUTONS_ET_BINDINGS.md** - Documentation patterns
 
-**Total : 4/6 composants créés (66%)**
+**Total : 10/10 composants créés (100%)**
+
+### Correctifs Majeurs Appliqués
+- ✅ Correction bouton "Nouveau client" (Click → Command)
+- ✅ Gestion visibilité avec propriété calculée `ShowList`
+- ✅ Résolution problèmes XAML Avalonia (AlternatingRowBackground, Grid Padding)
+- ✅ Pattern de notifications pour propriétés calculées
+- ✅ Clean build pour résoudre cache Avalonia
 
 ---
 

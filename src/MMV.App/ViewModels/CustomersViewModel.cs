@@ -19,6 +19,7 @@ public class CustomersViewModel : BaseViewModel
     private bool _isShowingDetail;
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IOrderRepository _orderRepository;
     private ICommand? _viewDetailCommand;
 
     /// <summary>
@@ -45,7 +46,11 @@ public class CustomersViewModel : BaseViewModel
     public bool IsInEditMode
     {
         get => _isInEditMode;
-        set => SetProperty(ref _isInEditMode, value);
+        set
+        {
+            if (SetProperty(ref _isInEditMode, value))
+                OnPropertyChanged(nameof(ShowList));
+        }
     }
 
     /// <summary>
@@ -72,8 +77,13 @@ public class CustomersViewModel : BaseViewModel
     public bool IsShowingDetail
     {
         get => _isShowingDetail;
-        set => SetProperty(ref _isShowingDetail, value);
+        set
+        {
+            if (SetProperty(ref _isShowingDetail, value))
+                OnPropertyChanged(nameof(ShowList));
+        }
     }
+    public bool ShowList => !IsInEditMode && !IsShowingDetail;
 
     /// <summary>
     /// Commande pour afficher la fiche détaillée du client.
@@ -86,11 +96,12 @@ public class CustomersViewModel : BaseViewModel
     /// <summary>
     /// Initialise le ViewModel avec injection de dépendances.
     /// </summary>
-    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork)
+    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersViewModel] Constructor called");
         _customerRepository = customerRepository;
         _unitOfWork = unitOfWork;
+        _orderRepository = orderRepository;
         
         Title = "Clients";
         
@@ -176,7 +187,7 @@ public class CustomersViewModel : BaseViewModel
         if (customer != null)
         {
             // Créer une nouvelle instance du CustomerDetailViewModel
-            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork);
+            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _orderRepository);
             
             // Initialiser avec le client sélectionné
             CustomerDetailViewModel.Initialize(customer);

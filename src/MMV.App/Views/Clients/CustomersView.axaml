@@ -97,10 +97,10 @@
 
         <!-- CONTENU SCROLLABLE (Zone centrale occupant tout l'espace restant) -->
         <ScrollViewer Grid.Row="1" 
-                     Padding="32,0,32,0" 
-                     VerticalScrollBarVisibility="Auto" 
-                     HorizontalScrollBarVisibility="Disabled"
-                     IsVisible="{Binding !IsInEditMode}">
+                 Padding="32,0,32,0" 
+                 VerticalScrollBarVisibility="Auto" 
+                 HorizontalScrollBarVisibility="Disabled"
+                     IsVisible="{Binding ShowList}">
             <StackPanel Spacing="0">
                 
                 <!-- Barre de Recherche -->
@@ -179,7 +179,7 @@
         </ScrollViewer>
 
         <!-- FOOTER / PAGINATION (Fixe en bas) -->
-        <Border Grid.Row="2" Padding="32,12,32,12" BorderBrush="#333333" BorderThickness="0,1,0,0" IsVisible="{Binding !IsInEditMode}">
+        <Border Grid.Row="2" Padding="32,12,32,12" BorderBrush="#333333" BorderThickness="0,1,0,0" IsVisible="{Binding ShowList}">
             <Grid ColumnDefinitions="*,Auto">
                 <!-- Indicateurs -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">

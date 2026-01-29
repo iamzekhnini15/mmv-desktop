@@ -15,12 +15,14 @@ public class CustomerDetailViewModel : BaseViewModel
 {
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IOrderRepository _orderRepository;
     
     private Customer? _customer;
     private int _selectedTabIndex = 0;
     private SaleFormViewModel? _saleFormViewModel;
     private PrescriptionFormViewModel? _prescriptionFormViewModel;
     private CustomerInfoViewModel? _customerInfoViewModel;
+    private CustomerPurchaseHistoryViewModel? _purchaseHistoryViewModel;
 
     /// <summary>
     /// Client en cours de consultation.
@@ -32,7 +34,7 @@ public class CustomerDetailViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Index de l'onglet sélectionné (0: Vente, 1: Ordonnance, 2: Infos).
+    /// Index de l'onglet sélectionné (0: Vente, 1: Ordonnance, 2: Infos, 3: Historique).
     /// </summary>
     public int SelectedTabIndex
     {
@@ -68,6 +70,15 @@ public class CustomerDetailViewModel : BaseViewModel
     }
 
     /// <summary>
+    /// ViewModel pour l'historique d'achats.
+    /// </summary>
+    public CustomerPurchaseHistoryViewModel? PurchaseHistoryViewModel
+    {
+        get => _purchaseHistoryViewModel;
+        set => SetProperty(ref _purchaseHistoryViewModel, value);
+    }
+
+    /// <summary>
     /// Commande pour revenir à la liste des clients.
     /// </summary>
     public ICommand BackCommand { get; }
@@ -77,10 +88,11 @@ public class CustomerDetailViewModel : BaseViewModel
     /// </summary>
     public event EventHandler? BackRequested;
 
-    public CustomerDetailViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork)
+    public CustomerDetailViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
 
         BackCommand = new RelayCommand(ExecuteBack);
         
@@ -109,6 +121,9 @@ public class CustomerDetailViewModel : BaseViewModel
         };
 
         CustomerInfoViewModel = new CustomerInfoViewModel(customer);
+
+        PurchaseHistoryViewModel = new CustomerPurchaseHistoryViewModel(_orderRepository);
+        _ = PurchaseHistoryViewModel.LoadAsync(customer.CustomerId);
 
         SelectedTabIndex = 0; // Commencer par l'onglet Vente
     }

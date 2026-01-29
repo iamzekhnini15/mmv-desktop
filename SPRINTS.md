@@ -15,7 +15,7 @@
 | **Sprint 2** | ✅ **TERMINÉ** | DbContext + Migrations + Repositories | 1-2 semaines |
 | **Sprint 3** | ✅ **TERMINÉ** | Configuration DI + Services Métier | 1-2 semaines |
 | **Sprint 4** | ✅ **TERMINÉ** | Interface Avalonia - Structure & Navigation | 2 semaines |
-| **Sprint 5** | ⏳ **EN COURS** | Module Gestion Clients (CRM) | 2 semaines |
+| **Sprint 5** | ✅ **TERMINÉ** | Module Gestion Clients (CRM) | 2 semaines |
 | **Sprint 6** | ⏳ Planifié | Module Gestion Produits & Stock | 2 semaines |
 | **Sprint 7** | ⏳ Planifié | Module Ordonnances Médicales | 1-2 semaines |
 | **Sprint 8** | ⏳ Planifié | Module Commandes (Workflow Atelier) | 2-3 semaines |
@@ -326,25 +326,28 @@ MainWindow
 
 ---
 
-## Sprint 5 : Module Gestion Clients (CRM) ⏳ **EN COURS**
+## Sprint 5 : Module Gestion Clients (CRM) ✅ **TERMINÉ**
 
 ### Objectifs
 - [x] Liste des clients (DataGrid paginé + recherche)
 - [x] Formulaire création/édition client
-- [ ] Fiche détaillée client
-- [ ] Historique d'achats du client
-- [ ] Export Excel/PDF de la liste
-- [ ] Import CSV de clients
+- [x] Fiche détaillée client (avec 4 onglets)
+- [x] Historique d'achats du client
+- [x] Correction des patterns Avalonia (Command vs Click)
+- [x] Documentation des bonnes pratiques MVVM
+- [ ] Export Excel/PDF de la liste (reporté Sprint 6)
+- [ ] Import CSV de clients (reporté Sprint 6)
 
 ### Écrans
-1. ✅ **CustomersListView** : Liste + filtres + recherche
+1. ✅ **CustomersView** : Vue principale avec liste + détails
    - DataGrid avec 7 colonnes (Prénom, Nom, Email, Téléphone, Date naissance, Ville, Créé le)
    - Barre de recherche en temps réel (Nom, Email, Téléphone)
    - Pagination avec boutons Précédent/Suivant
    - Boutons CRUD (Nouveau, Modifier, Supprimer, Actualiser, Voir détails)
    - Indicateur de résultats filtrés
+   - Gestion de la visibilité (liste vs formulaire vs détails)
 
-2. ✅ **CustomerFormView** : Formulaire CRUD
+2. ✅ **CustomerFormView** : Formulaire CRUD intégré
    - Section Informations personnelles (Prénom*, Nom*, Date naissance)
    - Section Coordonnées (Email, Téléphone)
    - Section Adresse (Adresse, Ville, Code postal)
@@ -353,63 +356,109 @@ MainWindow
    - Validation en temps réel avec messages d'erreur
    - Mode création/édition avec titre dynamique
 
-3. ⏳ **CustomerDetailView** : Fiche complète + onglets (À VENIR)
-   - Informations générales
-   - Ordonnances
-   - Historique commandes
-   - Historique ventes
-   - Notes
+3. ✅ **CustomerDetailView** : Fiche complète avec 4 onglets
+   - Onglet "Nouvelle Vente" : Interface de création de vente
+   - Onglet "Ordonnances" : Liste des prescriptions du client
+   - Onglet "Informations Client" : Vue détaillée des données personnelles
+   - Onglet "Historique d'achats" : DataGrid des commandes du client
 
 ### Livrables Actuels
 
-#### ViewModels (2 fichiers)
+#### ViewModels (6 fichiers)
+- ✅ `CustomersViewModel.cs` (ViewModel racine)
+  - Gestion de l'état global du module (liste/formulaire/détails)
+  - Propriété `ShowList` pour visibilité conditionnelle
+  - Integration de `IOrderRepository` pour historique
+  - Coordination entre les différentes vues
+
 - ✅ `CustomersListViewModel.cs` (324 lignes)
   - Gestion de la liste avec `ObservableCollection<Customer>`
   - Filtrage en temps réel via `SearchText` property
   - Pagination (CurrentPage, PageSize, TotalPages)
   - 7 Commands (Create, Edit, Delete, Refresh, ViewDetails, NextPage, PreviousPage)
   - 3 Events pour navigation inter-vues
-  - Intégration avec `ICustomerRepository` et `IUnitOfWork`
 
 - ✅ `CustomerFormViewModel.cs` (408 lignes)
-  - Propriétés pour tous les champs du formulaire
   - Validation en temps réel (FirstName, LastName, Email, Phone)
   - Mode création/édition avec `IsEditMode` flag
   - Commands Save/Cancel avec gestion async
-  - Events `CustomerSaved` et `Cancelled`
-  - Gestion des erreurs par champ (FirstNameError, LastNameError, etc.)
+  - Gestion des erreurs par champ
 
-#### Views (2 fichiers)
-- ✅ `CustomersView.axaml` (186 lignes)
-  - En-tête avec titre et statistiques (Total clients)
-  - Barre d'actions (4 boutons CRUD stylisés)
+- ✅ `CustomerDetailViewModel.cs`
+  - ViewModel parent pour les 4 onglets
+  - Intégration avec `IOrderRepository`
+  - Propriété `PurchaseHistoryViewModel`
+  - Initialisation des données du client
+
+- ✅ `CustomerPurchaseHistoryViewModel.cs`
+  - Chargement des commandes via `IOrderRepository.GetByCustomerIdAsync()`
+  - ObservableCollection<Order> avec propriétés calculées
+  - Gestion des états (loading, error, empty, data)
+  - Propriétés `HasOrders` et `HasError` pour UI conditionnelle
+
+#### Views (5 fichiers)
+- ✅ `CustomersView.axaml` (gestion de visibilité avec `ShowList`)
+  - DataGrid avec 7 colonnes
   - Barre de recherche avec compteur de résultats
-  - DataGrid professionnel avec styles hover/selected
-  - Footer avec indicateur de chargement et pagination
+  - Pagination dynamique
+  - Affichage conditionnel liste/formulaire/détails
 
-- ✅ `CustomerFormView.axaml` (243 lignes)
-  - Window dialog avec header coloré (#0071E3)
+- ✅ `CustomerFormView.axaml`
   - 5 sections organisées en cards
-  - Tous les champs avec labels et watermarks
-  - Validation visuelle (bordures rouges + messages)
-  - Footer avec boutons Annuler/Enregistrer
-  - Indicateur de chargement pendant sauvegarde
+  - Validation visuelle avec messages d'erreur
+  - Footer avec boutons Command-based
+
+- ✅ `CustomerDetailView.axaml`
+  - TabControl avec 4 onglets
+  - Nouvelle Vente / Ordonnances / Infos / Historique
+  - Binding sur ContentControl pour chaque onglet
+
+- ✅ `CustomerPurchaseHistoryView.axaml`
+  - DataGrid avec colonnes : Date, N° Commande, Statut, Montant
+  - Panels conditionnels (loading, error, empty, data)
+  - Alternance de lignes avec RowBackground
+
+- ✅ `CustomerPurchaseHistoryView.axaml.cs`
+  - Code-behind minimal avec InitializeComponent()
 
 ### Fonctionnalités Clés Implémentées
 - ✅ Validation en temps réel avec affichage des erreurs
 - ✅ Calcul automatique du nombre de résultats filtrés
 - ✅ Navigation par événements entre ViewModels
-- ⏳ Auto-complétion sur champs (ville, assurance) - À VENIR
-- ⏳ Calcul automatique de l'âge depuis date naissance - À VENIR
-- ⏳ Liaison avec prescriptions - À VENIR
+- ✅ Fiche détaillée client avec 4 onglets (TabControl)
+- ✅ Historique d'achats avec chargement dynamique
+- ✅ Visibilité conditionnelle avec propriété calculée `ShowList`
+- ✅ Pattern Command pour boutons (pas d'événements Click)
+- ✅ Notifications de propriétés pour bindings Avalonia
+- ⏳ Auto-complétion sur champs (ville, assurance) - Reporté
+- ⏳ Calcul automatique de l'âge depuis date naissance - Reporté
 
-### Prochaines Étapes
-1. Créer CustomerDetailViewModel avec onglets
-2. Créer CustomerDetailView (TabControl avec 5 onglets)
-3. Intégrer les ViewModels dans le système de navigation
-4. Créer tests unitaires pour CustomersListViewModel
-5. Créer tests unitaires pour CustomerFormViewModel
-6. Tests manuels du module complet
+### Correctifs Techniques Appliqués (Sprint 5)
+1. **Bouton "Nouveau client"** : Changement de `Click="OnNewCustomerClick"` à `Command="{Binding CreateCommand}"`
+2. **AlternatingRowBackground** : Propriété non supportée par Avalonia, remplacée par `RowBackground` sur DataGrid
+3. **Grid Padding** : Propriété non supportée, supprimée
+4. **Expressions complexes dans bindings** : `!IsInEditMode && !IsShowingDetail` ne fonctionne pas en XAML
+   - Solution : Propriété calculée `ShowList` avec notifications manuelles
+5. **Build cache Avalonia** : Nécessité de `dotnet clean` après ajout de propriétés
+
+### Documentation Créée
+- ✅ `docs/GUIDE_BOUTONS_ET_BINDINGS.md` : Guide complet des patterns Avalonia
+  - Différences WPF vs Avalonia
+  - Quand utiliser Command vs Click
+  - Gestion des expressions complexes
+  - Examples pratiques
+
+### Tests Unitaires
+- ✅ `CustomerFormViewModelTests.cs` : 12 tests (validation, save, cancel)
+- ⏳ Tests pour CustomersViewModel (reporté Sprint 6)
+- ⏳ Tests pour CustomerPurchaseHistoryViewModel (reporté Sprint 6)
+
+### Prochaines Étapes (Sprint 6)
+1. Export Excel/PDF de la liste clients
+2. Import CSV de clients
+3. Tests unitaires complets pour tous les ViewModels du module
+4. Tests d'intégration avec base de données
+5. Module Gestion Produits & Stock
 
 ---
 
