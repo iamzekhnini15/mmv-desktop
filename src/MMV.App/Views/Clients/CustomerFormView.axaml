@@ -64,7 +64,7 @@
             <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                 <Button Grid.Column="0" 
                         Content="← Retour" 
-                        Click="ButtonRetour_Click" 
+                        Command="{Binding CancelCommand}" 
                         Background="Transparent" 
                         Foreground="#E0E0E0" 
                         BorderThickness="0" 

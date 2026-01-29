@@ -91,7 +91,7 @@
                 <Button Grid.Column="1" 
                        Content="Nouveau client"
                        Classes="PrimaryButton"
-                       Click="ButtonNouveau_Click"/>
+                       Command="{Binding CustomersListViewModel.CreateCommand}"/>
             </Grid>
         </Border>
 

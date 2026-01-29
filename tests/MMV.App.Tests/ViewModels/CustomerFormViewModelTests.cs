@@ -195,4 +195,104 @@ public class CustomerFormViewModelTests
         Assert.True(eventFired);
         Console.WriteLine("✅ TEST PASSED: CancelCommand fires Cancelled event");
     }
+
+    [Fact]
+    public void CancelCommand_CanExecute_ReturnsTrueWhenNotSaving()
+    {
+        // Arrange - Le formulaire est vide mais on devrait pouvoir annuler
+        _viewModel.InitializeForCreate();
+
+        // Act
+        var canExecute = _viewModel.CancelCommand.CanExecute(null);
+
+        // Assert
+        Assert.True(canExecute);
+        Console.WriteLine("✅ TEST PASSED: CancelCommand.CanExecute returns true when not saving (button should NOT be grayed out)");
+    }
+
+    [Fact]
+    public void SaveCommand_CanExecute_ReturnsFalseWhenFormIsEmpty()
+    {
+        // Arrange - Formulaire vide
+        _viewModel.InitializeForCreate();
+
+        // Act
+        var canExecute = _viewModel.SaveCommand.CanExecute(null);
+
+        // Assert
+        Assert.False(canExecute);
+        Console.WriteLine("✅ TEST PASSED: SaveCommand.CanExecute returns false when form is empty (button IS grayed out - EXPECTED BEHAVIOR)");
+    }
+
+    [Fact]
+    public void SaveCommand_CanExecute_ChangesWhenFieldsAreFilled()
+    {
+        // Arrange
+        _viewModel.InitializeForCreate();
+        
+        // Initially should be false
+        Assert.False(_viewModel.SaveCommand.CanExecute(null));
+        Console.WriteLine("🔵 Initial state: SaveCommand.CanExecute = false (expected)");
+
+        // Act - Fill required fields
+        _viewModel.FirstName = "Jean";
+        _viewModel.LastName = "Dupont";
+
+        // Assert - Now should be true
+        var canExecute = _viewModel.SaveCommand.CanExecute(null);
+        Assert.True(canExecute);
+        Console.WriteLine("✅ TEST PASSED: SaveCommand.CanExecute becomes true after filling required fields");
+    }
+
+    [Fact]
+    public void InitializeForEdit_LoadsCustomerData()
+    {
+        // Arrange
+        var customer = new Customer
+        {
+            CustomerId = 123,
+            FirstName = "Marie",
+            LastName = "Martin",
+            Email = "marie@test.com",
+            Phone = "0601020304",
+            Address = "10 rue de Paris",
+            City = "Lyon",
+            PostalCode = "69000"
+        };
+
+        // Act
+        _viewModel.InitializeForEdit(customer);
+
+        // Assert
+        Assert.Equal(123, _viewModel.CustomerId);
+        Assert.Equal("Marie", _viewModel.FirstName);
+        Assert.Equal("Martin", _viewModel.LastName);
+        Assert.Equal("marie@test.com", _viewModel.Email);
+        Assert.Equal("0601020304", _viewModel.Phone);
+        Assert.Equal("10 rue de Paris", _viewModel.Address);
+        Assert.Equal("Lyon", _viewModel.City);
+        Assert.Equal("69000", _viewModel.PostalCode);
+        Assert.True(_viewModel.IsEditMode);
+        Console.WriteLine("✅ TEST PASSED: InitializeForEdit loads customer data correctly");
+    }
+
+    [Fact]
+    public void InitializeForEdit_SaveCommandIsEnabled()
+    {
+        // Arrange - Un client existant avec des données valides
+        var customer = new Customer
+        {
+            CustomerId = 123,
+            FirstName = "Marie",
+            LastName = "Martin"
+        };
+
+        // Act
+        _viewModel.InitializeForEdit(customer);
+        var canExecute = _viewModel.SaveCommand.CanExecute(null);
+
+        // Assert - SaveCommand devrait être activé car FirstName et LastName sont remplis
+        Assert.True(canExecute);
+        Console.WriteLine("✅ TEST PASSED: SaveCommand is ENABLED after InitializeForEdit with valid data");
+    }
 }
