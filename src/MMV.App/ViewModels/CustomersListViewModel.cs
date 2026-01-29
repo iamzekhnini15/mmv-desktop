@@ -26,6 +26,16 @@ public class CustomersListViewModel : BaseViewModel
     private int _totalCustomers;
 
     /// <summary>
+    /// Expose le repository pour accès depuis le code-behind
+    /// </summary>
+    public ICustomerRepository Repository => _customerRepository;
+    
+    /// <summary>
+    /// Expose le UnitOfWork pour accès depuis le code-behind
+    /// </summary>
+    public IUnitOfWork UnitOfWork => _unitOfWork;
+
+    /// <summary>
     /// Liste complète des clients.
     /// </summary>
     public ObservableCollection<Customer> Customers

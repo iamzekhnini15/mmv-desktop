@@ -1,0 +1,154 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:views="using:MMV.App.Views.Clients"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="MMV.App.Views.Clients.CustomerDetailView"
+             x:DataType="vm:CustomerDetailViewModel"
+             Background="#1D1D1D">
+
+    <UserControl.Styles>
+        <!-- Style général du TabControl -->
+        <Style Selector="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        
+        <!-- Style des TabItems -->
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="500"/>
+            <Setter Property="Foreground" Value="#858585"/>
+            <Setter Property="Padding" Value="20,16"/>
+            <!-- On applique la couleur de fond ici pour créer l'effet "Barre" -->
+            <Setter Property="Background" Value="#252526"/> 
+            <Setter Property="BorderThickness" Value="0,0,0,3"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style Selector="TabItem:pointerover">
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+        </Style>
+        
+        <Style Selector="TabItem:selected /template/ ContentPresenter">
+            <Setter Property="BorderBrush" Value="#0071E3"/>
+            <Setter Property="Background" Value="#252526"/>
+        </Style>
+        
+        <Style Selector="TabItem:selected">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Background" Value="#252526"/>
+        </Style>
+
+        <!-- Bouton de retour texte -->
+        <Style Selector="Button.TextButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Foreground" Value="#858585"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style Selector="Button.TextButton:pointerover">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <!-- Badge de date -->
+        <Style Selector="Border.DateBadge">
+            <Setter Property="Background" Value="#2D2D2D"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="BorderBrush" Value="#404040"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,Auto,*">
+        
+        <!-- Header: Minimaliste et épuré -->
+        <Border Grid.Row="0" 
+                Background="Transparent" 
+                Padding="32,28,32,0">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                
+                <!-- Bouton Retour -->
+                <Button Grid.Column="0" 
+                        Content="← Retour" 
+                        Command="{Binding BackCommand}"
+                        Classes="TextButton"
+                        VerticalAlignment="Center"
+                        Margin="0,0,32,0"/>
+                
+                <!-- Titre et Infos Client -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                    <TextBlock Text="{Binding Title}" 
+                              FontSize="20" 
+                              FontWeight="700" 
+                              Foreground="#FFFFFF"
+                              LetterSpacing="-0.5"/>
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="24">
+                        <!-- Email -->
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding Customer.Email}" 
+                                      FontSize="13" 
+                                      Foreground="#858585"
+                                      VerticalAlignment="Center"/>
+                        </StackPanel>
+                        
+                        <!-- Téléphone -->
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding Customer.Phone}" 
+                                      FontSize="13" 
+                                      Foreground="#858585"
+                                      VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Badge Date (À droite) -->
+                <Border Grid.Column="2" 
+                        Classes="DateBadge"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Customer.CreatedAt, StringFormat='Client depuis le {0:dd/MM/yyyy}'}" 
+                              FontSize="12" 
+                              FontWeight="500"
+                              Foreground="#A0A0A0"
+                              VerticalAlignment="Center"/>
+                </Border>
+            </Grid>
+        </Border>
+        
+        <!-- Séparateur horizontal -->
+        <Border Grid.Row="1" Height="1" Background="#333333" Margin="32,16,32,0"/>
+
+        <!-- Contenu Principal avec Onglets -->
+        <TabControl Grid.Row="2" 
+                   SelectedIndex="{Binding SelectedTabIndex}"
+                   Background="#1D1D1D"
+                   Padding="0">
+            
+            <!-- Onglet 1: Vente -->
+            <TabItem Header="Nouvelle Vente">
+                <views:SaleFormView DataContext="{Binding SaleFormViewModel}"/>
+            </TabItem>
+
+            <!-- Onglet 2: Ordonnance -->
+            <TabItem Header="Ordonnances">
+                <views:PrescriptionFormView DataContext="{Binding PrescriptionFormViewModel}"/>
+            </TabItem>
+
+            <!-- Onglet 3: Infos -->
+            <TabItem Header="Informations Client">
+                <views:CustomerInfoView DataContext="{Binding CustomerInfoViewModel}"/>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

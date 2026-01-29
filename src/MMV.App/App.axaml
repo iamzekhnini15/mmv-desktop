@@ -1,10 +1,26 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:MMV.App"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:views="using:MMV.App.Views"
+             xmlns:clients="using:MMV.App.Views.Clients"
              x:Class="MMV.App.App"
              RequestedThemeVariant="Default">
     <Application.Resources>
         <local:ViewLocator x:Key="ViewLocator"/>
+        
+        <!-- DataTemplates pour les formulaires de fiche client -->
+        <DataTemplate x:Key="SaleFormTemplate" DataType="vm:SaleFormViewModel">
+            <clients:SaleFormView/>
+        </DataTemplate>
+        
+        <DataTemplate x:Key="PrescriptionFormTemplate" DataType="vm:PrescriptionFormViewModel">
+            <clients:PrescriptionFormView/>
+        </DataTemplate>
+        
+        <DataTemplate x:Key="CustomerInfoTemplate" DataType="vm:CustomerInfoViewModel">
+            <clients:CustomerInfoView/>
+        </DataTemplate>
     </Application.Resources>
     
     <Application.DataTemplates>

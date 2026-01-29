@@ -1,3 +1,6 @@
+using System;
+using System.Linq;
+using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using MMV.App.ViewModels;
@@ -18,15 +21,44 @@ public class ViewLocator : IDataTemplate
         if (data is null)
             return new TextBlock { Text = "Aucune vue disponible" };
 
-        var name = data.GetType().FullName!.Replace("ViewModel", "View");
-        var type = Type.GetType(name);
+        // Conventions:
+        // - ViewModel: MMV.App.ViewModels.SomeThingViewModel
+        // - View:      MMV.App.Views[.Clients].SomeThingView
+        // We attempt a few resolutions: direct name, replace namespace part, then search loaded assemblies.
 
-        if (type == null)
+        var vmType = data.GetType();
+        var shortViewName = vmType.Name.Replace("ViewModel", "View");
+
+        // Try common namespace replacement first (ViewModels -> Views)
+        var candidateFullName = vmType.FullName!.Replace(".ViewModels.", ".Views.").Replace("ViewModel", "View");
+        Type? viewType = Type.GetType(candidateFullName);
+
+        // If not found, search loaded assemblies for a matching type by short name or full name ending with the short name
+        if (viewType == null)
         {
-            return new TextBlock { Text = $"Vue non trouvée: {name}" };
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                Type[] types;
+                try { types = asm.GetTypes(); }
+                catch (ReflectionTypeLoadException ex) { types = ex.Types.Where(t => t != null).Cast<Type>().ToArray(); }
+
+                var match = types.FirstOrDefault(t => string.Equals(t.FullName, candidateFullName, StringComparison.Ordinal)
+                                                    || string.Equals(t.Name, shortViewName, StringComparison.Ordinal)
+                                                    || (t.FullName != null && t.FullName.EndsWith("." + shortViewName, StringComparison.Ordinal)));
+                if (match != null)
+                {
+                    viewType = match;
+                    break;
+                }
+            }
         }
 
-        var control = (Control)Activator.CreateInstance(type)!;
+        if (viewType == null)
+        {
+            return new TextBlock { Text = $"Vue non trouvée: {shortViewName} (candidates: {candidateFullName})" };
+        }
+
+        var control = (Control)Activator.CreateInstance(viewType)!;
         control.DataContext = data;
         return control;
     }

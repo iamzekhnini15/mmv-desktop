@@ -1,6 +1,3 @@
-using System;
-using System.Threading.Tasks;
-using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
@@ -81,8 +78,8 @@ public class CustomerFormViewModel : BaseViewModel
         }
     }
 
-    private DateTime? _birthDate;
-    public DateTime? BirthDate
+    private DateTimeOffset? _birthDate;
+    public DateTimeOffset? BirthDate
     {
         get => _birthDate;
         set => SetProperty(ref _birthDate, value);
@@ -238,7 +235,7 @@ public class CustomerFormViewModel : BaseViewModel
         LastName = customer.LastName;
         Email = customer.Email ?? string.Empty;
         Phone = customer.Phone ?? string.Empty;
-        BirthDate = customer.BirthDate;
+        BirthDate = customer.BirthDate.HasValue ? new DateTimeOffset(customer.BirthDate.Value) : null;
         Address = customer.Address ?? string.Empty;
         City = customer.City ?? string.Empty;
         PostalCode = customer.PostalCode ?? string.Empty;
@@ -345,12 +342,21 @@ public class CustomerFormViewModel : BaseViewModel
 
     private async void ExecuteSave()
     {
+        System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] ExecuteSave called");
+        Console.WriteLine("[CustomerFormViewModel] ExecuteSave called");
+        System.Diagnostics.Debug.WriteLine($"[CustomerFormViewModel] FirstName: '{FirstName}', LastName: '{LastName}'");
+        Console.WriteLine($"[CustomerFormViewModel] FirstName: '{FirstName}', LastName: '{LastName}'");
+        
         if (!IsFormValid())
         {
+            System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] Form validation failed");
+            Console.WriteLine("[CustomerFormViewModel] Form validation failed");
             ErrorMessage = "Veuillez corriger les erreurs dans le formulaire";
             return;
         }
 
+        System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] Form is valid, starting save...");
+        Console.WriteLine("[CustomerFormViewModel] Form is valid, starting save...");
         IsSaving = true;
         ErrorMessage = string.Empty;
 
@@ -366,7 +372,7 @@ public class CustomerFormViewModel : BaseViewModel
                 customer.LastName = LastName;
                 customer.Email = string.IsNullOrWhiteSpace(Email) ? null : Email;
                 customer.Phone = string.IsNullOrWhiteSpace(Phone) ? null : Phone;
-                customer.BirthDate = BirthDate;
+                customer.BirthDate = BirthDate?.UtcDateTime;
                 customer.Address = string.IsNullOrWhiteSpace(Address) ? null : Address;
                 customer.City = string.IsNullOrWhiteSpace(City) ? null : City;
                 customer.PostalCode = string.IsNullOrWhiteSpace(PostalCode) ? null : PostalCode;
@@ -386,7 +392,7 @@ public class CustomerFormViewModel : BaseViewModel
                     LastName = LastName,
                     Email = string.IsNullOrWhiteSpace(Email) ? null : Email,
                     Phone = string.IsNullOrWhiteSpace(Phone) ? null : Phone,
-                    BirthDate = BirthDate,
+                    BirthDate = BirthDate?.UtcDateTime,
                     Address = string.IsNullOrWhiteSpace(Address) ? null : Address,
                     City = string.IsNullOrWhiteSpace(City) ? null : City,
                     PostalCode = string.IsNullOrWhiteSpace(PostalCode) ? null : PostalCode,
@@ -400,13 +406,23 @@ public class CustomerFormViewModel : BaseViewModel
                 await _customerRepository.CreateAsync(customer);
             }
 
+            System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] Saving to database...");
+            Console.WriteLine("[CustomerFormViewModel] Saving to database...");
             await _unitOfWork.SaveChangesAsync();
+            System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] Save successful!");
+            Console.WriteLine("[CustomerFormViewModel] Save successful!");
 
             // Déclencher l'événement de succès
+            System.Diagnostics.Debug.WriteLine($"[CustomerFormViewModel] Invoking CustomerSaved event (subscribers: {CustomerSaved?.GetInvocationList().Length ?? 0})");
+            Console.WriteLine($"[CustomerFormViewModel] Invoking CustomerSaved event (subscribers: {CustomerSaved?.GetInvocationList().Length ?? 0})");
             CustomerSaved?.Invoke(this, customer);
         }
         catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[CustomerFormViewModel] ERROR: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CustomerFormViewModel] Stack trace: {ex.StackTrace}");
+            Console.WriteLine($"[CustomerFormViewModel] ERROR: {ex.Message}");
+            Console.WriteLine($"[CustomerFormViewModel] Stack trace: {ex.StackTrace}");
             ErrorMessage = $"Erreur lors de l'enregistrement : {ex.Message}";
         }
         finally

@@ -1,12 +1,7 @@
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using MMV.Domain.Entities;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 using Xunit.Abstractions;
 
 namespace MMV.App.Tests.Integration;

@@ -1,12 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using MMV.App.ViewModels;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
 using Moq;
-using Xunit;
 using Xunit.Abstractions;
 
 namespace MMV.App.Tests.ViewModels;
@@ -33,7 +28,7 @@ public class CustomersListViewModelTests
         {
             new Customer
             {
-                Id = 1,
+                CustomerId = 1,
                 FirstName = "Ali",
                 LastName = "Zekhnini",
                 Email = "ali@test.com",
@@ -44,7 +39,7 @@ public class CustomersListViewModelTests
             },
             new Customer
             {
-                Id = 2,
+                CustomerId = 2,
                 FirstName = "Marie",
                 LastName = "Dupont",
                 Email = "marie@test.com",
@@ -55,7 +50,7 @@ public class CustomersListViewModelTests
             },
             new Customer
             {
-                Id = 3,
+                CustomerId = 3,
                 FirstName = "Jean",
                 LastName = "Martin",
                 Email = "jean@test.com",
@@ -181,7 +176,7 @@ public class CustomersListViewModelTests
 
         // Assert
         Assert.NotNull(editedCustomer);
-        Assert.Equal(testCustomers.First().Id, editedCustomer.Id);
+        Assert.Equal(testCustomers.First().CustomerId, editedCustomer.CustomerId);
     }
 
     [Fact]
