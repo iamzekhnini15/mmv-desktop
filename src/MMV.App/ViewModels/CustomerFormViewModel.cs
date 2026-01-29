@@ -1,0 +1,443 @@
+using MMV.App.Commands;
+using MMV.Domain.Entities;
+using MMV.Domain.Interfaces.Repositories;
+
+namespace MMV.App.ViewModels;
+
+/// <summary>
+/// ViewModel pour le formulaire de création/édition d'un client.
+/// </summary>
+public class CustomerFormViewModel : BaseViewModel
+{
+    private readonly ICustomerRepository _customerRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private Customer? _originalCustomer;
+
+    #region Properties
+
+    private long _customerId;
+    public long CustomerId
+    {
+        get => _customerId;
+        set => SetProperty(ref _customerId, value);
+    }
+
+    private string _firstName = string.Empty;
+    public string FirstName
+    {
+        get => _firstName;
+        set
+        {
+            if (SetProperty(ref _firstName, value))
+            {
+                ValidateProperty(nameof(FirstName));
+                SaveCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    private string _lastName = string.Empty;
+    public string LastName
+    {
+        get => _lastName;
+        set
+        {
+            if (SetProperty(ref _lastName, value))
+            {
+                ValidateProperty(nameof(LastName));
+                SaveCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    private string _email = string.Empty;
+    public string Email
+    {
+        get => _email;
+        set
+        {
+            if (SetProperty(ref _email, value))
+            {
+                ValidateProperty(nameof(Email));
+                SaveCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    private string _phone = string.Empty;
+    public string Phone
+    {
+        get => _phone;
+        set
+        {
+            if (SetProperty(ref _phone, value))
+            {
+                ValidateProperty(nameof(Phone));
+                SaveCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    private DateTimeOffset? _birthDate;
+    public DateTimeOffset? BirthDate
+    {
+        get => _birthDate;
+        set => SetProperty(ref _birthDate, value);
+    }
+
+    private string _address = string.Empty;
+    public string Address
+    {
+        get => _address;
+        set => SetProperty(ref _address, value);
+    }
+
+    private string _city = string.Empty;
+    public string City
+    {
+        get => _city;
+        set => SetProperty(ref _city, value);
+    }
+
+    private string _postalCode = string.Empty;
+    public string PostalCode
+    {
+        get => _postalCode;
+        set => SetProperty(ref _postalCode, value);
+    }
+
+    private string _socialSecurityNumber = string.Empty;
+    public string SocialSecurityNumber
+    {
+        get => _socialSecurityNumber;
+        set => SetProperty(ref _socialSecurityNumber, value);
+    }
+
+    private string _insuranceName = string.Empty;
+    public string InsuranceName
+    {
+        get => _insuranceName;
+        set => SetProperty(ref _insuranceName, value);
+    }
+
+    private string _notes = string.Empty;
+    public string Notes
+    {
+        get => _notes;
+        set => SetProperty(ref _notes, value);
+    }
+
+    private bool _isEditMode;
+    public bool IsEditMode
+    {
+        get => _isEditMode;
+        private set => SetProperty(ref _isEditMode, value);
+    }
+
+    private string _firstNameError = string.Empty;
+    public string FirstNameError
+    {
+        get => _firstNameError;
+        set => SetProperty(ref _firstNameError, value);
+    }
+
+    private string _lastNameError = string.Empty;
+    public string LastNameError
+    {
+        get => _lastNameError;
+        set => SetProperty(ref _lastNameError, value);
+    }
+
+    private string _emailError = string.Empty;
+    public string EmailError
+    {
+        get => _emailError;
+        set => SetProperty(ref _emailError, value);
+    }
+
+    private string _phoneError = string.Empty;
+    public string PhoneError
+    {
+        get => _phoneError;
+        set => SetProperty(ref _phoneError, value);
+    }
+
+    private bool _isSaving;
+    public bool IsSaving
+    {
+        get => _isSaving;
+        set
+        {
+            if (SetProperty(ref _isSaving, value))
+            {
+                SaveCommand.RaiseCanExecuteChanged();
+                CancelCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    #endregion
+
+    #region Commands
+
+    public RelayCommand SaveCommand { get; }
+    public RelayCommand CancelCommand { get; }
+
+    #endregion
+
+    #region Events
+
+    /// <summary>
+    /// Événement déclenché lorsque le formulaire est enregistré avec succès.
+    /// </summary>
+    public event EventHandler<Customer>? CustomerSaved;
+
+    /// <summary>
+    /// Événement déclenché lorsque le formulaire est annulé.
+    /// </summary>
+    public event EventHandler? Cancelled;
+
+    #endregion
+
+    public CustomerFormViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork)
+    {
+        _customerRepository = customerRepository;
+        _unitOfWork = unitOfWork;
+
+        SaveCommand = new RelayCommand(ExecuteSave, CanExecuteSave);
+        CancelCommand = new RelayCommand(ExecuteCancel, CanExecuteCancel);
+
+        Title = "Nouveau Client";
+    }
+
+    /// <summary>
+    /// Initialise le formulaire pour créer un nouveau client.
+    /// </summary>
+    public void InitializeForCreate()
+    {
+        IsEditMode = false;
+        Title = "Nouveau Client";
+        ClearForm();
+    }
+
+    /// <summary>
+    /// Initialise le formulaire pour éditer un client existant.
+    /// </summary>
+    public void InitializeForEdit(Customer customer)
+    {
+        IsEditMode = true;
+        Title = $"Modifier {customer.FirstName} {customer.LastName}";
+        _originalCustomer = customer;
+
+        // Copier les données du client dans le formulaire
+        CustomerId = customer.CustomerId;
+        FirstName = customer.FirstName;
+        LastName = customer.LastName;
+        Email = customer.Email ?? string.Empty;
+        Phone = customer.Phone ?? string.Empty;
+        BirthDate = customer.BirthDate.HasValue ? new DateTimeOffset(customer.BirthDate.Value) : null;
+        Address = customer.Address ?? string.Empty;
+        City = customer.City ?? string.Empty;
+        PostalCode = customer.PostalCode ?? string.Empty;
+        SocialSecurityNumber = customer.SocialSecurityNumber ?? string.Empty;
+        InsuranceName = customer.InsuranceName ?? string.Empty;
+        Notes = customer.Notes ?? string.Empty;
+    }
+
+    private void ClearForm()
+    {
+        CustomerId = 0;
+        FirstName = string.Empty;
+        LastName = string.Empty;
+        Email = string.Empty;
+        Phone = string.Empty;
+        BirthDate = null;
+        Address = string.Empty;
+        City = string.Empty;
+        PostalCode = string.Empty;
+        SocialSecurityNumber = string.Empty;
+        InsuranceName = string.Empty;
+        Notes = string.Empty;
+
+        ClearErrors();
+    }
+
+    private void ClearErrors()
+    {
+        FirstNameError = string.Empty;
+        LastNameError = string.Empty;
+        EmailError = string.Empty;
+        PhoneError = string.Empty;
+        ErrorMessage = string.Empty;
+    }
+
+    private void ValidateProperty(string propertyName)
+    {
+        switch (propertyName)
+        {
+            case nameof(FirstName):
+                FirstNameError = string.IsNullOrWhiteSpace(FirstName) 
+                    ? "Le prénom est requis" 
+                    : string.Empty;
+                break;
+
+            case nameof(LastName):
+                LastNameError = string.IsNullOrWhiteSpace(LastName) 
+                    ? "Le nom est requis" 
+                    : string.Empty;
+                break;
+
+            case nameof(Email):
+                if (string.IsNullOrWhiteSpace(Email))
+                {
+                    EmailError = string.Empty;
+                }
+                else if (!Email.Contains("@") || !Email.Contains("."))
+                {
+                    EmailError = "Format d'email invalide";
+                }
+                else
+                {
+                    EmailError = string.Empty;
+                }
+                break;
+
+            case nameof(Phone):
+                if (string.IsNullOrWhiteSpace(Phone))
+                {
+                    PhoneError = string.Empty;
+                }
+                else if (Phone.Length < 10)
+                {
+                    PhoneError = "Le numéro de téléphone doit contenir au moins 10 chiffres";
+                }
+                else
+                {
+                    PhoneError = string.Empty;
+                }
+                break;
+        }
+    }
+
+    private bool IsFormValid()
+    {
+        // Valider tous les champs
+        ValidateProperty(nameof(FirstName));
+        ValidateProperty(nameof(LastName));
+        ValidateProperty(nameof(Email));
+        ValidateProperty(nameof(Phone));
+
+        return string.IsNullOrEmpty(FirstNameError) &&
+               string.IsNullOrEmpty(LastNameError) &&
+               string.IsNullOrEmpty(EmailError) &&
+               string.IsNullOrEmpty(PhoneError);
+    }
+
+    private bool CanExecuteSave()
+    {
+        return !IsSaving && 
+               !string.IsNullOrWhiteSpace(FirstName) && 
+               !string.IsNullOrWhiteSpace(LastName);
+    }
+
+    private async void ExecuteSave()
+    {
+        System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] ExecuteSave called");
+        Console.WriteLine("[CustomerFormViewModel] ExecuteSave called");
+        System.Diagnostics.Debug.WriteLine($"[CustomerFormViewModel] FirstName: '{FirstName}', LastName: '{LastName}'");
+        Console.WriteLine($"[CustomerFormViewModel] FirstName: '{FirstName}', LastName: '{LastName}'");
+        
+        if (!IsFormValid())
+        {
+            System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] Form validation failed");
+            Console.WriteLine("[CustomerFormViewModel] Form validation failed");
+            ErrorMessage = "Veuillez corriger les erreurs dans le formulaire";
+            return;
+        }
+
+        System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] Form is valid, starting save...");
+        Console.WriteLine("[CustomerFormViewModel] Form is valid, starting save...");
+        IsSaving = true;
+        ErrorMessage = string.Empty;
+
+        try
+        {
+            Customer customer;
+
+            if (IsEditMode && _originalCustomer != null)
+            {
+                // Mode édition : mettre à jour le client existant
+                customer = _originalCustomer;
+                customer.FirstName = FirstName;
+                customer.LastName = LastName;
+                customer.Email = string.IsNullOrWhiteSpace(Email) ? null : Email;
+                customer.Phone = string.IsNullOrWhiteSpace(Phone) ? null : Phone;
+                customer.BirthDate = BirthDate?.UtcDateTime;
+                customer.Address = string.IsNullOrWhiteSpace(Address) ? null : Address;
+                customer.City = string.IsNullOrWhiteSpace(City) ? null : City;
+                customer.PostalCode = string.IsNullOrWhiteSpace(PostalCode) ? null : PostalCode;
+                customer.SocialSecurityNumber = string.IsNullOrWhiteSpace(SocialSecurityNumber) ? null : SocialSecurityNumber;
+                customer.InsuranceName = string.IsNullOrWhiteSpace(InsuranceName) ? null : InsuranceName;
+                customer.Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes;
+                customer.UpdatedAt = DateTime.UtcNow;
+
+                await _customerRepository.UpdateAsync(customer);
+            }
+            else
+            {
+                // Mode création : créer un nouveau client
+                customer = new Customer
+                {
+                    FirstName = FirstName,
+                    LastName = LastName,
+                    Email = string.IsNullOrWhiteSpace(Email) ? null : Email,
+                    Phone = string.IsNullOrWhiteSpace(Phone) ? null : Phone,
+                    BirthDate = BirthDate?.UtcDateTime,
+                    Address = string.IsNullOrWhiteSpace(Address) ? null : Address,
+                    City = string.IsNullOrWhiteSpace(City) ? null : City,
+                    PostalCode = string.IsNullOrWhiteSpace(PostalCode) ? null : PostalCode,
+                    SocialSecurityNumber = string.IsNullOrWhiteSpace(SocialSecurityNumber) ? null : SocialSecurityNumber,
+                    InsuranceName = string.IsNullOrWhiteSpace(InsuranceName) ? null : InsuranceName,
+                    Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                await _customerRepository.CreateAsync(customer);
+            }
+
+            System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] Saving to database...");
+            Console.WriteLine("[CustomerFormViewModel] Saving to database...");
+            await _unitOfWork.SaveChangesAsync();
+            System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] Save successful!");
+            Console.WriteLine("[CustomerFormViewModel] Save successful!");
+
+            // Déclencher l'événement de succès
+            System.Diagnostics.Debug.WriteLine($"[CustomerFormViewModel] Invoking CustomerSaved event (subscribers: {CustomerSaved?.GetInvocationList().Length ?? 0})");
+            Console.WriteLine($"[CustomerFormViewModel] Invoking CustomerSaved event (subscribers: {CustomerSaved?.GetInvocationList().Length ?? 0})");
+            CustomerSaved?.Invoke(this, customer);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CustomerFormViewModel] ERROR: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CustomerFormViewModel] Stack trace: {ex.StackTrace}");
+            Console.WriteLine($"[CustomerFormViewModel] ERROR: {ex.Message}");
+            Console.WriteLine($"[CustomerFormViewModel] Stack trace: {ex.StackTrace}");
+            ErrorMessage = $"Erreur lors de l'enregistrement : {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private bool CanExecuteCancel()
+    {
+        return !IsSaving;
+    }
+
+    private void ExecuteCancel()
+    {
+        Cancelled?.Invoke(this, EventArgs.Empty);
+    }
+}

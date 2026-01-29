@@ -1,14 +1,5 @@
 namespace MMV.App.ViewModels;
 
-/// <summary>ViewModel pour la gestion des clients.</summary>
-public class CustomersViewModel : BaseViewModel
-{
-    public CustomersViewModel()
-    {
-        Title = "Gestion des Clients";
-    }
-}
-
 /// <summary>ViewModel pour la gestion des produits.</summary>
 public class ProductsViewModel : BaseViewModel
 {

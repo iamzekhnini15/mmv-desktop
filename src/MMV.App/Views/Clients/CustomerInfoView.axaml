@@ -1,0 +1,171 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="800"
+             x:Class="MMV.App.Views.Clients.CustomerInfoView"
+             x:DataType="vm:CustomerInfoViewModel"
+             Background="#1D1D1D">
+
+    <UserControl.Styles>
+        <!-- Styles réutilisés -->
+        <Style Selector="Border.SectionCard">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="24"/>
+            <Setter Property="Margin" Value="0,0,0,20"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="TextBlock.Label">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="500"/>
+            <Setter Property="Foreground" Value="#858585"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+
+        <Style Selector="TextBlock.ValueText">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="500"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="NoWrap"/>
+        </Style>
+
+        <Style Selector="TextBlock.ValueText.Wrapped">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- En-tête -->
+        <Border Grid.Row="0" Padding="32,24,32,10">
+            <StackPanel Spacing="2">
+                <TextBlock Text="Dossier Client" FontSize="22" FontWeight="700" Foreground="#FFFFFF"/>
+                <TextBlock Text="Informations personnelles du client" FontSize="13" Foreground="#858585"/>
+            </StackPanel>
+        </Border>
+        
+        <ScrollViewer Grid.Row="1" Padding="32,0,32,0">
+            <StackPanel Spacing="20">
+                
+                <!-- Section 1: Identité (Pleine largeur) -->
+                <Border Classes="SectionCard">
+                    <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
+                        
+                        <!-- Prénom -->
+                        <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4">
+                            <TextBlock Text="Prénom" Classes="Label"/>
+                            <TextBlock Text="{Binding Customer.FirstName}" Classes="ValueText"/>
+                        </StackPanel>
+
+                        <!-- Nom -->
+                        <StackPanel Grid.Row="0" Grid.Column="1" Spacing="4">
+                            <TextBlock Text="Nom" Classes="Label"/>
+                            <TextBlock Text="{Binding Customer.LastName}" Classes="ValueText"/>
+                        </StackPanel>
+
+                        <!-- Date de Naissance -->
+                        <StackPanel Grid.Row="0" Grid.Column="2" Spacing="4">
+                            <TextBlock Text="Date de naissance" Classes="Label"/>
+                            <TextBlock Text="{Binding Customer.BirthDate, StringFormat='{}{0:dd/MM/yyyy}'}" Classes="ValueText"/>
+                        </StackPanel>
+
+                        <!-- Numéro Sécu (Ligne du dessous) -->
+                        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Spacing="4" Margin="0,16,0,0">
+                            <TextBlock Text="Numéro de sécurité sociale" Classes="Label"/>
+                            <TextBlock Text="{Binding Customer.SocialSecurityNumber}" 
+                                    FontSize="16" 
+                                    FontWeight="600" 
+                                    Foreground="#FFFFFF"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Section 2 & 3 (2 Colonnes) -->
+                <Grid ColumnDefinitions="*,12,*">
+                    
+                    <!-- Colonne Gauche: Contact -->
+                    <Border Grid.Column="0" Classes="SectionCard">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="Coordonnées" FontSize="16" FontWeight="600" Foreground="#FFFFFF" Margin="0,0,0,8"/>
+                            
+                            <!-- Email -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Email" Classes="Label"/>
+                                <TextBlock Text="{Binding Customer.Email}" 
+                                        Classes="ValueText" 
+                                        Foreground="#0071E3" 
+                                        FontWeight="500"/>
+                            </StackPanel>
+
+                            <!-- Téléphone -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Téléphone" Classes="Label"/>
+                                <TextBlock Text="{Binding Customer.Phone}" Classes="ValueText"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Colonne Droite: Adresse -->
+                    <Border Grid.Column="2" Classes="SectionCard">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="Adresse" FontSize="16" FontWeight="600" Foreground="#FFFFFF" Margin="0,0,0,8"/>
+                            
+                            <!-- Rue -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Rue" Classes="Label"/>
+                                <TextBlock Text="{Binding Customer.Address}" Classes="ValueText Wrapped"/>
+                            </StackPanel>
+
+                            <!-- Ville et CP -->
+                            <Grid ColumnDefinitions="*,*">
+                                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,12,0">
+                                    <TextBlock Text="Code Postal" Classes="Label"/>
+                                    <TextBlock Text="{Binding Customer.PostalCode}" Classes="ValueText"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="4">
+                                    <TextBlock Text="Ville" Classes="Label"/>
+                                    <TextBlock Text="{Binding Customer.City}" Classes="ValueText"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Section 4: Assurance et Notes (Pleine largeur) -->
+                <!-- CORRECTION : Ajout d'un StackPanel parent à l'intérieur de la Border -->
+                <Border Classes="SectionCard">
+                    <StackPanel Spacing="20">
+                        
+                        <!-- Assurance -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Mutuelle / Assurance" Classes="Label"/>
+                            <TextBlock Text="{Binding Customer.InsuranceName}" Classes="ValueText"/>
+                            <!-- Indicateur si vide -->
+                            <TextBlock Text="Non spécifié" 
+                                    FontSize="12" 
+                                    Foreground="#555" 
+                                    IsVisible="{Binding Customer.InsuranceName, Converter={x:Static ObjectConverters.IsNull}}"/>
+                        </StackPanel>
+
+                        <!-- Notes -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Notes et remarques" Classes="Label"/>
+                            <Border Background="#1F1F1F" CornerRadius="6" Padding="16" MinHeight="80">
+                                <TextBlock Text="{Binding Customer.Notes}" 
+                                        TextWrapping="Wrap" 
+                                        Foreground="#CCCCCC"
+                                        FontSize="14"/>
+                            </Border>
+                        </StackPanel>
+                        
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

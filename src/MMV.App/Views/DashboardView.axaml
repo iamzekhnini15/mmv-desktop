@@ -6,65 +6,70 @@
             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
             x:Class="MMV.App.Views.DashboardView"
             x:DataType="local:DashboardViewModel"
-            Background="#F5F5F7">
+            Background="#1D1D1D">
     
     <ScrollViewer>
-        <Border Padding="0,0,0,0">
-            <StackPanel Spacing="24" Margin="0,0,0,0">
+        <Border Padding="0">
+            <StackPanel Spacing="28" Margin="0">
                 <!-- Titre de la page -->
-                <StackPanel Spacing="4">
-                    <TextBlock Text="Tableau de Bord" Classes="Heading2"/>
-                    <TextBlock Text="Aperçu des performances et statistiques clés" Classes="SecondaryText"/>
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Tableau de Bord" FontSize="28" FontWeight="700" Foreground="#FFFFFF"/>
+                    <TextBlock Text="Aperçu des performances et statistiques clés" FontSize="14" Foreground="#A1A1A6"/>
                 </StackPanel>
 
-                <!-- Grille de statistiques -->
+                <!-- Grille de statistiques - Cartes colorées Apple Style -->
                 <Grid ColumnDefinitions="1*,1*,1*,1*" RowDefinitions="Auto">
+                    <Grid.Styles>
+                        <Style Selector="Border">
+                            <Setter Property="Margin" Value="0,0,16,0"/>
+                        </Style>
+                    </Grid.Styles>
                 
-                    <!-- Carte Clients -->
-                    <Border Grid.Column="0" Classes="Card" Background="#0071E3" Padding="20">
-                        <StackPanel Spacing="12">
-                            <TextBlock Text="👥 Clients" FontSize="14" Foreground="White" Opacity="0.9"/>
-                            <TextBlock Text="{Binding TotalCustomers}" FontSize="36" FontWeight="700" Foreground="White"/>
-                            <TextBlock Text="Total des clients" FontSize="12" Foreground="White" Opacity="0.8"/>
+                    <!-- Carte Clients - Bleu Apple -->
+                    <Border Grid.Column="0" Background="#0A84FF" CornerRadius="12" Padding="24">
+                        <StackPanel Spacing="14">
+                            <TextBlock Text="👥  Clients" FontSize="14" Foreground="White" Opacity="0.95" FontWeight="600"/>
+                            <TextBlock Text="{Binding TotalCustomers}" FontSize="40" FontWeight="700" Foreground="White"/>
+                            <TextBlock Text="Total des clients" FontSize="12" Foreground="White" Opacity="0.85"/>
                         </StackPanel>
                     </Border>
 
-                    <!-- Carte Produits -->
-                    <Border Grid.Column="1" Classes="Card" Background="#34C759" Padding="20">
-                        <StackPanel Spacing="12">
-                            <TextBlock Text="📦 Produits" FontSize="14" Foreground="White" Opacity="0.9"/>
-                            <TextBlock Text="{Binding TotalProducts}" FontSize="36" FontWeight="700" Foreground="White"/>
-                            <TextBlock Text="Articles en stock" FontSize="12" Foreground="White" Opacity="0.8"/>
+                    <!-- Carte Produits - Vert Apple -->
+                    <Border Grid.Column="1" Background="#30B0C0" CornerRadius="12" Padding="24">
+                        <StackPanel Spacing="14">
+                            <TextBlock Text="📦  Produits" FontSize="14" Foreground="White" Opacity="0.95" FontWeight="600"/>
+                            <TextBlock Text="{Binding TotalProducts}" FontSize="40" FontWeight="700" Foreground="White"/>
+                            <TextBlock Text="Articles en stock" FontSize="12" Foreground="White" Opacity="0.85"/>
                         </StackPanel>
                     </Border>
 
-                    <!-- Carte Ventes -->
-                    <Border Grid.Column="2" Classes="Card" Background="#FF9500" Padding="20">
-                        <StackPanel Spacing="12">
-                            <TextBlock Text="💰 Chiffre d'affaires" FontSize="14" Foreground="White" Opacity="0.9"/>
-                            <TextBlock Text="{Binding TotalSales}" FontSize="36" FontWeight="700" Foreground="White"/>
-                            <TextBlock Text="Ventes totales" FontSize="12" Foreground="White" Opacity="0.8"/>
+                    <!-- Carte Ventes - Orange Apple -->
+                    <Border Grid.Column="2" Background="#FF9500" CornerRadius="12" Padding="24">
+                        <StackPanel Spacing="14">
+                            <TextBlock Text="💰  Chiffre d'affaires" FontSize="14" Foreground="White" Opacity="0.95" FontWeight="600"/>
+                            <TextBlock Text="{Binding TotalSales}" FontSize="40" FontWeight="700" Foreground="White"/>
+                            <TextBlock Text="Ventes totales" FontSize="12" Foreground="White" Opacity="0.85"/>
                         </StackPanel>
                     </Border>
 
-                    <!-- Carte Commandes en attente -->
-                    <Border Grid.Column="3" Classes="Card" Background="#FF3B30" Padding="20">
-                        <StackPanel Spacing="12">
-                            <TextBlock Text="🔔 En attente" FontSize="14" Foreground="White" Opacity="0.9"/>
-                            <TextBlock Text="{Binding PendingOrders}" FontSize="36" FontWeight="700" Foreground="White"/>
-                            <TextBlock Text="Commandes en cours" FontSize="12" Foreground="White" Opacity="0.8"/>
+                    <!-- Carte Commandes en attente - Rouge Apple -->
+                    <Border Grid.Column="3" Background="#FF3B30" CornerRadius="12" Padding="24">
+                        <StackPanel Spacing="14">
+                            <TextBlock Text="🔔  En attente" FontSize="14" Foreground="White" Opacity="0.95" FontWeight="600"/>
+                            <TextBlock Text="{Binding PendingOrders}" FontSize="40" FontWeight="700" Foreground="White"/>
+                            <TextBlock Text="Commandes en cours" FontSize="12" Foreground="White" Opacity="0.85"/>
                         </StackPanel>
                     </Border>
                 </Grid>
 
-                <!-- Section info -->
-                <Border Background="#FFFFFF" CornerRadius="12" Padding="20" BorderBrush="#D5D5D7" BorderThickness="1">
-                    <StackPanel Spacing="12">
-                        <TextBlock Text="Bienvenue dans ManageMyVision" Classes="Heading3"/>
+                <!-- Section info - Dark Card -->
+                <Border Background="#2D2D2D" CornerRadius="12" Padding="24" BorderBrush="#424245" BorderThickness="1">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="Bienvenue dans ManageMyVision" FontSize="18" FontWeight="700" Foreground="#FFFFFF"/>
                         <TextBlock Text="Votre solution complète de gestion pour opticiens. Utilisez le menu pour accéder aux différents modules de gestion de votre activité." 
-                                  Classes="BodyText"
+                                  FontSize="14"
                                   TextWrapping="Wrap"
-                                  Foreground="#86868B"/>
+                                  Foreground="#A1A1A6"/>
                     </StackPanel>
                 </Border>
             </StackPanel>

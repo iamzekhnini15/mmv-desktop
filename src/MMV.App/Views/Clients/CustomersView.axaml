@@ -1,0 +1,240 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:controls="using:MMV.App.Controls"
+             xmlns:views="using:MMV.App.Views.Clients"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="MMV.App.Views.Clients.CustomersView"
+             x:DataType="vm:CustomersViewModel"
+             Background="#1D1D1D">
+
+    <UserControl.Styles>
+        <!-- Styles réutilisés -->
+        <Style Selector="Border.ToolbarCard">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- Style des cartes clients (Version Compacte) -->
+        <Style Selector="Border.ClientCard">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <!-- Padding réduit pour gagner de la hauteur -->
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style Selector="Border.ClientCard:pointerover">
+            <Setter Property="Background" Value="#2A2A2E"/>
+            <Setter Property="BorderBrush" Value="#3A3A3E"/>
+        </Style>
+
+        <!-- Bouton Primary -->
+        <Style Selector="Button.PrimaryButton">
+            <Setter Property="Background" Value="#0071E3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="20,8"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style Selector="Button.PrimaryButton:pointerover">
+            <Setter Property="Background" Value="#005BB5"/>
+        </Style>
+        
+        <!-- Style boutons pagination -->
+        <Style Selector="Button.PaginationButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style Selector="Button.PaginationButton:pointerover">
+            <Setter Property="Background" Value="#3C3C3C"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="TextBox">
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Background" Value="#3C3C3C"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        
+        <!-- HEADER (Visible uniquement quand pas en mode edit) -->
+        <Border Grid.Row="0" Padding="32,20,32,8" IsVisible="{Binding !IsInEditMode}">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Text="Clients" FontSize="24" FontWeight="700" Foreground="#FFFFFF"/>
+                    <TextBlock Text="{Binding CustomersListViewModel.TotalCustomers, StringFormat='{}{0} client(s)'}" 
+                              FontSize="12" Foreground="#858585"/>
+                </StackPanel>
+                
+                <Button Grid.Column="1" 
+                       Content="Nouveau client"
+                       Classes="PrimaryButton"
+                       Command="{Binding CustomersListViewModel.CreateCommand}"/>
+            </Grid>
+        </Border>
+
+        <!-- CONTENU SCROLLABLE (Zone centrale occupant tout l'espace restant) -->
+        <ScrollViewer Grid.Row="1" 
+                 Padding="32,0,32,0" 
+                 VerticalScrollBarVisibility="Auto" 
+                 HorizontalScrollBarVisibility="Disabled"
+                     IsVisible="{Binding ShowList}">
+            <StackPanel Spacing="0">
+                
+                <!-- Barre de Recherche -->
+                <Border Classes="ToolbarCard">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Grid.Column="0"
+                                Text="{Binding CustomersListViewModel.SearchText}"
+                                Watermark="Rechercher..."
+                                Padding="12,8"/>
+                        
+                        <TextBlock Grid.Column="1"
+                                  Text="{Binding CustomersListViewModel.FilteredCustomers.Count, StringFormat='{}{0}'}"
+                                  FontSize="12"
+                                  Foreground="#858585"
+                                  VerticalAlignment="Center"
+                                  Margin="12,0,0,0"/>
+                    </Grid>
+                </Border>
+
+                <!-- Liste des Clients (Cartes Compactes) -->
+                <ItemsControl ItemsSource="{Binding CustomersListViewModel.FilteredCustomers}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <!-- Carte Compacte -->
+                            <Border Classes="ClientCard" PointerPressed="Border_PointerPressed">
+                                <Grid ColumnDefinitions="*,*,*,*">
+                                    <!-- Col 1: Identité -->
+                                    <StackPanel Grid.Column="0" Spacing="2">
+                                        <TextBlock Text="{Binding FirstName}" Foreground="#FFFFFF" FontWeight="600" FontSize="14"/>
+                                        <TextBlock Text="{Binding LastName}" Foreground="#A0A0A0" FontSize="12"/>
+                                    </StackPanel>
+
+                                    <!-- Col 2: Contact -->
+                                    <StackPanel Grid.Column="1" Spacing="1" Margin="12,0,0,0">
+                                        <TextBlock Text="{Binding Email}" Foreground="#A0A0A0" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Phone}" Foreground="#888888" FontSize="11"/>
+                                    </StackPanel>
+
+                                    <!-- Col 3: Adresse -->
+                                    <StackPanel Grid.Column="2" Spacing="1" Margin="12,0,0,0">
+                                        <TextBlock Text="{Binding Address}" Foreground="#A0A0A0" FontSize="12" MaxWidth="180" TextTrimming="CharacterEllipsis"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="{Binding PostalCode}" Foreground="#888888" FontSize="11" FontWeight="600"/>
+                                            <TextBlock Text="{Binding City}" Foreground="#A0A0A0" FontSize="12"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Col 4: Date (Badge très petit) -->
+                                    <Border Grid.Column="3" Background="#1F1F1F" CornerRadius="8" Padding="8,4" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding CreatedAt, StringFormat='{}{0:dd/MM}'}" 
+                                                  FontSize="10" 
+                                                  Foreground="#888"
+                                                  FontWeight="600"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                
+                <!-- Message si vide -->
+                <Border IsVisible="{Binding CustomersListViewModel.FilteredCustomers, Converter={x:Static ObjectConverters.IsNull}}" 
+                       Background="#252526" 
+                       CornerRadius="8" 
+                       Padding="40"
+                       Margin="0,20,0,20">
+                    <StackPanel HorizontalAlignment="Center" Spacing="8">
+                        <TextBlock Text="Aucun client trouvé" FontSize="15" Foreground="#A0A0A0" FontWeight="600"/>
+                        <TextBlock Text="Essayez de modifier votre recherche" FontSize="12" Foreground="#666"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Espace en bas pour ne pas cacher le dernier élément -->
+                <Border Height="10"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- FOOTER / PAGINATION (Fixe en bas) -->
+        <Border Grid.Row="2" Padding="32,12,32,12" BorderBrush="#333333" BorderThickness="0,1,0,0" IsVisible="{Binding ShowList}">
+            <Grid ColumnDefinitions="*,Auto">
+                <!-- Indicateurs -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <ProgressBar IsIndeterminate="True"
+                                IsVisible="{Binding CustomersListViewModel.IsLoading}"
+                                Width="80"
+                                Height="2"
+                                Foreground="#0071E3"/>
+                    <TextBlock Text="{Binding CustomersListViewModel.ErrorMessage}"
+                              Foreground="#FF453A"
+                              IsVisible="{Binding CustomersListViewModel.ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                              VerticalAlignment="Center"
+                              FontSize="11"
+                              FontWeight="500"/>
+                </StackPanel>
+                
+                <!-- Pagination Compacte -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Button Content="← Précédent"
+                           Command="{Binding CustomersListViewModel.PreviousPageCommand}"
+                           Classes="PaginationButton"
+                           FontSize="12"/>
+                    
+                    <!-- Affichage Pagination CORRIGÉ : Séparation simple -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding CustomersListViewModel.CurrentPage}" 
+                                  VerticalAlignment="Center" FontWeight="600" Foreground="#FFFFFF" FontSize="12"/>
+                        <TextBlock Text="/" VerticalAlignment="Center" Foreground="#666" FontSize="12" Margin="4,0"/>
+                        <TextBlock Text="{Binding CustomersListViewModel.TotalPages}" 
+                                  VerticalAlignment="Center" Foreground="#E0E0E0" FontSize="12"/>
+                    </StackPanel>
+                    
+                    <Button Content="Suivant →"
+                           Command="{Binding CustomersListViewModel.NextPageCommand}"
+                           Classes="PaginationButton"
+                           FontSize="12"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- FORMULAIRE NOUVEAU CLIENT -->
+        <Panel>
+            <Panel.IsVisible>
+                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="IsInEditMode"/>
+                    <Binding Path="IsCreatingNew"/>
+                </MultiBinding>
+            </Panel.IsVisible>
+
+            <views:CustomerFormView DataContext="{Binding CustomerFormViewModel}"/>
+        </Panel>
+        
+        <!-- FICHE DÉTAILLÉE DU CLIENT -->
+        <Panel IsVisible="{Binding IsShowingDetail}">
+            <views:CustomerDetailView DataContext="{Binding CustomerDetailViewModel}"/>
+        </Panel>
+    </Grid>
+</UserControl>

@@ -33,9 +33,9 @@ public class MainWindowViewModel : BaseViewModel
     /// </summary>
     public ICommand NavigateCommand { get; }
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(INavigationService navigationService)
     {
-        _navigationService = new NavigationService();
+        _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         Title = "ManageMyVision";
         
         NavigateCommand = new RelayCommand<string>(ExecuteNavigate, CanNavigate);
