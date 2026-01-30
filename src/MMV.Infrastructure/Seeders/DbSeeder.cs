@@ -94,6 +94,7 @@ public static class DbSeeder
                 StockQuantity = 15,
                 StockAlertThreshold = 5,
                 IsActive = true,
+                EntryDate = DateTime.UtcNow.AddMonths(-6),
                 TechnicalSpecs = """{"material": "Métal", "color": "Gold", "style": "Aviator"}"""
             },
             new Product
@@ -107,6 +108,7 @@ public static class DbSeeder
                 StockQuantity = 8,
                 StockAlertThreshold = 3,
                 IsActive = true,
+                EntryDate = DateTime.UtcNow.AddMonths(-3),
                 TechnicalSpecs = """{"material": "Acétate", "color": "Black", "style": "Rond"}"""
             }
         };
@@ -124,6 +126,7 @@ public static class DbSeeder
                 StockQuantity = 30,
                 StockAlertThreshold = 10,
                 IsActive = true,
+                EntryDate = DateTime.UtcNow.AddMonths(-12),
                 TechnicalSpecs = """{"type": "Progressif", "indice": "1.5", "traitement": "Anti-reflet"}"""
             },
             new Product
@@ -137,6 +140,7 @@ public static class DbSeeder
                 StockQuantity = 20,
                 StockAlertThreshold = 8,
                 IsActive = true,
+                EntryDate = DateTime.UtcNow.AddMonths(-9),
                 TechnicalSpecs = """{"type": "Bifocal", "indice": "1.5", "traitement": "Standard"}"""
             }
         };
@@ -154,6 +158,7 @@ public static class DbSeeder
                 StockQuantity = 50,
                 StockAlertThreshold = 15,
                 IsActive = true,
+                EntryDate = DateTime.UtcNow.AddMonths(-2),
                 TechnicalSpecs = """{"material": "Cuir", "color": "Black"}"""
             },
             new Product
@@ -167,6 +172,7 @@ public static class DbSeeder
                 StockQuantity = 200,
                 StockAlertThreshold = 50,
                 IsActive = true,
+                EntryDate = DateTime.UtcNow.AddDays(-15),
                 TechnicalSpecs = """{"material": "Microfibre", "size": "Standard"}"""
             }
         };
@@ -184,6 +190,7 @@ public static class DbSeeder
                 StockQuantity = 100,
                 StockAlertThreshold = 25,
                 IsActive = true,
+                EntryDate = DateTime.UtcNow.AddDays(-7),
                 TechnicalSpecs = """{"volume": "500ml", "type": "Spray"}"""
             }
         };

@@ -19,7 +19,46 @@ public static class DbInitializer
             return;
         }
 
-        // Créer des clients
+        // 1. Créer les catégories de produits
+        var categories = new List<ProductCategory>
+        {
+            new ProductCategory { Name = "Montures", Description = "Montures optiques" },
+            new ProductCategory { Name = "Verres", Description = "Verres optiques" },
+            new ProductCategory { Name = "Accessoires", Description = "Accessoires optiques" },
+            new ProductCategory { Name = "Solutions de nettoyage", Description = "Produits de nettoyage et entretien" }
+        };
+        context.ProductCategories.AddRange(categories);
+        context.SaveChanges();
+
+        // 2. Créer les fournisseurs
+        var suppliers = new List<Supplier>
+        {
+            new Supplier
+            {
+                Name = "Vision Plus",
+                ReferenceCode = "VP001",
+                ContactEmail = "contact@visionplus.fr",
+                Phone = "+33 1 23 45 67 89"
+            },
+            new Supplier
+            {
+                Name = "Optics International",
+                ReferenceCode = "OI002",
+                ContactEmail = "info@optics-intl.com",
+                Phone = "+33 2 34 56 78 90"
+            },
+            new Supplier
+            {
+                Name = "Luxe Frames",
+                ReferenceCode = "LF003",
+                ContactEmail = "sales@luxeframes.fr",
+                Phone = "+33 3 45 67 89 01"
+            }
+        };
+        context.Suppliers.AddRange(suppliers);
+        context.SaveChanges();
+
+        // 3. Créer les clients
         var customers = new List<Customer>
         {
             new Customer
@@ -207,7 +246,7 @@ public static class DbInitializer
         context.Customers.AddRange(customers);
         context.SaveChanges();
 
-        // Ajouter des produits
+        // 4. Ajouter des produits avec les relations correctes
         var products = new List<Product>
         {
             new Product
@@ -218,7 +257,11 @@ public static class DbInitializer
                 PurchasePrice = 95.00m,
                 SalePrice = 189.99m,
                 StockQuantity = 15,
-                IsActive = true
+                StockAlertThreshold = 5,
+                CategoryId = categories[0].CategoryId,  // Montures
+                SupplierId = suppliers[0].SupplierId,  // Vision Plus
+                IsActive = true,
+                EntryDate = DateTime.UtcNow.AddMonths(-8)
             },
             new Product
             {
@@ -228,7 +271,11 @@ public static class DbInitializer
                 PurchasePrice = 150.00m,
                 SalePrice = 299.99m,
                 StockQuantity = 32,
-                IsActive = true
+                StockAlertThreshold = 10,
+                CategoryId = categories[1].CategoryId,  // Verres
+                SupplierId = suppliers[1].SupplierId,  // Optics International
+                IsActive = true,
+                EntryDate = DateTime.UtcNow.AddMonths(-12)
             },
             new Product
             {
@@ -238,7 +285,11 @@ public static class DbInitializer
                 PurchasePrice = 20.00m,
                 SalePrice = 45.99m,
                 StockQuantity = 120,
-                IsActive = true
+                StockAlertThreshold = 30,
+                CategoryId = categories[2].CategoryId,  // Accessoires
+                SupplierId = suppliers[2].SupplierId,  // Luxe Frames
+                IsActive = true,
+                EntryDate = DateTime.UtcNow.AddMonths(-4)
             },
             new Product
             {
@@ -248,7 +299,11 @@ public static class DbInitializer
                 PurchasePrice = 15.00m,
                 SalePrice = 29.99m,
                 StockQuantity = 45,
-                IsActive = true
+                StockAlertThreshold = 15,
+                CategoryId = categories[2].CategoryId,  // Accessoires
+                SupplierId = suppliers[0].SupplierId,  // Vision Plus
+                IsActive = true,
+                EntryDate = DateTime.UtcNow.AddMonths(-6)
             },
             new Product
             {
@@ -258,7 +313,11 @@ public static class DbInitializer
                 PurchasePrice = 5.00m,
                 SalePrice = 12.99m,
                 StockQuantity = 200,
-                IsActive = true
+                StockAlertThreshold = 50,
+                CategoryId = categories[3].CategoryId,  // Solutions de nettoyage
+                SupplierId = suppliers[1].SupplierId,  // Optics International
+                IsActive = true,
+                EntryDate = DateTime.UtcNow.AddDays(-10)
             }
         };
 

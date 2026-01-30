@@ -104,7 +104,7 @@ public class CustomersListViewModel : BaseViewModel
         {
             if (SetProperty(ref _pageSize, value))
             {
-                LoadCustomersAsync();
+                _ = LoadCustomersAsync();
             }
         }
     }
@@ -169,7 +169,7 @@ public class CustomersListViewModel : BaseViewModel
         
         System.Diagnostics.Debug.WriteLine("[CustomersListViewModel] About to load customers...");
         // Charger les clients au démarrage
-        LoadCustomersAsync();
+        _ = LoadCustomersAsync();
     }
 
     /// <summary>
@@ -300,7 +300,7 @@ public class CustomersListViewModel : BaseViewModel
         if (CanGoNextPage())
         {
             CurrentPage++;
-            LoadCustomersAsync();
+            _ = LoadCustomersAsync();
         }
     }
 
@@ -312,7 +312,7 @@ public class CustomersListViewModel : BaseViewModel
         if (CanGoPreviousPage())
         {
             CurrentPage--;
-            LoadCustomersAsync();
+            _ = LoadCustomersAsync();
         }
     }
 

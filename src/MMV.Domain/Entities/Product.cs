@@ -65,6 +65,11 @@ public class Product
     /// </summary>
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// Date d'entrée du produit dans le catalogue.
+    /// </summary>
+    public DateTime EntryDate { get; set; } = DateTime.UtcNow;
+
     // Navigation Properties
     /// <summary>
     /// Catégorie à laquelle appartient ce produit.

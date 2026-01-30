@@ -1,0 +1,345 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:views="using:MMV.App.Views.Products"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="MMV.App.Views.Products.ProductsView"
+             x:DataType="vm:ProductsViewModel"
+             Background="#1D1D1D">
+
+    <UserControl.Styles>
+        <!-- Styles réutilisés -->
+        <Style Selector="Border.ToolbarCard">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- Style des cartes produits -->
+        <Style Selector="Border.ProductCard">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style Selector="Border.ProductCard:pointerover">
+            <Setter Property="Background" Value="#2A2A2E"/>
+            <Setter Property="BorderBrush" Value="#3A3A3E"/>
+        </Style>
+
+        <!-- Bouton Primary -->
+        <Style Selector="Button.PrimaryButton">
+            <Setter Property="Background" Value="#0071E3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="20,8"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style Selector="Button.PrimaryButton:pointerover">
+            <Setter Property="Background" Value="#005BB5"/>
+        </Style>
+
+        <!-- Boutons secondaires -->
+        <Style Selector="Button.SecondaryButton">
+            <Setter Property="Background" Value="#F39C12"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="500"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style Selector="Button.SecondaryButton:pointerover">
+            <Setter Property="Background" Value="#D68910"/>
+        </Style>
+
+        <Style Selector="Button.DangerButton">
+            <Setter Property="Background" Value="#E74C3C"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="500"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style Selector="Button.DangerButton:pointerover">
+            <Setter Property="Background" Value="#C0392B"/>
+        </Style>
+
+        <!-- Style boutons pagination -->
+        <Style Selector="Button.PaginationButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style Selector="Button.PaginationButton:pointerover">
+            <Setter Property="Background" Value="#3C3C3C"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="TextBox">
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Background" Value="#3C3C3C"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <Style Selector="DataGrid">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="RowBackground" Value="#252526"/>
+            <Setter Property="GridLinesVisibility" Value="None"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="CanUserResizeColumns" Value="True"/>
+            <Setter Property="CanUserSortColumns" Value="True"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+        </Style>
+
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Height" Value="40"/>
+        </Style>
+
+        <Style Selector="DataGridRow">
+            <Setter Property="Height" Value="44"/>
+        </Style>
+
+        <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="#0071E3"/>
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
+
+        <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+            <Setter Property="Fill" Value="#3C3C3C"/>
+        </Style>
+
+        <Style Selector="DataGridCell">
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        
+        <!-- HEADER -->
+        <Border Grid.Row="0" Padding="32,20,32,8" IsVisible="{Binding ShowList}">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Text="Produits &amp; Stock" FontSize="24" FontWeight="700" Foreground="#FFFFFF"/>
+                    <TextBlock Text="{Binding ProductsListViewModel.TotalProducts, StringFormat='{}{0} produit(s)'}" 
+                              FontSize="12" Foreground="#858585"/>
+                </StackPanel>
+                
+                <Button Grid.Column="1" 
+                       Content="Nouveau produit"
+                       Classes="PrimaryButton"
+                       Command="{Binding ProductsListViewModel.CreateCommand}"/>
+            </Grid>
+        </Border>
+
+        <!-- CONTENU SCROLLABLE -->
+        <ScrollViewer Grid.Row="1" 
+                      Padding="32,0,32,0"
+                      IsVisible="{Binding ShowList}">
+            <StackPanel Spacing="16">
+                
+                <!-- TOOLBAR: Actions + Recherche + Filtres -->
+                <Border Classes="ToolbarCard">
+                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
+                        <!-- Ligne 1: Boutons d'action -->
+                        <Button Grid.Row="0" Grid.Column="0"
+                                Content="✏️ Modifier"
+                                Classes="SecondaryButton"
+                                Margin="0,0,8,0"
+                                Command="{Binding ProductsListViewModel.EditCommand}"/>
+                        
+                        <Button Grid.Row="0" Grid.Column="1"
+                                Content="🗑️ Supprimer"
+                                Classes="DangerButton"
+                                Margin="0,0,8,0"
+                                Command="{Binding ProductsListViewModel.DeleteCommand}"/>
+                        
+                        <Button Grid.Row="0" Grid.Column="2"
+                                Content="🔄 Actualiser"
+                                Background="#3498DB"
+                                Foreground="White"
+                                BorderThickness="0"
+                                CornerRadius="6"
+                                Padding="16,8"
+                                FontWeight="500"
+                                Cursor="Hand"
+                                Margin="0,0,8,0"
+                                Command="{Binding ProductsListViewModel.RefreshCommand}"/>
+                        
+                        <Button Grid.Row="0" Grid.Column="3"
+                                Content="📁 Catégories"
+                                Background="#9B59B6"
+                                Foreground="White"
+                                BorderThickness="0"
+                                CornerRadius="6"
+                                Padding="16,8"
+                                FontWeight="500"
+                                Cursor="Hand"
+                                Margin="0,0,8,0"
+                                Command="{Binding ProductsListViewModel.ManageCategoriesCommand}"/>
+
+                        <Button Grid.Row="0" Grid.Column="5"
+                                Content="🏭 Fournisseurs"
+                                Background="#1ABC9C"
+                                Foreground="White"
+                                BorderThickness="0"
+                                CornerRadius="6"
+                                Padding="16,8"
+                                FontWeight="500"
+                                Cursor="Hand"
+                                Command="{Binding ProductsListViewModel.ManageSuppliersCommand}"/>
+
+                        <!-- Ligne 2: Filtres -->
+                        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="6" 
+                                    Orientation="Horizontal" 
+                                    Spacing="12" 
+                                    Margin="0,12,0,0">
+                            <!-- Recherche -->
+                            <TextBox Width="300"
+                                     Watermark="🔍 Rechercher (référence, nom, description...)"
+                                     Text="{Binding ProductsListViewModel.SearchText, Mode=TwoWay}"/>
+
+                            <!-- Filtre par catégorie -->
+                            <ComboBox Width="200"
+                                      ItemsSource="{Binding ProductsListViewModel.Categories}"
+                                      SelectedItem="{Binding ProductsListViewModel.SelectedCategory}"
+                                      PlaceholderText="Toutes les catégories">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+
+                            <!-- Filtre stock bas -->
+                            <CheckBox Content="Stock bas uniquement"
+                                      IsChecked="{Binding ProductsListViewModel.ShowLowStockOnly}"
+                                      Foreground="#E0E0E0"
+                                      Margin="8,0,0,0"/>
+
+                            <!-- Résultats filtrés -->
+                            <TextBlock Text="{Binding ProductsListViewModel.FilteredCount, StringFormat='{}{0} résultat(s)'}"
+                                       VerticalAlignment="Center"
+                                       Foreground="#858585"
+                                       FontSize="12"
+                                       Margin="16,0,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- LISTE DES PRODUITS (Cartes StackPanel, inspiré de CustomersView) -->
+                <Border Classes="ToolbarCard">
+                    <ItemsControl ItemsSource="{Binding ProductsListViewModel.FilteredProducts}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="ProductCard" PointerPressed="Border_PointerPressed">
+                                    <Grid ColumnDefinitions="*,*,*,Auto">
+                                        <!-- Col 1: Référence + Nom -->
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="{Binding Reference}" Foreground="#FFFFFF" FontWeight="600" FontSize="13"/>
+                                            <TextBlock Text="{Binding Name}" Foreground="#A0A0A0" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+
+                                        <!-- Col 2: Catégorie + Fournisseur -->
+                                        <StackPanel Grid.Column="1" Spacing="2" Margin="0,0,0,0">
+                                            <TextBlock Text="{Binding Category.Name}" Foreground="#A0A0A0" FontSize="12"/>
+                                            <TextBlock Text="{Binding Supplier.Name}" Foreground="#888888" FontSize="11"/>
+                                        </StackPanel>
+
+                                        <!-- Col 3: Prix -->
+                                        <StackPanel Grid.Column="2" Spacing="2" Margin="0,0,0,0">
+                                            <TextBlock Text="{Binding PurchasePrice, StringFormat='Achat: {0:C2}'}" Foreground="#A0A0A0" FontSize="12"/>
+                                            <TextBlock Text="{Binding SalePrice, StringFormat='Vente: {0:C2}'}" Foreground="#FFFFFF" FontSize="12" FontWeight="600"/>
+                                        </StackPanel>
+
+                                        <!-- Col 4: Stock Badge -->
+                                        <Border Grid.Column="3" Background="#1F1F1F" CornerRadius="8" Padding="8,4" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{Binding StockQuantity}" Foreground="#FFFFFF" FontWeight="700"/>
+                                                <TextBlock Text="/" Foreground="#888888"/>
+                                                <TextBlock Text="{Binding StockAlertThreshold}" Foreground="#A0A0A0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- PAGINATION (Visible uniquement quand liste affichée) -->
+        <Border Grid.Row="2" 
+                Background="#252526" 
+                Padding="32,12"
+                BorderBrush="#3C3C3C"
+                BorderThickness="0,1,0,0"
+                IsVisible="{Binding ShowList}">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Bouton Précédent -->
+                <Button Grid.Column="0"
+                        Content="← Précédent"
+                        Classes="PaginationButton"
+                        Command="{Binding ProductsListViewModel.PreviousPageCommand}"/>
+
+                <!-- Info page -->
+                <TextBlock Grid.Column="1"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="#CCCCCC"
+                           FontSize="13">
+                    <Run Text="Page"/>
+                    <Run Text="{Binding ProductsListViewModel.CurrentPage}"/>
+                    <Run Text="sur"/>
+                    <Run Text="{Binding ProductsListViewModel.TotalPages}"/>
+                </TextBlock>
+
+                <!-- Bouton Suivant -->
+                <Button Grid.Column="2"
+                        Content="Suivant →"
+                        Classes="PaginationButton"
+                        Command="{Binding ProductsListViewModel.NextPageCommand}"/>
+            </Grid>
+        </Border>
+
+        <!-- FORMULAIRE PRODUIT (affiché quand IsInEditMode = true) -->
+        <ContentControl Grid.Row="0" Grid.RowSpan="3"
+                        Content="{Binding ProductFormViewModel}"
+                        IsVisible="{Binding IsInEditMode}"/>
+
+        <!-- FICHE DÉTAILLÉE PRODUIT -->
+        <Panel IsVisible="{Binding IsShowingDetail}">
+            <views:ProductDetailView DataContext="{Binding ProductDetailViewModel}"/>
+        </Panel>
+
+    </Grid>
+</UserControl>

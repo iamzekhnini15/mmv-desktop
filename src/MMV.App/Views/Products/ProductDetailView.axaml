@@ -1,0 +1,175 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:views="using:MMV.App.Views.Products"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="MMV.App.Views.Products.ProductDetailView"
+             x:DataType="vm:ProductDetailViewModel"
+             Background="#1D1D1D">
+
+    <UserControl.Styles>
+        <Style Selector="Button.TextButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Foreground" Value="#858585"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.TextButton:pointerover">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Button.PrimaryButton">
+            <Setter Property="Background" Value="#0071E3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Button.DangerButton">
+            <Setter Property="Background" Value="#E74C3C"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Border.Card">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+
+        <Style Selector="TextBlock.Label">
+            <Setter Property="Foreground" Value="#858585"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
+        <Style Selector="TextBlock.Value">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="600"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border Padding="32,24,32,24">
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!-- Header -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,16">
+                <Button Grid.Column="0"
+                        Content="← Retour"
+                        Command="{Binding BackCommand}"
+                        Classes="TextButton"
+                        VerticalAlignment="Center"/>
+
+            <StackPanel Grid.Column="1" Spacing="4">
+                <TextBlock Text="{Binding Title}"
+                           FontSize="20"
+                           FontWeight="700"
+                           Foreground="#FFFFFF"/>
+                <TextBlock Text="{Binding Product.Reference}"
+                           FontSize="12"
+                           Foreground="#858585"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <Button Content="Modifier"
+                        Command="{Binding EditCommand}"
+                        Classes="PrimaryButton"/>
+                <Button Content="Supprimer"
+                        Command="{Binding DeleteCommand}"
+                        Classes="DangerButton"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Content: TabControl with Informations and Historique -->
+        <TabControl Grid.Row="1">
+            <TabItem Header="Informations">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="12">
+                        <Border Classes="Card">
+                            <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
+                                <StackPanel Grid.Column="0" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
+                                    <TextBlock Text="Nom" Classes="Label"/>
+                                    <TextBlock Text="{Binding Product.Name}" Classes="Value"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
+                                    <TextBlock Text="Catégorie" Classes="Label"/>
+                                    <TextBlock Text="{Binding Product.Category.Name}" Classes="Value"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Grid.Row="0" Spacing="4" Margin="0,0,0,12">
+                                    <TextBlock Text="Fournisseur" Classes="Label"/>
+                                    <TextBlock Text="{Binding Product.Supplier.Name}" Classes="Value"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="0" Grid.Row="1" Spacing="4" Margin="0,0,16,0">
+                                    <TextBlock Text="Prix d'achat" Classes="Label"/>
+                                    <TextBlock Text="{Binding Product.PurchasePrice, StringFormat='{}{0:C2}'}" Classes="Value"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Grid.Row="1" Spacing="4" Margin="0,0,16,0">
+                                    <TextBlock Text="Prix de vente" Classes="Label"/>
+                                    <TextBlock Text="{Binding Product.SalePrice, StringFormat='{}{0:C2}'}" Classes="Value"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Grid.Row="1" Spacing="4">
+                                    <TextBlock Text="Stock" Classes="Label"/>
+                                    <TextBlock Text="{Binding Product.StockQuantity}" Classes="Value"/>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="1" Grid.Row="1" Margin="0,0,10,10">
+                                  <TextBlock Text="Date d'entrée" FontWeight="SemiBold" Foreground="#666"/>
+                                  <TextBlock Text="{Binding Product.EntryDate, StringFormat='{}{0:dd/MM/yyyy}'}" FontSize="16"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="Card">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Description" Classes="Label"/>
+                                <TextBlock Text="{Binding Product.Description}" Foreground="#E0E0E0" FontSize="13"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="Card">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Spécifications techniques" Classes="Label"/>
+                                <TextBlock Text="{Binding Product.TechnicalSpecs}" Foreground="#E0E0E0" FontSize="13" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="Card">
+                            <Grid ColumnDefinitions="Auto,Auto,Auto">
+                                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,16,0">
+                                    <TextBlock Text="Seuil d'alerte" Classes="Label"/>
+                                    <TextBlock Text="{Binding Product.StockAlertThreshold}" Classes="Value"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,16,0">
+                                    <TextBlock Text="Actif" Classes="Label"/>
+                                    <TextBlock Text="{Binding Product.IsActive}" Classes="Value"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="4">
+                                    <TextBlock Text="ID" Classes="Label"/>
+                                    <TextBlock Text="{Binding Product.ProductId}" Classes="Value"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Historique">
+                <views:ProductOrderHistoryView DataContext="{Binding}" />
+            </TabItem>
+        </TabControl>
+
+        </Grid>
+    </Border>
+</UserControl>
