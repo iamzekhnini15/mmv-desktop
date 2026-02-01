@@ -307,6 +307,191 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Section 5: Détails spécifiques - VERRE -->
+                <Border Classes="Card" IsVisible="{Binding IsGlassCategory}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="👓 Détails du verre" 
+                                  FontSize="15" 
+                                  FontWeight="600" 
+                                  Foreground="#FFFFFF" 
+                                  Margin="0,0,0,8"/>
+                        
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
+                            <!-- Matière -->
+                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Matière" Classes="Label"/>
+                                <ComboBox SelectedItem="{Binding GlassMaterial}"
+                                         PlaceholderText="Sélectionner"
+                                         HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="MINERAL"/>
+                                    <ComboBoxItem Content="ORGANIQUE"/>
+                                    <ComboBoxItem Content="POLYCARBONATE"/>
+                                    <ComboBoxItem Content="TRIVEX"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <!-- Type de verre -->
+                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Text="Type de verre" Classes="Label"/>
+                                <ComboBox SelectedItem="{Binding GlassType}"
+                                         PlaceholderText="Sélectionner"
+                                         HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="SF" Tag="Simple Focale"/>
+                                    <ComboBoxItem Content="DF" Tag="Double Focale"/>
+                                    <ComboBoxItem Content="MF" Tag="Multi Focale"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <!-- Diamètre -->
+                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,8,8,0">
+                                <TextBlock Text="Diamètre" Classes="Label"/>
+                                <TextBox Text="{Binding GlassDiameter}" 
+                                        Watermark="Ex: 65/70"/>
+                            </StackPanel>
+
+                            <!-- Indice -->
+                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,8,0,0">
+                                <TextBlock Text="Indice de réfraction" Classes="Label"/>
+                                <TextBox Text="{Binding GlassIndex}" 
+                                        Watermark="Ex: 1.50"/>
+                            </StackPanel>
+
+                            <!-- Puissance Min -->
+                            <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,8,8,0">
+                                <TextBlock Text="Puissance minimale" Classes="Label"/>
+                                <TextBox Text="{Binding PowerLimitMin}" 
+                                        Watermark="Ex: -6.00"/>
+                            </StackPanel>
+
+                            <!-- Puissance Max -->
+                            <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,8,0,0">
+                                <TextBlock Text="Puissance maximale" Classes="Label"/>
+                                <TextBox Text="{Binding PowerLimitMax}" 
+                                        Watermark="Ex: +6.00"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Section 6: Détails spécifiques - LENTILLE -->
+                <Border Classes="Card" IsVisible="{Binding IsLensCategory}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="👁️ Détails de la lentille" 
+                                  FontSize="15" 
+                                  FontWeight="600" 
+                                  Foreground="#FFFFFF" 
+                                  Margin="0,0,0,8"/>
+                        
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                            <!-- Marque -->
+                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Marque" Classes="Label"/>
+                                <TextBox Text="{Binding LensBrand}" 
+                                        Watermark="Ex: Acuvue"/>
+                            </StackPanel>
+
+                            <!-- Modèle -->
+                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Text="Modèle" Classes="Label"/>
+                                <TextBox Text="{Binding LensModel}" 
+                                        Watermark="Ex: Oasys"/>
+                            </StackPanel>
+
+                            <!-- Matière -->
+                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,8,8,0">
+                                <TextBlock Text="Matière" Classes="Label"/>
+                                <ComboBox SelectedItem="{Binding LensMaterial}"
+                                         PlaceholderText="Sélectionner"
+                                         HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="SILICONE_HYDROGEL"/>
+                                    <ComboBoxItem Content="HYDROGEL"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <!-- Type -->
+                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,8,0,0">
+                                <TextBlock Text="Type de lentille" Classes="Label"/>
+                                <ComboBox SelectedItem="{Binding LensType}"
+                                         PlaceholderText="Sélectionner"
+                                         HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="UNIFOCAL"/>
+                                    <ComboBoxItem Content="MULTIFOCAL"/>
+                                    <ComboBoxItem Content="TORIQUE"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <!-- Diamètre -->
+                            <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,8,8,0">
+                                <TextBlock Text="Diamètre (mm)" Classes="Label"/>
+                                <TextBox Text="{Binding LensDiameter}" 
+                                        Watermark="Ex: 14.0"/>
+                            </StackPanel>
+
+                            <!-- Courbure -->
+                            <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,8,0,0">
+                                <TextBlock Text="Courbure de base" Classes="Label"/>
+                                <TextBox Text="{Binding LensBaseCurve}" 
+                                        Watermark="Ex: 8.4"/>
+                            </StackPanel>
+
+                            <!-- Durée -->
+                            <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,8,8,0">
+                                <TextBlock Text="Durée d'utilisation" Classes="Label"/>
+                                <ComboBox SelectedItem="{Binding LensDuration}"
+                                         PlaceholderText="Sélectionner"
+                                         HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="JOURNALIERE"/>
+                                    <ComboBoxItem Content="MENSUELLE"/>
+                                    <ComboBoxItem Content="TRIMESTRIELLE"/>
+                                    <ComboBoxItem Content="ANNUELLE"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <!-- Colorée -->
+                            <StackPanel Grid.Row="3" Grid.Column="1" Margin="8,8,0,0" VerticalAlignment="Center">
+                                <CheckBox Content="Lentille colorée" 
+                                         IsChecked="{Binding LensIsColored}"
+                                         Foreground="#E0E0E0"
+                                         Margin="0,18,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Section 7: Détails spécifiques - MONTURE/ACCESSOIRE -->
+                <Border Classes="Card" IsVisible="{Binding IsAccessoryCategory}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="🔧 Détails de l'accessoire" 
+                                  FontSize="15" 
+                                  FontWeight="600" 
+                                  Foreground="#FFFFFF" 
+                                  Margin="0,0,0,8"/>
+                        
+                        <Grid ColumnDefinitions="*,*,*">
+                            <!-- Couleur -->
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Couleur" Classes="Label"/>
+                                <TextBox Text="{Binding AccessoryColor}" 
+                                        Watermark="Ex: Noir"/>
+                            </StackPanel>
+
+                            <!-- Taille -->
+                            <StackPanel Grid.Column="1" Margin="8,0">
+                                <TextBlock Text="Taille/Calibre" Classes="Label"/>
+                                <TextBox Text="{Binding AccessorySize}" 
+                                        Watermark="Ex: 52-18"/>
+                            </StackPanel>
+
+                            <!-- Matière -->
+                            <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                                <TextBlock Text="Matière" Classes="Label"/>
+                                <TextBox Text="{Binding AccessoryMaterial}" 
+                                        Watermark="Ex: Métal"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
             </StackPanel>
         </ScrollViewer>
 
