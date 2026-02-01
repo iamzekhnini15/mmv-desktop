@@ -1,7 +1,10 @@
+using MMV.Domain.Enums;
+
 namespace MMV.Domain.Entities;
 
 /// <summary>
 /// Représente un produit du catalogue (monture, verre, accessoire).
+/// Table mère contenant les champs communs à toutes les catégories.
 /// </summary>
 public class Product
 {
@@ -16,7 +19,7 @@ public class Product
     public string Reference { get; set; } = string.Empty;
 
     /// <summary>
-    /// Nom commercial du produit.
+    /// Désignation/Nom commercial du produit.
     /// </summary>
     public string Name { get; set; } = string.Empty;
 
@@ -26,24 +29,36 @@ public class Product
     public string? Description { get; set; }
 
     /// <summary>
-    /// Identifiant de la catégorie du produit.
+    /// Catégorie du produit (ENUM).
+    /// </summary>
+    public ProductCategoryEnum Category { get; set; } = ProductCategoryEnum.MONTURE;
+
+    /// <summary>
+    /// Identifiant de la catégorie du produit (ancienne structure, conservée pour compatibilité).
     /// </summary>
     public long? CategoryId { get; set; }
 
     /// <summary>
-    /// Identifiant du fournisseur.
+    /// Identifiant du fournisseur (OBLIGATOIRE).
     /// </summary>
-    public long? SupplierId { get; set; }
+    public long SupplierId { get; set; }
 
     /// <summary>
     /// Prix d'achat unitaire (OBLIGATOIRE: type decimal pour argent).
+    /// Pour les verres, c'est le prix de base auquel s'ajoutent les suppléments.
     /// </summary>
     public decimal PurchasePrice { get; set; }
 
     /// <summary>
     /// Prix de vente unitaire (OBLIGATOIRE: type decimal pour argent).
+    /// Pour les verres, c'est le prix de base auquel s'ajoutent les suppléments.
     /// </summary>
     public decimal SalePrice { get; set; }
+
+    /// <summary>
+    /// Prix de vente conseillé.
+    /// </summary>
+    public decimal? RecommendedPrice { get; set; }
 
     /// <summary>
     /// Quantité en stock actuelle.
@@ -72,14 +87,29 @@ public class Product
 
     // Navigation Properties
     /// <summary>
-    /// Catégorie à laquelle appartient ce produit.
+    /// Catégorie à laquelle appartient ce produit (ancienne structure, conservée pour compatibilité).
     /// </summary>
-    public virtual ProductCategory? Category { get; set; }
+    public virtual ProductCategory? ProductCategory { get; set; }
 
     /// <summary>
-    /// Fournisseur de ce produit.
+    /// Fournisseur de ce produit (OBLIGATOIRE).
     /// </summary>
-    public virtual Supplier? Supplier { get; set; }
+    public virtual Supplier Supplier { get; set; } = null!;
+
+    /// <summary>
+    /// Détails spécifiques si c'est un verre.
+    /// </summary>
+    public virtual GlassDetail? GlassDetail { get; set; }
+
+    /// <summary>
+    /// Détails spécifiques si c'est une lentille.
+    /// </summary>
+    public virtual LensDetail? LensDetail { get; set; }
+
+    /// <summary>
+    /// Détails spécifiques si c'est un accessoire/monture.
+    /// </summary>
+    public virtual AccessoryDetail? AccessoryDetail { get; set; }
 
     /// <summary>
     /// Articles de commande utilisant ce produit.

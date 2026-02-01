@@ -19,7 +19,7 @@ public class ProductRepository : BaseRepository<Product, long>, IProductReposito
     {
         return await _dbSet
             .AsNoTracking()
-            .Include(p => p.Category)
+            .Include(p => p.ProductCategory)
             .Include(p => p.Supplier)
             .Include(p => p.OrderItems)
                 .ThenInclude(oi => oi.Order)

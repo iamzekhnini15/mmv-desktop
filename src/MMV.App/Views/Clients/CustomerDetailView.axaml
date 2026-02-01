@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:MMV.App.Controls"
              xmlns:vm="using:MMV.App.ViewModels"
              xmlns:views="using:MMV.App.Views.Clients"
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
@@ -10,54 +11,64 @@
              Background="#1D1D1D">
 
     <UserControl.Styles>
-        <!-- Style général du TabControl -->
+        <!-- Style Apple pour la barre d'onglets -->
         <Style Selector="TabControl">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="0"/>
         </Style>
-        
-        <!-- Style des TabItems -->
+
+        <!-- Conteneur de l'en-tête des onglets (TabStrip) -->
+        <Style Selector="TabControl > TabControl.ItemsPanel > ItemsPanelTemplate > StackPanel">
+            <Setter Property="Margin" Value="0,0,0,0"/>
+            <Setter Property="Spacing" Value="24"/>
+        </Style>
+
+        <!-- Style de base de l'onglet -->
         <Style Selector="TabItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <!-- Padding ajusté pour coller le trait bleu au texte -->
+            <Setter Property="Padding" Value="12,6,12,10"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="500"/>
             <Setter Property="Foreground" Value="#858585"/>
-            <Setter Property="Padding" Value="20,16"/>
-            <!-- On applique la couleur de fond ici pour créer l'effet "Barre" -->
-            <Setter Property="Background" Value="#252526"/> 
-            <Setter Property="BorderThickness" Value="0,0,0,3"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Margin" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        
-        <Style Selector="TabItem:pointerover">
-            <Setter Property="Foreground" Value="#E0E0E0"/>
-        </Style>
-        
-        <Style Selector="TabItem:selected /template/ ContentPresenter">
-            <Setter Property="BorderBrush" Value="#0071E3"/>
-            <Setter Property="Background" Value="#252526"/>
-        </Style>
-        
-        <Style Selector="TabItem:selected">
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="FontWeight" Value="600"/>
-            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="PART_IndicatorBorder" 
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Name="PART_HeaderContentPresenter"
+                                          Content="{TemplateBinding Header}"
+                                          TextElement.FontSize="{TemplateBinding FontSize}"
+                                          TextElement.FontWeight="{TemplateBinding FontWeight}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          HorizontalContentAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
         </Style>
 
-        <!-- Bouton de retour texte -->
-        <Style Selector="Button.TextButton">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Foreground" Value="#858585"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        
-        <Style Selector="Button.TextButton:pointerover">
+        <!-- État : Sélectionné (Active) -->
+        <Style Selector="TabItem:selected">
             <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <!-- L'indicateur visuel (le trait bleu Apple) -->
+        <Style Selector="TabItem:selected > Border#PART_IndicatorBorder">
+            <Setter Property="BorderBrush" Value="#0071E3"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+        </Style>
+
+        <!-- Effet de survol subtil -->
+        <Style Selector="TabItem:pointerover > Border#PART_IndicatorBorder">
+            <Setter Property="Background" Value="#2D2D2D"/>
         </Style>
 
         <!-- Badge de date -->
@@ -78,13 +89,10 @@
                 Padding="32,28,32,0">
             <Grid ColumnDefinitions="Auto,*,Auto">
                 
-                <!-- Bouton Retour -->
-                <Button Grid.Column="0" 
-                        Content="← Retour" 
-                        Command="{Binding BackCommand}"
-                        Classes="TextButton"
-                        VerticalAlignment="Center"
-                        Margin="0,0,32,0"/>
+                <controls:BackButton Grid.Column="0"
+                            Command="{Binding BackCommand}"
+                            ButtonText="← Retour"
+                            Margin="0,0,32,0"/>
                 
                 <!-- Titre et Infos Client -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">

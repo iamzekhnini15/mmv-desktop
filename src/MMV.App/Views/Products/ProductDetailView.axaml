@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:MMV.App.Controls"
              xmlns:vm="using:MMV.App.ViewModels"
              xmlns:views="using:MMV.App.Views.Products"
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
@@ -10,18 +11,6 @@
              Background="#1D1D1D">
 
     <UserControl.Styles>
-        <Style Selector="Button.TextButton">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Foreground" Value="#858585"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        <Style Selector="Button.TextButton:pointerover">
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-        </Style>
-
         <Style Selector="Button.PrimaryButton">
             <Setter Property="Background" Value="#0071E3"/>
             <Setter Property="Foreground" Value="White"/>
@@ -59,17 +48,26 @@
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="600"/>
         </Style>
+
+        <!-- Badge de date -->
+        <Style Selector="Border.DateBadge">
+            <Setter Property="Background" Value="#2D2D2D"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="BorderBrush" Value="#404040"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
     </UserControl.Styles>
 
     <Border Padding="32,24,32,24">
         <Grid RowDefinitions="Auto,*,Auto">
             <!-- Header -->
             <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,16">
-                <Button Grid.Column="0"
-                        Content="← Retour"
+
+            <controls:BackButton Grid.Column="0"
                         Command="{Binding BackCommand}"
-                        Classes="TextButton"
-                        VerticalAlignment="Center"/>
+                        ButtonText="← Retour"
+                        Margin="0,0,32,0"/>
 
             <StackPanel Grid.Column="1" Spacing="4">
                 <TextBlock Text="{Binding Title}"
@@ -93,22 +91,90 @@
 
         <!-- Content: TabControl with Informations and Historique -->
         <TabControl Grid.Row="1">
+            <TabControl.Styles>
+                <!-- Style Apple pour la barre d'onglets -->
+                <Style Selector="TabControl">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Padding" Value="0"/> 
+                </Style>
+
+                <!-- Conteneur de l'en-tête des onglets (TabStrip) -->
+                <Style Selector="TabControl > TabControl.ItemsPanel > ItemsPanelTemplate > StackPanel">
+                    <Setter Property="Margin" Value="0,0,0,0"/>
+                    <Setter Property="Spacing" Value="24"/>
+                </Style>
+
+                <!-- Style de base de l'onglet -->
+                <Style Selector="TabItem">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Padding" Value="12,6,12,10"/>
+                    <Setter Property="FontSize" Value="13"/>
+                    <Setter Property="FontWeight" Value="500"/>
+                    <Setter Property="Foreground" Value="#858585"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                    <Setter Property="Template">
+                        <ControlTemplate>
+                            <Border Name="PART_IndicatorBorder" 
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    Padding="{TemplateBinding Padding}"
+                                    HorizontalAlignment="{TemplateBinding HorizontalAlignment}">
+                                
+                                <ContentPresenter Name="PART_HeaderContentPresenter"
+                                                Content="{TemplateBinding Header}"
+                                                TextElement.FontSize="{TemplateBinding FontSize}"
+                                                TextElement.FontWeight="{TemplateBinding FontWeight}"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                HorizontalContentAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter>
+                </Style>
+
+                <!-- État : Sélectionné (Active) -->
+                <Style Selector="TabItem:selected">
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                </Style>
+
+                <!-- L'indicateur visuel (le trait bleu Apple) qui apparaît quand sélectionné -->
+                <Style Selector="TabItem:selected > Border#PART_IndicatorBorder">
+                    <Setter Property="BorderBrush" Value="#0071E3"/>
+                    <Setter Property="BorderThickness" Value="0,0,0,2"/>
+                </Style>
+
+                <!-- Effet de survol subtil -->
+                <Style Selector="TabItem:pointerover > Border#PART_IndicatorBorder">
+                    <Setter Property="Background" Value="#2D2D2D"/>
+                </Style>
+            </TabControl.Styles>
+
             <TabItem Header="Informations">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="12">
                         <Border Classes="Card">
-                            <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
+                            <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto,Auto">
                                 <StackPanel Grid.Column="0" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
                                     <TextBlock Text="Nom" Classes="Label"/>
                                     <TextBlock Text="{Binding Product.Name}" Classes="Value"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
                                     <TextBlock Text="Catégorie" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.Category.Name}" Classes="Value"/>
+                                    <TextBlock Text="{Binding Product.Category}" Classes="Value"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Grid.Row="0" Spacing="4" Margin="0,0,0,12">
                                     <TextBlock Text="Fournisseur" Classes="Label"/>
                                     <TextBlock Text="{Binding Product.Supplier.Name}" Classes="Value"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="3" Grid.Row="0" Spacing="4" Margin="0,0,0,8">
+                                    <TextBlock Text="Date d'entrée" Classes="Label"/>
+                                    <TextBlock Text="{Binding Product.EntryDate, StringFormat='{}{0:dd/MM/yyyy}'}" Classes="Value"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="0" Grid.Row="1" Spacing="4" Margin="0,0,16,0">
@@ -122,12 +188,7 @@
                                 <StackPanel Grid.Column="2" Grid.Row="1" Spacing="4">
                                     <TextBlock Text="Stock" Classes="Label"/>
                                     <TextBlock Text="{Binding Product.StockQuantity}" Classes="Value"/>
-                                </StackPanel>
-                                
-                                <StackPanel Grid.Column="1" Grid.Row="1" Margin="0,0,10,10">
-                                  <TextBlock Text="Date d'entrée" FontWeight="SemiBold" Foreground="#666"/>
-                                  <TextBlock Text="{Binding Product.EntryDate, StringFormat='{}{0:dd/MM/yyyy}'}" FontSize="16"/>
-                                </StackPanel>
+                                </StackPanel>                                                 
                             </Grid>
                         </Border>
 

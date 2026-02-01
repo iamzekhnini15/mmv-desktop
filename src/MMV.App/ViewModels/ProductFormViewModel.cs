@@ -439,7 +439,7 @@ public class ProductFormViewModel : BaseViewModel
                 product.StockQuantity = StockQuantity;
                 product.StockAlertThreshold = StockAlertThreshold;
                 product.CategoryId = CategoryId;
-                product.SupplierId = SupplierId;
+                product.SupplierId = SupplierId ?? 0; // SupplierId est maintenant obligatoire
 
                 await _productRepository.UpdateAsync(product);
             }
@@ -456,7 +456,7 @@ public class ProductFormViewModel : BaseViewModel
                     StockQuantity = StockQuantity,
                     StockAlertThreshold = StockAlertThreshold,
                     CategoryId = CategoryId,
-                    SupplierId = SupplierId
+                    SupplierId = SupplierId ?? 0 // SupplierId est maintenant obligatoire
                 };
 
                 await _productRepository.CreateAsync(product);

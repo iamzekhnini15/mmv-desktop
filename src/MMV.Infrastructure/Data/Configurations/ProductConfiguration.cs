@@ -36,6 +36,13 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasColumnType("REAL")
             .IsRequired();
 
+        builder.Property(p => p.RecommendedPrice)
+            .HasColumnType("REAL");
+
+        builder.Property(p => p.Category)
+            .HasConversion<string>()
+            .IsRequired();
+
         builder.Property(p => p.StockQuantity)
             .HasDefaultValue(0);
 
@@ -52,7 +59,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasDatabaseName("idx_products_category_id");
 
         // Relations
-        builder.HasOne(p => p.Category)
+        builder.HasOne(p => p.ProductCategory)
             .WithMany(pc => pc.Products)
             .HasForeignKey(p => p.CategoryId)
             .OnDelete(DeleteBehavior.SetNull);
@@ -60,7 +67,8 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.HasOne(p => p.Supplier)
             .WithMany(s => s.Products)
             .HasForeignKey(p => p.SupplierId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired();
 
         builder.HasMany(p => p.OrderItems)
             .WithOne(oi => oi.Product)
