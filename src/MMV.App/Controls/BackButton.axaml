@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:MMV.App.Controls"
+             mc:Ignorable="d" d:DesignWidth="100" d:DesignHeight="30"
+             x:Class="MMV.App.Controls.BackButton"
+             x:DataType="controls:BackButton"
+             x:CompileBindings="True">
+    
+    <UserControl.Styles>
+        <Style Selector="Button.BackButtonStyle">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Foreground" Value="#858585"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        
+        <Style Selector="Button.BackButtonStyle:pointerover">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+    </UserControl.Styles>
+    
+    <Button Classes="BackButtonStyle"
+            Content="{Binding $parent[controls:BackButton].ButtonText}"
+            Command="{Binding $parent[controls:BackButton].Command}"/>
+</UserControl>

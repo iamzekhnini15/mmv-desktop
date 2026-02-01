@@ -3,6 +3,7 @@ using System;
 using MMV.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,34 +11,14 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MMV.Infrastructure.Migrations
 {
     [DbContext(typeof(OpticDbContext))]
-    partial class OpticDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260129192001_AddProductEntryDate")]
+    partial class AddProductEntryDate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
-
-            modelBuilder.Entity("MMV.Domain.Entities.AccessoryDetail", b =>
-                {
-                    b.Property<long>("ProductId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Color")
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Material")
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Size")
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("ProductId");
-
-                    b.ToTable("AccessoryDetails");
-                });
 
             modelBuilder.Entity("MMV.Domain.Entities.Customer", b =>
                 {
@@ -59,7 +40,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 587, DateTimeKind.Utc).AddTicks(8824));
+                        .HasDefaultValue(new DateTime(2026, 1, 29, 19, 20, 0, 777, DateTimeKind.Utc).AddTicks(5666));
 
                     b.Property<string>("Email")
                         .HasMaxLength(254)
@@ -98,7 +79,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 587, DateTimeKind.Utc).AddTicks(9332));
+                        .HasDefaultValue(new DateTime(2026, 1, 29, 19, 20, 0, 777, DateTimeKind.Utc).AddTicks(5960));
 
                     b.HasKey("CustomerId");
 
@@ -109,122 +90,6 @@ namespace MMV.Infrastructure.Migrations
                         .HasDatabaseName("idx_customers_phone");
 
                     b.ToTable("Customers");
-                });
-
-            modelBuilder.Entity("MMV.Domain.Entities.GlassDetail", b =>
-                {
-                    b.Property<long>("ProductId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Diameter")
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("GlassType")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal?>("Index")
-                        .HasPrecision(3, 2)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Material")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal?>("PowerLimitMax")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal?>("PowerLimitMin")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("ProductId");
-
-                    b.ToTable("GlassDetails");
-                });
-
-            modelBuilder.Entity("MMV.Domain.Entities.GlassPricingTier", b =>
-                {
-                    b.Property<long>("TierId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("GlassId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("PowerMax")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("PowerMin")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("PurchasePriceGrid")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("SalePriceGrid")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("TierId");
-
-                    b.HasIndex("GlassId", "PowerMin", "PowerMax")
-                        .HasDatabaseName("idx_glass_pricing_tier_range");
-
-                    b.ToTable("GlassPricingTiers");
-                });
-
-            modelBuilder.Entity("MMV.Domain.Entities.GlassSupplement", b =>
-                {
-                    b.Property<long>("GlassId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("SupplementId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("GlassId", "SupplementId");
-
-                    b.HasIndex("SupplementId");
-
-                    b.ToTable("GlassSupplements");
-                });
-
-            modelBuilder.Entity("MMV.Domain.Entities.LensDetail", b =>
-                {
-                    b.Property<long>("ProductId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal?>("BaseCurve")
-                        .HasPrecision(4, 2)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Brand")
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal?>("Diameter")
-                        .HasPrecision(4, 2)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Duration")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsColored")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("LensType")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Material")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Model")
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("ProductId");
-
-                    b.ToTable("LensDetails");
                 });
 
             modelBuilder.Entity("MMV.Domain.Entities.Order", b =>
@@ -246,7 +111,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("OrderDate")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 588, DateTimeKind.Utc).AddTicks(7296));
+                        .HasDefaultValue(new DateTime(2026, 1, 29, 19, 20, 0, 778, DateTimeKind.Utc).AddTicks(987));
 
                     b.Property<string>("OrderNumber")
                         .IsRequired()
@@ -349,7 +214,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 588, DateTimeKind.Utc).AddTicks(5770));
+                        .HasDefaultValue(new DateTime(2026, 1, 29, 19, 20, 0, 777, DateTimeKind.Utc).AddTicks(9831));
 
                     b.Property<long>("CustomerId")
                         .HasColumnType("INTEGER");
@@ -422,10 +287,6 @@ namespace MMV.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<long?>("CategoryId")
                         .HasColumnType("INTEGER");
 
@@ -449,9 +310,6 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<decimal>("PurchasePrice")
                         .HasColumnType("REAL");
 
-                    b.Property<decimal?>("RecommendedPrice")
-                        .HasColumnType("REAL");
-
                     b.Property<string>("Reference")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -470,7 +328,7 @@ namespace MMV.Infrastructure.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(0);
 
-                    b.Property<long>("SupplierId")
+                    b.Property<long?>("SupplierId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("TechnicalSpecs")
@@ -548,7 +406,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("SaleDate")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 589, DateTimeKind.Utc).AddTicks(3658));
+                        .HasDefaultValue(new DateTime(2026, 1, 29, 19, 20, 0, 778, DateTimeKind.Utc).AddTicks(5348));
 
                     b.Property<string>("SaleNumber")
                         .IsRequired()
@@ -616,7 +474,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 589, DateTimeKind.Utc).AddTicks(9539));
+                        .HasDefaultValue(new DateTime(2026, 1, 29, 19, 20, 0, 778, DateTimeKind.Utc).AddTicks(9689));
 
                     b.Property<string>("MovementType")
                         .IsRequired()
@@ -643,25 +501,6 @@ namespace MMV.Infrastructure.Migrations
                         .HasDatabaseName("idx_stock_movements_product_id");
 
                     b.ToTable("StockMovements");
-                });
-
-            modelBuilder.Entity("MMV.Domain.Entities.Supplement", b =>
-                {
-                    b.Property<long>("SupplementId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("SupplementPrice")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("SupplementId");
-
-                    b.ToTable("Supplements");
                 });
 
             modelBuilder.Entity("MMV.Domain.Entities.Supplier", b =>
@@ -705,7 +544,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 583, DateTimeKind.Utc).AddTicks(4563));
+                        .HasDefaultValue(new DateTime(2026, 1, 29, 19, 20, 0, 776, DateTimeKind.Utc).AddTicks(996));
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -750,7 +589,7 @@ namespace MMV.Infrastructure.Migrations
                         new
                         {
                             UserId = 1L,
-                            CreatedAt = new DateTime(2026, 2, 1, 18, 11, 36, 590, DateTimeKind.Utc).AddTicks(767),
+                            CreatedAt = new DateTime(2026, 1, 29, 19, 20, 0, 779, DateTimeKind.Utc).AddTicks(659),
                             FirstName = "Administrateur",
                             IsActive = true,
                             LastName = "Système",
@@ -758,69 +597,6 @@ namespace MMV.Infrastructure.Migrations
                             Role = "Admin",
                             Username = "admin"
                         });
-                });
-
-            modelBuilder.Entity("MMV.Domain.Entities.AccessoryDetail", b =>
-                {
-                    b.HasOne("MMV.Domain.Entities.Product", "Product")
-                        .WithOne("AccessoryDetail")
-                        .HasForeignKey("MMV.Domain.Entities.AccessoryDetail", "ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("MMV.Domain.Entities.GlassDetail", b =>
-                {
-                    b.HasOne("MMV.Domain.Entities.Product", "Product")
-                        .WithOne("GlassDetail")
-                        .HasForeignKey("MMV.Domain.Entities.GlassDetail", "ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("MMV.Domain.Entities.GlassPricingTier", b =>
-                {
-                    b.HasOne("MMV.Domain.Entities.GlassDetail", "Glass")
-                        .WithMany("PricingTiers")
-                        .HasForeignKey("GlassId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Glass");
-                });
-
-            modelBuilder.Entity("MMV.Domain.Entities.GlassSupplement", b =>
-                {
-                    b.HasOne("MMV.Domain.Entities.GlassDetail", "Glass")
-                        .WithMany("GlassSupplements")
-                        .HasForeignKey("GlassId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MMV.Domain.Entities.Supplement", "Supplement")
-                        .WithMany("GlassSupplements")
-                        .HasForeignKey("SupplementId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Glass");
-
-                    b.Navigation("Supplement");
-                });
-
-            modelBuilder.Entity("MMV.Domain.Entities.LensDetail", b =>
-                {
-                    b.HasOne("MMV.Domain.Entities.Product", "Product")
-                        .WithOne("LensDetail")
-                        .HasForeignKey("MMV.Domain.Entities.LensDetail", "ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("MMV.Domain.Entities.Order", b =>
@@ -871,7 +647,7 @@ namespace MMV.Infrastructure.Migrations
 
             modelBuilder.Entity("MMV.Domain.Entities.Product", b =>
                 {
-                    b.HasOne("MMV.Domain.Entities.ProductCategory", "ProductCategory")
+                    b.HasOne("MMV.Domain.Entities.ProductCategory", "Category")
                         .WithMany("Products")
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -879,10 +655,9 @@ namespace MMV.Infrastructure.Migrations
                     b.HasOne("MMV.Domain.Entities.Supplier", "Supplier")
                         .WithMany("Products")
                         .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("ProductCategory");
+                    b.Navigation("Category");
 
                     b.Navigation("Supplier");
                 });
@@ -949,13 +724,6 @@ namespace MMV.Infrastructure.Migrations
                     b.Navigation("Sales");
                 });
 
-            modelBuilder.Entity("MMV.Domain.Entities.GlassDetail", b =>
-                {
-                    b.Navigation("GlassSupplements");
-
-                    b.Navigation("PricingTiers");
-                });
-
             modelBuilder.Entity("MMV.Domain.Entities.Order", b =>
                 {
                     b.Navigation("OrderItems");
@@ -963,12 +731,6 @@ namespace MMV.Infrastructure.Migrations
 
             modelBuilder.Entity("MMV.Domain.Entities.Product", b =>
                 {
-                    b.Navigation("AccessoryDetail");
-
-                    b.Navigation("GlassDetail");
-
-                    b.Navigation("LensDetail");
-
                     b.Navigation("OrderItems");
 
                     b.Navigation("SaleItems");
@@ -984,11 +746,6 @@ namespace MMV.Infrastructure.Migrations
             modelBuilder.Entity("MMV.Domain.Entities.Sale", b =>
                 {
                     b.Navigation("SaleItems");
-                });
-
-            modelBuilder.Entity("MMV.Domain.Entities.Supplement", b =>
-                {
-                    b.Navigation("GlassSupplements");
                 });
 
             modelBuilder.Entity("MMV.Domain.Entities.Supplier", b =>

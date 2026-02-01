@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="MMV.App.Views.Products.ProductOrderHistoryView"
+             x:DataType="vm:ProductDetailViewModel">
+
+  <Border Padding="12" Background="Transparent">
+    <StackPanel Spacing="12">
+      <TextBlock Text="Historique des commandes" FontSize="18" FontWeight="SemiBold"/>
+      <ScrollViewer MaxHeight="500">
+        <ItemsControl ItemsSource="{Binding OrderHistory}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Padding="12" Margin="0,0,0,10" Background="#1F1F1F" BorderBrush="#2E2E2E" BorderThickness="1" CornerRadius="6">
+                <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                  <StackPanel Grid.Column="0">
+                    <TextBlock Text="{Binding Order.OrderNumber}" FontWeight="SemiBold" FontSize="14"/>
+                    <TextBlock Text="{Binding Order.OrderDate, StringFormat='Le {0:dd/MM/yyyy HH:mm}'}" FontSize="12" Foreground="#888"/>
+                    <TextBlock FontSize="12" Foreground="#888">
+                      <Run Text="Client: "/>
+                      <Run Text="{Binding Order.Customer.FirstName}"/>
+                      <Run Text=" "/>
+                      <Run Text="{Binding Order.Customer.LastName}"/>
+                    </TextBlock>
+                  </StackPanel>
+
+                  <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                    <TextBlock Text="Quantité" FontSize="11" Foreground="#AAA"/>
+                    <TextBlock Text="{Binding Quantity}" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                  </StackPanel>
+
+                  <StackPanel Grid.Column="2" Margin="12,0" VerticalAlignment="Center">
+                    <TextBlock Text="Prix unitaire" FontSize="11" Foreground="#AAA"/>
+                    <TextBlock FontSize="14" HorizontalAlignment="Center">
+                      <Run Text="{Binding UnitPrice, StringFormat='{}{0:F2}'}"/>
+                      <Run Text=" €"/>
+                    </TextBlock>
+                  </StackPanel>
+
+                  <Border Grid.Column="3" VerticalAlignment="Center" Padding="8,4" CornerRadius="4" Background="#2A3F5F">
+                    <TextBlock Text="{Binding Order.Status}" FontSize="12" FontWeight="SemiBold" Foreground="White"/>
+                  </Border>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+
+      <TextBlock Text="Aucune commande enregistrée pour ce produit"
+                 IsVisible="{Binding OrderHistory.Count, Converter={StaticResource IsZeroConverter}}"
+                 HorizontalAlignment="Center" Foreground="#888" Margin="0,16,0,0"/>
+    </StackPanel>
+  </Border>
+</UserControl>

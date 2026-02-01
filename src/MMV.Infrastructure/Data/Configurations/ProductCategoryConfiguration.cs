@@ -26,7 +26,7 @@ public class ProductCategoryConfiguration : IEntityTypeConfiguration<ProductCate
 
         // Relations
         builder.HasMany(pc => pc.Products)
-            .WithOne(p => p.Category)
+            .WithOne(p => p.ProductCategory)
             .HasForeignKey(p => p.CategoryId)
             .OnDelete(DeleteBehavior.SetNull);
     }

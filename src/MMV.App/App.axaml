@@ -4,10 +4,12 @@
              xmlns:vm="using:MMV.App.ViewModels"
              xmlns:views="using:MMV.App.Views"
              xmlns:clients="using:MMV.App.Views.Clients"
+             xmlns:converters="using:MMV.App.Converters"
              x:Class="MMV.App.App"
              RequestedThemeVariant="Default">
     <Application.Resources>
         <local:ViewLocator x:Key="ViewLocator"/>
+        <converters:IsZeroConverter x:Key="IsZeroConverter"/>
         
         <!-- DataTemplates pour les formulaires de fiche client -->
         <DataTemplate x:Key="SaleFormTemplate" DataType="vm:SaleFormViewModel">

@@ -21,23 +21,29 @@ public partial class CustomerFormView : UserControl
 
         if (DataContext is CustomerFormViewModel vm)
         {
-            System.Diagnostics.Debug.WriteLine($"[CustomerFormView] SaveCommand present: {vm.SaveCommand != null}, CanExecute: {vm.SaveCommand.CanExecute(null)}");
-            System.Diagnostics.Debug.WriteLine($"[CustomerFormView] CancelCommand present: {vm.CancelCommand != null}, CanExecute: {vm.CancelCommand.CanExecute(null)}");
-            Console.WriteLine($"[CustomerFormView] SaveCommand present: {vm.SaveCommand != null}, CanExecute: {vm.SaveCommand.CanExecute(null)}");
-            Console.WriteLine($"[CustomerFormView] CancelCommand present: {vm.CancelCommand != null}, CanExecute: {vm.CancelCommand.CanExecute(null)}");
+            System.Diagnostics.Debug.WriteLine($"[CustomerFormView] SaveCommand present: {vm.SaveCommand != null}, CanExecute: {vm.SaveCommand?.CanExecute(null)}");
+            System.Diagnostics.Debug.WriteLine($"[CustomerFormView] CancelCommand present: {vm.CancelCommand != null}, CanExecute: {vm.CancelCommand?.CanExecute(null)}");
+            Console.WriteLine($"[CustomerFormView] SaveCommand present: {vm.SaveCommand != null}, CanExecute: {vm.SaveCommand?.CanExecute(null)}");
+            Console.WriteLine($"[CustomerFormView] CancelCommand present: {vm.CancelCommand != null}, CanExecute: {vm.CancelCommand?.CanExecute(null)}");
 
             // Subscribe to CanExecuteChanged to log state changes
-            vm.SaveCommand.CanExecuteChanged += (s, _) =>
+            if (vm.SaveCommand != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[CustomerFormView] SaveCommand.CanExecuteChanged -> {vm.SaveCommand.CanExecute(null)}");
-                Console.WriteLine($"[CustomerFormView] SaveCommand.CanExecuteChanged -> {vm.SaveCommand.CanExecute(null)}");
-            };
+                vm.SaveCommand.CanExecuteChanged += (s, _) =>
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CustomerFormView] SaveCommand.CanExecuteChanged -> {vm.SaveCommand.CanExecute(null)}");
+                    Console.WriteLine($"[CustomerFormView] SaveCommand.CanExecuteChanged -> {vm.SaveCommand.CanExecute(null)}");
+                };
+            }
 
-            vm.CancelCommand.CanExecuteChanged += (s, _) =>
+            if (vm.CancelCommand != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[CustomerFormView] CancelCommand.CanExecuteChanged -> {vm.CancelCommand.CanExecute(null)}");
-                Console.WriteLine($"[CustomerFormView] CancelCommand.CanExecuteChanged -> {vm.CancelCommand.CanExecute(null)}");
-            };
+                vm.CancelCommand.CanExecuteChanged += (s, _) =>
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CustomerFormView] CancelCommand.CanExecuteChanged -> {vm.CancelCommand.CanExecute(null)}");
+                    Console.WriteLine($"[CustomerFormView] CancelCommand.CanExecuteChanged -> {vm.CancelCommand.CanExecute(null)}");
+                };
+            }
         }
         else if (DataContext is CustomersViewModel parent)
         {

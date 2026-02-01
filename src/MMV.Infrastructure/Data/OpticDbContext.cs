@@ -38,6 +38,36 @@ public class OpticDbContext : DbContext
     /// </summary>
     public DbSet<Product> Products { get; set; } = null!;
 
+    /// <summary>
+    /// Détails spécifiques des verres.
+    /// </summary>
+    public DbSet<GlassDetail> GlassDetails { get; set; } = null!;
+
+    /// <summary>
+    /// Détails spécifiques des lentilles.
+    /// </summary>
+    public DbSet<LensDetail> LensDetails { get; set; } = null!;
+
+    /// <summary>
+    /// Détails spécifiques des accessoires/montures.
+    /// </summary>
+    public DbSet<AccessoryDetail> AccessoryDetails { get; set; } = null!;
+
+    /// <summary>
+    /// Suppléments optionnels pour verres.
+    /// </summary>
+    public DbSet<Supplement> Supplements { get; set; } = null!;
+
+    /// <summary>
+    /// Association verres-suppléments.
+    /// </summary>
+    public DbSet<GlassSupplement> GlassSupplements { get; set; } = null!;
+
+    /// <summary>
+    /// Grille tarifaire des verres.
+    /// </summary>
+    public DbSet<GlassPricingTier> GlassPricingTiers { get; set; } = null!;
+
     // ========== CRM ==========
     /// <summary>
     /// Clients de l'opticien.
@@ -111,6 +141,12 @@ public class OpticDbContext : DbContext
         modelBuilder.ApplyConfiguration(new SupplierConfiguration());
         modelBuilder.ApplyConfiguration(new ProductCategoryConfiguration());
         modelBuilder.ApplyConfiguration(new ProductConfiguration());
+        modelBuilder.ApplyConfiguration(new GlassDetailConfiguration());
+        modelBuilder.ApplyConfiguration(new LensDetailConfiguration());
+        modelBuilder.ApplyConfiguration(new AccessoryDetailConfiguration());
+        modelBuilder.ApplyConfiguration(new SupplementConfiguration());
+        modelBuilder.ApplyConfiguration(new GlassSupplementConfiguration());
+        modelBuilder.ApplyConfiguration(new GlassPricingTierConfiguration());
         modelBuilder.ApplyConfiguration(new CustomerConfiguration());
         modelBuilder.ApplyConfiguration(new PrescriptionConfiguration());
         modelBuilder.ApplyConfiguration(new OrderConfiguration());

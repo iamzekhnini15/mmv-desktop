@@ -13,6 +13,21 @@ public class ProductRepository : BaseRepository<Product, long>, IProductReposito
     public ProductRepository(OpticDbContext context) : base(context) { }
 
     /// <summary>
+    /// Surcharge GetAllAsync pour inclure les relations.
+    /// </summary>
+    public override async Task<IList<Product>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .Include(p => p.ProductCategory)
+            .Include(p => p.Supplier)
+            .Include(p => p.OrderItems)
+                .ThenInclude(oi => oi.Order)
+                    .ThenInclude(o => o.Customer)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
     /// Recherche un produit par sa référence.
     /// </summary>
     public async Task<Product?> GetByReferenceAsync(string reference, CancellationToken cancellationToken = default)
@@ -80,5 +95,16 @@ public class ProductRepository : BaseRepository<Product, long>, IProductReposito
             .Where(p => p.IsActive)
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Obtient un queryable avec les relations de base chargées.
+    /// </summary>
+    private new IQueryable<Product> GetQueryable()
+    {
+        return _dbSet
+            .AsNoTracking()
+            .Include(p => p.Category)
+            .Include(p => p.Supplier);
     }
 }
