@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MMV.Infrastructure.Migrations
 {
     [DbContext(typeof(OpticDbContext))]
-    [Migration("20260201175452_ProductSchemaRefactoring")]
+    [Migration("20260201181136_ProductSchemaRefactoring")]
     partial class ProductSchemaRefactoring
     {
         /// <inheritdoc />
@@ -62,7 +62,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 17, 54, 52, 597, DateTimeKind.Utc).AddTicks(4373));
+                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 587, DateTimeKind.Utc).AddTicks(8824));
 
                     b.Property<string>("Email")
                         .HasMaxLength(254)
@@ -101,7 +101,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 17, 54, 52, 597, DateTimeKind.Utc).AddTicks(4624));
+                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 587, DateTimeKind.Utc).AddTicks(9332));
 
                     b.HasKey("CustomerId");
 
@@ -249,7 +249,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("OrderDate")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 17, 54, 52, 597, DateTimeKind.Utc).AddTicks(9810));
+                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 588, DateTimeKind.Utc).AddTicks(7296));
 
                     b.Property<string>("OrderNumber")
                         .IsRequired()
@@ -352,7 +352,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 17, 54, 52, 597, DateTimeKind.Utc).AddTicks(8768));
+                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 588, DateTimeKind.Utc).AddTicks(5770));
 
                     b.Property<long>("CustomerId")
                         .HasColumnType("INTEGER");
@@ -551,7 +551,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("SaleDate")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 17, 54, 52, 598, DateTimeKind.Utc).AddTicks(4503));
+                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 589, DateTimeKind.Utc).AddTicks(3658));
 
                     b.Property<string>("SaleNumber")
                         .IsRequired()
@@ -619,7 +619,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 17, 54, 52, 598, DateTimeKind.Utc).AddTicks(9065));
+                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 589, DateTimeKind.Utc).AddTicks(9539));
 
                     b.Property<string>("MovementType")
                         .IsRequired()
@@ -708,7 +708,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 1, 17, 54, 52, 593, DateTimeKind.Utc).AddTicks(9591));
+                        .HasDefaultValue(new DateTime(2026, 2, 1, 18, 11, 36, 583, DateTimeKind.Utc).AddTicks(4563));
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -753,7 +753,7 @@ namespace MMV.Infrastructure.Migrations
                         new
                         {
                             UserId = 1L,
-                            CreatedAt = new DateTime(2026, 2, 1, 17, 54, 52, 598, DateTimeKind.Utc).AddTicks(9963),
+                            CreatedAt = new DateTime(2026, 2, 1, 18, 11, 36, 590, DateTimeKind.Utc).AddTicks(767),
                             FirstName = "Administrateur",
                             IsActive = true,
                             LastName = "Système",

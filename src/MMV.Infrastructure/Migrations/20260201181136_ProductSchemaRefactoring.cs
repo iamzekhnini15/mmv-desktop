@@ -20,7 +20,7 @@ namespace MMV.Infrastructure.Migrations
                 table: "Users",
                 type: "TEXT",
                 nullable: false,
-                defaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 593, DateTimeKind.Utc).AddTicks(9591),
+                defaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 583, DateTimeKind.Utc).AddTicks(4563),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
                 oldDefaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 776, DateTimeKind.Utc).AddTicks(996));
@@ -30,7 +30,7 @@ namespace MMV.Infrastructure.Migrations
                 table: "StockMovements",
                 type: "TEXT",
                 nullable: false,
-                defaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 598, DateTimeKind.Utc).AddTicks(9065),
+                defaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 589, DateTimeKind.Utc).AddTicks(9539),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
                 oldDefaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 778, DateTimeKind.Utc).AddTicks(9689));
@@ -40,7 +40,7 @@ namespace MMV.Infrastructure.Migrations
                 table: "Sales",
                 type: "TEXT",
                 nullable: false,
-                defaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 598, DateTimeKind.Utc).AddTicks(4503),
+                defaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 589, DateTimeKind.Utc).AddTicks(3658),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
                 oldDefaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 778, DateTimeKind.Utc).AddTicks(5348));
@@ -73,7 +73,7 @@ namespace MMV.Infrastructure.Migrations
                 table: "Prescriptions",
                 type: "TEXT",
                 nullable: false,
-                defaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 597, DateTimeKind.Utc).AddTicks(8768),
+                defaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 588, DateTimeKind.Utc).AddTicks(5770),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
                 oldDefaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 777, DateTimeKind.Utc).AddTicks(9831));
@@ -83,7 +83,7 @@ namespace MMV.Infrastructure.Migrations
                 table: "Orders",
                 type: "TEXT",
                 nullable: false,
-                defaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 597, DateTimeKind.Utc).AddTicks(9810),
+                defaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 588, DateTimeKind.Utc).AddTicks(7296),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
                 oldDefaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 778, DateTimeKind.Utc).AddTicks(987));
@@ -93,7 +93,7 @@ namespace MMV.Infrastructure.Migrations
                 table: "Customers",
                 type: "TEXT",
                 nullable: false,
-                defaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 597, DateTimeKind.Utc).AddTicks(4624),
+                defaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 587, DateTimeKind.Utc).AddTicks(9332),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
                 oldDefaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 777, DateTimeKind.Utc).AddTicks(5960));
@@ -103,7 +103,7 @@ namespace MMV.Infrastructure.Migrations
                 table: "Customers",
                 type: "TEXT",
                 nullable: false,
-                defaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 597, DateTimeKind.Utc).AddTicks(4373),
+                defaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 587, DateTimeKind.Utc).AddTicks(8824),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
                 oldDefaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 777, DateTimeKind.Utc).AddTicks(5666));
@@ -242,7 +242,7 @@ namespace MMV.Infrastructure.Migrations
                 keyColumn: "UserId",
                 keyValue: 1L,
                 column: "CreatedAt",
-                value: new DateTime(2026, 2, 1, 17, 54, 52, 598, DateTimeKind.Utc).AddTicks(9963));
+                value: new DateTime(2026, 2, 1, 18, 11, 36, 590, DateTimeKind.Utc).AddTicks(767));
 
             migrationBuilder.CreateIndex(
                 name: "idx_glass_pricing_tier_range",
@@ -304,7 +304,7 @@ namespace MMV.Infrastructure.Migrations
                 defaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 776, DateTimeKind.Utc).AddTicks(996),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
-                oldDefaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 593, DateTimeKind.Utc).AddTicks(9591));
+                oldDefaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 583, DateTimeKind.Utc).AddTicks(4563));
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "CreatedAt",
@@ -314,7 +314,7 @@ namespace MMV.Infrastructure.Migrations
                 defaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 778, DateTimeKind.Utc).AddTicks(9689),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
-                oldDefaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 598, DateTimeKind.Utc).AddTicks(9065));
+                oldDefaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 589, DateTimeKind.Utc).AddTicks(9539));
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "SaleDate",
@@ -324,7 +324,7 @@ namespace MMV.Infrastructure.Migrations
                 defaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 778, DateTimeKind.Utc).AddTicks(5348),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
-                oldDefaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 598, DateTimeKind.Utc).AddTicks(4503));
+                oldDefaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 589, DateTimeKind.Utc).AddTicks(3658));
 
             migrationBuilder.AlterColumn<long>(
                 name: "SupplierId",
@@ -342,7 +342,7 @@ namespace MMV.Infrastructure.Migrations
                 defaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 777, DateTimeKind.Utc).AddTicks(9831),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
-                oldDefaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 597, DateTimeKind.Utc).AddTicks(8768));
+                oldDefaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 588, DateTimeKind.Utc).AddTicks(5770));
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "OrderDate",
@@ -352,7 +352,7 @@ namespace MMV.Infrastructure.Migrations
                 defaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 778, DateTimeKind.Utc).AddTicks(987),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
-                oldDefaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 597, DateTimeKind.Utc).AddTicks(9810));
+                oldDefaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 588, DateTimeKind.Utc).AddTicks(7296));
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "UpdatedAt",
@@ -362,7 +362,7 @@ namespace MMV.Infrastructure.Migrations
                 defaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 777, DateTimeKind.Utc).AddTicks(5960),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
-                oldDefaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 597, DateTimeKind.Utc).AddTicks(4624));
+                oldDefaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 587, DateTimeKind.Utc).AddTicks(9332));
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "CreatedAt",
@@ -372,7 +372,7 @@ namespace MMV.Infrastructure.Migrations
                 defaultValue: new DateTime(2026, 1, 29, 19, 20, 0, 777, DateTimeKind.Utc).AddTicks(5666),
                 oldClrType: typeof(DateTime),
                 oldType: "TEXT",
-                oldDefaultValue: new DateTime(2026, 2, 1, 17, 54, 52, 597, DateTimeKind.Utc).AddTicks(4373));
+                oldDefaultValue: new DateTime(2026, 2, 1, 18, 11, 36, 587, DateTimeKind.Utc).AddTicks(8824));
 
             migrationBuilder.UpdateData(
                 table: "Users",

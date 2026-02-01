@@ -31,7 +31,7 @@ public class Product
     /// <summary>
     /// Catégorie du produit (ENUM).
     /// </summary>
-    public ProductCategoryEnum Category { get; set; } = ProductCategoryEnum.MONTURE;
+    public ProductCategoryEnum Category { get; set; }
 
     /// <summary>
     /// Identifiant de la catégorie du produit (ancienne structure, conservée pour compatibilité).
