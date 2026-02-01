@@ -276,14 +276,14 @@
                         <Grid ColumnDefinitions="*,*">
                             <!-- Catégorie -->
                             <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                <TextBlock Text="Catégorie" Classes="Label"/>
+                                <TextBlock Text="Catégorie *" Classes="Label"/>
                                 <ComboBox ItemsSource="{Binding Categories}"
                                          SelectedItem="{Binding SelectedCategory}"
                                          PlaceholderText="Sélectionner une catégorie"
                                          HorizontalAlignment="Stretch">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding Name}"/>
+                                            <TextBlock Text="{Binding}"/>
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
@@ -291,7 +291,7 @@
 
                             <!-- Fournisseur -->
                             <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                <TextBlock Text="Fournisseur" Classes="Label"/>
+                                <TextBlock Text="Fournisseur *" Classes="Label"/>
                                 <ComboBox ItemsSource="{Binding Suppliers}"
                                          SelectedItem="{Binding SelectedSupplier}"
                                          PlaceholderText="Sélectionner un fournisseur"

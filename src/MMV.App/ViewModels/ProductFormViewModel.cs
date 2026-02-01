@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Domain.Entities;
+using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -15,7 +16,6 @@ namespace MMV.App.ViewModels;
 public class ProductFormViewModel : BaseViewModel
 {
     private readonly IProductRepository _productRepository;
-    private readonly IProductCategoryRepository _categoryRepository;
     private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly Product? _existingProduct;
@@ -26,13 +26,13 @@ public class ProductFormViewModel : BaseViewModel
     private string _description = string.Empty;
     private decimal _purchasePrice;
     private decimal _salePrice;
+    private decimal? _recommendedPrice;
     private int _stockQuantity;
     private int _minStockLevel = 5;
-    private long? _categoryId;
+    private ProductCategoryEnum _selectedCategory;
     private long? _supplierId;
-    private ObservableCollection<ProductCategory> _categories;
+    private ObservableCollection<ProductCategoryEnum> _categories;
     private ObservableCollection<Supplier> _suppliers;
-    private ProductCategory? _selectedCategory;
     private Supplier? _selectedSupplier;
 
     // Messages d'erreur de validation
@@ -131,10 +131,16 @@ public class ProductFormViewModel : BaseViewModel
         }
     }
 
-    public long? CategoryId
+    public ProductCategoryEnum SelectedCategory
     {
-        get => _categoryId;
-        set => SetProperty(ref _categoryId, value);
+        get => _selectedCategory;
+        set => SetProperty(ref _selectedCategory, value);
+    }
+
+    public decimal? RecommendedPrice
+    {
+        get => _recommendedPrice;
+        set => SetProperty(ref _recommendedPrice, value);
     }
 
     public long? SupplierId
@@ -143,7 +149,7 @@ public class ProductFormViewModel : BaseViewModel
         set => SetProperty(ref _supplierId, value);
     }
 
-    public ObservableCollection<ProductCategory> Categories
+    public ObservableCollection<ProductCategoryEnum> Categories
     {
         get => _categories;
         set => SetProperty(ref _categories, value);
@@ -153,16 +159,6 @@ public class ProductFormViewModel : BaseViewModel
     {
         get => _suppliers;
         set => SetProperty(ref _suppliers, value);
-    }
-
-    public ProductCategory? SelectedCategory
-    {
-        get => _selectedCategory;
-        set
-        {
-            if (SetProperty(ref _selectedCategory, value))
-                CategoryId = value?.CategoryId;
-        }
     }
 
     public Supplier? SelectedSupplier
@@ -261,16 +257,14 @@ public class ProductFormViewModel : BaseViewModel
     /// </summary>
     public ProductFormViewModel(
         IProductRepository productRepository,
-        IProductCategoryRepository categoryRepository,
         ISupplierRepository supplierRepository,
         IUnitOfWork unitOfWork)
     {
         _productRepository = productRepository;
-        _categoryRepository = categoryRepository;
         _supplierRepository = supplierRepository;
         _unitOfWork = unitOfWork;
 
-        _categories = new ObservableCollection<ProductCategory>();
+        _categories = new ObservableCollection<ProductCategoryEnum>();
         _suppliers = new ObservableCollection<Supplier>();
 
         Title = "Nouveau produit";
@@ -281,10 +275,9 @@ public class ProductFormViewModel : BaseViewModel
     /// </summary>
     public ProductFormViewModel(
         IProductRepository productRepository,
-        IProductCategoryRepository categoryRepository,
         ISupplierRepository supplierRepository,
         IUnitOfWork unitOfWork,
-        Product product) : this(productRepository, categoryRepository, supplierRepository, unitOfWork)
+        Product product) : this(productRepository, supplierRepository, unitOfWork)
     {
         _existingProduct = product;
         Title = "Modifier produit";
@@ -296,14 +289,15 @@ public class ProductFormViewModel : BaseViewModel
         Description = product.Description ?? string.Empty;
         PurchasePrice = product.PurchasePrice;
         SalePrice = product.SalePrice;
+        RecommendedPrice = product.RecommendedPrice;
         StockQuantity = product.StockQuantity;
         StockAlertThreshold = product.StockAlertThreshold;
-        CategoryId = product.CategoryId;
+        SelectedCategory = product.Category;
         SupplierId = product.SupplierId;
     }
 
     /// <summary>
-    /// Charge les catégories et fournisseurs depuis les repositories.
+    /// Charge les catégories (enum) et fournisseurs depuis les repositories.
     /// Doit être appelée après la construction pour initialiser les données.
     /// </summary>
     public async Task InitializeAsync()
@@ -311,15 +305,15 @@ public class ProductFormViewModel : BaseViewModel
         IsLoading = true;
         try
         {
-            System.Diagnostics.Debug.WriteLine("[ProductFormViewModel] Début chargement catégories...");
-            var categories = await _categoryRepository.GetAllAsync();
-            System.Diagnostics.Debug.WriteLine($"[ProductFormViewModel] {categories.Count} catégories chargées");
+            System.Diagnostics.Debug.WriteLine("[ProductFormViewModel] Chargement des catégories (enum)...");
             
+            // Charger toutes les valeurs de l'enum ProductCategoryEnum
             Categories.Clear();
-            foreach (var category in categories)
+            foreach (ProductCategoryEnum category in Enum.GetValues(typeof(ProductCategoryEnum)))
             {
                 Categories.Add(category);
             }
+            System.Diagnostics.Debug.WriteLine($"[ProductFormViewModel] {Categories.Count} catégories chargées");
 
             System.Diagnostics.Debug.WriteLine("[ProductFormViewModel] Début chargement fournisseurs...");
             var suppliers = await _supplierRepository.GetAllAsync();
@@ -334,11 +328,18 @@ public class ProductFormViewModel : BaseViewModel
             // Sélectionner les éléments correspondants si on est en mode édition
             if (_existingProduct != null)
             {
-                SelectedCategory = Categories.FirstOrDefault(c => c.CategoryId == CategoryId);
                 SelectedSupplier = Suppliers.FirstOrDefault(s => s.SupplierId == SupplierId);
             }
+            else
+            {
+                // Par défaut, sélectionner la première catégorie
+                if (Categories.Count > 0)
+                {
+                    SelectedCategory = Categories[0];
+                }
+            }
             
-            System.Diagnostics.Debug.WriteLine("[ProductFormViewModel] Chargement catégories/fournisseurs terminé");
+            System.Diagnostics.Debug.WriteLine("[ProductFormViewModel] Chargement terminé");
         }
         catch (Exception ex)
         {
@@ -436,10 +437,11 @@ public class ProductFormViewModel : BaseViewModel
                 product.Description = Description;
                 product.PurchasePrice = PurchasePrice;
                 product.SalePrice = SalePrice;
+                product.RecommendedPrice = RecommendedPrice;
                 product.StockQuantity = StockQuantity;
                 product.StockAlertThreshold = StockAlertThreshold;
-                product.CategoryId = CategoryId;
-                product.SupplierId = SupplierId ?? 0; // SupplierId est maintenant obligatoire
+                product.Category = SelectedCategory;
+                product.SupplierId = SupplierId ?? 0;
 
                 await _productRepository.UpdateAsync(product);
             }
@@ -453,10 +455,11 @@ public class ProductFormViewModel : BaseViewModel
                     Description = Description,
                     PurchasePrice = PurchasePrice,
                     SalePrice = SalePrice,
+                    RecommendedPrice = RecommendedPrice,
                     StockQuantity = StockQuantity,
                     StockAlertThreshold = StockAlertThreshold,
-                    CategoryId = CategoryId,
-                    SupplierId = SupplierId ?? 0 // SupplierId est maintenant obligatoire
+                    Category = SelectedCategory,
+                    SupplierId = SupplierId ?? 0
                 };
 
                 await _productRepository.CreateAsync(product);

@@ -22,7 +22,6 @@ public class ProductsViewModel : BaseViewModel
     private string _errorMessage = string.Empty;
     private ICommand? _viewDetailCommand;
     private readonly IProductRepository _productRepository;
-    private readonly IProductCategoryRepository _categoryRepository;
     private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -138,17 +137,15 @@ public class ProductsViewModel : BaseViewModel
     /// </summary>
     public ProductsViewModel(
         IProductRepository productRepository,
-        IProductCategoryRepository categoryRepository,
         ISupplierRepository supplierRepository,
         IUnitOfWork unitOfWork)
     {
         _productRepository = productRepository;
-        _categoryRepository = categoryRepository;
         _supplierRepository = supplierRepository;
         _unitOfWork = unitOfWork;
 
         // Initialiser le ViewModel de la liste
-        _productsListViewModel = new ProductsListViewModel(productRepository, categoryRepository, unitOfWork);
+        _productsListViewModel = new ProductsListViewModel(productRepository, unitOfWork);
 
         // S'abonner aux événements de la liste
         _productsListViewModel.CreateProductRequested += OnCreateProductRequested;
@@ -166,7 +163,7 @@ public class ProductsViewModel : BaseViewModel
         {
             IsCreatingNew = true;
             ErrorMessage = string.Empty;
-            ProductFormViewModel = new ProductFormViewModel(_productRepository, _categoryRepository, _supplierRepository, _unitOfWork);
+            ProductFormViewModel = new ProductFormViewModel(_productRepository, _supplierRepository, _unitOfWork);
             ProductFormViewModel.ProductSaved += OnProductSaved;
             ProductFormViewModel.Cancelled += OnFormCancelled;
             
@@ -193,7 +190,7 @@ public class ProductsViewModel : BaseViewModel
         {
             IsCreatingNew = false;
             ErrorMessage = string.Empty;
-            ProductFormViewModel = new ProductFormViewModel(_productRepository, _categoryRepository, _supplierRepository, _unitOfWork, product);
+            ProductFormViewModel = new ProductFormViewModel(_productRepository, _supplierRepository, _unitOfWork, product);
             ProductFormViewModel.ProductSaved += OnProductSaved;
             ProductFormViewModel.Cancelled += OnFormCancelled;
             

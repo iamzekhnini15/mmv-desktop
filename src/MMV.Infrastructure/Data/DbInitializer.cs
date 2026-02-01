@@ -258,6 +258,7 @@ public static class DbInitializer
                 SalePrice = 189.99m,
                 StockQuantity = 15,
                 StockAlertThreshold = 5,
+                Category = ProductCategoryEnum.MONTURE,
                 CategoryId = categories[0].CategoryId,  // Montures
                 SupplierId = suppliers[0].SupplierId,  // Vision Plus
                 IsActive = true,
@@ -272,6 +273,7 @@ public static class DbInitializer
                 SalePrice = 299.99m,
                 StockQuantity = 32,
                 StockAlertThreshold = 10,
+                Category = ProductCategoryEnum.VERRE,
                 CategoryId = categories[1].CategoryId,  // Verres
                 SupplierId = suppliers[1].SupplierId,  // Optics International
                 IsActive = true,
@@ -286,7 +288,8 @@ public static class DbInitializer
                 SalePrice = 45.99m,
                 StockQuantity = 120,
                 StockAlertThreshold = 30,
-                CategoryId = categories[2].CategoryId,  // Accessoires
+                Category = ProductCategoryEnum.LENTILLE,
+                CategoryId = categories[2].CategoryId,  // Access
                 SupplierId = suppliers[2].SupplierId,  // Luxe Frames
                 IsActive = true,
                 EntryDate = DateTime.UtcNow.AddMonths(-4)
