@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Domain.Entities;
+using MMV.Domain.Enums;
 
 namespace MMV.App.ViewModels;
 
@@ -33,9 +34,30 @@ public class ProductDetailViewModel : BaseViewModel
         set => SetProperty(ref _orderHistory, value);
     }
 
+    /// <summary>
+    /// Indicates if the current product is a glass/verre.
+    /// </summary>
+    public bool IsGlassCategory => Product?.Category == ProductCategoryEnum.VERRE;
+
+    /// <summary>
+    /// Indicates if the current product is a lens/lentille.
+    /// </summary>
+    public bool IsLensCategory => Product?.Category == ProductCategoryEnum.LENTILLE;
+
+    /// <summary>
+    /// Indicates if the current product is an accessory (monture, clips, plastic, solaire).
+    /// </summary>
+    public bool IsAccessoryCategory => Product?.Category == ProductCategoryEnum.MONTURE ||
+                                       Product?.Category == ProductCategoryEnum.CLIPS ||
+                                       Product?.Category == ProductCategoryEnum.PLASTIC ||
+                                       Product?.Category == ProductCategoryEnum.SOLAIRE;
+
+    private RelayCommand? _editCommand;
+    private RelayCommand? _deleteCommand;
+
     public ICommand BackCommand { get; }
-    public ICommand EditCommand { get; }
-    public ICommand DeleteCommand { get; }
+    public ICommand EditCommand => _editCommand ??= new RelayCommand(ExecuteEdit, CanEditOrDelete);
+    public ICommand DeleteCommand => _deleteCommand ??= new RelayCommand(ExecuteDelete, CanEditOrDelete);
 
     public event EventHandler? BackRequested;
     public event EventHandler<Product>? EditRequested;
@@ -44,9 +66,6 @@ public class ProductDetailViewModel : BaseViewModel
     public ProductDetailViewModel()
     {
         BackCommand = new RelayCommand(ExecuteBack);
-        EditCommand = new RelayCommand(ExecuteEdit, CanEditOrDelete);
-        DeleteCommand = new RelayCommand(ExecuteDelete, CanEditOrDelete);
-
         Title = "Fiche Produit";
     }
 
@@ -55,6 +74,13 @@ public class ProductDetailViewModel : BaseViewModel
         Product = product;
         Title = $"Fiche - {product.Name}";
         LoadOrderHistory();
+        OnPropertyChanged(nameof(IsGlassCategory));
+        OnPropertyChanged(nameof(IsLensCategory));
+        OnPropertyChanged(nameof(IsAccessoryCategory));
+        
+        // Notifier les commandes que le produit a changé
+        _editCommand?.RaiseCanExecuteChanged();
+        _deleteCommand?.RaiseCanExecuteChanged();
     }
 
     private void LoadOrderHistory()

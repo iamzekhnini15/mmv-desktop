@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
@@ -182,6 +183,7 @@ public class CustomerFormViewModel : BaseViewModel
 
     public RelayCommand SaveCommand { get; }
     public RelayCommand CancelCommand { get; }
+    public ICommand BackCommand => CancelCommand; // Alias pour le BackButton
 
     #endregion
 

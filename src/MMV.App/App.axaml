@@ -10,6 +10,9 @@
     <Application.Resources>
         <local:ViewLocator x:Key="ViewLocator"/>
         <converters:IsZeroConverter x:Key="IsZeroConverter"/>
+        <converters:StringToColorConverter x:Key="StringToColorConverter"/>
+        <converters:StringToBoolConverter x:Key="StringToBoolConverter"/>
+        <converters:CategoryToDetailConverter x:Key="CategoryToDetailConverter"/>
         
         <!-- DataTemplates pour les formulaires de fiche client -->
         <DataTemplate x:Key="SaleFormTemplate" DataType="vm:SaleFormViewModel">

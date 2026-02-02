@@ -36,4 +36,9 @@ public interface IProductRepository : IGenericRepository<Product, long>
     /// Récupère les produits actifs uniquement.
     /// </summary>
     Task<IList<Product>> GetActiveProductsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Récupère un produit par ID avec tous ses détails (GlassDetail, LensDetail, AccessoryDetail).
+    /// </summary>
+    Task<Product?> GetByIdWithDetailsAsync(long id, CancellationToken cancellationToken = default);
 }

@@ -182,6 +182,7 @@ public class ProductsListViewModel : BaseViewModel
     // Événements
     public event EventHandler? CreateProductRequested;
     public event EventHandler<Product>? EditProductRequested;
+    public event EventHandler<Product>? DeleteProductRequested;
 
     // Commandes
     public ICommand CreateCommand => _createCommand ??= new RelayCommand(ExecuteCreate);
@@ -341,15 +342,30 @@ public class ProductsListViewModel : BaseViewModel
 
     private bool CanDelete() => SelectedProduct != null;
 
-    private async void ExecuteDelete()
+    private void ExecuteDelete()
+    {
+        if (SelectedProduct == null) return;
+        
+        // Lever l'événement pour demander confirmation dans ProductsViewModel
+        DeleteProductRequested?.Invoke(this, SelectedProduct);
+    }
+
+    /// <summary>
+    /// Méthode appelée par ProductsViewModel après confirmation de l'utilisateur.
+    /// </summary>
+    public async Task ConfirmAndDeleteProductAsync()
     {
         if (SelectedProduct == null) return;
 
         IsLoading = true;
+        ErrorMessage = string.Empty;
+        
         try
         {
             await _productRepository.DeleteAsync(SelectedProduct.ProductId);
             await _unitOfWork.SaveChangesAsync();
+            
+            // Recharger la liste
             await LoadProductsAsync();
         }
         catch (Exception ex)

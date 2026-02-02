@@ -1,5 +1,6 @@
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.App.Services;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
 
@@ -24,6 +25,7 @@ public class ProductsViewModel : BaseViewModel
     private readonly IProductRepository _productRepository;
     private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IDialogService _dialogService;
 
     /// <summary>
     /// ViewModel pour la liste des produits.
@@ -138,11 +140,13 @@ public class ProductsViewModel : BaseViewModel
     public ProductsViewModel(
         IProductRepository productRepository,
         ISupplierRepository supplierRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IDialogService dialogService)
     {
         _productRepository = productRepository;
         _supplierRepository = supplierRepository;
         _unitOfWork = unitOfWork;
+        _dialogService = dialogService;
 
         // Initialiser le ViewModel de la liste
         _productsListViewModel = new ProductsListViewModel(productRepository, unitOfWork);
@@ -150,6 +154,7 @@ public class ProductsViewModel : BaseViewModel
         // S'abonner aux événements de la liste
         _productsListViewModel.CreateProductRequested += OnCreateProductRequested;
         _productsListViewModel.EditProductRequested += OnEditProductRequested;
+        _productsListViewModel.DeleteProductRequested += OnDeleteProductRequested;
 
         Title = "📦 Gestion des Produits & Stock";
     }
@@ -265,6 +270,48 @@ public class ProductsViewModel : BaseViewModel
             ProductsListViewModel.DeleteCommand.Execute(null);
         }
         CloseDetail();
+    }
+
+    /// <summary>
+    /// Gère la demande de suppression avec confirmation.
+    /// </summary>
+    private async void OnDeleteProductRequested(object? sender, Product product)
+    {
+        if (product == null) return;
+
+        // Créer le message de confirmation
+        var message = $"Êtes-vous sûr de vouloir supprimer le produit :\n\n" +
+                     $"📦 {product.Reference} - {product.Name}\n" +
+                     $"💰 Prix: {product.SalePrice:C2}\n" +
+                     $"📊 Stock: {product.StockQuantity}\n\n" +
+                     $"⚠️ Cette action est irréversible !";
+
+        try
+        {
+            // Demander confirmation
+            var confirmed = await _dialogService.ShowConfirmationAsync(
+                "Confirmation de suppression",
+                message);
+
+            if (confirmed)
+            {
+                await ProductsListViewModel.ConfirmAndDeleteProductAsync();
+                
+                // Fermer la page de détails si elle est ouverte
+                if (IsShowingDetail)
+                {
+                    CloseDetail();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Erreur lors de la suppression : {ex.Message}";
+            await _dialogService.ShowErrorAsync(
+                "Erreur de suppression",
+                $"Impossible de supprimer le produit :\n{ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ProductsViewModel] Erreur suppression : {ex}");
+        }
     }
 
     public void CloseDetail()

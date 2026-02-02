@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:controls="using:MMV.App.Controls"
              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="800"
              x:Class="MMV.App.Views.Products.ProductFormView"
              x:DataType="vm:ProductFormViewModel"
@@ -75,17 +76,10 @@
         <!-- HEADER -->
         <Border Grid.Row="0" Padding="32,24,32,10">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                <Button Grid.Column="0" 
-                        Content="← Retour" 
-                        Command="{Binding CancelCommand}" 
-                        Background="Transparent" 
-                        Foreground="#E0E0E0" 
-                        BorderThickness="0" 
-                        Cursor="Hand"
-                        FontSize="14"
-                        Padding="0"
-                        VerticalAlignment="Center"
-                        Margin="0,0,32,0"/>
+                <controls:BackButton Grid.Column="0"
+                            Command="{Binding BackCommand}"
+                            ButtonText="← Retour"
+                            Margin="0,0,32,0"/>
                 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                     <TextBlock Text="{Binding FormTitle}" 
@@ -121,376 +115,413 @@
 
         <!-- FORMULAIRE SCROLLABLE -->
         <ScrollViewer Grid.Row="1" Padding="32,0,32,0">
-            <StackPanel Spacing="0" MaxWidth="800">
+            <StackPanel Spacing="16">
                 
-                <!-- Section 1: Informations de base -->
-                <Border Classes="Card">
-                    <StackPanel Spacing="16">
-                        <TextBlock Text="📋 Informations de base" 
-                                  FontSize="15" 
-                                  FontWeight="600" 
-                                  Foreground="#FFFFFF" 
-                                  Margin="0,0,0,8"/>
+                <!-- PREMIÈRE LIGNE: Sections 1, 2, 3 -->
+                <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto">
+                    
+                    <!-- Section 1: Informations de base -->
+                    <Border Grid.Column="0" Classes="Card" Margin="0,0,8,0">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="📋 Informations de base" 
+                                      FontSize="15" 
+                                      FontWeight="600" 
+                                      Foreground="#FFFFFF" 
+                                      Margin="0,0,0,8"/>
+                            
+                            <!-- Référence, Nom, Description -->
+                            <StackPanel Spacing="12">
+                                <!-- Référence -->
+                                <StackPanel>
+                                    <TextBlock Text="Référence *" Classes="Label"/>
+                                    <TextBox Text="{Binding Reference}" 
+                                            Watermark="Ex: MON-001"
+                                            BorderBrush="{Binding ReferenceError, Converter={StaticResource StringToColorConverter}}"/>
+                                    <TextBlock Text="{Binding ReferenceError}" 
+                                              Classes="ErrorText"
+                                              IsVisible="{Binding ReferenceError, Converter={StaticResource StringToBoolConverter}}"/>
+                                </StackPanel>
+
+                                <!-- Nom -->
+                                <StackPanel>
+                                    <TextBlock Text="Nom du produit *" Classes="Label"/>
+                                    <TextBox Text="{Binding Name}" 
+                                            Watermark="Ex: Monture Ray-Ban"
+                                            BorderBrush="{Binding NameError, Converter={StaticResource StringToColorConverter}}"/>
+                                    <TextBlock Text="{Binding NameError}" 
+                                              Classes="ErrorText"
+                                              IsVisible="{Binding NameError, Converter={StaticResource StringToBoolConverter}}"/>
+                                </StackPanel>
+
+                                <!-- Description -->
+                                <StackPanel>
+                                    <TextBlock Text="Description" Classes="Label"/>
+                                    <TextBox Text="{Binding Description}" 
+                                            Watermark="Décrire le produit..."
+                                            Height="60"
+                                            AcceptsReturn="True"
+                                            TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Section 2: Prix et marges -->
+                    <Border Grid.Column="1" Classes="Card" Margin="8,0">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="💰 Prix et marges" 
+                                      FontSize="15" 
+                                      FontWeight="600" 
+                                      Foreground="#FFFFFF" 
+                                      Margin="0,0,0,8"/>
+                            
+                            <StackPanel Spacing="12">
+                                <!-- Prix d'achat -->
+                                <StackPanel>
+                                    <TextBlock Text="Prix d'achat (€) *" Classes="Label"/>
+                                    <TextBox Text="{Binding PurchasePrice}" 
+                                            Watermark="0.00"
+                                            BorderBrush="{Binding PurchasePriceError, Converter={StaticResource StringToColorConverter}}"/>
+                                    <TextBlock Text="{Binding PurchasePriceError}" 
+                                              Classes="ErrorText"
+                                              IsVisible="{Binding PurchasePriceError, Converter={StaticResource StringToBoolConverter}}"/>
+                                </StackPanel>
+
+                                <!-- Prix de vente -->
+                                <StackPanel>
+                                    <TextBlock Text="Prix de vente (€) *" Classes="Label"/>
+                                    <TextBox Text="{Binding SalePrice}" 
+                                            Watermark="0.00"
+                                            BorderBrush="{Binding SalePriceError, Converter={StaticResource StringToColorConverter}}"/>
+                                    <TextBlock Text="{Binding SalePriceError}" 
+                                              Classes="ErrorText"
+                                              IsVisible="{Binding SalePriceError, Converter={StaticResource StringToBoolConverter}}"/>
+                                </StackPanel>
+
+                                <!-- Marge calculée -->
+                                <StackPanel>
+                                    <TextBlock Text="Marge" Classes="Label"/>
+                                    <Border Background="#2ECC71" 
+                                           CornerRadius="6" 
+                                           Padding="12,8"
+                                           VerticalAlignment="Stretch">
+                                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Margin, StringFormat='{}{0:C2}'}" 
+                                                      FontSize="14"
+                                                      FontWeight="600"
+                                                      Foreground="White"
+                                                      HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{Binding MarginPercentage}" 
+                                                      FontSize="11"
+                                                      Foreground="White"
+                                                      HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Section 3: Stock -->
+                    <Border Grid.Column="2" Classes="Card" Margin="8,0,0,0">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="📦 Gestion du stock" 
+                                      FontSize="15" 
+                                      FontWeight="600" 
+                                      Foreground="#FFFFFF" 
+                                      Margin="0,0,0,8"/>
+                            
+                            <StackPanel Spacing="12">
+                                <!-- Quantité en stock -->
+                                <StackPanel>
+                                    <TextBlock Text="Quantité en stock *" Classes="Label"/>
+                                    <TextBox Text="{Binding StockQuantity}" 
+                                            Watermark="0"
+                                            BorderBrush="{Binding StockQuantityError, Converter={StaticResource StringToColorConverter}}"/>
+                                    <TextBlock Text="{Binding StockQuantityError}" 
+                                              Classes="ErrorText"
+                                              IsVisible="{Binding StockQuantityError, Converter={StaticResource StringToBoolConverter}}"/>
+                                </StackPanel>
+
+                                <!-- Seuil minimum -->
+                                <StackPanel>
+                                    <TextBlock Text="Seuil de stock minimum *" Classes="Label"/>
+                                    <TextBox Text="{Binding StockAlertThreshold}" 
+                                            Watermark="5"
+                                            BorderBrush="{Binding StockAlertThresholdError, Converter={StaticResource StringToColorConverter}}"/>
+                                    <TextBlock Text="{Binding StockAlertThresholdError}" 
+                                              Classes="ErrorText"
+                                              IsVisible="{Binding StockAlertThresholdError, Converter={StaticResource StringToBoolConverter}}"/>
+                                </StackPanel>
+
+                                <TextBlock Text="💡 Une alerte sera affichée lorsque le stock passe en dessous du seuil minimum" 
+                                          FontSize="11" 
+                                          Foreground="#858585"
+                                          TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                </Grid>
+
+                <!-- DEUXIÈME LIGNE: Section 4 + Détails -->
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto">
+                    
+                    <!-- Section 4: Catégorie et fournisseur -->
+                    <Border Grid.Column="0" Classes="Card" Margin="0,0,8,0">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="🏷️ Classification" 
+                                      FontSize="15" 
+                                      FontWeight="600" 
+                                      Foreground="#FFFFFF" 
+                                      Margin="0,0,0,8"/>
+                            
+                            <StackPanel Spacing="12">
+                                <!-- Catégorie -->
+                                <StackPanel>
+                                    <TextBlock Text="Catégorie *" Classes="Label"/>
+                                    <ComboBox ItemsSource="{Binding Categories}"
+                                             SelectedItem="{Binding SelectedCategory}"
+                                             PlaceholderText="Sélectionner une catégorie"
+                                             HorizontalAlignment="Stretch">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </StackPanel>
+
+                                <!-- Fournisseur -->
+                                <StackPanel>
+                                    <TextBlock Text="Fournisseur *" Classes="Label"/>
+                                    <ComboBox ItemsSource="{Binding Suppliers}"
+                                             SelectedItem="{Binding SelectedSupplier}"
+                                             PlaceholderText="Sélectionner un fournisseur"
+                                             HorizontalAlignment="Stretch">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Name}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Détails spécifiques (Verre / Lentille / Accessoire) -->
+                    <StackPanel Grid.Column="1" Spacing="16" Margin="8,0,0,0">
                         
-                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
-                            <!-- Référence -->
-                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,0">
-                                <TextBlock Text="Référence *" Classes="Label"/>
-                                <TextBox Text="{Binding Reference}" 
-                                        Watermark="Ex: MON-001"
-                                        BorderBrush="{Binding ReferenceError, Converter={StaticResource StringToColorConverter}}"/>
-                                <TextBlock Text="{Binding ReferenceError}" 
-                                          Classes="ErrorText"
-                                          IsVisible="{Binding ReferenceError, Converter={StaticResource StringToBoolConverter}}"/>
-                            </StackPanel>
-
-                            <!-- Nom -->
-                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,0">
-                                <TextBlock Text="Nom du produit *" Classes="Label"/>
-                                <TextBox Text="{Binding Name}" 
-                                        Watermark="Ex: Monture Ray-Ban Aviator"
-                                        BorderBrush="{Binding NameError, Converter={StaticResource StringToColorConverter}}"/>
-                                <TextBlock Text="{Binding NameError}" 
-                                          Classes="ErrorText"
-                                          IsVisible="{Binding NameError, Converter={StaticResource StringToBoolConverter}}"/>
-                            </StackPanel>
-
-                            <!-- Description -->
-                            <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,16,0,0">
-                                <TextBlock Text="Description" Classes="Label"/>
-                                <TextBox Text="{Binding Description}" 
-                                        Watermark="Description détaillée du produit..."
-                                        Height="80"
-                                        AcceptsReturn="True"
-                                        TextWrapping="Wrap"/>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <!-- Section 2: Prix et marges -->
-                <Border Classes="Card">
-                    <StackPanel Spacing="16">
-                        <TextBlock Text="💰 Prix et marges" 
-                                  FontSize="15" 
-                                  FontWeight="600" 
-                                  Foreground="#FFFFFF" 
-                                  Margin="0,0,0,8"/>
-                        
-                        <Grid ColumnDefinitions="*,*,Auto" RowDefinitions="Auto,Auto">
-                            <!-- Prix d'achat -->
-                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,0">
-                                <TextBlock Text="Prix d'achat (€) *" Classes="Label"/>
-                                <TextBox Text="{Binding PurchasePrice}" 
-                                        Watermark="0.00"
-                                        BorderBrush="{Binding PurchasePriceError, Converter={StaticResource StringToColorConverter}}"/>
-                                <TextBlock Text="{Binding PurchasePriceError}" 
-                                          Classes="ErrorText"
-                                          IsVisible="{Binding PurchasePriceError, Converter={StaticResource StringToBoolConverter}}"/>
-                            </StackPanel>
-
-                            <!-- Prix de vente -->
-                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,8,0">
-                                <TextBlock Text="Prix de vente (€) *" Classes="Label"/>
-                                <TextBox Text="{Binding SalePrice}" 
-                                        Watermark="0.00"
-                                        BorderBrush="{Binding SalePriceError, Converter={StaticResource StringToColorConverter}}"/>
-                                <TextBlock Text="{Binding SalePriceError}" 
-                                          Classes="ErrorText"
-                                          IsVisible="{Binding SalePriceError, Converter={StaticResource StringToBoolConverter}}"/>
-                            </StackPanel>
-
-                            <!-- Marge calculée -->
-                            <StackPanel Grid.Row="0" Grid.Column="2" Margin="8,0,0,0">
-                                <TextBlock Text="Marge" Classes="Label"/>
-                                <Border Background="#2ECC71" 
-                                       CornerRadius="6" 
-                                       Padding="12,8"
-                                       VerticalAlignment="Center">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock Text="{Binding Margin, StringFormat='{}{0:C2}'}" 
-                                                  FontSize="14"
-                                                  FontWeight="600"
-                                                  Foreground="White"
-                                                  HorizontalAlignment="Center"/>
-                                        <TextBlock Text="{Binding MarginPercentage}" 
-                                                  FontSize="11"
-                                                  Foreground="White"
-                                                  HorizontalAlignment="Center"/>
+                        <!-- Section 5: Détails spécifiques - VERRE -->
+                        <Border Classes="Card" IsVisible="{Binding IsGlassCategory}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="👓 Détails du verre" 
+                                          FontSize="15" 
+                                          FontWeight="600" 
+                                          Foreground="#FFFFFF" 
+                                          Margin="0,0,0,4"/>
+                                
+                                <!-- Première ligne: Matière, Type, Diamètre -->
+                                <Grid ColumnDefinitions="*,*,*">
+                                    <!-- Matière -->
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Matière" Classes="Label"/>
+                                        <ComboBox SelectedItem="{Binding GlassMaterial}"
+                                                 PlaceholderText="Sélectionner"
+                                                 HorizontalAlignment="Stretch">
+                                            <ComboBox.Items>
+                                                <x:String>MINERAL</x:String>
+                                                <x:String>ORGANIQUE</x:String>
+                                                <x:String>POLYCARBONATE</x:String>
+                                                <x:String>TRIVEX</x:String>
+                                            </ComboBox.Items>
+                                        </ComboBox>
                                     </StackPanel>
-                                </Border>
+
+                                    <!-- Type de verre -->
+                                    <StackPanel Grid.Column="1" Margin="8,0">
+                                        <TextBlock Text="Type de verre" Classes="Label"/>
+                                        <ComboBox SelectedItem="{Binding GlassType}"
+                                                 PlaceholderText="Sélectionner"
+                                                 HorizontalAlignment="Stretch">
+                                            <ComboBox.Items>
+                                                <x:String>SF</x:String>
+                                                <x:String>DF</x:String>
+                                                <x:String>MF</x:String>
+                                            </ComboBox.Items>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- Diamètre -->
+                                    <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                                        <TextBlock Text="Diamètre" Classes="Label"/>
+                                        <TextBox Text="{Binding GlassDiameter}" 
+                                                Watermark="65/70"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Deuxième ligne: Indice, Puissance Min, Puissance Max -->
+                                <Grid ColumnDefinitions="*,*,*">
+                                    <!-- Indice -->
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Indice de réfraction" Classes="Label"/>
+                                        <TextBox Text="{Binding GlassIndex}" 
+                                                Watermark="1.50"/>
+                                    </StackPanel>
+
+                                    <!-- Puissance Min -->
+                                    <StackPanel Grid.Column="1" Margin="8,0">
+                                        <TextBlock Text="Puissance min" Classes="Label"/>
+                                        <TextBox Text="{Binding PowerLimitMin}" 
+                                                Watermark="-6.00"/>
+                                    </StackPanel>
+
+                                    <!-- Puissance Max -->
+                                    <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                                        <TextBlock Text="Puissance max" Classes="Label"/>
+                                        <TextBox Text="{Binding PowerLimitMax}" 
+                                                Watermark="+6.00"/>
+                                    </StackPanel>
+                                </Grid>
                             </StackPanel>
-                        </Grid>
+                        </Border>
+
+                        <!-- Section 6: Détails spécifiques - LENTILLE -->
+                        <Border Classes="Card" IsVisible="{Binding IsLensCategory}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="👁️ Détails de la lentille" 
+                                          FontSize="15" 
+                                          FontWeight="600" 
+                                          Foreground="#FFFFFF" 
+                                          Margin="0,0,0,4"/>
+                                
+                                <!-- Première ligne: Marque, Modèle, Matière -->
+                                <Grid ColumnDefinitions="*,*,*">
+                                    <!-- Marque -->
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Marque" Classes="Label"/>
+                                        <TextBox Text="{Binding LensBrand}" 
+                                                Watermark="Acuvue"/>
+                                    </StackPanel>
+
+                                    <!-- Modèle -->
+                                    <StackPanel Grid.Column="1" Margin="8,0">
+                                        <TextBlock Text="Modèle" Classes="Label"/>
+                                        <TextBox Text="{Binding LensModel}" 
+                                                Watermark="Oasys"/>
+                                    </StackPanel>
+
+                                    <!-- Matière -->
+                                    <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                                        <TextBlock Text="Matière" Classes="Label"/>
+                                        <ComboBox SelectedItem="{Binding LensMaterial}"
+                                                 PlaceholderText="Sélectionner"
+                                                 HorizontalAlignment="Stretch">
+                                            <ComboBox.Items>
+                                                <x:String>SOUPLE</x:String>
+                                                <x:String>DURE</x:String>
+                                            </ComboBox.Items>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Deuxième ligne: Type, Diamètre, Courbure -->
+                                <Grid ColumnDefinitions="*,*,*">
+                                    <!-- Type -->
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Type de lentille" Classes="Label"/>
+                                        <ComboBox SelectedItem="{Binding LensType}"
+                                                 PlaceholderText="Sélectionner"
+                                                 HorizontalAlignment="Stretch">
+                                            <ComboBox.Items>
+                                                <x:String>UNIFOCAL</x:String>
+                                                <x:String>MULTIFOCAL</x:String>
+                                                <x:String>TORIQUE</x:String>
+                                            </ComboBox.Items>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- Diamètre -->
+                                    <StackPanel Grid.Column="1" Margin="8,0">
+                                        <TextBlock Text="Diamètre (mm)" Classes="Label"/>
+                                        <TextBox Text="{Binding LensDiameter}" 
+                                                Watermark="14.0"/>
+                                    </StackPanel>
+
+                                    <!-- Courbure -->
+                                    <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                                        <TextBlock Text="Courbure de base" Classes="Label"/>
+                                        <TextBox Text="{Binding LensBaseCurve}" 
+                                                Watermark="8.4"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Troisième ligne: Durée, Colorée -->
+                                <Grid ColumnDefinitions="*,*,*">
+                                    <!-- Durée -->
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Durée d'utilisation" Classes="Label"/>
+                                        <ComboBox SelectedItem="{Binding LensDuration}"
+                                                 PlaceholderText="Sélectionner"
+                                                 HorizontalAlignment="Stretch">
+                                            <ComboBox.Items>
+                                                <x:String>JOURNALIERE</x:String>
+                                                <x:String>MENSUELLE</x:String>
+                                                <x:String>TRIMESTRIELLE</x:String>
+                                                <x:String>ANNUELLE</x:String>
+                                            </ComboBox.Items>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- Colorée -->
+                                    <StackPanel Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
+                                        <CheckBox Content="Lentille colorée" 
+                                                 IsChecked="{Binding LensIsColored}"
+                                                 Foreground="#E0E0E0"
+                                                 Margin="0,18,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Section 7: Détails spécifiques - MONTURE/ACCESSOIRE -->
+                        <Border Classes="Card" IsVisible="{Binding IsAccessoryCategory}">
+                            <StackPanel Spacing="16">
+                                <TextBlock Text="🔧 Détails de l'accessoire" 
+                                          FontSize="15" 
+                                          FontWeight="600" 
+                                          Foreground="#FFFFFF" 
+                                          Margin="0,0,0,8"/>
+                                
+                                <Grid ColumnDefinitions="*,*,*">
+                                    <!-- Couleur -->
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Couleur" Classes="Label"/>
+                                        <TextBox Text="{Binding AccessoryColor}" 
+                                                Watermark="Ex: Noir"/>
+                                    </StackPanel>
+
+                                    <!-- Taille -->
+                                    <StackPanel Grid.Column="1" Margin="8,0">
+                                        <TextBlock Text="Taille/Calibre" Classes="Label"/>
+                                        <TextBox Text="{Binding AccessorySize}" 
+                                                Watermark="Ex: 52-18"/>
+                                    </StackPanel>
+
+                                    <!-- Matière -->
+                                    <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                                        <TextBlock Text="Matière" Classes="Label"/>
+                                        <TextBox Text="{Binding AccessoryMaterial}" 
+                                                Watermark="Ex: Métal"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
                     </StackPanel>
-                </Border>
 
-                <!-- Section 3: Stock -->
-                <Border Classes="Card">
-                    <StackPanel Spacing="16">
-                        <TextBlock Text="📦 Gestion du stock" 
-                                  FontSize="15" 
-                                  FontWeight="600" 
-                                  Foreground="#FFFFFF" 
-                                  Margin="0,0,0,8"/>
-                        
-                        <Grid ColumnDefinitions="*,*">
-                            <!-- Quantité en stock -->
-                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                <TextBlock Text="Quantité en stock *" Classes="Label"/>
-                                <TextBox Text="{Binding StockQuantity}" 
-                                        Watermark="0"
-                                        BorderBrush="{Binding StockQuantityError, Converter={StaticResource StringToColorConverter}}"/>
-                                <TextBlock Text="{Binding StockQuantityError}" 
-                                          Classes="ErrorText"
-                                          IsVisible="{Binding StockQuantityError, Converter={StaticResource StringToBoolConverter}}"/>
-                            </StackPanel>
-
-                            <!-- Seuil minimum -->
-                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                <TextBlock Text="Seuil de stock minimum *" Classes="Label"/>
-                                <TextBox Text="{Binding StockAlertThreshold}" 
-                                        Watermark="5"
-                                        BorderBrush="{Binding StockAlertThresholdError, Converter={StaticResource StringToColorConverter}}"/>
-                                <TextBlock Text="{Binding StockAlertThresholdError}" 
-                                          Classes="ErrorText"
-                                          IsVisible="{Binding StockAlertThresholdError, Converter={StaticResource StringToBoolConverter}}"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <TextBlock Text="💡 Une alerte sera affichée lorsque le stock passe en dessous du seuil minimum" 
-                                  FontSize="11" 
-                                  Foreground="#858585"
-                                  TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- Section 4: Catégorie et fournisseur -->
-                <Border Classes="Card">
-                    <StackPanel Spacing="16">
-                        <TextBlock Text="🏷️ Classification" 
-                                  FontSize="15" 
-                                  FontWeight="600" 
-                                  Foreground="#FFFFFF" 
-                                  Margin="0,0,0,8"/>
-                        
-                        <Grid ColumnDefinitions="*,*">
-                            <!-- Catégorie -->
-                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                <TextBlock Text="Catégorie *" Classes="Label"/>
-                                <ComboBox ItemsSource="{Binding Categories}"
-                                         SelectedItem="{Binding SelectedCategory}"
-                                         PlaceholderText="Sélectionner une catégorie"
-                                         HorizontalAlignment="Stretch">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding}"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-                            </StackPanel>
-
-                            <!-- Fournisseur -->
-                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                <TextBlock Text="Fournisseur *" Classes="Label"/>
-                                <ComboBox ItemsSource="{Binding Suppliers}"
-                                         SelectedItem="{Binding SelectedSupplier}"
-                                         PlaceholderText="Sélectionner un fournisseur"
-                                         HorizontalAlignment="Stretch">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding Name}"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <!-- Section 5: Détails spécifiques - VERRE -->
-                <Border Classes="Card" IsVisible="{Binding IsGlassCategory}">
-                    <StackPanel Spacing="16">
-                        <TextBlock Text="👓 Détails du verre" 
-                                  FontSize="15" 
-                                  FontWeight="600" 
-                                  Foreground="#FFFFFF" 
-                                  Margin="0,0,0,8"/>
-                        
-                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
-                            <!-- Matière -->
-                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,0">
-                                <TextBlock Text="Matière" Classes="Label"/>
-                                <ComboBox SelectedItem="{Binding GlassMaterial}"
-                                         PlaceholderText="Sélectionner"
-                                         HorizontalAlignment="Stretch">
-                                    <ComboBoxItem Content="MINERAL"/>
-                                    <ComboBoxItem Content="ORGANIQUE"/>
-                                    <ComboBoxItem Content="POLYCARBONATE"/>
-                                    <ComboBoxItem Content="TRIVEX"/>
-                                </ComboBox>
-                            </StackPanel>
-
-                            <!-- Type de verre -->
-                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,0">
-                                <TextBlock Text="Type de verre" Classes="Label"/>
-                                <ComboBox SelectedItem="{Binding GlassType}"
-                                         PlaceholderText="Sélectionner"
-                                         HorizontalAlignment="Stretch">
-                                    <ComboBoxItem Content="SF" Tag="Simple Focale"/>
-                                    <ComboBoxItem Content="DF" Tag="Double Focale"/>
-                                    <ComboBoxItem Content="MF" Tag="Multi Focale"/>
-                                </ComboBox>
-                            </StackPanel>
-
-                            <!-- Diamètre -->
-                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,8,8,0">
-                                <TextBlock Text="Diamètre" Classes="Label"/>
-                                <TextBox Text="{Binding GlassDiameter}" 
-                                        Watermark="Ex: 65/70"/>
-                            </StackPanel>
-
-                            <!-- Indice -->
-                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,8,0,0">
-                                <TextBlock Text="Indice de réfraction" Classes="Label"/>
-                                <TextBox Text="{Binding GlassIndex}" 
-                                        Watermark="Ex: 1.50"/>
-                            </StackPanel>
-
-                            <!-- Puissance Min -->
-                            <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,8,8,0">
-                                <TextBlock Text="Puissance minimale" Classes="Label"/>
-                                <TextBox Text="{Binding PowerLimitMin}" 
-                                        Watermark="Ex: -6.00"/>
-                            </StackPanel>
-
-                            <!-- Puissance Max -->
-                            <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,8,0,0">
-                                <TextBlock Text="Puissance maximale" Classes="Label"/>
-                                <TextBox Text="{Binding PowerLimitMax}" 
-                                        Watermark="Ex: +6.00"/>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <!-- Section 6: Détails spécifiques - LENTILLE -->
-                <Border Classes="Card" IsVisible="{Binding IsLensCategory}">
-                    <StackPanel Spacing="16">
-                        <TextBlock Text="👁️ Détails de la lentille" 
-                                  FontSize="15" 
-                                  FontWeight="600" 
-                                  Foreground="#FFFFFF" 
-                                  Margin="0,0,0,8"/>
-                        
-                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
-                            <!-- Marque -->
-                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,0">
-                                <TextBlock Text="Marque" Classes="Label"/>
-                                <TextBox Text="{Binding LensBrand}" 
-                                        Watermark="Ex: Acuvue"/>
-                            </StackPanel>
-
-                            <!-- Modèle -->
-                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,0">
-                                <TextBlock Text="Modèle" Classes="Label"/>
-                                <TextBox Text="{Binding LensModel}" 
-                                        Watermark="Ex: Oasys"/>
-                            </StackPanel>
-
-                            <!-- Matière -->
-                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,8,8,0">
-                                <TextBlock Text="Matière" Classes="Label"/>
-                                <ComboBox SelectedItem="{Binding LensMaterial}"
-                                         PlaceholderText="Sélectionner"
-                                         HorizontalAlignment="Stretch">
-                                    <ComboBoxItem Content="SILICONE_HYDROGEL"/>
-                                    <ComboBoxItem Content="HYDROGEL"/>
-                                </ComboBox>
-                            </StackPanel>
-
-                            <!-- Type -->
-                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,8,0,0">
-                                <TextBlock Text="Type de lentille" Classes="Label"/>
-                                <ComboBox SelectedItem="{Binding LensType}"
-                                         PlaceholderText="Sélectionner"
-                                         HorizontalAlignment="Stretch">
-                                    <ComboBoxItem Content="UNIFOCAL"/>
-                                    <ComboBoxItem Content="MULTIFOCAL"/>
-                                    <ComboBoxItem Content="TORIQUE"/>
-                                </ComboBox>
-                            </StackPanel>
-
-                            <!-- Diamètre -->
-                            <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,8,8,0">
-                                <TextBlock Text="Diamètre (mm)" Classes="Label"/>
-                                <TextBox Text="{Binding LensDiameter}" 
-                                        Watermark="Ex: 14.0"/>
-                            </StackPanel>
-
-                            <!-- Courbure -->
-                            <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,8,0,0">
-                                <TextBlock Text="Courbure de base" Classes="Label"/>
-                                <TextBox Text="{Binding LensBaseCurve}" 
-                                        Watermark="Ex: 8.4"/>
-                            </StackPanel>
-
-                            <!-- Durée -->
-                            <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,8,8,0">
-                                <TextBlock Text="Durée d'utilisation" Classes="Label"/>
-                                <ComboBox SelectedItem="{Binding LensDuration}"
-                                         PlaceholderText="Sélectionner"
-                                         HorizontalAlignment="Stretch">
-                                    <ComboBoxItem Content="JOURNALIERE"/>
-                                    <ComboBoxItem Content="MENSUELLE"/>
-                                    <ComboBoxItem Content="TRIMESTRIELLE"/>
-                                    <ComboBoxItem Content="ANNUELLE"/>
-                                </ComboBox>
-                            </StackPanel>
-
-                            <!-- Colorée -->
-                            <StackPanel Grid.Row="3" Grid.Column="1" Margin="8,8,0,0" VerticalAlignment="Center">
-                                <CheckBox Content="Lentille colorée" 
-                                         IsChecked="{Binding LensIsColored}"
-                                         Foreground="#E0E0E0"
-                                         Margin="0,18,0,0"/>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <!-- Section 7: Détails spécifiques - MONTURE/ACCESSOIRE -->
-                <Border Classes="Card" IsVisible="{Binding IsAccessoryCategory}">
-                    <StackPanel Spacing="16">
-                        <TextBlock Text="🔧 Détails de l'accessoire" 
-                                  FontSize="15" 
-                                  FontWeight="600" 
-                                  Foreground="#FFFFFF" 
-                                  Margin="0,0,0,8"/>
-                        
-                        <Grid ColumnDefinitions="*,*,*">
-                            <!-- Couleur -->
-                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                <TextBlock Text="Couleur" Classes="Label"/>
-                                <TextBox Text="{Binding AccessoryColor}" 
-                                        Watermark="Ex: Noir"/>
-                            </StackPanel>
-
-                            <!-- Taille -->
-                            <StackPanel Grid.Column="1" Margin="8,0">
-                                <TextBlock Text="Taille/Calibre" Classes="Label"/>
-                                <TextBox Text="{Binding AccessorySize}" 
-                                        Watermark="Ex: 52-18"/>
-                            </StackPanel>
-
-                            <!-- Matière -->
-                            <StackPanel Grid.Column="2" Margin="8,0,0,0">
-                                <TextBlock Text="Matière" Classes="Label"/>
-                                <TextBox Text="{Binding AccessoryMaterial}" 
-                                        Watermark="Ex: Métal"/>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </Border>
+                </Grid>
 
             </StackPanel>
         </ScrollViewer>

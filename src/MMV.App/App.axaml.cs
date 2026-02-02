@@ -48,7 +48,14 @@ public partial class App : Application
             {
                 // Utiliser le service provider pour créer MainWindow et MainWindowViewModel avec DI
                 var navigationService = _serviceProvider!.GetRequiredService<INavigationService>();
+                var dialogService = _serviceProvider!.GetRequiredService<IDialogService>();
                 var mainWindow = new MainWindow(navigationService);
+                
+                // Configurer DialogService avec la MainWindow
+                if (dialogService is DialogService ds)
+                {
+                    ds.SetMainWindow(mainWindow);
+                }
                 
                 desktop.MainWindow = mainWindow;
                 mainWindow.Show();
@@ -84,6 +91,7 @@ public partial class App : Application
 
         // Enregistrer les services
         services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<IDialogService, DialogService>();
 
         // Enregistrer les ViewModels
         services.AddSingleton<MainWindowViewModel>();

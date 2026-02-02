@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:controls="using:MMV.App.Controls"
              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="800"
              x:Class="MMV.App.Views.Clients.CustomerFormView"
              x:DataType="vm:CustomerFormViewModel"
@@ -55,6 +56,13 @@
             <Setter Property="Background" Value="#3C3C3C"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
         </Style>
+
+        <Style Selector="Border.Card">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*,Auto">
@@ -62,17 +70,10 @@
         <!-- HEADER -->
         <Border Grid.Row="0" Padding="32,24,32,10">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                <Button Grid.Column="0" 
-                        Content="← Retour" 
-                        Command="{Binding CancelCommand}" 
-                        Background="Transparent" 
-                        Foreground="#E0E0E0" 
-                        BorderThickness="0" 
-                        Cursor="Hand"
-                        FontSize="14"
-                        Padding="0"
-                        VerticalAlignment="Center"
-                        Margin="0,0,32,0"/>
+                <controls:BackButton Grid.Column="0"
+                            Command="{Binding BackCommand}"
+                            ButtonText="← Retour"
+                            Margin="0,0,32,0"/>
                 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                     <TextBlock Text="Nouveau Client" 
@@ -100,122 +101,164 @@
                         Padding="24,10" 
                         BorderThickness="0" 
                         CornerRadius="6" 
-                        Cursor="Hand"
+                        FontWeight="600"
                         FontSize="13"
-                        FontWeight="600">
-                    <Button.Styles>
-                        <Style Selector="Button:pointerover">
-                            <Setter Property="Background" Value="#005BB5"/>
-                        </Style>
-                    </Button.Styles>
-                </Button>
+                        Cursor="Hand"/>
             </Grid>
         </Border>
         
         <!-- CONTENU SCROLLABLE -->
         <ScrollViewer Grid.Row="1" Padding="32,0,32,0">
-            <Border Background="#252526" CornerRadius="12" Padding="24" HorizontalAlignment="Stretch">
-                <StackPanel Spacing="20">
+            <StackPanel Spacing="16">
+                
+                <!-- PREMIÈRE LIGNE: Info personnelle + Contact -->
+                <Grid ColumnDefinitions="*,*">
                     
-                    <!-- Ligne 1: Prénom, Nom, Date de naissance -->
-                    <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
-                        <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4" Margin="0,0,12,0">
-                            <TextBlock Text="Prénom" Classes="Label"/>
-                            <TextBox Text="{Binding FirstName}" Watermark="Jean"/>
+                    <!-- Section: Informations personnelles -->
+                    <Border Grid.Column="0" Classes="Card" Margin="0,0,8,0">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="👤 Informations personnelles" 
+                                      FontSize="15" 
+                                      FontWeight="600" 
+                                      Foreground="#FFFFFF" 
+                                      Margin="0,0,0,8"/>
+                            
+                            <StackPanel Spacing="12">
+                                <!-- Prénom -->
+                                <StackPanel>
+                                    <TextBlock Text="Prénom" Classes="Label"/>
+                                    <TextBox Text="{Binding FirstName}" Watermark="Jean"/>
+                                </StackPanel>
+                                
+                                <!-- Nom -->
+                                <StackPanel>
+                                    <TextBlock Text="Nom" Classes="Label"/>
+                                    <TextBox Text="{Binding LastName}" Watermark="Dupont"/>
+                                </StackPanel>
+                                
+                                <!-- Date de naissance -->
+                                <StackPanel>
+                                    <TextBlock Text="Date de naissance" Classes="Label"/>
+                                    <DatePicker SelectedDate="{Binding BirthDate}" HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+                            </StackPanel>
                         </StackPanel>
-                        
-                        <StackPanel Grid.Row="0" Grid.Column="1" Spacing="4" Margin="0,0,12,0">
-                            <TextBlock Text="Nom" Classes="Label"/>
-                            <TextBox Text="{Binding LastName}" Watermark="Dupont"/>
-                        </StackPanel>
-                        
-                        <StackPanel Grid.Row="0" Grid.Column="2" Spacing="4" Margin="0,0,0,0">
-                            <TextBlock Text="Date de naissance" Classes="Label"/>
-                            <DatePicker SelectedDate="{Binding BirthDate}" HorizontalAlignment="Stretch"/>
-                        </StackPanel>
-                    </Grid>
-                    
-                    <!-- Ligne 2: Email, Téléphone -->
-                    <Grid ColumnDefinitions="*,*">
-                        <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,12,0">
-                            <TextBlock Text="Email" Classes="Label"/>
-                            <TextBox Text="{Binding Email}" Watermark="exemple@email.com"/>
-                        </StackPanel>
-                        
-                        <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,0,0">
-                            <TextBlock Text="Téléphone" Classes="Label"/>
-                            <TextBox Text="{Binding Phone}" Watermark="06 12 34 56 78"/>
-                        </StackPanel>
-                    </Grid>
-                    
-                    <!-- Séparateur subtil -->
-                    <Border Height="1" Background="#333333" Margin="0,8,0,8"/>
+                    </Border>
 
-                    <!-- Ligne 3: Adresse -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Adresse" Classes="Label"/>
-                        <TextBox Text="{Binding Address}" Watermark="Rue, numéro..."/>
-                    </StackPanel>
-                    
-                    <!-- Ligne 4: Ville, Code postal -->
-                    <Grid ColumnDefinitions="2*,*">
-                        <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,12,0">
-                            <TextBlock Text="Ville" Classes="Label"/>
-                            <TextBox Text="{Binding City}" Watermark="Paris"/>
+                    <!-- Section: Contact -->
+                    <Border Grid.Column="1" Classes="Card" Margin="8,0,0,0">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="📞 Contact" 
+                                      FontSize="15" 
+                                      FontWeight="600" 
+                                      Foreground="#FFFFFF" 
+                                      Margin="0,0,0,8"/>
+                            
+                            <StackPanel Spacing="12">
+                                <!-- Email -->
+                                <StackPanel>
+                                    <TextBlock Text="Email" Classes="Label"/>
+                                    <TextBox Text="{Binding Email}" Watermark="exemple@email.com"/>
+                                </StackPanel>
+                                
+                                <!-- Téléphone -->
+                                <StackPanel>
+                                    <TextBlock Text="Téléphone" Classes="Label"/>
+                                    <TextBox Text="{Binding Phone}" Watermark="06 12 34 56 78"/>
+                                </StackPanel>
+                            </StackPanel>
                         </StackPanel>
-                        
-                        <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,0,0">
-                            <TextBlock Text="Code postal" Classes="Label"/>
-                            <TextBox Text="{Binding PostalCode}" Watermark="75000"/>
-                        </StackPanel>
-                    </Grid>
-                    
-                    <!-- Séparateur subtil -->
-                    <Border Height="1" Background="#333333" Margin="0,8,0,8"/>
+                    </Border>
+                </Grid>
 
-                    <!-- Ligne 5: Numéro SS, Mutuelle -->
-                    <Grid ColumnDefinitions="*,*">
-                        <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,12,0">
-                            <TextBlock Text="Numéro de sécurité sociale" Classes="Label"/>
-                            <TextBox Text="{Binding SocialSecurityNumber}" Watermark="13 chiffres"/>
-                        </StackPanel>
-                        
-                        <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,0,0">
-                            <TextBlock Text="Mutuelle" Classes="Label"/>
-                            <TextBox Text="{Binding InsuranceName}" Watermark="Nom de l'organisme"/>
-                        </StackPanel>
-                    </Grid>
+                <!-- DEUXIÈME LIGNE: Adresse + Sécurité sociale -->
+                <Grid ColumnDefinitions="*,*">
                     
-                    <!-- Ligne 6: Notes -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Notes" Classes="Label"/>
+                    <!-- Section: Adresse -->
+                    <Border Grid.Column="0" Classes="Card" Margin="0,0,8,0">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="🏠 Adresse" 
+                                      FontSize="15" 
+                                      FontWeight="600" 
+                                      Foreground="#FFFFFF" 
+                                      Margin="0,0,0,8"/>
+                            
+                            <StackPanel Spacing="12">
+                                <!-- Adresse -->
+                                <StackPanel>
+                                    <TextBlock Text="Adresse" Classes="Label"/>
+                                    <TextBox Text="{Binding Address}" Watermark="Rue, numéro..."/>
+                                </StackPanel>
+                                
+                                <!-- Ville et Code postal -->
+                                <Grid ColumnDefinitions="2*,*">
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Ville" Classes="Label"/>
+                                        <TextBox Text="{Binding City}" Watermark="Paris"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Code postal" Classes="Label"/>
+                                        <TextBox Text="{Binding PostalCode}" Watermark="75000"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Section: Sécurité sociale -->
+                    <Border Grid.Column="1" Classes="Card" Margin="8,0,0,0">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="🏥 Sécurité sociale" 
+                                      FontSize="15" 
+                                      FontWeight="600" 
+                                      Foreground="#FFFFFF" 
+                                      Margin="0,0,0,8"/>
+                            
+                            <StackPanel Spacing="12">
+                                <!-- Numéro SS -->
+                                <StackPanel>
+                                    <TextBlock Text="Numéro de sécurité sociale" Classes="Label"/>
+                                    <TextBox Text="{Binding SocialSecurityNumber}" Watermark="13 chiffres"/>
+                                </StackPanel>
+                                
+                                <!-- Mutuelle -->
+                                <StackPanel>
+                                    <TextBlock Text="Mutuelle" Classes="Label"/>
+                                    <TextBox Text="{Binding InsuranceName}" Watermark="Nom de l'organisme"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- TROISIÈME LIGNE: Notes (pleine largeur) -->
+                <Border Classes="Card">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="📝 Notes" 
+                                  FontSize="15" 
+                                  FontWeight="600" 
+                                  Foreground="#FFFFFF" 
+                                  Margin="0,0,0,8"/>
+                        
                         <TextBox Text="{Binding Notes}" 
                                 Watermark="Informations supplémentaires..."
                                 AcceptsReturn="True" 
                                 TextWrapping="Wrap"
-                                Height="100" 
+                                Height="80" 
                                 VerticalContentAlignment="Top"/>
                     </StackPanel>
-                </StackPanel>
-            </Border>
+                </Border>
+
+            </StackPanel>
         </ScrollViewer>
         
         <!-- FOOTER -->
         <Border Grid.Row="2" Padding="32,12,32,12" BorderBrush="#333333" BorderThickness="0,1,0,0">
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" 
-                          Text="Les champs marqués d'un astérisque (*) sont obligatoires" 
-                          FontSize="12" 
-                          Foreground="#858585"
-                          VerticalAlignment="Center"/>
-                
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                    <TextBlock Text="Formulaire non enregistré" 
-                              FontSize="12" 
-                              Foreground="#858585"
-                              VerticalAlignment="Center"/>
-                </StackPanel>
-            </Grid>
+            <TextBlock Text="💡 Tous les champs sont optionnels sauf le prénom et le nom" 
+                      FontSize="12" 
+                      Foreground="#858585"
+                      VerticalAlignment="Center"/>
         </Border>
     </Grid>
 </UserControl>
