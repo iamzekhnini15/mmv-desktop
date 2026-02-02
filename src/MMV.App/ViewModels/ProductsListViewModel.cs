@@ -183,6 +183,7 @@ public class ProductsListViewModel : BaseViewModel
     public event EventHandler? CreateProductRequested;
     public event EventHandler<Product>? EditProductRequested;
     public event EventHandler<Product>? DeleteProductRequested;
+    public event EventHandler? ManageSuppliersRequested;
 
     // Commandes
     public ICommand CreateCommand => _createCommand ??= new RelayCommand(ExecuteCreate);
@@ -401,6 +402,6 @@ public class ProductsListViewModel : BaseViewModel
 
     private void ExecuteManageSuppliers()
     {
-        // TODO: Implémenter la gestion des fournisseurs
+        ManageSuppliersRequested?.Invoke(this, EventArgs.Empty);
     }
 }

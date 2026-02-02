@@ -15,6 +15,7 @@ public class ProductsViewModel : BaseViewModel
     private ProductsListViewModel _productsListViewModel;
     private ProductFormViewModel? _productFormViewModel;
     private ProductDetailViewModel? _productDetailViewModel;
+    private SuppliersViewModel? _suppliersViewModel;
     private bool _isInEditMode;
     private bool _isCreatingNew;
     private bool _isShowingCategories;
@@ -52,6 +53,15 @@ public class ProductsViewModel : BaseViewModel
     {
         get => _productDetailViewModel;
         set => SetProperty(ref _productDetailViewModel, value);
+    }
+
+    /// <summary>
+    /// ViewModel pour la gestion des fournisseurs.
+    /// </summary>
+    public SuppliersViewModel? SuppliersViewModel
+    {
+        get => _suppliersViewModel;
+        set => SetProperty(ref _suppliersViewModel, value);
     }
 
     /// <summary>
@@ -155,6 +165,7 @@ public class ProductsViewModel : BaseViewModel
         _productsListViewModel.CreateProductRequested += OnCreateProductRequested;
         _productsListViewModel.EditProductRequested += OnEditProductRequested;
         _productsListViewModel.DeleteProductRequested += OnDeleteProductRequested;
+        _productsListViewModel.ManageSuppliersRequested += OnManageSuppliersRequested;
 
         Title = "📦 Gestion des Produits & Stock";
     }
@@ -230,6 +241,27 @@ public class ProductsViewModel : BaseViewModel
     {
         IsInEditMode = false;
         ProductFormViewModel = null;
+    }
+
+    /// <summary>
+    /// Gère l'ouverture de la gestion des fournisseurs.
+    /// </summary>
+    private void OnManageSuppliersRequested(object? sender, EventArgs e)
+    {
+        if (SuppliersViewModel == null)
+        {
+            SuppliersViewModel = new SuppliersViewModel(_supplierRepository, _unitOfWork, _dialogService);
+            SuppliersViewModel.BackToProductsRequested += OnSuppliersBackRequested;
+        }
+
+        IsShowingSuppliers = true;
+        IsInEditMode = false;
+        IsShowingDetail = false;
+    }
+
+    private void OnSuppliersBackRequested(object? sender, EventArgs e)
+    {
+        IsShowingSuppliers = false;
     }
 
     private bool CanViewDetail(Product? product)

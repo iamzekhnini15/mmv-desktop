@@ -1,0 +1,158 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:controls="using:MMV.App.Controls"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="MMV.App.Views.Products.SupplierDetailView"
+             x:DataType="vm:SupplierDetailViewModel"
+             Background="#1D1D1D">
+
+    <UserControl.Styles>
+        <Style Selector="Button.PrimaryButton">
+            <Setter Property="Background" Value="#0071E3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Button.DangerButton">
+            <Setter Property="Background" Value="#E74C3C"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Border.Card">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+
+        <Style Selector="TextBlock.Label">
+            <Setter Property="Foreground" Value="#858585"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
+        <Style Selector="TextBlock.Value">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="600"/>
+        </Style>
+
+        <Style Selector="Border.ProductCard">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border Padding="32,24,32,24">
+        <Grid RowDefinitions="Auto,*">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,16">
+                <controls:BackButton Grid.Column="0"
+                                     Command="{Binding BackCommand}"
+                                     ButtonText="← Retour"
+                                     Margin="0,0,32,0"/>
+
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock Text="{Binding Title}"
+                               FontSize="20"
+                               FontWeight="700"
+                               Foreground="#FFFFFF"/>
+                    <TextBlock Text="{Binding Supplier.ReferenceCode}"
+                               FontSize="12"
+                               Foreground="#858585"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Button Content="Modifier"
+                            Command="{Binding EditCommand}"
+                            Classes="PrimaryButton"/>
+                    <Button Content="Supprimer"
+                            Command="{Binding DeleteCommand}"
+                            Classes="DangerButton"/>
+                </StackPanel>
+            </Grid>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="12">
+                    <Border Classes="Card">
+                        <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
+                            <StackPanel Grid.Column="0" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
+                                <TextBlock Text="Nom" Classes="Label"/>
+                                <TextBlock Text="{Binding Supplier.Name}" Classes="Value"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
+                                <TextBlock Text="Email" Classes="Label"/>
+                                <TextBlock Text="{Binding Supplier.ContactEmail}" Classes="Value"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Grid.Row="0" Spacing="4" Margin="0,0,0,12">
+                                <TextBlock Text="Téléphone" Classes="Label"/>
+                                <TextBlock Text="{Binding Supplier.Phone}" Classes="Value"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="3" Spacing="4">
+                                <TextBlock Text="Adresse" Classes="Label"/>
+                                <TextBlock Text="{Binding Supplier.Address}" Classes="Value"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Classes="Card">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="{Binding Products.Count, StringFormat='Produits ({0})'}"
+                                       FontSize="16"
+                                       FontWeight="600"
+                                       Foreground="#FFFFFF"/>
+
+                            <ItemsControl ItemsSource="{Binding Products}" IsVisible="{Binding HasProducts}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="ProductCard">
+                                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                                <StackPanel Grid.Column="0" Spacing="2">
+                                                    <TextBlock Text="{Binding Reference}" Foreground="#FFFFFF" FontWeight="600" FontSize="13"/>
+                                                    <TextBlock Text="{Binding Name}" Foreground="#A0A0A0" FontSize="12"/>
+                                                </StackPanel>
+
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Category}"
+                                                           Foreground="#858585"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,16,0"/>
+
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding SalePrice, StringFormat='{}{0:C2}'}"
+                                                           Foreground="#FFFFFF"
+                                                           FontSize="13"
+                                                           FontWeight="600"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="Aucun produit associé à ce fournisseur"
+                                       Foreground="#858585"
+                                       FontSize="12"
+                                       IsVisible="{Binding !HasProducts}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

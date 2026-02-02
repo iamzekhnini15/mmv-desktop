@@ -183,7 +183,7 @@
                                 Command="{Binding ProductsListViewModel.RefreshCommand}"/>
                         
                         <Button Grid.Row="0" Grid.Column="1"
-                                Content="📁 Catégories"
+                                Content="Catégories"
                                 Background="#9B59B6"
                                 Foreground="White"
                                 BorderThickness="0"
@@ -195,7 +195,7 @@
                                 Command="{Binding ProductsListViewModel.ManageCategoriesCommand}"/>
 
                         <Button Grid.Row="0" Grid.Column="3"
-                                Content="🏭 Fournisseurs"
+                                Content="Fournisseurs"
                                 Background="#1ABC9C"
                                 Foreground="White"
                                 BorderThickness="0"
@@ -340,6 +340,11 @@
         <!-- FICHE DÉTAILLÉE PRODUIT -->
         <Panel IsVisible="{Binding IsShowingDetail}">
             <views:ProductDetailView DataContext="{Binding ProductDetailViewModel}"/>
+        </Panel>
+
+        <!-- GESTION DES FOURNISSEURS -->
+        <Panel IsVisible="{Binding IsShowingSuppliers}">
+            <views:SuppliersView DataContext="{Binding SuppliersViewModel}"/>
         </Panel>
 
     </Grid>
