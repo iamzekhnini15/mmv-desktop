@@ -1,5 +1,6 @@
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.App.Services;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
 
@@ -14,6 +15,7 @@ public class ProductsViewModel : BaseViewModel
     private ProductsListViewModel _productsListViewModel;
     private ProductFormViewModel? _productFormViewModel;
     private ProductDetailViewModel? _productDetailViewModel;
+    private SuppliersViewModel? _suppliersViewModel;
     private bool _isInEditMode;
     private bool _isCreatingNew;
     private bool _isShowingCategories;
@@ -22,9 +24,9 @@ public class ProductsViewModel : BaseViewModel
     private string _errorMessage = string.Empty;
     private ICommand? _viewDetailCommand;
     private readonly IProductRepository _productRepository;
-    private readonly IProductCategoryRepository _categoryRepository;
     private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IDialogService _dialogService;
 
     /// <summary>
     /// ViewModel pour la liste des produits.
@@ -51,6 +53,25 @@ public class ProductsViewModel : BaseViewModel
     {
         get => _productDetailViewModel;
         set => SetProperty(ref _productDetailViewModel, value);
+    }
+
+    /// <summary>
+    /// ViewModel pour la gestion des fournisseurs.
+    /// </summary>
+    public SuppliersViewModel? SuppliersViewModel
+    {
+        get => _suppliersViewModel;
+        set => SetProperty(ref _suppliersViewModel, value);
+    }
+
+    private StockMovementsViewModel? _stockMovementsViewModel;
+    /// <summary>
+    /// ViewModel pour la gestion des mouvements de stock.
+    /// </summary>
+    public StockMovementsViewModel? StockMovementsViewModel
+    {
+        get => _stockMovementsViewModel;
+        set => SetProperty(ref _stockMovementsViewModel, value);
     }
 
     /// <summary>
@@ -101,6 +122,20 @@ public class ProductsViewModel : BaseViewModel
         }
     }
 
+    private bool _isShowingStockMovements;
+    /// <summary>
+    /// Indique si on affiche la gestion des mouvements de stock.
+    /// </summary>
+    public bool IsShowingStockMovements
+    {
+        get => _isShowingStockMovements;
+        set
+        {
+            if (SetProperty(ref _isShowingStockMovements, value))
+                OnPropertyChanged(nameof(ShowList));
+        }
+    }
+
     /// <summary>
     /// Indique si on affiche la fiche détaillée du produit.
     /// </summary>
@@ -126,7 +161,7 @@ public class ProductsViewModel : BaseViewModel
     /// <summary>
     /// Propriété calculée pour afficher la liste (quand aucun formulaire/vue n'est affiché).
     /// </summary>
-    public bool ShowList => !IsInEditMode && !IsShowingCategories && !IsShowingSuppliers && !IsShowingDetail;
+    public bool ShowList => !IsInEditMode && !IsShowingCategories && !IsShowingSuppliers && !IsShowingStockMovements && !IsShowingDetail;
 
     /// <summary>
     /// Commande pour afficher la fiche détaillée d'un produit.
@@ -138,21 +173,24 @@ public class ProductsViewModel : BaseViewModel
     /// </summary>
     public ProductsViewModel(
         IProductRepository productRepository,
-        IProductCategoryRepository categoryRepository,
         ISupplierRepository supplierRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IDialogService dialogService)
     {
         _productRepository = productRepository;
-        _categoryRepository = categoryRepository;
         _supplierRepository = supplierRepository;
         _unitOfWork = unitOfWork;
+        _dialogService = dialogService;
 
         // Initialiser le ViewModel de la liste
-        _productsListViewModel = new ProductsListViewModel(productRepository, categoryRepository, unitOfWork);
+        _productsListViewModel = new ProductsListViewModel(productRepository, unitOfWork);
 
         // S'abonner aux événements de la liste
         _productsListViewModel.CreateProductRequested += OnCreateProductRequested;
         _productsListViewModel.EditProductRequested += OnEditProductRequested;
+        _productsListViewModel.DeleteProductRequested += OnDeleteProductRequested;
+        _productsListViewModel.ManageSuppliersRequested += OnManageSuppliersRequested;
+        _productsListViewModel.ManageStockMovementsRequested += OnManageStockMovementsRequested;
 
         Title = "📦 Gestion des Produits & Stock";
     }
@@ -166,7 +204,7 @@ public class ProductsViewModel : BaseViewModel
         {
             IsCreatingNew = true;
             ErrorMessage = string.Empty;
-            ProductFormViewModel = new ProductFormViewModel(_productRepository, _categoryRepository, _supplierRepository, _unitOfWork);
+            ProductFormViewModel = new ProductFormViewModel(_productRepository, _supplierRepository, _unitOfWork);
             ProductFormViewModel.ProductSaved += OnProductSaved;
             ProductFormViewModel.Cancelled += OnFormCancelled;
             
@@ -193,7 +231,7 @@ public class ProductsViewModel : BaseViewModel
         {
             IsCreatingNew = false;
             ErrorMessage = string.Empty;
-            ProductFormViewModel = new ProductFormViewModel(_productRepository, _categoryRepository, _supplierRepository, _unitOfWork, product);
+            ProductFormViewModel = new ProductFormViewModel(_productRepository, _supplierRepository, _unitOfWork, product);
             ProductFormViewModel.ProductSaved += OnProductSaved;
             ProductFormViewModel.Cancelled += OnFormCancelled;
             
@@ -228,6 +266,51 @@ public class ProductsViewModel : BaseViewModel
     {
         IsInEditMode = false;
         ProductFormViewModel = null;
+    }
+
+    /// <summary>
+    /// Gère l'ouverture de la gestion des fournisseurs.
+    /// </summary>
+    private void OnManageSuppliersRequested(object? sender, EventArgs e)
+    {
+        if (SuppliersViewModel == null)
+        {
+            SuppliersViewModel = new SuppliersViewModel(_supplierRepository, _unitOfWork, _dialogService);
+            SuppliersViewModel.BackToProductsRequested += OnSuppliersBackRequested;
+        }
+
+        IsShowingSuppliers = true;
+        IsInEditMode = false;
+        IsShowingDetail = false;
+    }
+
+    private void OnSuppliersBackRequested(object? sender, EventArgs e)
+    {
+        IsShowingSuppliers = false;
+    }
+
+    private void OnManageStockMovementsRequested(object? sender, EventArgs e)
+    {
+        if (StockMovementsViewModel == null)
+        {
+            StockMovementsViewModel = new StockMovementsViewModel(
+                _unitOfWork.StockMovements,
+                _productRepository,
+                _unitOfWork,
+                _dialogService);
+
+            StockMovementsViewModel.BackToProductsRequested += OnStockMovementsBackRequested;
+        }
+
+        IsShowingStockMovements = true;
+        IsInEditMode = false;
+        IsShowingDetail = false;
+        IsShowingSuppliers = false;
+    }
+
+    private void OnStockMovementsBackRequested(object? sender, EventArgs e)
+    {
+        IsShowingStockMovements = false;
     }
 
     private bool CanViewDetail(Product? product)
@@ -268,6 +351,48 @@ public class ProductsViewModel : BaseViewModel
             ProductsListViewModel.DeleteCommand.Execute(null);
         }
         CloseDetail();
+    }
+
+    /// <summary>
+    /// Gère la demande de suppression avec confirmation.
+    /// </summary>
+    private async void OnDeleteProductRequested(object? sender, Product product)
+    {
+        if (product == null) return;
+
+        // Créer le message de confirmation
+        var message = $"Êtes-vous sûr de vouloir supprimer le produit :\n\n" +
+                     $"📦 {product.Reference} - {product.Name}\n" +
+                     $"💰 Prix: {product.SalePrice:C2}\n" +
+                     $"📊 Stock: {product.StockQuantity}\n\n" +
+                     $"⚠️ Cette action est irréversible !";
+
+        try
+        {
+            // Demander confirmation
+            var confirmed = await _dialogService.ShowConfirmationAsync(
+                "Confirmation de suppression",
+                message);
+
+            if (confirmed)
+            {
+                await ProductsListViewModel.ConfirmAndDeleteProductAsync();
+                
+                // Fermer la page de détails si elle est ouverte
+                if (IsShowingDetail)
+                {
+                    CloseDetail();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Erreur lors de la suppression : {ex.Message}";
+            await _dialogService.ShowErrorAsync(
+                "Erreur de suppression",
+                $"Impossible de supprimer le produit :\n{ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ProductsViewModel] Erreur suppression : {ex}");
+        }
     }
 
     public void CloseDetail()

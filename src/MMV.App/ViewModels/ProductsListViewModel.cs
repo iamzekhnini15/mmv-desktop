@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Domain.Entities;
+using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -15,14 +16,13 @@ namespace MMV.App.ViewModels;
 public class ProductsListViewModel : BaseViewModel
 {
     private readonly IProductRepository _productRepository;
-    private readonly IProductCategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     private ObservableCollection<Product> _products;
     private ObservableCollection<Product> _filteredProducts;
-    private ObservableCollection<ProductCategory> _categories;
+    private ObservableCollection<string> _categories;
     private Product? _selectedProduct;
-    private ProductCategory? _selectedCategory;
+    private string? _selectedCategory;
     private string _searchText = string.Empty;
     private int _currentPage = 1;
     private int _pageSize = 20;
@@ -59,7 +59,7 @@ public class ProductsListViewModel : BaseViewModel
     /// <summary>
     /// Collection des catégories pour le filtre.
     /// </summary>
-    public ObservableCollection<ProductCategory> Categories
+    public ObservableCollection<string> Categories
     {
         get => _categories;
         set => SetProperty(ref _categories, value);
@@ -84,7 +84,7 @@ public class ProductsListViewModel : BaseViewModel
     /// <summary>
     /// Catégorie sélectionnée pour le filtre.
     /// </summary>
-    public ProductCategory? SelectedCategory
+    public string? SelectedCategory
     {
         get => _selectedCategory;
         set
@@ -182,6 +182,9 @@ public class ProductsListViewModel : BaseViewModel
     // Événements
     public event EventHandler? CreateProductRequested;
     public event EventHandler<Product>? EditProductRequested;
+    public event EventHandler<Product>? DeleteProductRequested;
+    public event EventHandler? ManageSuppliersRequested;
+    public event EventHandler? ManageStockMovementsRequested;
 
     // Commandes
     public ICommand CreateCommand => _createCommand ??= new RelayCommand(ExecuteCreate);
@@ -193,22 +196,23 @@ public class ProductsListViewModel : BaseViewModel
     public ICommand ManageCategoriesCommand => _manageCategoriesCommand ??= new RelayCommand(ExecuteManageCategories);
     public ICommand ManageSuppliersCommand => _manageSuppliersCommand ??= new RelayCommand(ExecuteManageSuppliers);
 
+    private ICommand? _manageStockMovementsCommand;
+    public ICommand ManageStockMovementsCommand => _manageStockMovementsCommand ??= new RelayCommand(ExecuteManageStockMovements);
+
     public ProductsListViewModel(
         IProductRepository productRepository,
-        IProductCategoryRepository categoryRepository,
         IUnitOfWork unitOfWork)
     {
         _productRepository = productRepository;
-        _categoryRepository = categoryRepository;
         _unitOfWork = unitOfWork;
 
         _products = new ObservableCollection<Product>();
         _filteredProducts = new ObservableCollection<Product>();
-        _categories = new ObservableCollection<ProductCategory>();
+        _categories = new ObservableCollection<string>();
 
         // Charger les données au démarrage
         _ = LoadProductsAsync();
-        _ = LoadCategoriesAsync();
+        LoadCategories();
     }
 
     /// <summary>
@@ -253,21 +257,21 @@ public class ProductsListViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Charge toutes les catégories depuis le repository.
+    /// Charge toutes les catégories depuis l'énumération.
     /// </summary>
-    private async Task LoadCategoriesAsync()
+    private void LoadCategories()
     {
         try
         {
-            var categories = await _categoryRepository.GetAllAsync();
             Categories.Clear();
-            // Ajouter une option "Toutes les catégories"
-            Categories.Add(new ProductCategory { CategoryId = 0, Name = "Toutes les catégories" });
-            foreach (var category in categories)
+            // Ajouter l'option "Toutes les catégories"
+            Categories.Add("Toutes les catégories");
+            // Charger toutes les valeurs de l'énumération
+            foreach (ProductCategoryEnum category in Enum.GetValues(typeof(ProductCategoryEnum)))
             {
-                Categories.Add(category);
+                Categories.Add(category.ToString());
             }
-            SelectedCategory = Categories.FirstOrDefault();
+            SelectedCategory = "Toutes les catégories"; // Par défaut, toutes les catégories
         }
         catch (Exception ex)
         {
@@ -285,9 +289,12 @@ public class ProductsListViewModel : BaseViewModel
         var filtered = Products.AsEnumerable();
 
         // Filtre par catégorie
-        if (SelectedCategory != null && SelectedCategory.CategoryId > 0)
+        if (!string.IsNullOrEmpty(SelectedCategory) && SelectedCategory != "Toutes les catégories")
         {
-            filtered = filtered.Where(p => p.CategoryId == SelectedCategory.CategoryId);
+            if (Enum.TryParse<ProductCategoryEnum>(SelectedCategory, out var categoryEnum))
+            {
+                filtered = filtered.Where(p => p.Category == categoryEnum);
+            }
         }
 
         // Filtre par stock bas
@@ -340,15 +347,30 @@ public class ProductsListViewModel : BaseViewModel
 
     private bool CanDelete() => SelectedProduct != null;
 
-    private async void ExecuteDelete()
+    private void ExecuteDelete()
+    {
+        if (SelectedProduct == null) return;
+        
+        // Lever l'événement pour demander confirmation dans ProductsViewModel
+        DeleteProductRequested?.Invoke(this, SelectedProduct);
+    }
+
+    /// <summary>
+    /// Méthode appelée par ProductsViewModel après confirmation de l'utilisateur.
+    /// </summary>
+    public async Task ConfirmAndDeleteProductAsync()
     {
         if (SelectedProduct == null) return;
 
         IsLoading = true;
+        ErrorMessage = string.Empty;
+        
         try
         {
             await _productRepository.DeleteAsync(SelectedProduct.ProductId);
             await _unitOfWork.SaveChangesAsync();
+            
+            // Recharger la liste
             await LoadProductsAsync();
         }
         catch (Exception ex)
@@ -384,6 +406,11 @@ public class ProductsListViewModel : BaseViewModel
 
     private void ExecuteManageSuppliers()
     {
-        // TODO: Implémenter la gestion des fournisseurs
+        ManageSuppliersRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ExecuteManageStockMovements()
+    {
+        ManageStockMovementsRequested?.Invoke(this, EventArgs.Empty);
     }
 }

@@ -1,0 +1,198 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:controls="using:MMV.App.Controls"
+             xmlns:converters="using:MMV.App.Converters"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="MMV.App.Views.InventoryView"
+             x:DataType="vm:InventoryViewModel"
+             Background="#1D1D1D">
+
+    <UserControl.Styles>
+        <!-- Styles réutilisés -->
+        <Style Selector="Border.ToolbarCard">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- Cartes inventaire -->
+        <Style Selector="Border.InventoryCard">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+
+        <Style Selector="Border.InventoryCard:pointerover">
+            <Setter Property="Background" Value="#2A2A2E"/>
+            <Setter Property="BorderBrush" Value="#3A3A3E"/>
+        </Style>
+
+        <!-- Bouton Primary -->
+        <Style Selector="Button.PrimaryButton">
+            <Setter Property="Background" Value="#0071E3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Button.PrimaryButton:pointerover">
+            <Setter Property="Background" Value="#005BB5"/>
+        </Style>
+
+        <Style Selector="TextBox">
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Background" Value="#3C3C3C"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Header -->
+        <Border Grid.Row="0" Padding="32,24,32,16" BorderBrush="#333333" BorderThickness="0,0,0,1">
+            <StackPanel Spacing="2">
+                <TextBlock Text="Inventaire" FontSize="24" FontWeight="700" Foreground="#FFFFFF"/>
+                <TextBlock Foreground="#858585" FontSize="12">
+                    <Run Text="{Binding TotalItems}"/>
+                    <Run Text=" produit(s)"/>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="32,24">
+            <StackPanel Spacing="16">
+                <!-- Barre de recherche -->
+                <Border Classes="ToolbarCard">
+                    <TextBox Text="{Binding SearchText}" 
+                            Watermark="Rechercher un produit..."
+                            Padding="12,8"/>
+                </Border>
+
+                <!-- Error Message -->
+                <Border Background="#3C1F1F" CornerRadius="6" Padding="12"
+                        IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF453A" TextWrapping="Wrap"/>
+                </Border>
+
+                <!-- Loading -->
+                <Border Background="#252526" CornerRadius="8" Padding="48" IsVisible="{Binding IsLoading}">
+                    <controls:LoadingSpinner />
+                </Border>
+
+                <!-- Inventory List -->
+                <Border Classes="ToolbarCard" IsVisible="{Binding !IsLoading}">
+                    <ItemsControl ItemsSource="{Binding FilteredItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="InventoryCard">
+                                    <Grid ColumnDefinitions="180,*,120,100,120,Auto">
+                                        <!-- Référence -->
+                                        <TextBlock Grid.Column="0" Text="{Binding Product.Reference}"
+                                                   Foreground="#FFFFFF" FontWeight="600" VerticalAlignment="Center"/>
+
+                                        <!-- Nom produit -->
+                                        <TextBlock Grid.Column="1" Text="{Binding Product.Name}"
+                                                   Foreground="#A0A0A0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+
+                                        <!-- Stock théorique -->
+                                        <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="Stock" Foreground="#707070" FontSize="11"/>
+                                            <TextBlock Text="{Binding TheoreticalStock}"
+                                                       Foreground="#FFFFFF" FontWeight="600"/>
+                                        </StackPanel>
+
+                                        <!-- Stock compté -->
+                                        <StackPanel Grid.Column="3" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="Compté" Foreground="#707070" FontSize="11"/>
+                                            <TextBox Text="{Binding CountedStock, UpdateSourceTrigger=PropertyChanged}"
+                                                     Width="80" HorizontalAlignment="Left" Padding="8,4"/>
+                                        </StackPanel>
+
+                                        <!-- Écart -->
+                                        <StackPanel Grid.Column="4" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="Écart" Foreground="#707070" FontSize="11"/>
+                                            <TextBlock Text="{Binding Difference}"
+                                                       Foreground="{Binding Difference, Converter={x:Static converters:DifferenceColorConverter.Instance}}"
+                                                       FontWeight="600" HorizontalAlignment="Right"/>
+                                        </StackPanel>
+
+                                        <!-- Bouton Confirmer -->
+                                        <Button Grid.Column="5" Margin="8,0,0,0"
+                                                Content="✓"
+                                                Tag="{Binding}"
+                                                Click="ConfirmButton_Click"
+                                                IsVisible="{Binding CanConfirm}"
+                                                Background="#27AE60"
+                                                Foreground="#FFFFFF"
+                                                BorderThickness="0"
+                                                CornerRadius="4"
+                                                Padding="8,4"
+                                                FontWeight="600"
+                                                Cursor="Hand"
+                                                VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <!-- Instructions -->
+                <Border Background="#1F1F1F" CornerRadius="8" Padding="16">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Instructions :" FontWeight="600" Foreground="#FFFFFF"/>
+                        <TextBlock Foreground="#888888" TextWrapping="Wrap">
+                            1. Comptez physiquement chaque produit<LineBreak/>
+                            2. Entrez la quantité comptée<LineBreak/>
+                            3. Un bouton ✓ apparaîtra pour confirmer le changement<LineBreak/>
+                            4. Cliquez sur ✓ pour appliquer l'ajustement
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Padding="32,12,32,12" BorderBrush="#333333" BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+                <!-- Left: Status/Error -->
+                <StackPanel Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ErrorMessage}"
+                              Foreground="#FF453A"
+                              IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                              VerticalAlignment="Center"
+                              FontSize="11"
+                              FontWeight="500"/>
+                </StackPanel>
+
+                <!-- Right: Action Buttons -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Button Content="Enregistrer"
+                           Background="#27AE60"
+                           Foreground="#FFFFFF"
+                           BorderThickness="0"
+                           CornerRadius="6"
+                           Padding="16,10"
+                           FontWeight="600"
+                           Cursor="Hand"
+                           FontSize="12"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

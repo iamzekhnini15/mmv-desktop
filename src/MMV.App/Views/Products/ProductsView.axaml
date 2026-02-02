@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:converters="using:MMV.App.Converters"
              xmlns:views="using:MMV.App.Views.Products"
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="MMV.App.Views.Products.ProductsView"
@@ -167,63 +168,66 @@
                 
                 <!-- TOOLBAR: Actions + Recherche + Filtres -->
                 <Border Classes="ToolbarCard">
-                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
-                        <!-- Ligne 1: Boutons d'action -->
-                        <Button Grid.Row="0" Grid.Column="0"
-                                Content="✏️ Modifier"
-                                Classes="SecondaryButton"
-                                Margin="0,0,8,0"
-                                Command="{Binding ProductsListViewModel.EditCommand}"/>
-                        
-                        <Button Grid.Row="0" Grid.Column="1"
-                                Content="🗑️ Supprimer"
-                                Classes="DangerButton"
-                                Margin="0,0,8,0"
-                                Command="{Binding ProductsListViewModel.DeleteCommand}"/>
-                        
-                        <Button Grid.Row="0" Grid.Column="2"
-                                Content="🔄 Actualiser"
-                                Background="#3498DB"
-                                Foreground="White"
-                                BorderThickness="0"
-                                CornerRadius="6"
-                                Padding="16,8"
-                                FontWeight="500"
-                                Cursor="Hand"
-                                Margin="0,0,8,0"
-                                Command="{Binding ProductsListViewModel.RefreshCommand}"/>
-                        
-                        <Button Grid.Row="0" Grid.Column="3"
-                                Content="📁 Catégories"
-                                Background="#9B59B6"
-                                Foreground="White"
-                                BorderThickness="0"
-                                CornerRadius="6"
-                                Padding="16,8"
-                                FontWeight="500"
-                                Cursor="Hand"
-                                Margin="0,0,8,0"
-                                Command="{Binding ProductsListViewModel.ManageCategoriesCommand}"/>
+                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,Auto">
 
-                        <Button Grid.Row="0" Grid.Column="5"
-                                Content="🏭 Fournisseurs"
-                                Background="#1ABC9C"
-                                Foreground="White"
-                                BorderThickness="0"
-                                CornerRadius="6"
-                                Padding="16,8"
-                                FontWeight="500"
-                                Cursor="Hand"
-                                Command="{Binding ProductsListViewModel.ManageSuppliersCommand}"/>
+                        <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Orientation="Horizontal" Spacing="12" Margin="0,12,0,0">
+                            <!-- Ligne 1: Boutons d'action -->
+                            <Button Grid.Row="0" Grid.Column="0"
+                                    Content="Actualiser"
+                                    Background="#3498DB"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Padding="16,8"
+                                    FontWeight="500"
+                                    Cursor="Hand"
+                                    
+                                    Command="{Binding ProductsListViewModel.RefreshCommand}"/>
+                            
+                            <Button Grid.Row="0" Grid.Column="1"
+                                    Content="Catégories"
+                                    Background="#9B59B6"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Padding="16,8"
+                                    FontWeight="500"
+                                    Cursor="Hand"
+                                    
+                                    Command="{Binding ProductsListViewModel.ManageCategoriesCommand}"/>
 
+                            <Button Grid.Row="0" Grid.Column="2"
+                                    Content="Fournisseurs"
+                                    Background="#1ABC9C"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Padding="16,8"
+                                    FontWeight="500"
+                                    Cursor="Hand"
+                                    
+                                    Command="{Binding ProductsListViewModel.ManageSuppliersCommand}"/>
+
+                            <Button Grid.Row="0" Grid.Column="3"
+                                    Content="Mouvements"
+                                    Background="#9B59B6"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Padding="16,8"
+                                    FontWeight="500"
+                                    Cursor="Hand"
+                                    Command="{Binding ProductsListViewModel.ManageStockMovementsCommand}"/>
+
+                        </StackPanel>
                         <!-- Ligne 2: Filtres -->
-                        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="6" 
+                        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" 
                                     Orientation="Horizontal" 
                                     Spacing="12" 
                                     Margin="0,12,0,0">
                             <!-- Recherche -->
                             <TextBox Width="300"
-                                     Watermark="🔍 Rechercher (référence, nom, description...)"
+                                     Watermark="Rechercher (référence, nom, description...)"
                                      Text="{Binding ProductsListViewModel.SearchText, Mode=TwoWay}"/>
 
                             <!-- Filtre par catégorie -->
@@ -233,7 +237,7 @@
                                       PlaceholderText="Toutes les catégories">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Name}"/>
+                                        <TextBlock Text="{Binding}"/>
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
@@ -260,29 +264,40 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Classes="ProductCard" PointerPressed="Border_PointerPressed">
-                                    <Grid ColumnDefinitions="*,*,*,Auto">
+                                    <Grid ColumnDefinitions="*,*,*,Auto" RowDefinitions="Auto,Auto">
                                         <!-- Col 1: Référence + Nom -->
-                                        <StackPanel Grid.Column="0" Spacing="2">
+                                        <StackPanel Grid.Column="0" Grid.Row="0" Grid.RowSpan="2" Spacing="2">
                                             <TextBlock Text="{Binding Reference}" Foreground="#FFFFFF" FontWeight="600" FontSize="13"/>
                                             <TextBlock Text="{Binding Name}" Foreground="#A0A0A0" FontSize="12" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
 
-                                        <!-- Col 2: Catégorie + Fournisseur -->
-                                        <StackPanel Grid.Column="1" Spacing="2" Margin="0,0,0,0">
+                                        <!-- Col 2: Catégorie + Category-specific info -->
+                                        <StackPanel Grid.Column="1" Grid.Row="0" Spacing="2">
                                             <TextBlock Text="{Binding Category}" Foreground="#A0A0A0" FontSize="12"/>
                                             <TextBlock Text="{Binding Supplier.Name}" Foreground="#888888" FontSize="11"/>
                                         </StackPanel>
+                                        <!-- Row 2: Category-specific summary info -->
+                                        <TextBlock Grid.Column="1" Grid.Row="1" 
+                                                  Text="{Binding ., Converter={x:Static converters:CategoryToDetailConverter.Instance}}"
+                                                  Foreground="#A0A0A0" FontSize="11" />
 
                                         <!-- Col 3: Prix -->
-                                        <StackPanel Grid.Column="2" Spacing="2" Margin="0,0,0,0">
+                                        <StackPanel Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Spacing="2" Margin="0,0,0,0">
                                             <TextBlock Text="{Binding PurchasePrice, StringFormat='Achat: {0:C2}'}" Foreground="#A0A0A0" FontSize="12"/>
                                             <TextBlock Text="{Binding SalePrice, StringFormat='Vente: {0:C2}'}" Foreground="#FFFFFF" FontSize="12" FontWeight="600"/>
                                         </StackPanel>
 
                                         <!-- Col 4: Stock Badge -->
-                                        <Border Grid.Column="3" Background="#1F1F1F" CornerRadius="8" Padding="8,4" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <Border Grid.Column="3" Grid.Row="0" Grid.RowSpan="2" Background="#1F1F1F" CornerRadius="8" Padding="8,4" HorizontalAlignment="Right" VerticalAlignment="Center">
                                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                                <TextBlock Text="{Binding StockQuantity}" Foreground="#FFFFFF" FontWeight="700"/>
+                                                <TextBlock Text="{Binding StockQuantity}" FontWeight="700">
+                                                    <TextBlock.Foreground>
+                                                        <MultiBinding Converter="{x:Static converters:StockQuantityColorConverter.Instance}">
+                                                            <Binding Path="StockQuantity"/>
+                                                            <Binding Path="StockAlertThreshold"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Foreground>
+                                                </TextBlock>
                                                 <TextBlock Text="/" Foreground="#888888"/>
                                                 <TextBlock Text="{Binding StockAlertThreshold}" Foreground="#A0A0A0"/>
                                             </StackPanel>
@@ -297,37 +312,45 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- PAGINATION (Visible uniquement quand liste affichée) -->
-        <Border Grid.Row="2" 
-                Background="#252526" 
-                Padding="32,12"
-                BorderBrush="#3C3C3C"
-                BorderThickness="0,1,0,0"
-                IsVisible="{Binding ShowList}">
-            <Grid ColumnDefinitions="Auto,*,Auto">
-                <!-- Bouton Précédent -->
-                <Button Grid.Column="0"
-                        Content="← Précédent"
-                        Classes="PaginationButton"
-                        Command="{Binding ProductsListViewModel.PreviousPageCommand}"/>
-
-                <!-- Info page -->
-                <TextBlock Grid.Column="1"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           Foreground="#CCCCCC"
-                           FontSize="13">
-                    <Run Text="Page"/>
-                    <Run Text="{Binding ProductsListViewModel.CurrentPage}"/>
-                    <Run Text="sur"/>
-                    <Run Text="{Binding ProductsListViewModel.TotalPages}"/>
-                </TextBlock>
-
-                <!-- Bouton Suivant -->
-                <Button Grid.Column="2"
-                        Content="Suivant →"
-                        Classes="PaginationButton"
-                        Command="{Binding ProductsListViewModel.NextPageCommand}"/>
+        <!-- FOOTER / PAGINATION (Fixe en bas) -->
+        <Border Grid.Row="2" Padding="32,12,32,12" BorderBrush="#333333" BorderThickness="0,1,0,0" IsVisible="{Binding ShowList}">
+            <Grid ColumnDefinitions="*,Auto">
+                <!-- Indicateurs -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <ProgressBar IsIndeterminate="True"
+                                IsVisible="{Binding ProductsListViewModel.IsLoading}"
+                                Width="80"
+                                Height="2"
+                                Foreground="#0071E3"/>
+                    <TextBlock Text="{Binding ProductsListViewModel.ErrorMessage}"
+                              Foreground="#FF453A"
+                              IsVisible="{Binding ProductsListViewModel.ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                              VerticalAlignment="Center"
+                              FontSize="11"
+                              FontWeight="500"/>
+                </StackPanel>
+                
+                <!-- Pagination Compacte -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Button Content="← Précédent"
+                           Command="{Binding ProductsListViewModel.PreviousPageCommand}"
+                           Classes="PaginationButton"
+                           FontSize="12"/>
+                    
+                    <!-- Affichage Pagination CORRIGÉ : Séparation simple -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ProductsListViewModel.CurrentPage}" 
+                                  VerticalAlignment="Center" FontWeight="600" Foreground="#FFFFFF" FontSize="12"/>
+                        <TextBlock Text="/" VerticalAlignment="Center" Foreground="#666" FontSize="12" Margin="4,0"/>
+                        <TextBlock Text="{Binding ProductsListViewModel.TotalPages}" 
+                                  VerticalAlignment="Center" Foreground="#E0E0E0" FontSize="12"/>
+                    </StackPanel>
+                    
+                    <Button Content="Suivant →"
+                           Command="{Binding ProductsListViewModel.NextPageCommand}"
+                           Classes="PaginationButton"
+                           FontSize="12"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -337,8 +360,18 @@
                         IsVisible="{Binding IsInEditMode}"/>
 
         <!-- FICHE DÉTAILLÉE PRODUIT -->
-        <Panel IsVisible="{Binding IsShowingDetail}">
+        <Panel Grid.Row="0" Grid.RowSpan="3" IsVisible="{Binding IsShowingDetail}">
             <views:ProductDetailView DataContext="{Binding ProductDetailViewModel}"/>
+        </Panel>
+
+        <!-- GESTION DES FOURNISSEURS -->
+        <Panel Grid.Row="0" Grid.RowSpan="3" IsVisible="{Binding IsShowingSuppliers}">
+            <views:SuppliersView DataContext="{Binding SuppliersViewModel}"/>
+        </Panel>
+
+        <!-- GESTION DES MOUVEMENTS DE STOCK -->
+        <Panel Grid.Row="0" Grid.RowSpan="3" IsVisible="{Binding IsShowingStockMovements}">
+            <views:StockMovementsView DataContext="{Binding StockMovementsViewModel}"/>
         </Panel>
 
     </Grid>

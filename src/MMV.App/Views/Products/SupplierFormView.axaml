@@ -1,0 +1,149 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:MMV.App.Controls"
+             xmlns:vm="using:MMV.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="MMV.App.Views.Products.SupplierFormView"
+             x:DataType="vm:SupplierFormViewModel"
+             Background="#1D1D1D">
+
+    <UserControl.Styles>
+        <Style Selector="Button.PrimaryButton">
+            <Setter Property="Background" Value="#0071E3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Button.SecondaryButton">
+            <Setter Property="Background" Value="#3C3C3C"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="FontWeight" Value="500"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Border.FormCard">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="24"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+
+        <Style Selector="TextBlock.Label">
+            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="500"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+
+        <Style Selector="TextBox">
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Background" Value="#3C3C3C"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border Padding="32,24,32,24">
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!-- Header -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="0,0,0,24">
+                <controls:BackButton Grid.Column="0"
+                                     Command="{Binding CancelCommand}"
+                                     ButtonText="← Annuler"
+                                     Margin="0,0,24,0"/>
+
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Title}"
+                           FontSize="20"
+                           FontWeight="700"
+                           Foreground="#FFFFFF"
+                           VerticalAlignment="Center"/>
+            </Grid>
+
+            <!-- Formulaire -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="0">
+                    <Border Classes="FormCard">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="Informations du fournisseur"
+                                       FontSize="16"
+                                       FontWeight="600"
+                                       Foreground="#FFFFFF"
+                                       Margin="0,0,0,8"/>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Nom *" Classes="Label"/>
+                                <TextBox Text="{Binding Name}" Watermark="Nom du fournisseur"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Code de référence" Classes="Label"/>
+                                <TextBox Text="{Binding ReferenceCode}" Watermark="Code interne (optionnel)"/>
+                            </StackPanel>
+
+                            <Grid ColumnDefinitions="*,16,*">
+                                <StackPanel Grid.Column="0" Spacing="6">
+                                    <TextBlock Text="Email" Classes="Label"/>
+                                    <TextBox Text="{Binding ContactEmail}" Watermark="email@example.com"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Spacing="6">
+                                    <TextBlock Text="Téléphone" Classes="Label"/>
+                                    <TextBox Text="{Binding Phone}" Watermark="+33 1 23 45 67 89"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Adresse" Classes="Label"/>
+                                <TextBox Text="{Binding Address}"
+                                         Watermark="Adresse complète"
+                                         Height="80"
+                                         TextWrapping="Wrap"
+                                         AcceptsReturn="True"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Footer -->
+            <Border Grid.Row="2"
+                    Padding="0,16,0,0"
+                    BorderBrush="#333333"
+                    BorderThickness="0,1,0,0">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <ProgressBar Grid.Column="0"
+                                 IsIndeterminate="True"
+                                 IsVisible="{Binding IsSaving}"
+                                 Width="120"
+                                 Height="2"
+                                 Foreground="#0071E3"
+                                 VerticalAlignment="Center"
+                                 HorizontalAlignment="Left"/>
+
+                    <Button Grid.Column="1"
+                            Content="Annuler"
+                            Classes="SecondaryButton"
+                            Command="{Binding CancelCommand}"
+                            Margin="0,0,12,0"/>
+
+                    <Button Grid.Column="2"
+                            Content="Enregistrer"
+                            Classes="PrimaryButton"
+                            Command="{Binding SaveCommand}"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

@@ -21,6 +21,9 @@ public class ProductRepository : BaseRepository<Product, long>, IProductReposito
             .AsNoTracking()
             .Include(p => p.ProductCategory)
             .Include(p => p.Supplier)
+            .Include(p => p.GlassDetail)
+            .Include(p => p.LensDetail)
+            .Include(p => p.AccessoryDetail)
             .Include(p => p.OrderItems)
                 .ThenInclude(oi => oi.Order)
                     .ThenInclude(o => o.Customer)
@@ -105,6 +108,25 @@ public class ProductRepository : BaseRepository<Product, long>, IProductReposito
         return _dbSet
             .AsNoTracking()
             .Include(p => p.Category)
-            .Include(p => p.Supplier);
+            .Include(p => p.Supplier)
+            .Include(p => p.GlassDetail)
+            .Include(p => p.LensDetail)
+            .Include(p => p.AccessoryDetail);
+    }
+
+    /// <summary>
+    /// Récupère un produit par ID avec tous ses détails et tracking activé pour l'édition.
+    /// </summary>
+    public async Task<Product?> GetByIdWithDetailsAsync(long id, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Include(p => p.Supplier)
+            .Include(p => p.GlassDetail)
+            .Include(p => p.LensDetail)
+            .Include(p => p.AccessoryDetail)
+            .Include(p => p.OrderItems)
+                .ThenInclude(oi => oi.Order)
+                    .ThenInclude(o => o.Customer)
+            .FirstOrDefaultAsync(p => p.ProductId == id, cancellationToken);
     }
 }

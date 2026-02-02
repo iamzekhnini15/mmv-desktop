@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Domain.Entities;
+using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -15,9 +16,9 @@ namespace MMV.App.ViewModels;
 public class ProductFormViewModel : BaseViewModel
 {
     private readonly IProductRepository _productRepository;
-    private readonly IProductCategoryRepository _categoryRepository;
     private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly INotificationRepository _notificationRepository;
     private readonly Product? _existingProduct;
 
     private long _productId;
@@ -26,14 +27,37 @@ public class ProductFormViewModel : BaseViewModel
     private string _description = string.Empty;
     private decimal _purchasePrice;
     private decimal _salePrice;
+    private decimal? _recommendedPrice;
     private int _stockQuantity;
     private int _minStockLevel = 5;
-    private long? _categoryId;
+    private ProductCategoryEnum _selectedCategory = ProductCategoryEnum.MONTURE;
     private long? _supplierId;
-    private ObservableCollection<ProductCategory> _categories;
+    private ObservableCollection<ProductCategoryEnum> _categories;
     private ObservableCollection<Supplier> _suppliers;
-    private ProductCategory? _selectedCategory;
     private Supplier? _selectedSupplier;
+
+    // Propriétés spécifiques pour GlassDetail
+    private string? _glassMaterial;
+    private string? _glassType;
+    private string? _glassDiameter;
+    private decimal? _glassIndex;
+    private decimal? _powerLimitMin;
+    private decimal? _powerLimitMax;
+
+    // Propriétés spécifiques pour LensDetail
+    private string? _lensBrand;
+    private string? _lensModel;
+    private string? _lensMaterial;
+    private string? _lensType;
+    private decimal? _lensDiameter;
+    private decimal? _lensBaseCurve;
+    private bool _lensIsColored;
+    private string? _lensDuration;
+
+    // Propriétés spécifiques pour AccessoryDetail
+    private string? _accessoryColor;
+    private string? _accessorySize;
+    private string? _accessoryMaterial;
 
     // Messages d'erreur de validation
     private string _referenceError = string.Empty;
@@ -131,10 +155,25 @@ public class ProductFormViewModel : BaseViewModel
         }
     }
 
-    public long? CategoryId
+    public ProductCategoryEnum SelectedCategory
     {
-        get => _categoryId;
-        set => SetProperty(ref _categoryId, value);
+        get => _selectedCategory;
+        set
+        {
+            if (SetProperty(ref _selectedCategory, value))
+            {
+                // Notifier les propriétés de visibilité
+                OnPropertyChanged(nameof(IsGlassCategory));
+                OnPropertyChanged(nameof(IsLensCategory));
+                OnPropertyChanged(nameof(IsAccessoryCategory));
+            }
+        }
+    }
+
+    public decimal? RecommendedPrice
+    {
+        get => _recommendedPrice;
+        set => SetProperty(ref _recommendedPrice, value);
     }
 
     public long? SupplierId
@@ -143,7 +182,7 @@ public class ProductFormViewModel : BaseViewModel
         set => SetProperty(ref _supplierId, value);
     }
 
-    public ObservableCollection<ProductCategory> Categories
+    public ObservableCollection<ProductCategoryEnum> Categories
     {
         get => _categories;
         set => SetProperty(ref _categories, value);
@@ -153,16 +192,6 @@ public class ProductFormViewModel : BaseViewModel
     {
         get => _suppliers;
         set => SetProperty(ref _suppliers, value);
-    }
-
-    public ProductCategory? SelectedCategory
-    {
-        get => _selectedCategory;
-        set
-        {
-            if (SetProperty(ref _selectedCategory, value))
-                CategoryId = value?.CategoryId;
-        }
     }
 
     public Supplier? SelectedSupplier
@@ -191,6 +220,131 @@ public class ProductFormViewModel : BaseViewModel
             var percentage = ((SalePrice - PurchasePrice) / PurchasePrice) * 100;
             return $"{percentage:F1}%";
         }
+    }
+
+    #endregion
+
+    #region Propriétés de visibilité
+
+    public bool IsGlassCategory => SelectedCategory == ProductCategoryEnum.VERRE;
+    public bool IsLensCategory => SelectedCategory == ProductCategoryEnum.LENTILLE;
+    public bool IsAccessoryCategory => SelectedCategory == ProductCategoryEnum.MONTURE ||
+                                        SelectedCategory == ProductCategoryEnum.CLIPS ||
+                                        SelectedCategory == ProductCategoryEnum.PLASTIC ||
+                                        SelectedCategory == ProductCategoryEnum.SOLAIRE;
+
+    #endregion
+
+    #region Propriétés pour GlassDetail
+
+    public string? GlassMaterial
+    {
+        get => _glassMaterial;
+        set => SetProperty(ref _glassMaterial, value);
+    }
+
+    public string? GlassType
+    {
+        get => _glassType;
+        set => SetProperty(ref _glassType, value);
+    }
+
+    public string? GlassDiameter
+    {
+        get => _glassDiameter;
+        set => SetProperty(ref _glassDiameter, value);
+    }
+
+    public decimal? GlassIndex
+    {
+        get => _glassIndex;
+        set => SetProperty(ref _glassIndex, value);
+    }
+
+    public decimal? PowerLimitMin
+    {
+        get => _powerLimitMin;
+        set => SetProperty(ref _powerLimitMin, value);
+    }
+
+    public decimal? PowerLimitMax
+    {
+        get => _powerLimitMax;
+        set => SetProperty(ref _powerLimitMax, value);
+    }
+
+    #endregion
+
+    #region Propriétés pour LensDetail
+
+    public string? LensBrand
+    {
+        get => _lensBrand;
+        set => SetProperty(ref _lensBrand, value);
+    }
+
+    public string? LensModel
+    {
+        get => _lensModel;
+        set => SetProperty(ref _lensModel, value);
+    }
+
+    public string? LensMaterial
+    {
+        get => _lensMaterial;
+        set => SetProperty(ref _lensMaterial, value);
+    }
+
+    public string? LensType
+    {
+        get => _lensType;
+        set => SetProperty(ref _lensType, value);
+    }
+
+    public decimal? LensDiameter
+    {
+        get => _lensDiameter;
+        set => SetProperty(ref _lensDiameter, value);
+    }
+
+    public decimal? LensBaseCurve
+    {
+        get => _lensBaseCurve;
+        set => SetProperty(ref _lensBaseCurve, value);
+    }
+
+    public bool LensIsColored
+    {
+        get => _lensIsColored;
+        set => SetProperty(ref _lensIsColored, value);
+    }
+
+    public string? LensDuration
+    {
+        get => _lensDuration;
+        set => SetProperty(ref _lensDuration, value);
+    }
+
+    #endregion
+
+    #region Propriétés pour AccessoryDetail
+
+    public string? AccessoryColor
+    {
+        get => _accessoryColor;
+        set => SetProperty(ref _accessoryColor, value);
+    }
+
+    public string? AccessorySize
+    {
+        get => _accessorySize;
+        set => SetProperty(ref _accessorySize, value);
+    }
+
+    public string? AccessoryMaterial
+    {
+        get => _accessoryMaterial;
+        set => SetProperty(ref _accessoryMaterial, value);
     }
 
     #endregion
@@ -238,7 +392,7 @@ public class ProductFormViewModel : BaseViewModel
     #region Propriétés calculées
 
     public bool IsEditMode => _existingProduct != null;
-    public string FormTitle => IsEditMode ? "✏️ Modifier un produit" : "➕ Nouveau produit";
+    public string FormTitle => IsEditMode ? "Modifier un produit" : "Nouveau produit";
     public bool IsValid =>
         string.IsNullOrEmpty(ReferenceError) &&
         string.IsNullOrEmpty(NameError) &&
@@ -253,6 +407,7 @@ public class ProductFormViewModel : BaseViewModel
 
     public ICommand SaveCommand => _saveCommand ??= new RelayCommand(async () => await ExecuteSaveAsync(), () => IsValid);
     public ICommand CancelCommand => _cancelCommand ??= new RelayCommand(ExecuteCancel);
+    public ICommand BackCommand => CancelCommand; // Alias pour le BackButton
 
     #endregion
 
@@ -261,17 +416,20 @@ public class ProductFormViewModel : BaseViewModel
     /// </summary>
     public ProductFormViewModel(
         IProductRepository productRepository,
-        IProductCategoryRepository categoryRepository,
         ISupplierRepository supplierRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        INotificationRepository? notificationRepository = null)
     {
         _productRepository = productRepository;
-        _categoryRepository = categoryRepository;
         _supplierRepository = supplierRepository;
         _unitOfWork = unitOfWork;
+        _notificationRepository = notificationRepository!;
 
-        _categories = new ObservableCollection<ProductCategory>();
+        _categories = new ObservableCollection<ProductCategoryEnum>();
         _suppliers = new ObservableCollection<Supplier>();
+        
+        // Initialiser avec la première catégorie par défaut
+        _selectedCategory = ProductCategoryEnum.MONTURE;
 
         Title = "Nouveau produit";
     }
@@ -281,10 +439,10 @@ public class ProductFormViewModel : BaseViewModel
     /// </summary>
     public ProductFormViewModel(
         IProductRepository productRepository,
-        IProductCategoryRepository categoryRepository,
         ISupplierRepository supplierRepository,
         IUnitOfWork unitOfWork,
-        Product product) : this(productRepository, categoryRepository, supplierRepository, unitOfWork)
+        Product product,
+        INotificationRepository? notificationRepository = null) : this(productRepository, supplierRepository, unitOfWork, notificationRepository)
     {
         _existingProduct = product;
         Title = "Modifier produit";
@@ -296,49 +454,112 @@ public class ProductFormViewModel : BaseViewModel
         Description = product.Description ?? string.Empty;
         PurchasePrice = product.PurchasePrice;
         SalePrice = product.SalePrice;
+        RecommendedPrice = product.RecommendedPrice;
         StockQuantity = product.StockQuantity;
         StockAlertThreshold = product.StockAlertThreshold;
-        CategoryId = product.CategoryId;
+        SelectedCategory = product.Category;
         SupplierId = product.SupplierId;
+
+        // Charger les détails spécifiques selon la catégorie
+        LoadCategorySpecificDetails(product);
     }
 
     /// <summary>
-    /// Charge les catégories et fournisseurs depuis les repositories.
+    /// Charge les détails spécifiques (Glass, Lens, Accessory) du produit dans les propriétés du formulaire.
+    /// </summary>
+    private void LoadCategorySpecificDetails(Product product)
+    {
+        switch (product.Category)
+        {
+            case ProductCategoryEnum.VERRE:
+                if (product.GlassDetail != null)
+                {
+                    _glassMaterial = product.GlassDetail.Material?.ToString();
+                    _glassType = product.GlassDetail.GlassType?.ToString();
+                    _glassDiameter = product.GlassDetail.Diameter;
+                    _glassIndex = product.GlassDetail.Index;
+                    _powerLimitMin = product.GlassDetail.PowerLimitMin;
+                    _powerLimitMax = product.GlassDetail.PowerLimitMax;
+                }
+                break;
+
+            case ProductCategoryEnum.LENTILLE:
+                if (product.LensDetail != null)
+                {
+                    _lensBrand = product.LensDetail.Brand;
+                    _lensModel = product.LensDetail.Model;
+                    _lensMaterial = product.LensDetail.Material?.ToString();
+                    _lensType = product.LensDetail.LensType?.ToString();
+                    _lensDiameter = product.LensDetail.Diameter;
+                    _lensBaseCurve = product.LensDetail.BaseCurve;
+                    _lensIsColored = product.LensDetail.IsColored;
+                    _lensDuration = product.LensDetail.Duration?.ToString();
+                }
+                break;
+
+            case ProductCategoryEnum.MONTURE:
+            case ProductCategoryEnum.CLIPS:
+            case ProductCategoryEnum.PLASTIC:
+            case ProductCategoryEnum.SOLAIRE:
+                if (product.AccessoryDetail != null)
+                {
+                    _accessoryColor = product.AccessoryDetail.Color;
+                    _accessorySize = product.AccessoryDetail.Size;
+                    _accessoryMaterial = product.AccessoryDetail.Material;
+                }
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Charge les catégories (enum) et fournisseurs depuis les repositories.
     /// Doit être appelée après la construction pour initialiser les données.
     /// </summary>
     public async Task InitializeAsync()
     {
         IsLoading = true;
+        ErrorMessage = string.Empty;
+        
         try
         {
-            System.Diagnostics.Debug.WriteLine("[ProductFormViewModel] Début chargement catégories...");
-            var categories = await _categoryRepository.GetAllAsync();
-            System.Diagnostics.Debug.WriteLine($"[ProductFormViewModel] {categories.Count} catégories chargées");
+            System.Diagnostics.Debug.WriteLine("[ProductFormViewModel] Chargement des catégories (enum)...");
             
+            // Charger toutes les valeurs de l'enum ProductCategoryEnum
             Categories.Clear();
-            foreach (var category in categories)
+            foreach (ProductCategoryEnum category in Enum.GetValues(typeof(ProductCategoryEnum)))
             {
                 Categories.Add(category);
             }
+            System.Diagnostics.Debug.WriteLine($"[ProductFormViewModel] {Categories.Count} catégories chargées");
 
             System.Diagnostics.Debug.WriteLine("[ProductFormViewModel] Début chargement fournisseurs...");
             var suppliers = await _supplierRepository.GetAllAsync();
-            System.Diagnostics.Debug.WriteLine($"[ProductFormViewModel] {suppliers.Count} fournisseurs chargés");
+            System.Diagnostics.Debug.WriteLine($"[ProductFormViewModel] {suppliers?.Count ?? 0} fournisseurs chargés");
             
             Suppliers.Clear();
-            foreach (var supplier in suppliers)
+            if (suppliers != null)
             {
-                Suppliers.Add(supplier);
+                foreach (var supplier in suppliers)
+                {
+                    Suppliers.Add(supplier);
+                }
             }
 
             // Sélectionner les éléments correspondants si on est en mode édition
             if (_existingProduct != null)
             {
-                SelectedCategory = Categories.FirstOrDefault(c => c.CategoryId == CategoryId);
                 SelectedSupplier = Suppliers.FirstOrDefault(s => s.SupplierId == SupplierId);
             }
+            else
+            {
+                // Par défaut, sélectionner la première catégorie
+                if (Categories.Count > 0)
+                {
+                    SelectedCategory = Categories[0];
+                }
+            }
             
-            System.Diagnostics.Debug.WriteLine("[ProductFormViewModel] Chargement catégories/fournisseurs terminé");
+            System.Diagnostics.Debug.WriteLine("[ProductFormViewModel] Chargement terminé");
         }
         catch (Exception ex)
         {
@@ -429,17 +650,28 @@ public class ProductFormViewModel : BaseViewModel
 
             if (IsEditMode && _existingProduct != null)
             {
+                // Recharger le produit avec tous ses détails pour l'édition
+                var productToEdit = await _productRepository.GetByIdWithDetailsAsync(_existingProduct.ProductId);
+                if (productToEdit == null)
+                {
+                    throw new InvalidOperationException($"Le produit avec l'ID {_existingProduct.ProductId} n'a pas pu être chargé");
+                }
+
                 // Mise à jour d'un produit existant
-                product = _existingProduct;
+                product = productToEdit;
                 product.Reference = Reference;
                 product.Name = Name;
                 product.Description = Description;
                 product.PurchasePrice = PurchasePrice;
                 product.SalePrice = SalePrice;
+                product.RecommendedPrice = RecommendedPrice;
                 product.StockQuantity = StockQuantity;
                 product.StockAlertThreshold = StockAlertThreshold;
-                product.CategoryId = CategoryId;
-                product.SupplierId = SupplierId ?? 0; // SupplierId est maintenant obligatoire
+                product.Category = SelectedCategory;
+                product.SupplierId = SupplierId ?? 0;
+
+                // Mettre à jour/créer les détails pour l'édition
+                await UpdateCategorySpecificDetailsAsync(product);
 
                 await _productRepository.UpdateAsync(product);
             }
@@ -453,16 +685,48 @@ public class ProductFormViewModel : BaseViewModel
                     Description = Description,
                     PurchasePrice = PurchasePrice,
                     SalePrice = SalePrice,
+                    RecommendedPrice = RecommendedPrice,
                     StockQuantity = StockQuantity,
                     StockAlertThreshold = StockAlertThreshold,
-                    CategoryId = CategoryId,
-                    SupplierId = SupplierId ?? 0 // SupplierId est maintenant obligatoire
+                    Category = SelectedCategory,
+                    SupplierId = SupplierId ?? 0
                 };
+
+                // Créer les détails AVANT la création du produit
+                await CreateCategorySpecificDetailsAsync(product);
 
                 await _productRepository.CreateAsync(product);
             }
 
             await _unitOfWork.SaveChangesAsync();
+
+            // Générer une notification si le produit est en stock bas
+            if (_notificationRepository != null && product.StockQuantity <= product.StockAlertThreshold)
+            {
+                var existingNotifications = await _notificationRepository.GetAllAsync();
+                var hasUnreadNotification = existingNotifications.Any(n => 
+                    n.Type == "LowStock" && 
+                    n.EntityId == product.ProductId && 
+                    !n.IsRead);
+
+                if (!hasUnreadNotification)
+                {
+                    var notification = new Notification
+                    {
+                        Type = "LowStock",
+                        Title = $"Stock bas : {product.Name}",
+                        Message = $"Le produit {product.Reference} - {product.Name} est en stock bas ({product.StockQuantity}/{product.StockAlertThreshold})",
+                        EntityId = product.ProductId,
+                        EntityType = "Product",
+                        IsRead = false,
+                        CreatedAt = DateTime.Now
+                    };
+
+                    await _notificationRepository.CreateAsync(notification);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+            }
+
             ProductSaved?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
@@ -473,6 +737,122 @@ public class ProductFormViewModel : BaseViewModel
         {
             IsLoading = false;
         }
+    }
+
+    private async Task CreateCategorySpecificDetailsAsync(Product product)
+    {
+        switch (SelectedCategory)
+        {
+            case ProductCategoryEnum.VERRE:
+                if (!string.IsNullOrEmpty(GlassMaterial) || !string.IsNullOrEmpty(GlassType))
+                {
+                    var glassDetail = new GlassDetail
+                    {
+                        Material = Enum.TryParse<GlassMaterial>(GlassMaterial, out var glassMat) ? glassMat : null,
+                        GlassType = Enum.TryParse<GlassType>(GlassType, out var glassTyp) ? glassTyp : null,
+                        Diameter = GlassDiameter,
+                        Index = GlassIndex,
+                        PowerLimitMin = PowerLimitMin,
+                        PowerLimitMax = PowerLimitMax
+                    };
+                    product.GlassDetail = glassDetail;
+                }
+                break;
+
+            case ProductCategoryEnum.LENTILLE:
+                if (!string.IsNullOrEmpty(LensBrand) || !string.IsNullOrEmpty(LensModel))
+                {
+                    var lensDetail = new LensDetail
+                    {
+                        Brand = LensBrand,
+                        Model = LensModel,
+                        Material = Enum.TryParse<LensMaterial>(LensMaterial, out var lensMat) ? lensMat : null,
+                        LensType = Enum.TryParse<LensType>(LensType, out var lensTyp) ? lensTyp : null,
+                        Diameter = LensDiameter,
+                        BaseCurve = LensBaseCurve,
+                        IsColored = LensIsColored,
+                        Duration = Enum.TryParse<LensDuration>(LensDuration, out var lensDur) ? lensDur : null
+                    };
+                    product.LensDetail = lensDetail;
+                }
+                break;
+
+            case ProductCategoryEnum.MONTURE:
+            case ProductCategoryEnum.CLIPS:
+            case ProductCategoryEnum.PLASTIC:
+            case ProductCategoryEnum.SOLAIRE:
+                if (!string.IsNullOrEmpty(AccessoryColor) || !string.IsNullOrEmpty(AccessorySize) || !string.IsNullOrEmpty(AccessoryMaterial))
+                {
+                    var accessoryDetail = new AccessoryDetail
+                    {
+                        Color = AccessoryColor,
+                        Size = AccessorySize,
+                        Material = AccessoryMaterial
+                    };
+                    product.AccessoryDetail = accessoryDetail;
+                }
+                break;
+        }
+
+        await Task.CompletedTask;
+    }
+
+    private async Task UpdateCategorySpecificDetailsAsync(Product product)
+    {
+        switch (SelectedCategory)
+        {
+            case ProductCategoryEnum.VERRE:
+                if (!string.IsNullOrEmpty(GlassMaterial) || !string.IsNullOrEmpty(GlassType))
+                {
+                    if (product.GlassDetail == null)
+                    {
+                        product.GlassDetail = new GlassDetail { ProductId = product.ProductId };
+                    }
+                    product.GlassDetail.Material = Enum.TryParse<GlassMaterial>(GlassMaterial, out var glassMat) ? glassMat : null;
+                    product.GlassDetail.GlassType = Enum.TryParse<GlassType>(GlassType, out var glassTyp) ? glassTyp : null;
+                    product.GlassDetail.Diameter = GlassDiameter;
+                    product.GlassDetail.Index = GlassIndex;
+                    product.GlassDetail.PowerLimitMin = PowerLimitMin;
+                    product.GlassDetail.PowerLimitMax = PowerLimitMax;
+                }
+                break;
+
+            case ProductCategoryEnum.LENTILLE:
+                if (!string.IsNullOrEmpty(LensBrand) || !string.IsNullOrEmpty(LensModel))
+                {
+                    if (product.LensDetail == null)
+                    {
+                        product.LensDetail = new LensDetail { ProductId = product.ProductId };
+                    }
+                    product.LensDetail.Brand = LensBrand;
+                    product.LensDetail.Model = LensModel;
+                    product.LensDetail.Material = Enum.TryParse<LensMaterial>(LensMaterial, out var lensMat) ? lensMat : null;
+                    product.LensDetail.LensType = Enum.TryParse<LensType>(LensType, out var lensTyp) ? lensTyp : null;
+                    product.LensDetail.Diameter = LensDiameter;
+                    product.LensDetail.BaseCurve = LensBaseCurve;
+                    product.LensDetail.IsColored = LensIsColored;
+                    product.LensDetail.Duration = Enum.TryParse<LensDuration>(LensDuration, out var lensDur) ? lensDur : null;
+                }
+                break;
+
+            case ProductCategoryEnum.MONTURE:
+            case ProductCategoryEnum.CLIPS:
+            case ProductCategoryEnum.PLASTIC:
+            case ProductCategoryEnum.SOLAIRE:
+                if (!string.IsNullOrEmpty(AccessoryColor) || !string.IsNullOrEmpty(AccessorySize) || !string.IsNullOrEmpty(AccessoryMaterial))
+                {
+                    if (product.AccessoryDetail == null)
+                    {
+                        product.AccessoryDetail = new AccessoryDetail { ProductId = product.ProductId };
+                    }
+                    product.AccessoryDetail.Color = AccessoryColor;
+                    product.AccessoryDetail.Size = AccessorySize;
+                    product.AccessoryDetail.Material = AccessoryMaterial;
+                }
+                break;
+        }
+
+        await Task.CompletedTask;
     }
 
     private void ExecuteCancel()
