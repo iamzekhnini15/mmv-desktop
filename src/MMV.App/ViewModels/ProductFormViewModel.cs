@@ -18,6 +18,7 @@ public class ProductFormViewModel : BaseViewModel
     private readonly IProductRepository _productRepository;
     private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly INotificationRepository _notificationRepository;
     private readonly Product? _existingProduct;
 
     private long _productId;
@@ -416,11 +417,13 @@ public class ProductFormViewModel : BaseViewModel
     public ProductFormViewModel(
         IProductRepository productRepository,
         ISupplierRepository supplierRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        INotificationRepository? notificationRepository = null)
     {
         _productRepository = productRepository;
         _supplierRepository = supplierRepository;
         _unitOfWork = unitOfWork;
+        _notificationRepository = notificationRepository!;
 
         _categories = new ObservableCollection<ProductCategoryEnum>();
         _suppliers = new ObservableCollection<Supplier>();
@@ -438,7 +441,8 @@ public class ProductFormViewModel : BaseViewModel
         IProductRepository productRepository,
         ISupplierRepository supplierRepository,
         IUnitOfWork unitOfWork,
-        Product product) : this(productRepository, supplierRepository, unitOfWork)
+        Product product,
+        INotificationRepository? notificationRepository = null) : this(productRepository, supplierRepository, unitOfWork, notificationRepository)
     {
         _existingProduct = product;
         Title = "Modifier produit";
@@ -695,6 +699,34 @@ public class ProductFormViewModel : BaseViewModel
             }
 
             await _unitOfWork.SaveChangesAsync();
+
+            // Générer une notification si le produit est en stock bas
+            if (_notificationRepository != null && product.StockQuantity <= product.StockAlertThreshold)
+            {
+                var existingNotifications = await _notificationRepository.GetAllAsync();
+                var hasUnreadNotification = existingNotifications.Any(n => 
+                    n.Type == "LowStock" && 
+                    n.EntityId == product.ProductId && 
+                    !n.IsRead);
+
+                if (!hasUnreadNotification)
+                {
+                    var notification = new Notification
+                    {
+                        Type = "LowStock",
+                        Title = $"Stock bas : {product.Name}",
+                        Message = $"Le produit {product.Reference} - {product.Name} est en stock bas ({product.StockQuantity}/{product.StockAlertThreshold})",
+                        EntityId = product.ProductId,
+                        EntityType = "Product",
+                        IsRead = false,
+                        CreatedAt = DateTime.Now
+                    };
+
+                    await _notificationRepository.CreateAsync(notification);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+            }
+
             ProductSaved?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)

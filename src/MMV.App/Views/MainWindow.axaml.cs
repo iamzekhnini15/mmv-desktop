@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using MMV.App.Services;
 using MMV.App.ViewModels;
+using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.Views;
 
@@ -22,9 +23,12 @@ public partial class MainWindow : Window
     /// <summary>
     /// Constructeur avec injection de dépendances.
     /// </summary>
-    public MainWindow(INavigationService navigationService)
+    public MainWindow(INavigationService navigationService,
+                     INotificationRepository? notificationRepository = null,
+                     IProductRepository? productRepository = null,
+                     IUnitOfWork? unitOfWork = null)
     {
         InitializeComponent();
-        DataContext = new MainWindowViewModel(navigationService);
+        DataContext = new MainWindowViewModel(navigationService, notificationRepository, productRepository, unitOfWork);
     }
 }

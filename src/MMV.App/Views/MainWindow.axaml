@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="using:MMV.App"
         xmlns:vm="using:MMV.App.ViewModels"
+        xmlns:converters="using:MMV.App.Converters"
         mc:Ignorable="d" d:DesignWidth="1600" d:DesignHeight="900"
         x:Class="MMV.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -47,6 +48,27 @@
                         <Button Content="🔖  Ordonnances" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Prescriptions"/>
                         <Button Content="📋  Commandes" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Orders"/>
                         <Button Content="💳  Ventes" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Sales"/>
+                        
+                        <!-- Bouton Notifications avec badge -->
+                        <Grid>
+                            <Button Content="🔔  Notifications" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Notifications"/>
+                            <Border Background="#FF453A"
+                                    CornerRadius="10"
+                                    Width="20"
+                                    Height="20"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    Margin="0,8,8,0"
+                                    IsVisible="{Binding UnreadNotificationsCount, Converter={x:Static converters:IsGreaterThanZeroConverter.Instance}}">
+                                <TextBlock Text="{Binding UnreadNotificationsCount}"
+                                           FontSize="10"
+                                           FontWeight="700"
+                                           Foreground="White"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+                        
                         <Button Content="📈  Rapports" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Reports"/>
                         
                         <!-- Séparateur -->

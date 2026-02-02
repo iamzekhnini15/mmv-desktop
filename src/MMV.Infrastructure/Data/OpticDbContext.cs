@@ -108,6 +108,12 @@ public class OpticDbContext : DbContext
     /// </summary>
     public DbSet<StockMovement> StockMovements { get; set; } = null!;
 
+    // ========== NOTIFICATIONS ==========
+    /// <summary>
+    /// Notifications système.
+    /// </summary>
+    public DbSet<Notification> Notifications { get; set; } = null!;
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
@@ -154,6 +160,7 @@ public class OpticDbContext : DbContext
         modelBuilder.ApplyConfiguration(new SaleConfiguration());
         modelBuilder.ApplyConfiguration(new SaleItemConfiguration());
         modelBuilder.ApplyConfiguration(new StockMovementConfiguration());
+        modelBuilder.ApplyConfiguration(new NotificationConfiguration());
 
         // Seed données initiales (admin utilisateur)
         SeedInitialData(modelBuilder);

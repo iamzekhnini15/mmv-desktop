@@ -275,7 +275,14 @@
                                         <!-- Col 4: Stock Badge -->
                                         <Border Grid.Column="3" Grid.Row="0" Grid.RowSpan="2" Background="#1F1F1F" CornerRadius="8" Padding="8,4" HorizontalAlignment="Right" VerticalAlignment="Center">
                                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                                <TextBlock Text="{Binding StockQuantity}" Foreground="#FFFFFF" FontWeight="700"/>
+                                                <TextBlock Text="{Binding StockQuantity}" FontWeight="700">
+                                                    <TextBlock.Foreground>
+                                                        <MultiBinding Converter="{x:Static converters:StockQuantityColorConverter.Instance}">
+                                                            <Binding Path="StockQuantity"/>
+                                                            <Binding Path="StockAlertThreshold"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Foreground>
+                                                </TextBlock>
                                                 <TextBlock Text="/" Foreground="#888888"/>
                                                 <TextBlock Text="{Binding StockAlertThreshold}" Foreground="#A0A0A0"/>
                                             </StackPanel>

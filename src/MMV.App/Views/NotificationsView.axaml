@@ -1,0 +1,157 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:converters="using:MMV.App.Converters"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="MMV.App.Views.NotificationsView"
+             x:DataType="vm:NotificationsViewModel"
+             Background="#1D1D1D">
+
+    <UserControl.Styles>
+        <Style Selector="Border.ToolbarCard">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Border.NotificationCard">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+
+        <Style Selector="Border.NotificationCard.Unread">
+            <Setter Property="BorderBrush" Value="#0071E3"/>
+        </Style>
+
+        <Style Selector="Button.PrimaryButton">
+            <Setter Property="Background" Value="#0071E3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="20,8"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- HEADER -->
+        <Border Grid.Row="0" Padding="32,20,32,8">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Text="Notifications" FontSize="24" FontWeight="700" Foreground="#FFFFFF"/>
+                    <TextBlock Text="{Binding NotificationsListViewModel.Notifications.Count, StringFormat='{}{0} notification(s)'}"
+                               FontSize="12" Foreground="#858585"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Content="✓ Marquer tout comme lu"
+                            Classes="PrimaryButton"
+                            Command="{Binding NotificationsListViewModel.MarkAllAsReadCommand}"/>
+                    <Button Content="🔄 Rafraîchir"
+                            Classes="PrimaryButton"
+                            Command="{Binding NotificationsListViewModel.RefreshCommand}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- LISTE -->
+        <ScrollViewer Grid.Row="1"
+                      Padding="32,0,32,0"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="0">
+                <!-- Liste des notifications -->
+                <ItemsControl ItemsSource="{Binding NotificationsListViewModel.Notifications}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Classes="NotificationCard"
+                                    Classes.Unread="{Binding !IsRead}">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <!-- Icône selon le type -->
+                                    <Border Grid.Column="0"
+                                            Width="40"
+                                            Height="40"
+                                            CornerRadius="20"
+                                            Background="#1F1F1F"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,12,0">
+                                        <TextBlock Text="⚠️"
+                                                   FontSize="20"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+
+                                    <!-- Contenu -->
+                                    <StackPanel Grid.Column="1" Spacing="4">
+                                        <TextBlock Text="{Binding Title}"
+                                                   Foreground="#FFFFFF"
+                                                   FontWeight="600"
+                                                   FontSize="14"/>
+                                        <TextBlock Text="{Binding Message}"
+                                                   Foreground="#A0A0A0"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding CreatedAt, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}"
+                                                   Foreground="#666666"
+                                                   FontSize="11"/>
+                                    </StackPanel>
+
+                                    <!-- Badge non lu -->
+                                    <Border Grid.Column="2"
+                                            Width="10"
+                                            Height="10"
+                                            CornerRadius="5"
+                                            Background="#FF453A"
+                                            VerticalAlignment="Center"
+                                            IsVisible="{Binding !IsRead}"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Message si vide -->
+                <Border IsVisible="{Binding NotificationsListViewModel.Notifications.Count, Converter={x:Static converters:IsZeroConverter.Instance}}"
+                        Background="#252526"
+                        CornerRadius="8"
+                        Padding="40"
+                        Margin="0,20,0,20">
+                    <StackPanel HorizontalAlignment="Center" Spacing="8">
+                        <TextBlock Text="Aucune notification" FontSize="15" Foreground="#A0A0A0" FontWeight="600"/>
+                        <TextBlock Text="Vous êtes à jour !" FontSize="12" Foreground="#666"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Height="10"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- FOOTER -->
+        <Border Grid.Row="2" Padding="32,12,32,12" BorderBrush="#333333" BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <ProgressBar IsIndeterminate="True"
+                                 IsVisible="{Binding NotificationsListViewModel.IsLoading}"
+                                 Width="80"
+                                 Height="2"
+                                 Foreground="#0071E3"/>
+                    <TextBlock Text="{Binding NotificationsListViewModel.ErrorMessage}"
+                               Foreground="#FF453A"
+                               IsVisible="{Binding NotificationsListViewModel.ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               VerticalAlignment="Center"
+                               FontSize="11"
+                               FontWeight="500"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

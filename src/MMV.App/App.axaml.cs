@@ -49,7 +49,10 @@ public partial class App : Application
                 // Utiliser le service provider pour créer MainWindow et MainWindowViewModel avec DI
                 var navigationService = _serviceProvider!.GetRequiredService<INavigationService>();
                 var dialogService = _serviceProvider!.GetRequiredService<IDialogService>();
-                var mainWindow = new MainWindow(navigationService);
+                var notificationRepository = _serviceProvider!.GetRequiredService<INotificationRepository>();
+                var productRepository = _serviceProvider!.GetRequiredService<IProductRepository>();
+                var unitOfWork = _serviceProvider!.GetRequiredService<IUnitOfWork>();
+                var mainWindow = new MainWindow(navigationService, notificationRepository, productRepository, unitOfWork);
                 
                 // Configurer DialogService avec la MainWindow
                 if (dialogService is DialogService ds)
@@ -85,6 +88,7 @@ public partial class App : Application
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<ISaleRepository, SaleRepository>();

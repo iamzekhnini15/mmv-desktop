@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -13,6 +15,10 @@ public class MainWindowViewModel : BaseViewModel
 {
     private BaseViewModel? _currentView;
     private readonly INavigationService _navigationService;
+    private readonly INotificationRepository? _notificationRepository;
+    private readonly IProductRepository? _productRepository;
+    private readonly IUnitOfWork? _unitOfWork;
+    private int _unreadNotificationsCount;
 
     /// <summary>
     /// Collection des éléments du menu de navigation.
@@ -29,13 +35,29 @@ public class MainWindowViewModel : BaseViewModel
     }
 
     /// <summary>
+    /// Nombre de notifications non lues.
+    /// </summary>
+    public int UnreadNotificationsCount
+    {
+        get => _unreadNotificationsCount;
+        set => SetProperty(ref _unreadNotificationsCount, value);
+    }
+
+    /// <summary>
     /// Commande pour naviguer vers une vue.
     /// </summary>
     public ICommand NavigateCommand { get; }
 
-    public MainWindowViewModel(INavigationService navigationService)
+    public MainWindowViewModel(
+        INavigationService navigationService,
+        INotificationRepository? notificationRepository = null,
+        IProductRepository? productRepository = null,
+        IUnitOfWork? unitOfWork = null)
     {
         _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+        _notificationRepository = notificationRepository;
+        _productRepository = productRepository;
+        _unitOfWork = unitOfWork;
         Title = "ManageMyVision";
         
         NavigateCommand = new RelayCommand<string>(ExecuteNavigate, CanNavigate);
@@ -43,6 +65,9 @@ public class MainWindowViewModel : BaseViewModel
         InitializeNavigation();
         RegisterViewModels();
         LoadDashboard();
+        
+        // Charger le compteur de notifications
+        _ = LoadUnreadNotificationsCountAsync();
     }
 
     /// <summary>
@@ -88,7 +113,14 @@ public class MainWindowViewModel : BaseViewModel
         });
         NavigationItems.Add(new NavigationItem 
         { 
-            Icon = "📈", 
+            Icon = "�", 
+            Label = "Notifications", 
+            ViewName = "Notifications",
+            HasBadge = true
+        });
+        NavigationItems.Add(new NavigationItem 
+        { 
+            Icon = "�📈", 
             Label = "Rapports", 
             ViewName = "Reports" 
         });
@@ -111,6 +143,7 @@ public class MainWindowViewModel : BaseViewModel
         _navigationService.RegisterViewModel("Prescriptions", typeof(PrescriptionsViewModel));
         _navigationService.RegisterViewModel("Orders", typeof(OrdersViewModel));
         _navigationService.RegisterViewModel("Sales", typeof(SalesViewModel));
+        _navigationService.RegisterViewModel("Notifications", typeof(NotificationsViewModel));
         _navigationService.RegisterViewModel("Reports", typeof(ReportsViewModel));
         _navigationService.RegisterViewModel("Settings", typeof(SettingsViewModel));
     }
@@ -150,6 +183,64 @@ public class MainWindowViewModel : BaseViewModel
     {
         return !string.IsNullOrEmpty(viewName);
     }
+
+    /// <summary>
+    /// Charge le compteur de notifications non lues.
+    /// </summary>
+    private async Task LoadUnreadNotificationsCountAsync()
+    {
+        if (_notificationRepository != null && _productRepository != null && _unitOfWork != null)
+        {
+            try
+            {
+                // Générer les notifications de stock bas
+                var products = await _productRepository.GetAllAsync();
+                var lowStockProducts = products.Where(p => p.StockQuantity <= p.StockAlertThreshold).ToList();
+
+                foreach (var product in lowStockProducts)
+                {
+                    var notifications = await _notificationRepository.GetAllAsync();
+                    var exists = notifications.Any(n => 
+                        n.Type == "LowStock" && 
+                        n.EntityId == product.ProductId && 
+                        !n.IsRead);
+
+                    if (!exists)
+                    {
+                        var notification = new Domain.Entities.Notification
+                        {
+                            Type = "LowStock",
+                            Title = $"Stock bas : {product.Name}",
+                            Message = $"Le produit {product.Reference} - {product.Name} est en stock bas ({product.StockQuantity}/{product.StockAlertThreshold})",
+                            EntityId = product.ProductId,
+                            EntityType = "Product",
+                            IsRead = false,
+                            CreatedAt = DateTime.Now
+                        };
+
+                        await _notificationRepository.CreateAsync(notification);
+                    }
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                // Charger le compteur
+                UnreadNotificationsCount = await _notificationRepository.CountUnreadAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erreur lors du chargement des notifications : {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Rafraîchit le compteur de notifications.
+    /// </summary>
+    public async Task RefreshNotificationsCountAsync()
+    {
+        await LoadUnreadNotificationsCountAsync();
+    }
 }
 
 /// <summary>
@@ -160,4 +251,5 @@ public class NavigationItem
     public string Icon { get; set; } = string.Empty;
     public string Label { get; set; } = string.Empty;
     public string ViewName { get; set; } = string.Empty;
+    public bool HasBadge { get; set; }
 }
