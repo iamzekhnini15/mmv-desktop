@@ -184,6 +184,7 @@ public class ProductsListViewModel : BaseViewModel
     public event EventHandler<Product>? EditProductRequested;
     public event EventHandler<Product>? DeleteProductRequested;
     public event EventHandler? ManageSuppliersRequested;
+    public event EventHandler? ManageStockMovementsRequested;
 
     // Commandes
     public ICommand CreateCommand => _createCommand ??= new RelayCommand(ExecuteCreate);
@@ -194,6 +195,9 @@ public class ProductsListViewModel : BaseViewModel
     public ICommand PreviousPageCommand => _previousPageCommand ??= new RelayCommand(ExecutePreviousPage, () => CanGoToPreviousPage);
     public ICommand ManageCategoriesCommand => _manageCategoriesCommand ??= new RelayCommand(ExecuteManageCategories);
     public ICommand ManageSuppliersCommand => _manageSuppliersCommand ??= new RelayCommand(ExecuteManageSuppliers);
+
+    private ICommand? _manageStockMovementsCommand;
+    public ICommand ManageStockMovementsCommand => _manageStockMovementsCommand ??= new RelayCommand(ExecuteManageStockMovements);
 
     public ProductsListViewModel(
         IProductRepository productRepository,
@@ -403,5 +407,10 @@ public class ProductsListViewModel : BaseViewModel
     private void ExecuteManageSuppliers()
     {
         ManageSuppliersRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ExecuteManageStockMovements()
+    {
+        ManageStockMovementsRequested?.Invoke(this, EventArgs.Empty);
     }
 }

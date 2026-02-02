@@ -1,0 +1,183 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:controls="using:MMV.App.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="MMV.App.Views.Products.StockMovementFormView"
+             x:DataType="vm:StockMovementFormViewModel"
+             Background="#1D1D1D">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.Label">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="500"/>
+            <Setter Property="Foreground" Value="#858585"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+
+        <Style Selector="TextBox">
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Background" Value="#3C3C3C"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+
+        <Style Selector="ComboBox">
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Background" Value="#3C3C3C"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+
+        <Style Selector="Button.SecondaryButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#404040"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style Selector="Button.SecondaryButton:pointerover">
+            <Setter Property="Background" Value="#3C3C3C"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Border.Card">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- FORMULAIRE SCROLLABLE -->
+        <ScrollViewer Grid.Row="1" Padding="32,0,32,0">
+            <StackPanel Spacing="16" MaxWidth="700">
+                
+                <!-- Form Card -->
+                <Border Classes="Card">
+                    <StackPanel Spacing="16">
+                        <!-- Product Selection -->
+                        <StackPanel>
+                            <TextBlock Text="Produit *" Classes="Label"/>
+                            <ComboBox ItemsSource="{Binding Products}"
+                                      SelectedValue="{Binding SelectedProductId}"
+                                      PlaceholderText="Sélectionner un produit">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{Binding Reference}" Foreground="#888888"/>
+                                            <TextBlock Text="-" Foreground="#888888"/>
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <!-- Movement Type -->
+                        <StackPanel>
+                            <TextBlock Text="Type de mouvement *" Classes="Label"/>
+                            <ComboBox ItemsSource="{Binding MovementTypes}"
+                                      SelectedItem="{Binding SelectedMovementType}"/>
+                            <TextBlock Foreground="#888888" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0">
+                                In = Entrée stock | Out = Sortie stock | Adjustment = Ajustement (correction inventaire)
+                            </TextBlock>
+                        </StackPanel>
+
+                        <!-- Quantity -->
+                        <StackPanel>
+                            <TextBlock Text="Quantité *" Classes="Label"/>
+                            <NumericUpDown Value="{Binding Quantity}"
+                                          Minimum="1"
+                                          Maximum="9999"
+                                          Increment="1"
+                                          Background="#3C3C3C"
+                                          Foreground="#FFFFFF"
+                                          BorderBrush="Transparent"
+                                          CornerRadius="6"
+                                          Padding="12,8"/>
+                            <TextBlock Foreground="#888888" FontSize="11" Margin="0,4,0,0">
+                                <Run Text="Pour Adjustment, entrez le stock absolu souhaité"/>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <!-- Notes -->
+                        <StackPanel>
+                            <TextBlock Text="Raison" Classes="Label"/>
+                            <TextBox Text="{Binding Notes}"
+                                    TextWrapping="Wrap"
+                                    AcceptsReturn="True"
+                                    Height="80"
+                                    Watermark="Raison du mouvement, référence commande, etc."/>
+                        </StackPanel>
+
+                        <!-- Buttons -->
+                        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,8,0,0">
+                            <Button Content="Annuler"
+                                    Classes="SecondaryButton"
+                                    Command="{Binding CancelCommand}"/>
+
+                            <Button Content="Enregistrer le mouvement"
+                                    Background="#0071E3"
+                                    Foreground="#FFFFFF"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Padding="20,10"
+                                    FontWeight="600"
+                                    Cursor="Hand"
+                                    Command="{Binding SaveCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                </Border>
+
+                <!-- Stock Summary -->
+                <Border Background="#1F1F1F" CornerRadius="8" Padding="16" IsVisible="{Binding !!SelectedProduct}">
+                    <Grid ColumnDefinitions="*,Auto,*">
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <TextBlock Text="Stock actuel" Foreground="#888888" FontSize="12"/>
+                            <TextBlock Text="{Binding CurrentStock}" Foreground="#FFFFFF" FontSize="20" FontWeight="700"/>
+                        </StackPanel>
+
+                        <TextBlock Grid.Column="1" Text="→" Foreground="#0071E3" FontSize="24" VerticalAlignment="Center" Margin="16,0"/>
+
+                        <StackPanel Grid.Column="2" Spacing="4">
+                            <TextBlock Text="Nouveau stock" Foreground="#888888" FontSize="12"/>
+                            <TextBlock Text="{Binding NewStock}" Foreground="#0071E3" FontSize="20" FontWeight="700"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+
+                <!-- Error Message -->
+                <Border Background="#3C1F1F" CornerRadius="6" Padding="12" IsVisible="{Binding !!ErrorMessage}">
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF453A" TextWrapping="Wrap"/>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- INDICATEUR DE CHARGEMENT -->
+        <Border Grid.Row="1" 
+                Background="#80000000"
+                IsVisible="{Binding IsSaving}">
+            <StackPanel VerticalAlignment="Center" 
+                       HorizontalAlignment="Center" 
+                       Spacing="12">
+                <controls:LoadingSpinner />
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</UserControl>

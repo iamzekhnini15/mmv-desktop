@@ -64,6 +64,16 @@ public class ProductsViewModel : BaseViewModel
         set => SetProperty(ref _suppliersViewModel, value);
     }
 
+    private StockMovementsViewModel? _stockMovementsViewModel;
+    /// <summary>
+    /// ViewModel pour la gestion des mouvements de stock.
+    /// </summary>
+    public StockMovementsViewModel? StockMovementsViewModel
+    {
+        get => _stockMovementsViewModel;
+        set => SetProperty(ref _stockMovementsViewModel, value);
+    }
+
     /// <summary>
     /// Indique si on est en mode édition (affiche le formulaire).
     /// </summary>
@@ -112,6 +122,20 @@ public class ProductsViewModel : BaseViewModel
         }
     }
 
+    private bool _isShowingStockMovements;
+    /// <summary>
+    /// Indique si on affiche la gestion des mouvements de stock.
+    /// </summary>
+    public bool IsShowingStockMovements
+    {
+        get => _isShowingStockMovements;
+        set
+        {
+            if (SetProperty(ref _isShowingStockMovements, value))
+                OnPropertyChanged(nameof(ShowList));
+        }
+    }
+
     /// <summary>
     /// Indique si on affiche la fiche détaillée du produit.
     /// </summary>
@@ -137,7 +161,7 @@ public class ProductsViewModel : BaseViewModel
     /// <summary>
     /// Propriété calculée pour afficher la liste (quand aucun formulaire/vue n'est affiché).
     /// </summary>
-    public bool ShowList => !IsInEditMode && !IsShowingCategories && !IsShowingSuppliers && !IsShowingDetail;
+    public bool ShowList => !IsInEditMode && !IsShowingCategories && !IsShowingSuppliers && !IsShowingStockMovements && !IsShowingDetail;
 
     /// <summary>
     /// Commande pour afficher la fiche détaillée d'un produit.
@@ -166,6 +190,7 @@ public class ProductsViewModel : BaseViewModel
         _productsListViewModel.EditProductRequested += OnEditProductRequested;
         _productsListViewModel.DeleteProductRequested += OnDeleteProductRequested;
         _productsListViewModel.ManageSuppliersRequested += OnManageSuppliersRequested;
+        _productsListViewModel.ManageStockMovementsRequested += OnManageStockMovementsRequested;
 
         Title = "📦 Gestion des Produits & Stock";
     }
@@ -262,6 +287,30 @@ public class ProductsViewModel : BaseViewModel
     private void OnSuppliersBackRequested(object? sender, EventArgs e)
     {
         IsShowingSuppliers = false;
+    }
+
+    private void OnManageStockMovementsRequested(object? sender, EventArgs e)
+    {
+        if (StockMovementsViewModel == null)
+        {
+            StockMovementsViewModel = new StockMovementsViewModel(
+                _unitOfWork.StockMovements,
+                _productRepository,
+                _unitOfWork,
+                _dialogService);
+
+            StockMovementsViewModel.BackToProductsRequested += OnStockMovementsBackRequested;
+        }
+
+        IsShowingStockMovements = true;
+        IsInEditMode = false;
+        IsShowingDetail = false;
+        IsShowingSuppliers = false;
+    }
+
+    private void OnStockMovementsBackRequested(object? sender, EventArgs e)
+    {
+        IsShowingStockMovements = false;
     }
 
     private bool CanViewDetail(Product? product)

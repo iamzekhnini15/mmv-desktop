@@ -113,7 +113,13 @@ public class MainWindowViewModel : BaseViewModel
         });
         NavigationItems.Add(new NavigationItem 
         { 
-            Icon = "�", 
+            Icon = "📦", 
+            Label = "Inventaire", 
+            ViewName = "Inventory" 
+        });
+        NavigationItems.Add(new NavigationItem 
+        { 
+            Icon = "🔔", 
             Label = "Notifications", 
             ViewName = "Notifications",
             HasBadge = true
@@ -143,6 +149,7 @@ public class MainWindowViewModel : BaseViewModel
         _navigationService.RegisterViewModel("Prescriptions", typeof(PrescriptionsViewModel));
         _navigationService.RegisterViewModel("Orders", typeof(OrdersViewModel));
         _navigationService.RegisterViewModel("Sales", typeof(SalesViewModel));
+        _navigationService.RegisterViewModel("Inventory", typeof(InventoryViewModel));
         _navigationService.RegisterViewModel("Notifications", typeof(NotificationsViewModel));
         _navigationService.RegisterViewModel("Reports", typeof(ReportsViewModel));
         _navigationService.RegisterViewModel("Settings", typeof(SettingsViewModel));

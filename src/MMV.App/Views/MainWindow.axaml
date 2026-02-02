@@ -48,6 +48,7 @@
                         <Button Content="🔖  Ordonnances" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Prescriptions"/>
                         <Button Content="📋  Commandes" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Orders"/>
                         <Button Content="💳  Ventes" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Sales"/>
+                        <Button Content="📑  Inventaire" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Inventory"/>
                         
                         <!-- Bouton Notifications avec badge -->
                         <Grid>

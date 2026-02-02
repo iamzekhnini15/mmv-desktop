@@ -13,7 +13,25 @@ public static class DbInitializer
         // S'assurer que la BD est créée
         context.Database.EnsureCreated();
 
-        // Si les clients existent déjà, ne pas ajouter
+        // S'assurer qu'un utilisateur admin existe (créé ici, centralisé)
+        var defaultUser = context.Users.FirstOrDefault(u => u.Username == "admin");
+        if (defaultUser == null)
+        {
+            defaultUser = new User
+            {
+                Username = "admin",
+                PasswordHash = "$2a$11$dXJ3SW6G7P50eS6xFJwFHeJ/hbtjiZlyCloO/sURR8EZ4/nqXJcOy", // hash pour 'admin'
+                FirstName = "Administrateur",
+                LastName = "Système",
+                Role = UserRole.Admin,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.Users.Add(defaultUser);
+            context.SaveChanges();
+        }
+
+        // Si les clients existent déjà, ne pas ajouter le jeu de données
         if (context.Customers.Any())
         {
             return;
@@ -289,7 +307,7 @@ public static class DbInitializer
                 StockQuantity = 120,
                 StockAlertThreshold = 30,
                 Category = ProductCategoryEnum.LENTILLE,
-                CategoryId = categories[2].CategoryId,  // Access
+                CategoryId = categories[2].CategoryId,  // Lentilles
                 SupplierId = suppliers[2].SupplierId,  // Luxe Frames
                 IsActive = true,
                 EntryDate = DateTime.UtcNow.AddMonths(-4)
@@ -303,7 +321,8 @@ public static class DbInitializer
                 SalePrice = 29.99m,
                 StockQuantity = 45,
                 StockAlertThreshold = 15,
-                CategoryId = categories[2].CategoryId,  // Accessoires
+                Category = ProductCategoryEnum.PLASTIC,
+                CategoryId = categories[3].CategoryId,  // Accessoires
                 SupplierId = suppliers[0].SupplierId,  // Vision Plus
                 IsActive = true,
                 EntryDate = DateTime.UtcNow.AddMonths(-6)
@@ -317,6 +336,7 @@ public static class DbInitializer
                 SalePrice = 12.99m,
                 StockQuantity = 200,
                 StockAlertThreshold = 50,
+                Category = ProductCategoryEnum.PLASTIC,
                 CategoryId = categories[3].CategoryId,  // Solutions de nettoyage
                 SupplierId = suppliers[1].SupplierId,  // Optics International
                 IsActive = true,
@@ -325,6 +345,65 @@ public static class DbInitializer
         };
 
         context.Products.AddRange(products);
+        context.SaveChanges();
+
+        // 5. Ajouter les détails spécifiques par type de produit
+        // GlassDetails pour les verres
+        var glassProduct = products.First(p => p.Reference == "VERRE-001");
+        var glassDetail = new GlassDetail
+        {
+            ProductId = glassProduct.ProductId,
+            Material = GlassMaterial.MINERAL,
+            GlassType = GlassType.MF,
+            Diameter = "70/75",
+            Index = 1.6m
+        };
+        context.GlassDetails.Add(glassDetail);
+
+        // LensDetails pour les lentilles
+        var lensProduct = products.First(p => p.Reference == "LENT-001");
+        var lensDetail = new LensDetail
+        {
+            ProductId = lensProduct.ProductId,
+            Brand = "AcmeLens",
+            Model = "Comfort",
+            Material = LensMaterial.SOUPLE,
+            LensType = LensType.UNIFOCAL,
+            Diameter = 14.2m,
+            BaseCurve = 8.6m,
+            IsColored = false,
+            Duration = LensDuration.MENSUELLE
+        };
+        context.LensDetails.Add(lensDetail);
+
+        // AccessoryDetails pour les accessoires
+        var accessoryProduct = products.First(p => p.Reference == "ETUI-001");
+        var accessoryDetail = new AccessoryDetail
+        {
+            ProductId = accessoryProduct.ProductId,
+            Color = "Noir",
+            Size = "Standard",
+            Material = "Cuir"
+        };
+        context.AccessoryDetails.Add(accessoryDetail);
+
+        context.SaveChanges();
+
+        // 6. Créer les mouvements de stock initiaux (audit trail)
+        var stockMovements = new List<StockMovement>();
+        foreach (var product in products)
+        {
+            stockMovements.Add(new StockMovement
+            {
+                ProductId = product.ProductId,
+                MovementType = StockMovementType.In,
+                Quantity = product.StockQuantity,
+                Reason = "Stock initial",
+                CreatedAt = DateTime.UtcNow.AddMonths(-3),
+                PerformedByUserId = defaultUser.UserId
+            });
+        }
+        context.StockMovements.AddRange(stockMovements);
         context.SaveChanges();
     }
 }

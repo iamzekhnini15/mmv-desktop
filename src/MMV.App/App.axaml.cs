@@ -92,6 +92,7 @@ public partial class App : Application
         services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<ISaleRepository, SaleRepository>();
+        services.AddScoped<IStockMovementRepository, StockMovementRepository>();
 
         // Enregistrer les services
         services.AddSingleton<INavigationService, NavigationService>();

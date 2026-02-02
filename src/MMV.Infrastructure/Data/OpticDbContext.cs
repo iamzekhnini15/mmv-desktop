@@ -161,27 +161,7 @@ public class OpticDbContext : DbContext
         modelBuilder.ApplyConfiguration(new SaleItemConfiguration());
         modelBuilder.ApplyConfiguration(new StockMovementConfiguration());
         modelBuilder.ApplyConfiguration(new NotificationConfiguration());
-
-        // Seed données initiales (admin utilisateur)
-        SeedInitialData(modelBuilder);
+        // Les données initiales (admin, etc.) sont gérées dans DbInitializer.cs
     }
 
-    /// <summary>
-    /// Insère les données initiales (utilisateur admin, etc.).
-    /// </summary>
-    private void SeedInitialData(ModelBuilder modelBuilder)
-    {
-        // Utilisateur admin par défaut
-        modelBuilder.Entity<User>().HasData(new User
-        {
-            UserId = 1,
-            Username = "admin",
-            PasswordHash = "$2a$11$dXJ3SW6G7P50eS6xFJwFHeJ/hbtjiZlyCloO/sURR8EZ4/nqXJcOy", // BCrypt hash de "admin" (à changer à la première connexion)
-            FirstName = "Administrateur",
-            LastName = "Système",
-            Role = UserRole.Admin,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        });
-    }
 }
