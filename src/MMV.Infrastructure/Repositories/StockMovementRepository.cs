@@ -14,6 +14,17 @@ public class StockMovementRepository : BaseRepository<StockMovement, long>, ISto
     public StockMovementRepository(OpticDbContext context) : base(context) { }
 
     /// <summary>
+    /// Récupère tous les mouvements avec les produits associés.
+    /// </summary>
+    public override async Task<IList<StockMovement>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await GetQueryable()
+            .Include(sm => sm.Product)
+            .OrderByDescending(sm => sm.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
     /// Récupère tous les mouvements d'un produit.
     /// </summary>
     public async Task<IList<StockMovement>> GetByProductIdAsync(long productId, CancellationToken cancellationToken = default)

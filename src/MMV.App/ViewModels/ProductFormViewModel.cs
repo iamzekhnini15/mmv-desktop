@@ -392,7 +392,7 @@ public class ProductFormViewModel : BaseViewModel
     #region Propriétés calculées
 
     public bool IsEditMode => _existingProduct != null;
-    public string FormTitle => IsEditMode ? "✏️ Modifier un produit" : "➕ Nouveau produit";
+    public string FormTitle => IsEditMode ? "Modifier un produit" : "Nouveau produit";
     public bool IsValid =>
         string.IsNullOrEmpty(ReferenceError) &&
         string.IsNullOrEmpty(NameError) &&

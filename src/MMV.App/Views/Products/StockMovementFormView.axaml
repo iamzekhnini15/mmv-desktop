@@ -3,172 +3,234 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:Views="using:MMV.App.Views.Products"
              xmlns:controls="using:MMV.App.Controls"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="MMV.App.Views.Products.StockMovementFormView"
              x:DataType="vm:StockMovementFormViewModel"
              Background="#1D1D1D">
 
     <UserControl.Styles>
         <Style Selector="TextBlock.Label">
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="FontWeight" Value="500"/>
-            <Setter Property="Foreground" Value="#858585"/>
-            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
 
         <Style Selector="TextBox">
-            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Padding" Value="12,8"/>
             <Setter Property="Background" Value="#3C3C3C"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontSize" Value="13"/>
         </Style>
 
         <Style Selector="ComboBox">
-            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Padding" Value="12,8"/>
             <Setter Property="Background" Value="#3C3C3C"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="FontSize" Value="14"/>
-        </Style>
-
-        <Style Selector="Button.SecondaryButton">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#E0E0E0"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#404040"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="20,10"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        
-        <Style Selector="Button.SecondaryButton:pointerover">
-            <Setter Property="Background" Value="#3C3C3C"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-        </Style>
-
-        <Style Selector="Border.Card">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="20"/>
-            <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="FontSize" Value="13"/>
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto,*">
+        
+        <!-- HEADER -->
+        <Border Grid.Row="0" Padding="32,24,32,16" BorderBrush="#333333" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <controls:BackButton Grid.Column="0"
+                            Command="{Binding CancelCommand}"
+                            ButtonText="← Retour"
+                            Margin="0,0,32,0"/>
+                
+                <StackPanel Grid.Column="1" Spacing="2">
+                    <TextBlock Text="Nouveau mouvement de stock" FontSize="24" FontWeight="700" Foreground="#FFFFFF"/>
+                    <TextBlock Foreground="#858585" FontSize="12">
+                        Enregistrer une entrée, sortie ou ajustement
+                    </TextBlock>
+                </StackPanel>
 
-        <!-- FORMULAIRE SCROLLABLE -->
-        <ScrollViewer Grid.Row="1" Padding="32,0,32,0">
-            <StackPanel Spacing="16" MaxWidth="700">
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <Button Content="Annuler"
+                            Command="{Binding CancelCommand}"
+                            Background="#3C3C3C"
+                            Foreground="#FFFFFF"
+                            BorderThickness="0"
+                            CornerRadius="6"
+                            Padding="12,8"
+                            FontWeight="600"
+                            Cursor="Hand"/>
+
+                    <Button Command="{Binding SaveCommand}"
+                            Background="#27AE60"
+                            Foreground="#FFFFFF"
+                            BorderThickness="0"
+                            CornerRadius="6"
+                            Padding="12,8"
+                            FontWeight="600"
+                            Cursor="Hand"
+                            IsEnabled="{Binding !IsSaving}">
+                        <TextBlock Text="Enregistrer"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- CONTENU -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="32,0,32,0">
+            <StackPanel Spacing="20">
+                
+                <!-- Info -->
+                <TextBlock Foreground="#707070" FontSize="13" Margin="0,16,0,0">
+                    Ajoutez plusieurs produits pour créer un mouvement groupé (livraison, inventaire, etc.)
+                </TextBlock>
                 
                 <!-- Form Card -->
-                <Border Classes="Card">
-                    <StackPanel Spacing="16">
-                        <!-- Product Selection -->
-                        <StackPanel>
-                            <TextBlock Text="Produit *" Classes="Label"/>
-                            <ComboBox ItemsSource="{Binding Products}"
-                                      SelectedValue="{Binding SelectedProductId}"
-                                      PlaceholderText="Sélectionner un produit">
-                                <ComboBox.ItemTemplate>
+                <Border Background="#252526" CornerRadius="8" Padding="24">
+                    <StackPanel Spacing="20">
+                        
+                        <!-- Products DataGrid -->
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="Produits" FontSize="16" FontWeight="600" Foreground="#FFFFFF"/>
+                            
+                            <ItemsControl ItemsSource="{Binding MovementLines}">
+                                <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <TextBlock Text="{Binding Reference}" Foreground="#888888"/>
-                                            <TextBlock Text="-" Foreground="#888888"/>
-                                            <TextBlock Text="{Binding Name}"/>
-                                        </StackPanel>
+                                        <Border Background="#3C3C3C" CornerRadius="6" Padding="16" Margin="0,0,0,12">
+                                            <Grid ColumnDefinitions="3*,1.5*,1*,2*,Auto">
+                                                <!-- Product (single input: type to search or pick) -->
+                                                <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,12,0">
+                                                    <TextBlock Text="Produit *" FontSize="11" Foreground="#858585" FontWeight="600"/>
+                                                    <Grid>
+                                                        <TextBox Text="{Binding SearchText, Mode=TwoWay}"
+                                                                 Watermark="Taper référence, nom ou marque..."
+                                                                 Background="#2F2F2F"
+                                                                 Foreground="#FFFFFF"
+                                                                 Padding="8"
+                                                                 CornerRadius="6"
+                                                                 HorizontalAlignment="Stretch"
+                                                     Name="SearchBox" />
+
+                                                        <Popup IsOpen="{Binding IsPopupOpen, Mode=TwoWay}"
+                                                               PlacementTarget="{Binding ElementName=SearchBox}"
+                                                               Placement="Bottom">
+                                                            <Border Background="#252526" CornerRadius="6" Padding="8" Width="360">
+                                                                <ListBox ItemsSource="{Binding FilteredProducts}"
+                                                                         SelectedItem="{Binding Product, Mode=TwoWay}"
+                                                                         Background="#252526"
+                                                                         Foreground="#FFFFFF"
+                                                                         BorderThickness="0"
+                                                                         MaxHeight="300"
+                                                                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                                                                <ListBox.ItemTemplate>
+                                                                                    <DataTemplate>
+                                                                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="6">
+                                                                                            <TextBlock Text="{Binding Reference}" Foreground="#707070" FontSize="12"/>
+                                                                                            <TextBlock Text="-" Foreground="#707070"/>
+                                                                                            <TextBlock Text="{Binding Name}" Foreground="#FFFFFF"/>
+                                                                                        </StackPanel>
+                                                                                    </DataTemplate>
+                                                                    </ListBox.ItemTemplate>
+                                                                </ListBox>
+                                                            </Border>
+                                                        </Popup>
+                                                    </Grid>
+                                                </StackPanel>
+
+                                                <!-- Movement Type -->
+                                                <StackPanel Grid.Column="1" Spacing="6" Margin="0,0,12,0">
+                                                    <TextBlock Text="Type *" FontSize="11" Foreground="#858585" FontWeight="600"/>
+                                                    <ComboBox ItemsSource="{Binding $parent[ItemsControl].((vm:StockMovementFormViewModel)DataContext).MovementTypes}"
+                                                              SelectedItem="{Binding MovementType}"
+                                                              HorizontalAlignment="Stretch"/>
+                                                </StackPanel>
+
+                                                <!-- Quantity -->
+                                                <StackPanel Grid.Column="2" Spacing="6" Margin="0,0,12,0">
+                                                    <TextBlock Text="Quantité *" FontSize="11" Foreground="#858585" FontWeight="600"/>
+                                                    <NumericUpDown Value="{Binding Quantity}"
+                                                                  Minimum="0"
+                                                                  Maximum="9999"
+                                                                  Increment="1"
+                                                                  Background="#252526"
+                                                                  Foreground="#FFFFFF"
+                                                                  BorderBrush="Transparent"
+                                                                  CornerRadius="6"
+                                                                  Padding="12,8"
+                                                                  HorizontalAlignment="Stretch"/>
+                                                </StackPanel>
+
+                                                <!-- Notes -->
+                                                <StackPanel Grid.Column="3" Spacing="6" Margin="0,0,12,0">
+                                                    <TextBlock Text="Notes" FontSize="11" Foreground="#858585" FontWeight="600"/>
+                                                    <TextBox Text="{Binding Notes}"
+                                                            Background="#252526"
+                                                            Watermark="Raison, référence commande..."
+                                                            HorizontalAlignment="Stretch"/>
+                                                </StackPanel>
+
+                                                <!-- Remove Button -->
+                                                <Button Grid.Column="4" 
+                                                        Command="{Binding $parent[ItemsControl].((vm:StockMovementFormViewModel)DataContext).RemoveLineCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Background="#3C1F1F"
+                                                        Foreground="#FF453A"
+                                                        BorderThickness="0"
+                                                        CornerRadius="6"
+                                                        Padding="12"
+                                                        Cursor="Hand"
+                                                        VerticalAlignment="Center"
+                                                        Margin="12,0,0,0"
+                                                        ToolTip.Tip="Supprimer cette ligne">
+                                                    <PathIcon Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" 
+                                                              Height="18" Width="18"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
                                     </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                        </StackPanel>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
-                        <!-- Movement Type -->
-                        <StackPanel>
-                            <TextBlock Text="Type de mouvement *" Classes="Label"/>
-                            <ComboBox ItemsSource="{Binding MovementTypes}"
-                                      SelectedItem="{Binding SelectedMovementType}"/>
-                            <TextBlock Foreground="#888888" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0">
-                                In = Entrée stock | Out = Sortie stock | Adjustment = Ajustement (correction inventaire)
-                            </TextBlock>
-                        </StackPanel>
-
-                        <!-- Quantity -->
-                        <StackPanel>
-                            <TextBlock Text="Quantité *" Classes="Label"/>
-                            <NumericUpDown Value="{Binding Quantity}"
-                                          Minimum="1"
-                                          Maximum="9999"
-                                          Increment="1"
-                                          Background="#3C3C3C"
-                                          Foreground="#FFFFFF"
-                                          BorderBrush="Transparent"
-                                          CornerRadius="6"
-                                          Padding="12,8"/>
-                            <TextBlock Foreground="#888888" FontSize="11" Margin="0,4,0,0">
-                                <Run Text="Pour Adjustment, entrez le stock absolu souhaité"/>
-                            </TextBlock>
-                        </StackPanel>
-
-                        <!-- Notes -->
-                        <StackPanel>
-                            <TextBlock Text="Raison" Classes="Label"/>
-                            <TextBox Text="{Binding Notes}"
-                                    TextWrapping="Wrap"
-                                    AcceptsReturn="True"
-                                    Height="80"
-                                    Watermark="Raison du mouvement, référence commande, etc."/>
-                        </StackPanel>
-
-                        <!-- Buttons -->
-                        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,8,0,0">
-                            <Button Content="Annuler"
-                                    Classes="SecondaryButton"
-                                    Command="{Binding CancelCommand}"/>
-
-                            <Button Content="Enregistrer le mouvement"
-                                    Background="#0071E3"
-                                    Foreground="#FFFFFF"
-                                    BorderThickness="0"
+                            <!-- Add Line Button -->
+                            <Button Command="{Binding AddLineCommand}"
+                                    Background="#3C3C3C"
+                                    Foreground="#4A90E2"
+                                    BorderThickness="1"
+                                    BorderBrush="#4A90E2"
                                     CornerRadius="6"
-                                    Padding="20,10"
-                                    FontWeight="600"
+                                    Padding="16,10"
+                                    HorizontalAlignment="Left"
                                     Cursor="Hand"
-                                    Command="{Binding SaveCommand}"/>
+                                    FontWeight="600">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Height="16" Width="16" Foreground="#4A90E2"/>
+                                    <TextBlock Text="Ajouter un produit"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Info Text -->
+                            <TextBlock Foreground="#707070" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0">
+                                💡 In = Entrée stock | Out = Sortie stock | Adjustment = Ajustement (définit le stock absolu)
+                            </TextBlock>
                         </StackPanel>
+
+                        <!-- Error Message -->
+                        <Border Background="#3C1F1F" CornerRadius="6" Padding="12" IsVisible="{Binding !!ErrorMessage}">
+                            <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF453A" TextWrapping="Wrap"/>
+                        </Border>
+
+                        <!-- Buttons moved to header -->
                     </StackPanel>
-
-                </Border>
-
-                <!-- Stock Summary -->
-                <Border Background="#1F1F1F" CornerRadius="8" Padding="16" IsVisible="{Binding !!SelectedProduct}">
-                    <Grid ColumnDefinitions="*,Auto,*">
-                        <StackPanel Grid.Column="0" Spacing="4">
-                            <TextBlock Text="Stock actuel" Foreground="#888888" FontSize="12"/>
-                            <TextBlock Text="{Binding CurrentStock}" Foreground="#FFFFFF" FontSize="20" FontWeight="700"/>
-                        </StackPanel>
-
-                        <TextBlock Grid.Column="1" Text="→" Foreground="#0071E3" FontSize="24" VerticalAlignment="Center" Margin="16,0"/>
-
-                        <StackPanel Grid.Column="2" Spacing="4">
-                            <TextBlock Text="Nouveau stock" Foreground="#888888" FontSize="12"/>
-                            <TextBlock Text="{Binding NewStock}" Foreground="#0071E3" FontSize="20" FontWeight="700"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-
-                <!-- Error Message -->
-                <Border Background="#3C1F1F" CornerRadius="6" Padding="12" IsVisible="{Binding !!ErrorMessage}">
-                    <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF453A" TextWrapping="Wrap"/>
                 </Border>
 
             </StackPanel>
         </ScrollViewer>
 
-        <!-- INDICATEUR DE CHARGEMENT -->
+        <!-- LOADING OVERLAY -->
         <Border Grid.Row="1" 
                 Background="#80000000"
                 IsVisible="{Binding IsSaving}">
@@ -176,6 +238,7 @@
                        HorizontalAlignment="Center" 
                        Spacing="12">
                 <controls:LoadingSpinner />
+                <TextBlock Text="Enregistrement..." Foreground="#FFFFFF" HorizontalAlignment="Center"/>
             </StackPanel>
         </Border>
 

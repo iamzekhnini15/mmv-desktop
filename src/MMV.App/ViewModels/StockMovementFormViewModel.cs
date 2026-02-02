@@ -12,63 +12,50 @@ using MMV.Domain.Interfaces.Repositories;
 namespace MMV.App.ViewModels;
 
 /// <summary>
-/// ViewModel pour le formulaire de mouvement de stock.
+/// Représente une ligne de mouvement de stock dans le formulaire multi-produits.
 /// </summary>
-public class StockMovementFormViewModel : BaseViewModel
+public class ProductMovementLine : BaseViewModel
 {
-    private readonly IStockMovementRepository _stockMovementRepository;
-    private readonly IProductRepository _productRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IDialogService _dialogService;
+    private readonly IEnumerable<Product> _allProducts;
 
-    private ObservableCollection<Product> _products = new();
-    private long? _selectedProductId;
-    private Product? _selectedProduct;
-    private string _selectedMovementType = "In";
+    private Product? _product;
+    private string _movementType = "In";
     private int _quantity = 1;
     private string _notes = string.Empty;
-    private DateTime _movementDate = DateTime.Now;
-    private bool _isSaving;
-    private string? _errorMessage;
+    private string _searchText = string.Empty;
 
-    // For display
-    private int _currentStock;
-    private int _newStock;
+    private ObservableCollection<Product> _filteredProducts = new();
+    private bool _isPopupOpen;
 
-    public ObservableCollection<Product> Products
+    public ProductMovementLine(IEnumerable<Product> allProducts)
     {
-        get => _products;
-        set => SetProperty(ref _products, value);
+        _allProducts = allProducts ?? Array.Empty<Product>();
+        _filteredProducts = new ObservableCollection<Product>(_allProducts);
+        _isPopupOpen = false;
     }
 
-    public long? SelectedProductId
+    public Product? Product
     {
-        get => _selectedProductId;
+        get => _product;
         set
         {
-            if (SetProperty(ref _selectedProductId, value))
+            if (SetProperty(ref _product, value))
             {
-                _ = OnProductSelectedAsync();
+                // When a product is selected, reflect it in the search box
+                if (_product != null)
+                    SearchText = _product.Reference ?? _product.Name;
+
+                OnPropertyChanged(nameof(IsValid));
+                // close suggestions when selected
+                IsPopupOpen = false;
             }
         }
     }
 
-    public Product? SelectedProduct
+    public string MovementType
     {
-        get => _selectedProduct;
-        set => SetProperty(ref _selectedProduct, value);
-    }
-
-    public string SelectedMovementType
-    {
-        get => _selectedMovementType;
-        set
-        {
-            if (SetProperty(ref _selectedMovementType, value))
-            {
-                CalculateNewStock();
-            }
-        }
+        get => _movementType;
+        set => SetProperty(ref _movementType, value);
     }
 
     public int Quantity
@@ -78,7 +65,7 @@ public class StockMovementFormViewModel : BaseViewModel
         {
             if (SetProperty(ref _quantity, value))
             {
-                CalculateNewStock();
+                OnPropertyChanged(nameof(IsValid));
             }
         }
     }
@@ -89,22 +76,88 @@ public class StockMovementFormViewModel : BaseViewModel
         set => SetProperty(ref _notes, value);
     }
 
-    public DateTime MovementDate
+    /// <summary>
+    /// Texte de recherche (référence, nom, marque/fournisseur...).
+    /// Modifier cette valeur filtre la collection <see cref="FilteredProducts"/>.
+    /// </summary>
+    public string SearchText
     {
-        get => _movementDate;
-        set => SetProperty(ref _movementDate, value);
+        get => _searchText;
+        set
+        {
+            if (SetProperty(ref _searchText, value))
+            {
+                UpdateFilter();
+                // open suggestions when typing
+                IsPopupOpen = !string.IsNullOrWhiteSpace(_searchText) && FilteredProducts.Any();
+            }
+        }
     }
 
-    public int CurrentStock
+    public ObservableCollection<Product> FilteredProducts
     {
-        get => _currentStock;
-        set => SetProperty(ref _currentStock, value);
+        get => _filteredProducts;
+        private set => SetProperty(ref _filteredProducts, value);
     }
 
-    public int NewStock
+    public bool IsPopupOpen
     {
-        get => _newStock;
-        set => SetProperty(ref _newStock, value);
+        get => _isPopupOpen;
+        set => SetProperty(ref _isPopupOpen, value);
+    }
+
+    private void UpdateFilter()
+    {
+        var q = (SearchText ?? string.Empty).Trim();
+        IEnumerable<Product> result;
+
+        if (string.IsNullOrWhiteSpace(q))
+        {
+            result = _allProducts;
+        }
+        else
+        {
+            q = q.ToLowerInvariant();
+            result = _allProducts.Where(p =>
+                (!string.IsNullOrEmpty(p.Reference) && p.Reference.ToLowerInvariant().Contains(q)) ||
+                (!string.IsNullOrEmpty(p.Name) && p.Name.ToLowerInvariant().Contains(q)) ||
+                (p.Supplier != null && !string.IsNullOrEmpty(p.Supplier.Name) && p.Supplier.Name.ToLowerInvariant().Contains(q)) ||
+                (!string.IsNullOrEmpty(p.Description) && p.Description.ToLowerInvariant().Contains(q))
+            );
+        }
+
+        // Refresh collection
+        FilteredProducts = new ObservableCollection<Product>(result);
+    }
+
+    public bool IsValid => Product != null && Quantity > 0;
+}
+
+/// <summary>
+/// ViewModel pour le formulaire de mouvement de stock multi-produits.
+/// </summary>
+public class StockMovementFormViewModel : BaseViewModel
+{
+    private readonly IStockMovementRepository _stockMovementRepository;
+    private readonly IProductRepository _productRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IDialogService _dialogService;
+
+    private ObservableCollection<Product> _products = new();
+    private ObservableCollection<ProductMovementLine> _movementLines = new();
+    private bool _isSaving;
+    private string? _errorMessage;
+
+    public ObservableCollection<Product> Products
+    {
+        get => _products;
+        set => SetProperty(ref _products, value);
+    }
+
+    public ObservableCollection<ProductMovementLine> MovementLines
+    {
+        get => _movementLines;
+        set => SetProperty(ref _movementLines, value);
     }
 
     public bool IsSaving
@@ -126,6 +179,8 @@ public class StockMovementFormViewModel : BaseViewModel
         "Adjustment" // Ajustement
     };
 
+    public ICommand AddLineCommand { get; }
+    public ICommand RemoveLineCommand { get; }
     public ICommand SaveCommand { get; }
     public ICommand CancelCommand { get; }
 
@@ -143,19 +198,20 @@ public class StockMovementFormViewModel : BaseViewModel
         _unitOfWork = unitOfWork;
         _dialogService = dialogService;
 
+        AddLineCommand = new RelayCommand(ExecuteAddLine);
+        RemoveLineCommand = new RelayCommand<ProductMovementLine>(ExecuteRemoveLine);
         SaveCommand = new RelayCommand(async () => await SaveAsync(), CanSave);
         CancelCommand = new RelayCommand(ExecuteCancel);
         
-        // Recalculer CanSave quand les propriétés changent
-        PropertyChanged += (s, e) => {
-            if (e.PropertyName == nameof(SelectedProductId) || e.PropertyName == nameof(Quantity))
-                (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
-        };
+        // Monitor lines collection for CanSave
+        MovementLines.CollectionChanged += (s, e) => (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
 
     public async void InitializeForCreate()
     {
         await LoadProductsAsync();
+        // Ajouter une première ligne vide
+        ExecuteAddLine();
     }
 
     private async Task LoadProductsAsync()
@@ -171,49 +227,22 @@ public class StockMovementFormViewModel : BaseViewModel
         }
     }
 
-    private async Task OnProductSelectedAsync()
+    private void ExecuteAddLine()
     {
-        if (!SelectedProductId.HasValue)
-        {
-            SelectedProduct = null;
-            CurrentStock = 0;
-            NewStock = 0;
-            return;
-        }
-
-        try
-        {
-            var product = await _productRepository.GetByIdAsync(SelectedProductId.Value);
-            SelectedProduct = product;
-            CurrentStock = product?.StockQuantity ?? 0;
-            CalculateNewStock();
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Erreur lors du chargement du produit: {ex.Message}";
-        }
+        MovementLines.Add(new ProductMovementLine(Products));
     }
 
-    private void CalculateNewStock()
+    private void ExecuteRemoveLine(ProductMovementLine? line)
     {
-        if (SelectedProduct == null)
+        if (line != null)
         {
-            NewStock = 0;
-            return;
+            MovementLines.Remove(line);
         }
-
-        NewStock = SelectedMovementType switch
-        {
-            "In" => CurrentStock + Quantity,
-            "Out" => CurrentStock - Quantity,
-            "Adjustment" => Quantity, // Pour ajustement, Quantity = nouveau stock absolu
-            _ => CurrentStock
-        };
     }
 
     private bool CanSave()
     {
-        return SelectedProductId.HasValue && Quantity > 0;
+        return MovementLines.Any(l => l.IsValid);
     }
 
     private async Task SaveAsync()
@@ -223,49 +252,99 @@ public class StockMovementFormViewModel : BaseViewModel
 
         try
         {
-            if (SelectedProduct == null)
+            var validLines = MovementLines.Where(l => l.IsValid).ToList();
+            
+            if (validLines.Count == 0)
             {
-                ErrorMessage = "Veuillez sélectionner un produit.";
+                ErrorMessage = "Veuillez ajouter au moins un produit valide.";
                 return;
             }
 
-            // Validation: OUT ne peut pas créer un stock négatif
-            if (SelectedMovementType == "Out" && NewStock < 0)
-            {
-                var confirm = await _dialogService.ShowConfirmationAsync(
-                    "Stock négatif",
-                    $"Cette sortie créera un stock négatif ({NewStock}). Continuer ?");
+            int successCount = 0;
+            int errorCount = 0;
 
-                if (!confirm)
-                    return;
+            foreach (var line in validLines)
+            {
+                try
+                {
+                    // Récupérer le produit frais pour éviter les conflits de tracking
+                    var product = await _productRepository.GetByIdAsync(line.Product!.ProductId);
+                    if (product == null)
+                    {
+                        errorCount++;
+                        continue;
+                    }
+
+                    // Validation: OUT ne peut pas créer un stock négatif (sauf si confirmé)
+                    if (line.MovementType == "Out")
+                    {
+                        var newStock = product.StockQuantity - line.Quantity;
+                        if (newStock < 0)
+                        {
+                            var confirm = await _dialogService.ShowConfirmationAsync(
+                                "Stock négatif",
+                                $"La sortie pour '{product.Name}' créera un stock négatif ({newStock}). Continuer ?");
+
+                            if (!confirm)
+                            {
+                                errorCount++;
+                                continue;
+                            }
+                        }
+                    }
+
+                    // Créer le mouvement de stock
+                    var movement = new StockMovement
+                    {
+                        ProductId = product.ProductId,
+                        MovementType = Enum.Parse<StockMovementType>(line.MovementType),
+                        Quantity = line.Quantity,
+                        Reason = string.IsNullOrWhiteSpace(line.Notes) ? $"Mouvement {line.MovementType}" : line.Notes
+                    };
+
+                    await _stockMovementRepository.CreateAsync(movement);
+
+                    // Mettre à jour le stock du produit
+                    if (line.MovementType == "Adjustment")
+                    {
+                        product.StockQuantity = line.Quantity; // Ajustement absolu
+                    }
+                    else if (line.MovementType == "In")
+                    {
+                        product.StockQuantity += line.Quantity;
+                    }
+                    else if (line.MovementType == "Out")
+                    {
+                        product.StockQuantity -= line.Quantity;
+                    }
+
+                    await _productRepository.UpdateAsync(product);
+                    successCount++;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[StockMovementFormViewModel] Error processing line: {ex}");
+                    errorCount++;
+                }
             }
 
-            // Create movement
-            var movement = new StockMovement
-            {
-                ProductId = SelectedProductId!.Value,
-                MovementType = Enum.Parse<StockMovementType>(SelectedMovementType),
-                Quantity = Quantity,
-                Reason = Notes
-            };
-
-            await _stockMovementRepository.CreateAsync(movement);
-
-            // Update product stock
-            if (SelectedMovementType == "Adjustment")
-            {
-                SelectedProduct.StockQuantity = Quantity; // Ajustement absolu
-            }
-            else
-            {
-                SelectedProduct.StockQuantity = NewStock;
-            }
-
-            await _productRepository.UpdateAsync(SelectedProduct);
             await _unitOfWork.SaveChangesAsync();
 
-            await _dialogService.ShowConfirmationAsync("Succès", "Mouvement de stock enregistré avec succès.");
-            MovementSaved?.Invoke(this, EventArgs.Empty);
+            var message = successCount > 0 
+                ? $"{successCount} mouvement(s) enregistré(s) avec succès." 
+                : "Aucun mouvement enregistré.";
+
+            if (errorCount > 0)
+            {
+                message += $"\n{errorCount} erreur(s) détectée(s).";
+            }
+
+            await _dialogService.ShowInformationAsync("Résultat", message);
+            
+            if (successCount > 0)
+            {
+                MovementSaved?.Invoke(this, EventArgs.Empty);
+            }
         }
         catch (Exception ex)
         {

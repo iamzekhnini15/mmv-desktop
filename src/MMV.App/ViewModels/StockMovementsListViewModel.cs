@@ -21,8 +21,8 @@ public class StockMovementsListViewModel : BaseViewModel
     private ObservableCollection<StockMovement> _movements = new();
     private ObservableCollection<Product> _products = new();
     private string _searchText = string.Empty;
-    private string? _selectedMovementType;
-    private long? _selectedProductId;
+    private string? _selectedMovementType = "Tous types";
+    private long? _selectedProductId = 0;
     private bool _isLoading;
     private int _totalMovements;
 
@@ -88,6 +88,7 @@ public class StockMovementsListViewModel : BaseViewModel
 
     public ObservableCollection<string> MovementTypes { get; } = new()
     {
+        "Tous types",
         "In",
         "Out",
         "Adjustment"
@@ -95,8 +96,28 @@ public class StockMovementsListViewModel : BaseViewModel
 
     public ICommand CreateMovementCommand { get; }
     public ICommand RefreshCommand { get; }
+    public ICommand ExportCommand { get; }
+    public ICommand ShowDetailCommand { get; }
+    public ICommand PreviousPageCommand { get; }
+    public ICommand NextPageCommand { get; }
+
+    private int _currentPage = 1;
+    private int _totalPages = 1;
+
+    public int CurrentPage
+    {
+        get => _currentPage;
+        set => SetProperty(ref _currentPage, value);
+    }
+
+    public int TotalPages
+    {
+        get => _totalPages;
+        set => SetProperty(ref _totalPages, value);
+    }
 
     public event EventHandler? CreateMovementRequested;
+    public event EventHandler<StockMovement>? ShowDetailRequested;
 
     public StockMovementsListViewModel(
         IStockMovementRepository stockMovementRepository,
@@ -107,6 +128,10 @@ public class StockMovementsListViewModel : BaseViewModel
 
         CreateMovementCommand = new RelayCommand(ExecuteCreateMovement);
         RefreshCommand = new RelayCommand(async () => await LoadMovementsAsync());
+        ExportCommand = new RelayCommand(ExecuteExport);
+        ShowDetailCommand = new RelayCommand<StockMovement>(ExecuteShowDetail);
+        PreviousPageCommand = new RelayCommand(ExecutePreviousPage, CanExecutePreviousPage);
+        NextPageCommand = new RelayCommand(ExecuteNextPage, CanExecuteNextPage);
 
         _ = InitializeAsync();
     }
@@ -122,7 +147,28 @@ public class StockMovementsListViewModel : BaseViewModel
         try
         {
             var products = await _productRepository.GetAllAsync();
-            Products = new ObservableCollection<Product>(products.OrderBy(p => p.Name));
+            var productList = new ObservableCollection<Product>();
+            
+            // Add a dummy product for "All products" option
+            var allProductsItem = new Product
+            {
+                ProductId = 0,
+                Name = "Tous les produits",
+                Reference = string.Empty,
+                Description = string.Empty,
+                Category = ProductCategoryEnum.MONTURE,
+                SupplierId = 0,
+                PurchasePrice = 0,
+                SalePrice = 0
+            };
+            productList.Add(allProductsItem);
+            
+            foreach (var product in products.OrderBy(p => p.Name))
+            {
+                productList.Add(product);
+            }
+            
+            Products = productList;
         }
         catch (Exception ex)
         {
@@ -148,13 +194,15 @@ public class StockMovementsListViewModel : BaseViewModel
                     (m.Reason?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false));
             }
 
-            if (!string.IsNullOrEmpty(SelectedMovementType))
+            if (!string.IsNullOrEmpty(SelectedMovementType) && SelectedMovementType != "Tous types")
             {
-                var movementType = Enum.Parse<StockMovementType>(SelectedMovementType);
-                filtered = filtered.Where(m => m.MovementType == movementType);
+                if (Enum.TryParse<StockMovementType>(SelectedMovementType, out var movementType))
+                {
+                    filtered = filtered.Where(m => m.MovementType == movementType);
+                }
             }
 
-            if (SelectedProductId.HasValue)
+            if (SelectedProductId.HasValue && SelectedProductId.Value != 0)
             {
                 filtered = filtered.Where(m => m.ProductId == SelectedProductId.Value);
             }
@@ -179,5 +227,47 @@ public class StockMovementsListViewModel : BaseViewModel
     private void ExecuteCreateMovement()
     {
         CreateMovementRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ExecuteExport()
+    {
+        // TODO: Implement export functionality
+        System.Diagnostics.Debug.WriteLine("[StockMovementsListViewModel] Export requested");
+    }
+
+    private void ExecuteShowDetail(StockMovement? movement)
+    {
+        if (movement != null)
+        {
+            ShowDetailRequested?.Invoke(this, movement);
+        }
+    }
+
+    private bool CanExecutePreviousPage()
+    {
+        return CurrentPage > 1;
+    }
+
+    private void ExecutePreviousPage()
+    {
+        if (CanExecutePreviousPage())
+        {
+            CurrentPage--;
+            _ = LoadMovementsAsync();
+        }
+    }
+
+    private bool CanExecuteNextPage()
+    {
+        return CurrentPage < TotalPages;
+    }
+
+    private void ExecuteNextPage()
+    {
+        if (CanExecuteNextPage())
+        {
+            CurrentPage++;
+            _ = LoadMovementsAsync();
+        }
     }
 }
