@@ -93,8 +93,7 @@ public class InventoryViewModel : BaseViewModel
 
     public ICommand LoadInventoryCommand { get; }
     public ICommand ScanProductCommand { get; }
-    public ICommand ApplyAdjustmentsCommand { get; }
-    public ICommand ResetCommand { get; }
+    public ICommand ConfirmItemAdjustmentCommand { get; }
 
     public InventoryViewModel(
         IProductRepository productRepository,
@@ -109,8 +108,7 @@ public class InventoryViewModel : BaseViewModel
 
         LoadInventoryCommand = new RelayCommand(async () => await LoadInventoryAsync());
         ScanProductCommand = new RelayCommand<string>(ExecuteScanProduct);
-        ApplyAdjustmentsCommand = new RelayCommand(async () => await ApplyAdjustmentsAsync(), CanApplyAdjustments);
-        ResetCommand = new RelayCommand(ExecuteReset);
+        ConfirmItemAdjustmentCommand = new RelayCommand<InventoryItem>(async (item) => await ConfirmItemAdjustmentAsync(item!));
 
         Title = "📋 Inventaire";
 
@@ -183,83 +181,72 @@ public class InventoryViewModel : BaseViewModel
 
     private void CalculateDifferences()
     {
-        ItemsWithDifference = Items.Count(i => i.Difference != 0);
-        (ApplyAdjustmentsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        // Recalculate the count of items with differences
     }
 
-    private bool CanApplyAdjustments()
+    private async Task ConfirmItemAdjustmentAsync(InventoryItem item)
     {
-        return ItemsWithDifference > 0 && !IsProcessing;
-    }
-
-    private async Task ApplyAdjustmentsAsync()
-    {
-        var itemsToAdjust = Items.Where(i => i.Difference != 0).ToList();
-
-        if (itemsToAdjust.Count == 0)
+        if (item.CountedStock == item.OriginalCountedStock)
             return;
 
-        var message = $"Voulez-vous appliquer les ajustements pour {itemsToAdjust.Count} produit(s) ?\n\n" +
-                     $"Cela créera des mouvements de stock de type ADJUSTMENT.";
+        var message = $"Confirmer l'ajustement pour {item.Product.Name} ?\n\n" +
+                     $"De {item.OriginalCountedStock} à {item.CountedStock} (écart: {item.Difference:+#;-#;0})";
 
-        var confirmed = await _dialogService.ShowConfirmationAsync(
-            "Confirmer les ajustements",
-            message);
+        var confirmed = await _dialogService.ShowConfirmationAsync("Confirmer l'ajustement", message);
 
         if (!confirmed)
+        {
+            // Revert to original
+            item.CountedStock = item.OriginalCountedStock;
             return;
+        }
 
         IsProcessing = true;
         ErrorMessage = null;
 
         try
         {
-            foreach (var item in itemsToAdjust)
+            // Fetch fresh product to avoid tracking conflicts
+            var freshProduct = await _productRepository.GetByIdAsync(item.Product.ProductId);
+            if (freshProduct == null)
             {
-                // Create adjustment movement
-                var movement = new StockMovement
-                {
-                    ProductId = item.Product.ProductId,
-                    MovementType = StockMovementType.Adjustment,
-                    Quantity = item.CountedStock,
-                    Reason = $"Inventaire - Écart: {item.Difference:+#;-#;0}"
-                };
-
-                await _stockMovementRepository.CreateAsync(movement);
-
-                // Update product stock
-                item.Product.StockQuantity = item.CountedStock;
-                await _productRepository.UpdateAsync(item.Product);
-
-                // Update theoretical stock
-                item.TheoreticalStock = item.CountedStock;
+                throw new Exception("Produit non trouvé");
             }
+
+            // Create adjustment movement
+            var movement = new StockMovement
+            {
+                ProductId = freshProduct.ProductId,
+                MovementType = StockMovementType.Adjustment,
+                Quantity = item.CountedStock,
+                Reason = $"Inventaire - Écart: {item.Difference:+#;-#;0}"
+            };
+
+            await _stockMovementRepository.CreateAsync(movement);
+
+            // Update product stock
+            freshProduct.StockQuantity = item.CountedStock;
+            await _productRepository.UpdateAsync(freshProduct);
 
             await _unitOfWork.SaveChangesAsync();
 
-            await _dialogService.ShowConfirmationAsync("Succès", $"{itemsToAdjust.Count} ajustement(s) appliqué(s) avec succès.");
+            // Update the item in the UI - cela fera disparaître le bouton ✓
+            item.OriginalCountedStock = item.CountedStock;
+            item.TheoreticalStock = item.CountedStock;
 
-            // Reload
-            await LoadInventoryAsync();
+            await _dialogService.ShowInformationAsync("Succès", $"Ajustement appliqué pour {item.Product.Name}");
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Erreur lors de l'application des ajustements: {ex.Message}";
+            ErrorMessage = $"Erreur: {ex.Message}";
             System.Diagnostics.Debug.WriteLine($"[InventoryViewModel] Error: {ex}");
+            // Revert to original
+            item.CountedStock = item.OriginalCountedStock;
         }
         finally
         {
             IsProcessing = false;
         }
-    }
-
-    private void ExecuteReset()
-    {
-        foreach (var item in Items)
-        {
-            item.CountedStock = 0;
-        }
-        CalculateDifferences();
     }
 }
 
@@ -287,12 +274,28 @@ public class InventoryItem : BaseViewModel
             {
                 OnPropertyChanged(nameof(Difference));
                 OnPropertyChanged(nameof(HasDifference));
+                OnPropertyChanged(nameof(CanConfirm));
             }
         }
     }
 
+    private int _originalCountedStock;
+    /// <summary>
+    /// Stock comptée original (avant modification)
+    /// </summary>
+    public int OriginalCountedStock
+    {
+        get => _originalCountedStock;
+        set => SetProperty(ref _originalCountedStock, value);
+    }
+
     public int Difference => CountedStock - TheoreticalStock;
     public bool HasDifference => Difference != 0;
+
+    /// <summary>
+    /// Indique si le stock comptée a changé et peut être confirmé
+    /// </summary>
+    public bool CanConfirm => CountedStock != OriginalCountedStock;
 
     private bool _isVisible = true;
     public bool IsVisible

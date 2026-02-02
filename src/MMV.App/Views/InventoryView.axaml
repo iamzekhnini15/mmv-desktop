@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MMV.App.ViewModels"
              xmlns:controls="using:MMV.App.Controls"
+             xmlns:converters="using:MMV.App.Converters"
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="MMV.App.Views.InventoryView"
              x:DataType="vm:InventoryViewModel"
@@ -60,52 +61,16 @@
 
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto,*">
         <!-- Header -->
         <Border Grid.Row="0" Padding="32,24,32,16" BorderBrush="#333333" BorderThickness="0,0,0,1">
-            <Grid ColumnDefinitions="*,Auto">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Text="📋 Inventaire" FontSize="24" FontWeight="700" Foreground="#FFFFFF"/>
-                    <TextBlock Foreground="#858585" FontSize="12">
-                        <Run Text="{Binding TotalItems}"/>
-                        <Run Text=" produit(s) ·"/>
-                        <Run Text="{Binding ItemsWithDifference}"/>
-                        <Run Text=" écart(s)"/>
-                    </TextBlock>
-                </StackPanel>
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
-                    <Button Content="🔄 Recharger"
-                            Command="{Binding LoadInventoryCommand}"
-                            Background="#3498DB"
-                            Foreground="#FFFFFF"
-                            BorderThickness="0"
-                            CornerRadius="6"
-                            Padding="16,10"
-                            FontWeight="600"
-                            Cursor="Hand"/>
-
-                    <Button Content="🧹 Réinitialiser"
-                            Command="{Binding ResetCommand}"
-                            Background="#E74C3C"
-                            Foreground="#FFFFFF"
-                            BorderThickness="0"
-                            CornerRadius="6"
-                            Padding="16,10"
-                            FontWeight="600"
-                            Cursor="Hand"/>
-
-                    <Button Content="✅ Appliquer les ajustements"
-                            Command="{Binding ApplyAdjustmentsCommand}"
-                            Background="#27AE60"
-                            Foreground="#FFFFFF"
-                            BorderThickness="0"
-                            CornerRadius="6"
-                            Padding="16,10"
-                            FontWeight="600"
-                            Cursor="Hand"/>
-                </StackPanel>
-            </Grid>
+            <StackPanel Spacing="2">
+                <TextBlock Text="Inventaire" FontSize="24" FontWeight="700" Foreground="#FFFFFF"/>
+                <TextBlock Foreground="#858585" FontSize="12">
+                    <Run Text="{Binding TotalItems}"/>
+                    <Run Text=" produit(s)"/>
+                </TextBlock>
+            </StackPanel>
         </Border>
 
         <!-- Content -->
@@ -114,7 +79,7 @@
                 <!-- Barre de recherche -->
                 <Border Classes="ToolbarCard">
                     <TextBox Text="{Binding SearchText}" 
-                            Watermark="🔍 Rechercher un produit..."
+                            Watermark="Rechercher un produit..."
                             Padding="12,8"/>
                 </Border>
 
@@ -129,27 +94,57 @@
                     <controls:LoadingSpinner />
                 </Border>
 
-                <!-- Inventory List (Cartes) -->
+                <!-- Inventory List -->
                 <Border Classes="ToolbarCard" IsVisible="{Binding !IsLoading}">
                     <ItemsControl ItemsSource="{Binding FilteredItems}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Classes="InventoryCard">
-                                    <Grid ColumnDefinitions="180,*,140,140,100">
+                                    <Grid ColumnDefinitions="180,*,120,100,120,Auto">
+                                        <!-- Référence -->
                                         <TextBlock Grid.Column="0" Text="{Binding Product.Reference}"
-                                                   Foreground="#FFFFFF" FontWeight="600"/>
+                                                   Foreground="#FFFFFF" FontWeight="600" VerticalAlignment="Center"/>
 
+                                        <!-- Nom produit -->
                                         <TextBlock Grid.Column="1" Text="{Binding Product.Name}"
-                                                   Foreground="#A0A0A0" TextTrimming="CharacterEllipsis"/>
+                                                   Foreground="#A0A0A0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
 
-                                        <TextBlock Grid.Column="2" Text="{Binding TheoreticalStock}"
-                                                   Foreground="#FFFFFF" HorizontalAlignment="Right"/>
+                                        <!-- Stock théorique -->
+                                        <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="Stock" Foreground="#707070" FontSize="11"/>
+                                            <TextBlock Text="{Binding TheoreticalStock}"
+                                                       Foreground="#FFFFFF" FontWeight="600"/>
+                                        </StackPanel>
 
-                                        <TextBox Grid.Column="3" Text="{Binding CountedStock, UpdateSourceTrigger=PropertyChanged}"
-                                                 Width="120" HorizontalAlignment="Right"/>
+                                        <!-- Stock compté -->
+                                        <StackPanel Grid.Column="3" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="Compté" Foreground="#707070" FontSize="11"/>
+                                            <TextBox Text="{Binding CountedStock, UpdateSourceTrigger=PropertyChanged}"
+                                                     Width="80" HorizontalAlignment="Left" Padding="8,4"/>
+                                        </StackPanel>
 
-                                        <TextBlock Grid.Column="4" Text="{Binding Difference}"
-                                                   Foreground="#FFFFFF" HorizontalAlignment="Right"/>
+                                        <!-- Écart -->
+                                        <StackPanel Grid.Column="4" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="Écart" Foreground="#707070" FontSize="11"/>
+                                            <TextBlock Text="{Binding Difference}"
+                                                       Foreground="{Binding Difference, Converter={x:Static converters:DifferenceColorConverter.Instance}}"
+                                                       FontWeight="600" HorizontalAlignment="Right"/>
+                                        </StackPanel>
+
+                                        <!-- Bouton Confirmer -->
+                                        <Button Grid.Column="5" Margin="8,0,0,0"
+                                                Content="✓"
+                                                Tag="{Binding}"
+                                                Click="ConfirmButton_Click"
+                                                IsVisible="{Binding CanConfirm}"
+                                                Background="#27AE60"
+                                                Foreground="#FFFFFF"
+                                                BorderThickness="0"
+                                                CornerRadius="4"
+                                                Padding="8,4"
+                                                FontWeight="600"
+                                                Cursor="Hand"
+                                                VerticalAlignment="Center"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -163,25 +158,13 @@
                         <TextBlock Text="Instructions :" FontWeight="600" Foreground="#FFFFFF"/>
                         <TextBlock Foreground="#888888" TextWrapping="Wrap">
                             1. Comptez physiquement chaque produit<LineBreak/>
-                            2. Entrez la quantité comptée dans la colonne "Stock compté"<LineBreak/>
-                            3. L'écart sera calculé automatiquement<LineBreak/>
-                            4. Cliquez sur "Appliquer les ajustements" pour synchroniser le stock
+                            2. Entrez la quantité comptée<LineBreak/>
+                            3. Un bouton ✓ apparaîtra pour confirmer le changement<LineBreak/>
+                            4. Cliquez sur ✓ pour appliquer l'ajustement
                         </TextBlock>
                     </StackPanel>
                 </Border>
             </StackPanel>
         </ScrollViewer>
-
-        <!-- Footer -->
-        <Border Grid.Row="2" 
-                Padding="32,12" 
-                BorderBrush="#333333" 
-                BorderThickness="0,1,0,0"
-                IsVisible="{Binding IsProcessing}">
-            <Grid ColumnDefinitions="Auto,*">
-                <controls:LoadingSpinner Grid.Column="0" Width="20" Height="20" Margin="0,0,12,0"/>
-                <TextBlock Grid.Column="1" Text="Application des ajustements en cours..." Foreground="#FFFFFF" VerticalAlignment="Center"/>
-            </Grid>
-        </Border>
     </Grid>
 </UserControl>
