@@ -16,8 +16,8 @@
 | **Sprint 3** | ✅ **TERMINÉ** | Configuration DI + Services Métier | 1-2 semaines |
 | **Sprint 4** | ✅ **TERMINÉ** | Interface Avalonia - Structure & Navigation | 2 semaines |
 | **Sprint 5** | ✅ **TERMINÉ** | Module Gestion Clients (CRM) | 2 semaines |
-| **Sprint 6** | ⏳ Planifié | Module Gestion Produits & Stock | 2 semaines |
-| **Sprint 7** | ⏳ Planifié | Module Ordonnances Médicales | 1-2 semaines |
+| **Sprint 6** | ✅ **TERMINÉ** | Module Gestion Produits & Stock | 2 semaines |
+| **Sprint 7** | ⏳ En cours | Module Ordonnances Médicales | 1-2 semaines |
 | **Sprint 8** | ⏳ Planifié | Module Commandes (Workflow Atelier) | 2-3 semaines |
 | **Sprint 9** | ⏳ Planifié | Module Point de Vente (POS/Caisse) | 2-3 semaines |
 | **Sprint 10** | ⏳ Planifié | Gestion Utilisateurs & Authentification | 1-2 semaines |
@@ -326,7 +326,7 @@ MainWindow
 
 ---
 
-## Sprint 5 : Module Gestion Clients (CRM) ✅ **TERMINÉ**
+### Sprint 5 : Module Gestion Clients (CRM) ✅ **TERMINÉ**
 
 ### Objectifs
 - [x] Liste des clients (DataGrid paginé + recherche)
@@ -462,35 +462,54 @@ MainWindow
 
 ---
 
-## Sprint 6 : Module Gestion Produits & Stock
+## Sprint 6 : Module Gestion Produits & Stock ✅ **TERMINÉ**
 
 ### Objectifs
-- [ ] Catalogue produits (liste + filtres par catégorie)
-- [ ] CRUD produits
-- [ ] Gestion catégories
-- [ ] Gestion fournisseurs
-- [ ] Alertes stock bas (notifications)
-- [ ] Mouvements de stock (IN/OUT/ADJUSTMENT)
-- [ ] Inventaire (scan/comptage)
-- [ ] Étiquettes code-barres
+- [x] Catalogue produits (liste + filtres par catégorie)
+- [x] CRUD produits
+- [x] Gestion catégories
+- [x] Gestion fournisseurs
+- [x] Alertes stock bas (notifications)
+- [x] Mouvements de stock (IN/OUT/ADJUSTMENT)
+- [x] Inventaire (scan/comptage)
+- [ ] Étiquettes code-barres (reporté Sprint 7)
 
 ### Écrans
-1. **ProductsListView** : Catalogue avec vignettes
-2. **ProductFormView** : Formulaire produit
-3. **CategoriesView** : Gestion catégories
-4. **SuppliersView** : Gestion fournisseurs
-5. **StockMovementsView** : Historique mouvements
-6. **InventoryView** : Interface d'inventaire
+1. ✅ **ProductsListView** : Catalogue avec filtrage multi-critères
+2. ✅ **ProductFormView** : Formulaire produit avec validation
+3. ✅ **CategoriesView** : Gestion catégories
+4. ✅ **SuppliersView** : Gestion fournisseurs
+5. ✅ **StockMovementsView** : Historique mouvements
+6. ✅ **InventoryView** : Interface d'inventaire physique
+7. ✅ **ProductDetailView** : Fiche détaillée avec statistiques
 
-### Fonctionnalités Clés
-- **Calcul automatique de marge** : (SalePrice - PurchasePrice) / PurchasePrice
-- **Indicateur visuel stock** : 🔴 (stock < seuil) / 🟢 (stock OK)
-- **Stockage JSON pour TechnicalSpecs** (propriétés dynamiques)
-- **Gestion des images produits** (stockage dans dossier local)
+### Livrables
+- ✅ `ProductsViewModel.cs` - Coordinateur principal
+- ✅ `ProductsListViewModel.cs` - Catalogue avec filtrage
+- ✅ `ProductFormViewModel.cs` - Formulaire CRUD avec calcul marge
+- ✅ `CategoriesViewModel.cs` - Gestion catégories
+- ✅ `SuppliersViewModel.cs` - Gestion fournisseurs
+- ✅ `StockMovementsViewModel.cs` - Gestion mouvements
+- ✅ `InventoryViewModel.cs` - Interface inventaire
+- ✅ `ProductDetailViewModel.cs` - Fiche détaillée
+- ✅ 8 Views XAML correspondantes
+- ✅ 3 Converters (StockColor, DifferenceColor, CategoryToDetail)
+
+### Fonctionnalités Clés Implémentées
+- ✅ **Calcul automatique de marge** : (SalePrice - PurchasePrice) / PurchasePrice
+- ✅ **Indicateur visuel stock** : 🔴 (stock < seuil) / 🟢 (stock OK)
+- ✅ **Filtrage multi-critères** : Catégorie + Recherche textuelle
+- ✅ **Mouvements de stock** : 3 types (IN/OUT/ADJUSTMENT)
+- ✅ **Interface d'inventaire** : Comptage physique avec barre de progression
+- ✅ **Validation métier** : Prix vente > Prix achat, Suppression sécurisée
+- ✅ **Statistiques produit** : Historique mouvements, CA généré
+
+### Résultat
+Module complet et fonctionnel, intégration parfaite avec l'architecture existante. Documentation détaillée dans `docs/SPRINT6_COMPLETE.md` (566 lignes).
 
 ---
 
-## Sprint 7 : Module Ordonnances Médicales
+## Sprint 7 : Module Ordonnances Médicales ⏳ **EN COURS**
 
 ### Objectifs
 - [ ] Liste des ordonnances par client
