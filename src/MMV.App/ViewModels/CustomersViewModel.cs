@@ -20,6 +20,7 @@ public class CustomersViewModel : BaseViewModel
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOrderRepository _orderRepository;
+    private readonly IPrescriptionRepository _prescriptionRepository;
     private ICommand? _viewDetailCommand;
 
     /// <summary>
@@ -96,12 +97,13 @@ public class CustomersViewModel : BaseViewModel
     /// <summary>
     /// Initialise le ViewModel avec injection de dépendances.
     /// </summary>
-    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository)
+    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository, IPrescriptionRepository prescriptionRepository)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersViewModel] Constructor called");
         _customerRepository = customerRepository;
         _unitOfWork = unitOfWork;
         _orderRepository = orderRepository;
+        _prescriptionRepository = prescriptionRepository;
         
         Title = "Clients";
         
@@ -182,15 +184,15 @@ public class CustomersViewModel : BaseViewModel
     /// <summary>
     /// Exécute l'affichage de la fiche détaillée du client.
     /// </summary>
-    private void ExecuteViewDetail(Customer? customer)
+    private async void ExecuteViewDetail(Customer? customer)
     {
         if (customer != null)
         {
             // Créer une nouvelle instance du CustomerDetailViewModel
-            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _orderRepository);
+            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _orderRepository, _prescriptionRepository);
             
             // Initialiser avec le client sélectionné
-            CustomerDetailViewModel.Initialize(customer);
+            await CustomerDetailViewModel.InitializeAsync(customer);
             
             // Écouter l'événement de retour
             CustomerDetailViewModel.BackRequested += OnDetailBackRequested;

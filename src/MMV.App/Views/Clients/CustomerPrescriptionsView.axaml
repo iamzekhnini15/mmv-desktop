@@ -1,0 +1,170 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:views="using:MMV.App.Views.Clients"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="800"
+             x:Class="MMV.App.Views.Clients.CustomerPrescriptionsView"
+             x:DataType="vm:CustomerPrescriptionsViewModel"
+             Background="#1D1D1D">
+
+    <UserControl.Styles>
+        <Style Selector="Border.SectionCard">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="24"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="TextBlock.Label">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="500"/>
+            <Setter Property="Foreground" Value="#858585"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+
+        <Style Selector="TextBlock.ValueText">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Button.ActionButton">
+            <Setter Property="Background" Value="#0071E3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Button.ActionButton:pointerover">
+            <Setter Property="Background" Value="#005BB5"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <!-- Liste des ordonnances -->
+        <ScrollViewer IsVisible="{Binding ShowList}" Padding="32,24">
+            <StackPanel Spacing="16">
+                <!-- En-tête avec bouton Nouveau -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Text="Ordonnances" FontSize="22" FontWeight="700" Foreground="#FFFFFF"/>
+                        <TextBlock Text="{Binding Prescriptions.Count, StringFormat='{}{0} ordonnance(s)'}" 
+                                   FontSize="13" Foreground="#858585"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="1" 
+                            Content="+ Nouvelle Ordonnance"
+                            Command="{Binding CreateCommand}"
+                            Classes="ActionButton"/>
+                </Grid>
+
+                <!-- État vide -->
+                <Border Classes="SectionCard" IsVisible="{Binding HasNoPrescriptions}" MinHeight="200">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
+                        <TextBlock Text="📋" FontSize="48" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Aucune ordonnance" 
+                                   FontSize="16" 
+                                   FontWeight="600" 
+                                   Foreground="#858585"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Cliquez sur 'Nouvelle Ordonnance' pour en créer une" 
+                                   FontSize="13" 
+                                   Foreground="#666666"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Liste des ordonnances -->
+                <ItemsControl ItemsSource="{Binding Prescriptions}" IsVisible="{Binding HasPrescriptions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Classes="SectionCard" Cursor="Hand"
+                                    Tapped="OnPrescriptionTapped">
+                                
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <!-- Icône et date -->
+                                    <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,24,0">
+                                        <TextBlock Text="📋" FontSize="32"/>
+                                        <TextBlock Text="{Binding IssueDate, StringFormat=dd/MM/yyyy}" 
+                                                   FontSize="12" 
+                                                   Foreground="#858585"
+                                                   HorizontalAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <!-- Informations principales -->
+                                    <StackPanel Grid.Column="1" Spacing="8">
+                                        <TextBlock Text="{Binding DoctorName, StringFormat='Dr {0}'}" 
+                                                   Classes="ValueText"
+                                                   FontSize="16"/>
+                                        
+                                        <!-- Valeurs optiques OD/OG -->
+                                        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto">
+                                            <!-- OD -->
+                                            <TextBlock Grid.Row="0" Grid.Column="0" 
+                                                       Text="OD:" 
+                                                       FontWeight="Bold" 
+                                                       Foreground="#858585" 
+                                                       Margin="0,0,8,4"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="1" 
+                                                       Foreground="#CCCCCC" 
+                                                       Margin="0,0,0,4">
+                                                <Run Text="SPH:"/>
+                                                <Run Text="{Binding OdSphere, StringFormat={}{0:+0.00;-0.00;0.00}}"/>
+                                                <Run Text=" CYL:"/>
+                                                <Run Text="{Binding OdCylinder, StringFormat={}{0:+0.00;-0.00;0.00}}"/>
+                                                <Run Text=" AXE:"/>
+                                                <Run Text="{Binding OdAxis}"/>°
+                                            </TextBlock>
+
+                                            <!-- OG -->
+                                            <TextBlock Grid.Row="1" Grid.Column="0" 
+                                                       Text="OG:" 
+                                                       FontWeight="Bold" 
+                                                       Foreground="#858585" 
+                                                       Margin="0,0,8,0"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="1" 
+                                                       Foreground="#CCCCCC">
+                                                <Run Text="SPH:"/>
+                                                <Run Text="{Binding OgSphere, StringFormat={}{0:+0.00;-0.00;0.00}}"/>
+                                                <Run Text=" CYL:"/>
+                                                <Run Text="{Binding OgCylinder, StringFormat={}{0:+0.00;-0.00;0.00}}"/>
+                                                <Run Text=" AXE:"/>
+                                                <Run Text="{Binding OgAxis}"/>°
+                                            </TextBlock>
+                                        </Grid>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Formulaire d'ordonnance -->
+        <ContentControl Content="{Binding FormViewModel}" 
+                        IsVisible="{Binding IsInEditMode}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate>
+                    <views:PrescriptionFormView/>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <!-- Détails de l'ordonnance -->
+        <ContentControl Content="{Binding DetailViewModel}" 
+                        IsVisible="{Binding IsShowingDetail}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate>
+                    <views:PrescriptionDetailView/>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+    </Grid>
+</UserControl>

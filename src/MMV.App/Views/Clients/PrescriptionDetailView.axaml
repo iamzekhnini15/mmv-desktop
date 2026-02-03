@@ -1,0 +1,196 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:MMV.App.Controls"
+             xmlns:vm="using:MMV.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="800"
+             x:Class="MMV.App.Views.Clients.PrescriptionDetailView"
+             x:DataType="vm:PrescriptionDetailViewModel"
+             Background="#1D1D1D">
+
+    <UserControl.Styles>
+        <Style Selector="Border.SectionCard">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="24"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="TextBlock.Label">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="500"/>
+            <Setter Property="Foreground" Value="#858585"/>
+        </Style>
+
+        <Style Selector="TextBlock.Value">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Button.PrimaryButton">
+            <Setter Property="Background" Value="#0071E3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Button.DangerButton">
+            <Setter Property="Background" Value="#E74C3C"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Header -->
+        <Border Grid.Row="0" Padding="32,24,32,16">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <controls:BackButton Grid.Column="0"
+                                     Command="{Binding BackCommand}"
+                                     ButtonText="← Retour"
+                                     Margin="0,0,24,0"/>
+                
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Détail Ordonnance" FontSize="20" FontWeight="700" Foreground="#FFFFFF"/>
+                    <TextBlock Text="{Binding CurrentPrescription.IssueDate, StringFormat='Émise le {0:dd/MM/yyyy}'}" 
+                               FontSize="13" Foreground="#858585"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
+                    <Button Content="Modifier"
+                        Command="{Binding EditCommand}"
+                        Classes="PrimaryButton"/>
+                    <Button Content="Supprimer"
+                        Command="{Binding DeleteCommand}"
+                        Classes="DangerButton"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Contenu -->
+        <ScrollViewer Grid.Row="1" Padding="32,0">
+            <StackPanel Spacing="16">
+                <!-- Informations générales -->
+                <Border Classes="SectionCard">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="Informations Générales" FontSize="16" FontWeight="700" Foreground="#FFFFFF"/>
+                        
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+                            <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4" Margin="0,0,16,12">
+                                <TextBlock Text="Date d'émission" Classes="Label"/>
+                                <TextBlock Text="{Binding CurrentPrescription.IssueDate, StringFormat=dd/MM/yyyy}" Classes="Value"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="0" Grid.Column="1" Spacing="4" Margin="0,0,0,12">
+                                <TextBlock Text="Médecin prescripteur" Classes="Label"/>
+                                <TextBlock Text="{Binding CurrentPrescription.DoctorName}" Classes="Value"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Spacing="4" IsVisible="{Binding CurrentPrescription.Notes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Text="Notes" Classes="Label"/>
+                                <TextBlock Text="{Binding CurrentPrescription.Notes}" 
+                                           Foreground="#CCCCCC" 
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Valeurs optiques -->
+                <Border Classes="SectionCard">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="Valeurs Optiques" FontSize="16" FontWeight="700" Foreground="#FFFFFF"/>
+                        
+                        <!-- Tableau OD/OG -->
+                        <Grid ColumnDefinitions="Auto,*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                            <!-- En-têtes -->
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="" Margin="0,0,24,8"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Œil Droit (OD)" 
+                                       FontWeight="Bold" Foreground="#0071E3" 
+                                       HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Œil Gauche (OG)" 
+                                       FontWeight="Bold" Foreground="#FF9500" 
+                                       HorizontalAlignment="Center" Margin="0,0,0,8"/>
+
+                            <!-- Sphère -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Sphère" Classes="Label" VerticalAlignment="Center" Margin="0,8,24,8"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" 
+                                       Text="{Binding CurrentPrescription.OdSphere, StringFormat={}{0:+0.00;-0.00;—}}" 
+                                       Classes="Value" HorizontalAlignment="Center" Margin="0,8"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" 
+                                       Text="{Binding CurrentPrescription.OgSphere, StringFormat={}{0:+0.00;-0.00;—}}" 
+                                       Classes="Value" HorizontalAlignment="Center" Margin="0,8"/>
+
+                            <!-- Cylindre -->
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Cylindre" Classes="Label" VerticalAlignment="Center" Margin="0,8,24,8"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" 
+                                       Text="{Binding CurrentPrescription.OdCylinder, StringFormat={}{0:+0.00;-0.00;—}}" 
+                                       Classes="Value" HorizontalAlignment="Center" Margin="0,8"/>
+                            <TextBlock Grid.Row="2" Grid.Column="2" 
+                                       Text="{Binding CurrentPrescription.OgCylinder, StringFormat={}{0:+0.00;-0.00;—}}" 
+                                       Classes="Value" HorizontalAlignment="Center" Margin="0,8"/>
+
+                            <!-- Axe -->
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Axe" Classes="Label" VerticalAlignment="Center" Margin="0,8,24,8"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" 
+                                       Text="{Binding CurrentPrescription.OdAxis, StringFormat={}{0}°}" 
+                                       Classes="Value" HorizontalAlignment="Center" Margin="0,8"/>
+                            <TextBlock Grid.Row="3" Grid.Column="2" 
+                                       Text="{Binding CurrentPrescription.OgAxis, StringFormat={}{0}°}" 
+                                       Classes="Value" HorizontalAlignment="Center" Margin="0,8"/>
+
+                            <!-- Addition -->
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Addition" Classes="Label" VerticalAlignment="Center" Margin="0,8,24,8"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" 
+                                       Text="{Binding CurrentPrescription.OdAddition, StringFormat={}{0:+0.00;-0.00;—}}" 
+                                       Classes="Value" HorizontalAlignment="Center" Margin="0,8"/>
+                            <TextBlock Grid.Row="4" Grid.Column="2" 
+                                       Text="{Binding CurrentPrescription.OgAddition, StringFormat={}{0:+0.00;-0.00;—}}" 
+                                       Classes="Value" HorizontalAlignment="Center" Margin="0,8"/>
+
+                            <!-- Prisme -->
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Prisme" Classes="Label" VerticalAlignment="Center" Margin="0,8,24,8"/>
+                            <TextBlock Grid.Row="5" Grid.Column="1" 
+                                       Classes="Value" HorizontalAlignment="Center" Margin="0,8">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0:F2} {1}">
+                                        <Binding Path="CurrentPrescription.OdPrismValue"/>
+                                        <Binding Path="CurrentPrescription.OdPrismBase"/>
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <TextBlock Grid.Row="5" Grid.Column="2" 
+                                       Classes="Value" HorizontalAlignment="Center" Margin="0,8">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0:F2} {1}">
+                                        <Binding Path="CurrentPrescription.OgPrismValue"/>
+                                        <Binding Path="CurrentPrescription.OgPrismBase"/>
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+
+                            <!-- Acuité visuelle -->
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Acuité visuelle" Classes="Label" VerticalAlignment="Center" Margin="0,8,24,0"/>
+                            <TextBlock Grid.Row="6" Grid.Column="1" 
+                                       Text="{Binding CurrentPrescription.OdVisualAcuity}" 
+                                       Classes="Value" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                            <TextBlock Grid.Row="6" Grid.Column="2" 
+                                       Text="{Binding CurrentPrescription.OgVisualAcuity}" 
+                                       Classes="Value" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

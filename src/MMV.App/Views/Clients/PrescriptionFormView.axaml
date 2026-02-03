@@ -60,10 +60,52 @@
         
         <!-- En-tête -->
         <Border Grid.Row="0" Padding="32,24,32,10">
-            <StackPanel Spacing="2">
-                <TextBlock Text="Nouvelle Ordonnance" FontSize="22" FontWeight="700" Foreground="#FFFFFF"/>
-                <TextBlock Text="Saisissez les données de prescription" FontSize="13" Foreground="#858585"/>
-            </StackPanel>
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="2" Grid.Column="0">
+                    <TextBlock Text="Nouvelle Ordonnance" FontSize="22" FontWeight="700" Foreground="#FFFFFF"/>
+                    <TextBlock Text="Saisissez les données de prescription" FontSize="13" Foreground="#858585"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Grid.Column="1">
+                    
+                    <Button Content="Annuler" 
+                        Command="{Binding CancelCommand}"
+                        Background="Transparent" 
+                        Foreground="#E0E0E0" 
+                        Padding="20,10" 
+                        BorderThickness="0"
+                        CornerRadius="6" 
+                        Cursor="Hand"
+                        FontSize="14">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+                    
+                    <Button Content="Enregistrer l'ordonnance" 
+                        Command="{Binding SaveCommand}"
+                        IsEnabled="{Binding !IsSaving}"
+                        Background="#0071E3" 
+                        Foreground="White" 
+                        Padding="30,10" 
+                        CornerRadius="6" 
+                        Cursor="Hand"
+                        FontSize="14"
+                        FontWeight="600">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="#005BB5"/>
+                            </Style>
+                            <Style Selector="Button:disabled">
+                                <Setter Property="Background" Value="#404040"/>
+                                <Setter Property="Foreground" Value="#808080"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- Contenu principal -->

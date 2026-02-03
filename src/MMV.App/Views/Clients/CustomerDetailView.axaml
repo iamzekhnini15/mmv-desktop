@@ -148,9 +148,9 @@
                 <views:SaleFormView DataContext="{Binding SaleFormViewModel}"/>
             </TabItem>
 
-            <!-- Onglet 2: Ordonnance -->
+            <!-- Onglet 2: Ordonnances -->
             <TabItem Header="Ordonnances">
-                <views:PrescriptionFormView DataContext="{Binding PrescriptionFormViewModel}"/>
+                <views:CustomerPrescriptionsView DataContext="{Binding PrescriptionsViewModel}"/>
             </TabItem>
 
             <!-- Onglet 3: Infos -->

@@ -16,11 +16,12 @@ public class CustomerDetailViewModel : BaseViewModel
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOrderRepository _orderRepository;
+    private readonly IPrescriptionRepository _prescriptionRepository;
     
     private Customer? _customer;
     private int _selectedTabIndex = 0;
     private SaleFormViewModel? _saleFormViewModel;
-    private PrescriptionFormViewModel? _prescriptionFormViewModel;
+    private CustomerPrescriptionsViewModel? _prescriptionsViewModel;
     private CustomerInfoViewModel? _customerInfoViewModel;
     private CustomerPurchaseHistoryViewModel? _purchaseHistoryViewModel;
 
@@ -52,12 +53,12 @@ public class CustomerDetailViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// ViewModel pour le formulaire d'ordonnance.
+    /// ViewModel pour la gestion des ordonnances.
     /// </summary>
-    public PrescriptionFormViewModel? PrescriptionFormViewModel
+    public CustomerPrescriptionsViewModel? PrescriptionsViewModel
     {
-        get => _prescriptionFormViewModel;
-        set => SetProperty(ref _prescriptionFormViewModel, value);
+        get => _prescriptionsViewModel;
+        set => SetProperty(ref _prescriptionsViewModel, value);
     }
 
     /// <summary>
@@ -88,11 +89,12 @@ public class CustomerDetailViewModel : BaseViewModel
     /// </summary>
     public event EventHandler? BackRequested;
 
-    public CustomerDetailViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository)
+    public CustomerDetailViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository, IPrescriptionRepository prescriptionRepository)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
+        _prescriptionRepository = prescriptionRepository ?? throw new ArgumentNullException(nameof(prescriptionRepository));
 
         BackCommand = new RelayCommand(ExecuteBack);
         
@@ -102,7 +104,7 @@ public class CustomerDetailViewModel : BaseViewModel
     /// <summary>
     /// Initialise la fiche avec un client spécifique.
     /// </summary>
-    public void Initialize(Customer customer)
+    public async Task InitializeAsync(Customer customer)
     {
         Customer = customer;
         Title = $"Fiche - {customer.FirstName} {customer.LastName}";
@@ -114,16 +116,13 @@ public class CustomerDetailViewModel : BaseViewModel
             Title = "Nouvelle Vente"
         };
 
-        PrescriptionFormViewModel = new PrescriptionFormViewModel(null, null)
-        {
-            CustomerId = customer.CustomerId,
-            Title = "Nouvelle Ordonnance"
-        };
+        PrescriptionsViewModel = new CustomerPrescriptionsViewModel(_prescriptionRepository, _unitOfWork);
+        await PrescriptionsViewModel.InitializeAsync(customer.CustomerId);
 
         CustomerInfoViewModel = new CustomerInfoViewModel(customer);
 
         PurchaseHistoryViewModel = new CustomerPurchaseHistoryViewModel(_orderRepository);
-        _ = PurchaseHistoryViewModel.LoadAsync(customer.CustomerId);
+        await PurchaseHistoryViewModel.LoadAsync(customer.CustomerId);
 
         SelectedTabIndex = 0; // Commencer par l'onglet Vente
     }
