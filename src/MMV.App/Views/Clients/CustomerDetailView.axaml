@@ -30,8 +30,8 @@
             <Setter Property="BorderThickness" Value="0"/>
             <!-- Padding ajusté pour coller le trait bleu au texte -->
             <Setter Property="Padding" Value="12,6,12,10"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="500"/>
             <Setter Property="Foreground" Value="#858585"/>
@@ -79,12 +79,24 @@
             <Setter Property="BorderBrush" Value="#404040"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
+
+        <!-- IMPORTANT: Force le contenu des TabItems à prendre toute la hauteur -->
+        <Style Selector="TabItem > ContentPresenter">
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+
+        <!-- Force le contenu du TabItem à remplir l'espace -->
+        <Style Selector="TabItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+        </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,*">
+    <DockPanel LastChildFill="True">
         
-        <!-- Header: Minimaliste et épuré -->
-        <Border Grid.Row="0" 
+        <!-- Header: Minimaliste et épuré - DOCKED TO TOP -->
+        <Border DockPanel.Dock="Top"
                 Background="Transparent" 
                 Padding="32,28,32,0">
             <Grid ColumnDefinitions="Auto,*,Auto">
@@ -134,14 +146,15 @@
             </Grid>
         </Border>
         
-        <!-- Séparateur horizontal -->
-        <Border Grid.Row="1" Height="1" Background="#333333" Margin="32,16,32,0"/>
+        <!-- Séparateur horizontal - DOCKED TO TOP -->
+        <Border DockPanel.Dock="Top" Height="1" Background="#333333" Margin="32,16,32,0"/>
 
-        <!-- Contenu Principal avec Onglets -->
-        <TabControl Grid.Row="2" 
-                   SelectedIndex="{Binding SelectedTabIndex}"
+        <!-- Contenu Principal avec Onglets - FILLS REMAINING SPACE -->
+        <TabControl SelectedIndex="{Binding SelectedTabIndex}"
                    Background="#1D1D1D"
-                   Padding="0">
+                   Padding="0"
+                   VerticalAlignment="Stretch"
+                   HorizontalAlignment="Stretch">
             
             <!-- Onglet 1: Vente -->
             <TabItem Header="Nouvelle Vente">
@@ -163,5 +176,5 @@
                 <views:CustomerPurchaseHistoryView DataContext="{Binding PurchaseHistoryViewModel}"/>
             </TabItem>
         </TabControl>
-    </Grid>
+    </DockPanel>
 </UserControl>

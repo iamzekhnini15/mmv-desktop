@@ -46,9 +46,15 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid>
+    <Grid RowDefinitions="*">
         <!-- Liste des ordonnances -->
-        <ScrollViewer IsVisible="{Binding ShowList}" Padding="32,24">
+        <ScrollViewer Grid.Row="0"
+                      IsVisible="{Binding ShowList}" 
+                      Padding="32,24"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalAlignment="Stretch"
+                      HorizontalAlignment="Stretch">
             <StackPanel Spacing="16">
                 <!-- En-tête avec bouton Nouveau -->
                 <Grid ColumnDefinitions="*,Auto">
@@ -144,12 +150,18 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <!-- Espace en bas -->
+                <Border Height="20"/>
             </StackPanel>
         </ScrollViewer>
 
         <!-- Formulaire d'ordonnance -->
-        <ContentControl Content="{Binding FormViewModel}" 
-                        IsVisible="{Binding IsInEditMode}">
+        <ContentControl Grid.Row="0"
+                        Content="{Binding FormViewModel}" 
+                        IsVisible="{Binding IsInEditMode}"
+                        VerticalAlignment="Stretch"
+                        HorizontalAlignment="Stretch">
             <ContentControl.ContentTemplate>
                 <DataTemplate>
                     <views:PrescriptionFormView/>
@@ -157,14 +169,11 @@
             </ContentControl.ContentTemplate>
         </ContentControl>
 
-        <!-- Détails de l'ordonnance -->
-        <ContentControl Content="{Binding DetailViewModel}" 
-                        IsVisible="{Binding IsShowingDetail}">
-            <ContentControl.ContentTemplate>
-                <DataTemplate>
-                    <views:PrescriptionDetailView/>
-                </DataTemplate>
-            </ContentControl.ContentTemplate>
-        </ContentControl>
+        <!-- Détails de l'ordonnance - FULLSCREEN -->
+        <Grid Grid.Row="0"
+              IsVisible="{Binding IsShowingDetail}"
+              RowDefinitions="*">
+            <views:PrescriptionDetailView DataContext="{Binding DetailViewModel}"/>
+        </Grid>
     </Grid>
 </UserControl>

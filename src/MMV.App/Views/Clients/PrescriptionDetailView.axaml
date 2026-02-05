@@ -51,9 +51,9 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto">
-        <!-- Header -->
-        <Border Grid.Row="0" Padding="32,24,32,16">
+    <DockPanel LastChildFill="True">
+        <!-- Header - DOCKED TO TOP -->
+        <Border DockPanel.Dock="Top" Padding="32,24,32,16">
             <Grid ColumnDefinitions="Auto,*,Auto">
                 <controls:BackButton Grid.Column="0"
                                      Command="{Binding BackCommand}"
@@ -77,9 +77,10 @@
             </Grid>
         </Border>
 
-        <!-- Contenu -->
-        <ScrollViewer Grid.Row="1" Padding="32,0">
-            <StackPanel Spacing="16">
+        <!-- Contenu scrollable - FILLS REMAINING SPACE -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="16" Margin="32,0,32,32">
                 <!-- Informations générales -->
                 <Border Classes="SectionCard">
                     <StackPanel Spacing="16">
@@ -190,7 +191,77 @@
                         </Grid>
                     </StackPanel>
                 </Border>
+
+                <!-- Visualisation graphique (schéma œil 2D) -->
+                <Border Classes="SectionCard">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="Schéma 2D" FontSize="16" FontWeight="700" Foreground="#FFFFFF"/>
+                        <TextBlock Text="Représentation simplifiée des corrections OD/OG" FontSize="12" Foreground="#858585"/>
+
+                        <Grid ColumnDefinitions="*,24,*">
+                            <!-- Œil droit (OD) -->
+                            <StackPanel Grid.Column="0" Spacing="12" HorizontalAlignment="Center">
+                                <TextBlock Text="Œil Droit (OD)" FontWeight="Bold" Foreground="#0071E3" HorizontalAlignment="Center"/>
+                                <Canvas Width="220" Height="220">
+                                    <!-- Globe oculaire -->
+                                    <Ellipse Width="200" Height="200" Stroke="#3C3C3C" StrokeThickness="2" Fill="#1F1F1F" Canvas.Left="10" Canvas.Top="10"/>
+                                    <!-- Iris -->
+                                    <Ellipse Width="70" Height="70" Stroke="#0071E3" StrokeThickness="2" Fill="#2A2A2A" Canvas.Left="75" Canvas.Top="75"/>
+                                    <!-- Pupille -->
+                                    <Ellipse Width="30" Height="30" Fill="#0B0B0B" Canvas.Left="95" Canvas.Top="95"/>
+
+                                    <!-- Axe (ligne) -->
+                                    <Line StartPoint="110,20" EndPoint="110,200" Stroke="#3C3C3C" StrokeThickness="1"/>
+                                    <Line StartPoint="20,110" EndPoint="200,110" Stroke="#3C3C3C" StrokeThickness="1"/>
+
+                                    <!-- Texte valeurs OD -->
+                                    <TextBlock Text="SPH" Foreground="#8FA8FF" FontSize="10" Canvas.Left="16" Canvas.Top="16"/>
+                                    <TextBlock Text="{Binding CurrentPrescription.OdSphere, StringFormat={}{0:+0.00;-0.00;—}}" Foreground="#FFFFFF" FontSize="12" Canvas.Left="16" Canvas.Top="30"/>
+
+                                    <TextBlock Text="CYL" Foreground="#8FA8FF" FontSize="10" Canvas.Left="16" Canvas.Top="60"/>
+                                    <TextBlock Text="{Binding CurrentPrescription.OdCylinder, StringFormat={}{0:+0.00;-0.00;—}}" Foreground="#FFFFFF" FontSize="12" Canvas.Left="16" Canvas.Top="74"/>
+
+                                    <TextBlock Text="AXE" Foreground="#8FA8FF" FontSize="10" Canvas.Left="16" Canvas.Top="104"/>
+                                    <TextBlock Text="{Binding CurrentPrescription.OdAxis, StringFormat={}{0}°}" Foreground="#FFFFFF" FontSize="12" Canvas.Left="16" Canvas.Top="118"/>
+
+                                    <TextBlock Text="ADD" Foreground="#8FA8FF" FontSize="10" Canvas.Left="16" Canvas.Top="148"/>
+                                    <TextBlock Text="{Binding CurrentPrescription.OdAddition, StringFormat={}{0:+0.00;-0.00;—}}" Foreground="#FFFFFF" FontSize="12" Canvas.Left="16" Canvas.Top="162"/>
+                                </Canvas>
+                            </StackPanel>
+
+                            <!-- Œil gauche (OG) -->
+                            <StackPanel Grid.Column="2" Spacing="12" HorizontalAlignment="Center">
+                                <TextBlock Text="Œil Gauche (OG)" FontWeight="Bold" Foreground="#FF9500" HorizontalAlignment="Center"/>
+                                <Canvas Width="220" Height="220">
+                                    <!-- Globe oculaire -->
+                                    <Ellipse Width="200" Height="200" Stroke="#3C3C3C" StrokeThickness="2" Fill="#1F1F1F" Canvas.Left="10" Canvas.Top="10"/>
+                                    <!-- Iris -->
+                                    <Ellipse Width="70" Height="70" Stroke="#FF9500" StrokeThickness="2" Fill="#2A2A2A" Canvas.Left="75" Canvas.Top="75"/>
+                                    <!-- Pupille -->
+                                    <Ellipse Width="30" Height="30" Fill="#0B0B0B" Canvas.Left="95" Canvas.Top="95"/>
+
+                                    <!-- Axe (ligne) -->
+                                    <Line StartPoint="110,20" EndPoint="110,200" Stroke="#3C3C3C" StrokeThickness="1"/>
+                                    <Line StartPoint="20,110" EndPoint="200,110" Stroke="#3C3C3C" StrokeThickness="1"/>
+
+                                    <!-- Texte valeurs OG -->
+                                    <TextBlock Text="SPH" Foreground="#FFC58A" FontSize="10" Canvas.Left="16" Canvas.Top="16"/>
+                                    <TextBlock Text="{Binding CurrentPrescription.OgSphere, StringFormat={}{0:+0.00;-0.00;—}}" Foreground="#FFFFFF" FontSize="12" Canvas.Left="16" Canvas.Top="30"/>
+
+                                    <TextBlock Text="CYL" Foreground="#FFC58A" FontSize="10" Canvas.Left="16" Canvas.Top="60"/>
+                                    <TextBlock Text="{Binding CurrentPrescription.OgCylinder, StringFormat={}{0:+0.00;-0.00;—}}" Foreground="#FFFFFF" FontSize="12" Canvas.Left="16" Canvas.Top="74"/>
+
+                                    <TextBlock Text="AXE" Foreground="#FFC58A" FontSize="10" Canvas.Left="16" Canvas.Top="104"/>
+                                    <TextBlock Text="{Binding CurrentPrescription.OgAxis, StringFormat={}{0}°}" Foreground="#FFFFFF" FontSize="12" Canvas.Left="16" Canvas.Top="118"/>
+
+                                    <TextBlock Text="ADD" Foreground="#FFC58A" FontSize="10" Canvas.Left="16" Canvas.Top="148"/>
+                                    <TextBlock Text="{Binding CurrentPrescription.OgAddition, StringFormat={}{0:+0.00;-0.00;—}}" Foreground="#FFFFFF" FontSize="12" Canvas.Left="16" Canvas.Top="162"/>
+                                </Canvas>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
-    </Grid>
+    </DockPanel>
 </UserControl>
