@@ -18,7 +18,7 @@
             <Setter Property="Padding" Value="20,12"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
-        
+
         <Style Selector="Border.DataRow:pointerover">
             <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
         </Style>
@@ -31,12 +31,22 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
+        <Style Selector="TextBox.FilterInput">
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
         <Style Selector="Button.GhostLink">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Padding" Value="12,8"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
         <Style Selector="Button.GhostLink:pointerover">
@@ -49,9 +59,9 @@
 
         <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,15" IsVisible="{Binding ShowList}">
             <Grid ColumnDefinitions="Auto, *, Auto">
-                
+
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="20" VerticalAlignment="Center">
-                    
+
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <TextBlock Text="Produits" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
                         <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="12" Padding="10,4" VerticalAlignment="Center">
@@ -66,12 +76,12 @@
                         <Button Classes="GhostLink" Content="Fournisseurs" Command="{Binding ProductsListViewModel.ManageSuppliersCommand}"/>
                         <Button Classes="GhostLink" Content="Mouvements" Command="{Binding ProductsListViewModel.ManageStockMovementsCommand}"/>
                     </StackPanel>
-                    
+
                     <ProgressBar IsIndeterminate="True" IsVisible="{Binding ProductsListViewModel.IsLoading}" Width="80" Height="2" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
-                    
+
                     <ComboBox ItemsSource="{Binding ProductsListViewModel.Categories}"
                               SelectedItem="{Binding ProductsListViewModel.SelectedCategory}"
                               PlaceholderText="Catégorie"
@@ -82,18 +92,13 @@
                               BorderBrush="{DynamicResource BorderBrush}"
                               VerticalAlignment="Center"/>
 
-                    <Border Background="{DynamicResource BackgroundBrush}" CornerRadius="6" Width="220" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                        <Grid ColumnDefinitions="Auto,*">
-                            <PathIcon Data="{StaticResource IconSearch}" Width="12" Height="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="10,0,0,0"/>
-                            <TextBox Grid.Column="1" 
-                                     Text="{Binding ProductsListViewModel.SearchText}"
-                                     Watermark="Rechercher..."
-                                     Background="Transparent"
-                                     BorderThickness="0"
-                                     Padding="8,6"
-                                     FontSize="13"/>
-                        </Grid>
-                    </Border>
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBox Classes="FilterInput"
+                                 Text="{Binding ProductsListViewModel.SearchText, Mode=TwoWay}"
+                                 Watermark="Rechercher..."
+                                 Width="250"/>
+                        <PathIcon Data="{StaticResource IconSearch}" Width="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,10,0" HorizontalAlignment="Right" IsHitTestVisible="False"/>
+                    </Grid>
 
                     <Button Command="{Binding ProductsListViewModel.CreateCommand}" Classes="Primary" Padding="16,6">
                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -106,7 +111,7 @@
         </Border>
 
         <Grid Grid.Row="1" RowDefinitions="Auto, *" IsVisible="{Binding ShowList}">
-            
+
             <Border Grid.Row="0" Background="{DynamicResource BackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,10">
                 <Grid ColumnDefinitions="100, 2*, 150, 1.5*, 100, 100">
                     <TextBlock Grid.Column="0" Text="RÉFÉRENCE" Classes="ColHeader"/>
@@ -125,7 +130,7 @@
                             <DataTemplate>
                                 <Border Classes="DataRow" PointerPressed="Border_PointerPressed">
                                     <Grid ColumnDefinitions="100, 2*, 150, 1.5*, 100, 100">
-                                        
+
                                         <TextBlock Grid.Column="0" Text="{Binding Reference}" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
 
                                         <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
@@ -158,7 +163,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <StackPanel IsVisible="{Binding ProductsListViewModel.FilteredProducts, Converter={x:Static ObjectConverters.IsNull}}" 
+                    <StackPanel IsVisible="{Binding ProductsListViewModel.FilteredProducts, Converter={x:Static ObjectConverters.IsNull}}"
                                 HorizontalAlignment="Center" Margin="0,100" Spacing="15" Opacity="0.5">
                         <PathIcon Data="{StaticResource IconSearch}" Width="48" Height="48" Foreground="{DynamicResource TextDisabledBrush}"/>
                         <TextBlock Text="Aucun produit trouvé" FontSize="16" FontWeight="SemiBold"/>
@@ -170,22 +175,22 @@
 
         <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="15,10" IsVisible="{Binding ShowList}">
             <Grid ColumnDefinitions="*, Auto">
-                
-                <TextBlock Grid.Column="0" 
-                           Text="{Binding ProductsListViewModel.ErrorMessage}" 
-                           Foreground="{DynamicResource ErrorBrush}" 
+
+                <TextBlock Grid.Column="0"
+                           Text="{Binding ProductsListViewModel.ErrorMessage}"
+                           Foreground="{DynamicResource ErrorBrush}"
                            VerticalAlignment="Center"/>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
                     <Button Classes="NavButton" Command="{Binding ProductsListViewModel.PreviousPageCommand}">
                         <PathIcon Data="{StaticResource IconBack}" Width="12"/>
                     </Button>
-                    
-                    <TextBlock Text="{Binding ProductsListViewModel.CurrentPage, StringFormat='Page {0}'}" 
-                               VerticalAlignment="Center" 
-                               Foreground="{DynamicResource TextSecondaryBrush}" 
+
+                    <TextBlock Text="{Binding ProductsListViewModel.CurrentPage, StringFormat='Page {0}'}"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
                                FontSize="13"/>
-                    
+
                     <Button Classes="NavButton" Command="{Binding ProductsListViewModel.NextPageCommand}">
                         <PathIcon Data="{StaticResource IconBack}" Width="12" RenderTransform="rotate(180deg)"/>
                     </Button>
@@ -193,7 +198,7 @@
             </Grid>
         </Border>
 
-        <Panel Background="#80000000">
+        <Panel>
             <Panel.IsVisible>
                 <MultiBinding Converter="{x:Static BoolConverters.And}">
                     <Binding Path="IsInEditMode"/>
@@ -203,15 +208,15 @@
             <ContentControl Content="{Binding ProductFormViewModel}"/>
         </Panel>
 
-        <Panel IsVisible="{Binding IsShowingDetail}" Background="#80000000">
+        <Panel IsVisible="{Binding IsShowingDetail}">
             <views:ProductDetailView DataContext="{Binding ProductDetailViewModel}"/>
         </Panel>
 
-        <Panel IsVisible="{Binding IsShowingSuppliers}" Background="#80000000">
+        <Panel IsVisible="{Binding IsShowingSuppliers}">
             <views:SuppliersView DataContext="{Binding SuppliersViewModel}"/>
         </Panel>
 
-        <Panel IsVisible="{Binding IsShowingStockMovements}" Background="#80000000">
+        <Panel IsVisible="{Binding IsShowingStockMovements}">
             <views:StockMovementsView DataContext="{Binding StockMovementsViewModel}"/>
         </Panel>
 

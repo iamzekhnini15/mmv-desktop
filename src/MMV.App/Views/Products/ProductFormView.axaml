@@ -21,39 +21,39 @@
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto, *">
-        
-        <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="24,16">
-            <Grid ColumnDefinitions="Auto,*,Auto">
-                
-                <Button Grid.Column="0" Command="{Binding BackCommand}" Background="Transparent" BorderThickness="0" Padding="0" Cursor="Hand">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <PathIcon Data="{StaticResource IconBack}" Width="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                        <TextBlock Text="Retour" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                    </StackPanel>
-                </Button>
 
-                <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding FormTitle}" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center"/>
+        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="24,16">
+            <Grid ColumnDefinitions="Auto, *,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <controls:BackButton Command="{Binding BackCommand}"
+                                         ButtonText="Retour à la liste"
+                                         Margin="0,0,0,0"/>
+
+                    <Rectangle Width="1" Height="24" Fill="{DynamicResource BorderBrush}"/>
+
+                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding FormTitle}" FontWeight="Bold" FontSize="16" HorizontalAlignment="Left"/>
+                    </StackPanel>
                 </StackPanel>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
-                    <Button Content="Annuler" Command="{Binding CancelCommand}" Background="Transparent" Foreground="{DynamicResource TextSecondaryBrush}" BorderThickness="0"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Button Content="Annuler" Padding="20,12" Cursor="Hand" CornerRadius="10" Command="{Binding CancelCommand}" Background="Transparent" Foreground="{DynamicResource TextSecondaryBrush}" BorderThickness="0"/>
                     <Button Content="Enregistrer le produit" Command="{Binding SaveCommand}" Classes="Primary"/>
                 </StackPanel>
             </Grid>
         </Border>
-        
+
         <ScrollViewer Grid.Row="1">
             <Grid ColumnDefinitions="1.2*, 1, 1*" Margin="40">
-                
+
                 <StackPanel Grid.Column="0" Spacing="40" Margin="0,0,40,0">
-                    
+
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
                             <PathIcon Data="{StaticResource IconProducts}" Width="16" Foreground="{DynamicResource AccentBrush}"/>
                             <TextBlock Text="IDENTIFICATION DU PRODUIT" Classes="SectionTitle" Margin="0"/>
                         </StackPanel>
-                        
+
                         <StackPanel Spacing="16">
                             <Grid ColumnDefinitions="1*, 2*">
                                 <StackPanel Grid.Column="0" Spacing="8" Margin="0,0,12,0">
@@ -130,11 +130,11 @@
                 <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Stretch"/>
 
                 <StackPanel Grid.Column="2" Spacing="40" Margin="40,0,0,0">
-                    
+
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
-                            <PathIcon Data="{StaticResource IconInventory}" Width="16" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                            <TextBlock Text="GESTION DU STOCK" Classes="SectionTitle" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0"/>
+                            <PathIcon Data="{StaticResource IconInventory}" Width="16" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="GESTION DU STOCK" Classes="SectionTitle" Foreground="{DynamicResource AccentBrush}" Margin="0"/>
                         </StackPanel>
 
                         <Grid ColumnDefinitions="*, *">
@@ -150,15 +150,15 @@
                                 <TextBlock Text="{Binding StockAlertThresholdError}" Foreground="{DynamicResource ErrorBrush}" FontSize="11" IsVisible="{Binding StockAlertThresholdError, Converter={StaticResource StringToBoolConverter}}"/>
                             </StackPanel>
                         </Grid>
-                        
+
                         <TextBlock Text="Une notification sera envoyée si le stock passe sous le seuil." FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,8,0,0" FontStyle="Italic"/>
                     </StackPanel>
 
                     <Separator Background="{DynamicResource BorderBrush}" Height="1"/>
 
                     <StackPanel IsVisible="{Binding IsGlassCategory}">
-                        <TextBlock Text="SPÉCIFICITÉS VERRES" Classes="SectionTitle" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                        
+                        <TextBlock Text="SPÉCIFICITÉS VERRES" Classes="SectionTitle" Foreground="{DynamicResource AccentBrush}"/>
+
                         <StackPanel Spacing="16">
                             <Grid ColumnDefinitions="*, *, *">
                                 <StackPanel Grid.Column="0" Spacing="8" Margin="0,0,8,0">
@@ -197,8 +197,8 @@
                     </StackPanel>
 
                     <StackPanel IsVisible="{Binding IsLensCategory}">
-                        <TextBlock Text="SPÉCIFICITÉS LENTILLES" Classes="SectionTitle" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                        
+                        <TextBlock Text="SPÉCIFICITÉS LENTILLES" Classes="SectionTitle" Foreground="{DynamicResource AccentBrush}"/>
+
                         <StackPanel Spacing="16">
                             <Grid ColumnDefinitions="*, *">
                                 <StackPanel Grid.Column="0" Spacing="8" Margin="0,0,8,0">
@@ -243,8 +243,8 @@
                     </StackPanel>
 
                     <StackPanel IsVisible="{Binding IsAccessoryCategory}">
-                        <TextBlock Text="DÉTAILS TECHNIQUES" Classes="SectionTitle" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                        
+                        <TextBlock Text="DÉTAILS TECHNIQUES" Classes="SectionTitle" Foreground="{DynamicResource AccentBrush}"/>
+
                         <StackPanel Spacing="16">
                             <Grid ColumnDefinitions="*, *">
                                 <StackPanel Grid.Column="0" Spacing="8" Margin="0,0,8,0">

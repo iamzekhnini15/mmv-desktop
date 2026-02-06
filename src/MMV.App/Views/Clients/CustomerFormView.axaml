@@ -24,17 +24,19 @@
         
         <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="24,20">
             <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <controls:BackButton Command="{Binding BackCommand}"
+                                         ButtonText="Retour à la liste"
+                                         Margin="0,0,0,0"/>
 
-                <controls:BackButton Grid.Column="0"
-                            Command="{Binding BackCommand}"
-                            ButtonText="Retour à la liste"
-                            Margin="0,0,32,0"/>
+                    <Rectangle Width="1" Height="24" Fill="{DynamicResource BorderBrush}"/>
 
-                <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock Text="Nouveau Dossier Client" FontWeight="SemiBold" FontSize="16" HorizontalAlignment="Center"/>
+                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <TextBlock Text="Nouveau Client" FontWeight="Bold" FontSize="16" HorizontalAlignment="Left"/>
+                    </StackPanel>
                 </StackPanel>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                     <Button Content="Annuler" Padding="20,12" Cursor="Hand" CornerRadius="10" Command="{Binding CancelCommand}" Background="Transparent" Foreground="{DynamicResource TextSecondaryBrush}" BorderThickness="0"/>
                     <Button Content="Enregistrer le client" Command="{Binding SaveCommand}" Classes="Primary"/>
                 </StackPanel>
