@@ -2,103 +2,145 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="using:MMV.App"
         xmlns:vm="using:MMV.App.ViewModels"
         xmlns:converters="using:MMV.App.Converters"
-        mc:Ignorable="d" d:DesignWidth="1600" d:DesignHeight="900"
+        mc:Ignorable="d" d:DesignWidth="1400" d:DesignHeight="900"
         x:Class="MMV.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="ManageMyVision"
-        Width="1600" Height="900"
-        Background="#1D1D1D">
+        
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="PreferSystemChrome"
+        TransparencyLevelHint="Mica, AcrylicBlur"
+        Background="{DynamicResource BackgroundBrush}">
 
-    <DockPanel Background="#1D1D1D">
-        <!-- Header professionnel Apple style -->
-        <Border DockPanel.Dock="Top" Background="#2D2D2D" BorderBrush="#424245" BorderThickness="0,0,0,1" Padding="28,16">
-            <Grid ColumnDefinitions="1*,Auto">
-                <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
-                    <TextBlock Text="👓" FontSize="32"/>
-                    <StackPanel VerticalAlignment="Center" Spacing="3">
-                        <TextBlock Text="ManageMyVision" FontSize="22" FontWeight="700" Foreground="#FFFFFF"/>
-                        <TextBlock Text="Gestion Optique Professionnelle" FontSize="12" Foreground="#A1A1A6"/>
-                    </StackPanel>
-                </StackPanel>
+    <Grid ColumnDefinitions="260, *" Background="{DynamicResource BackgroundBrush}">
+        
+        <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+            <Grid RowDefinitions="Auto, *, Auto">
                 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                    <TextBlock Text="Admin" FontSize="13" Foreground="#A1A1A6"/>
-                    <Button Content="Déconnexion" Padding="14,9" Background="#2D2D2D" Foreground="#FFFFFF" 
-                           BorderThickness="1" BorderBrush="#424245" CornerRadius="8" FontSize="13" FontWeight="500" Cursor="Hand"/>
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="24,40,24,30">
+                    <PathIcon Data="{StaticResource IconGlasses}" Width="24" Height="24" Foreground="{DynamicResource AccentBrush}"/>
+                    <TextBlock Text="MMV Optic" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" LetterSpacing="-0.5"/>
+                </StackPanel>
+
+                <ScrollViewer Grid.Row="1" Margin="12,0">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="MENU" Classes="label" Margin="12,10,0,8" Opacity="0.6"/>
+
+                        <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Dashboard">
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <PathIcon Data="{StaticResource IconDashboard}" Width="18" />
+                                <TextBlock Text="Tableau de Bord"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Customers">
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <PathIcon Data="{StaticResource IconCustomers}" Width="18"/>
+                                <TextBlock Text="Clients"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Products">
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <PathIcon Data="{StaticResource IconProducts}" Width="18"/>
+                                <TextBlock Text="Produits"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Prescriptions">
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <PathIcon Data="{StaticResource IconPrescriptions}" Width="18"/>
+                                <TextBlock Text="Ordonnances"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Sales">
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <PathIcon Data="{StaticResource IconSales}" Width="18"/>
+                                <TextBlock Text="Ventes"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Separator Margin="8,15" Background="{DynamicResource BorderBrush}" Opacity="0.5"/>
+                        
+                        <TextBlock Text="GESTION" Classes="label" Margin="12,0,0,8" Opacity="0.6"/>
+
+                        <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Inventory">
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <PathIcon Data="{StaticResource IconInventory}" Width="18"/>
+                                <TextBlock Text="Inventaire"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Orders">
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <PathIcon Data="{StaticResource IconOrders}" Width="18"/>
+                                <TextBlock Text="Commandes Frns."/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Reports">
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <PathIcon Data="{StaticResource IconReports}" Width="18"/>
+                                <TextBlock Text="Rapports"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <StackPanel Grid.Row="2" Margin="16,20">
+                     <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Notifications">
+                         <Grid>
+                             <StackPanel Orientation="Horizontal" Spacing="14">
+                                 <PathIcon Data="{StaticResource IconNotifications}" Width="18"/>
+                                 <TextBlock Text="Notifications"/>
+                             </StackPanel>
+                             <Border Background="{DynamicResource ErrorBrush}" 
+                                     CornerRadius="10" MinWidth="18" Height="18" 
+                                     HorizontalAlignment="Right" Margin="0,0,0,0"
+                                     IsVisible="{Binding UnreadNotificationsCount, Converter={x:Static converters:IsGreaterThanZeroConverter.Instance}}">
+                                 <TextBlock Text="{Binding UnreadNotificationsCount}" FontSize="10" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="5,0"/>
+                             </Border>
+                         </Grid>
+                    </Button>
+                    
+                    <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Settings" Margin="0,2,0,10">
+                        <StackPanel Orientation="Horizontal" Spacing="14">
+                            <PathIcon Data="{StaticResource IconSettings}" Width="18"/>
+                            <TextBlock Text="Paramètres"/>
+                        </StackPanel>
+                    </Button>
+                    
+                    <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="8" Padding="12">
+                        <Grid ColumnDefinitions="Auto, *">
+                            <Border Width="32" Height="32" CornerRadius="16" Background="{DynamicResource AccentFadeBrush}">
+                                <TextBlock Text="A" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="Admin" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="Déconnexion" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Cursor="Hand" TextDecorations="Underline"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Contenu principal -->
-        <DockPanel Background="#1D1D1D">
-            <!-- Sidebar Apple style -->
-            <Border DockPanel.Dock="Left" Width="280" Background="#2D2D2D" BorderBrush="#424245" BorderThickness="0,0,1,0" Padding="16">
-                <ScrollViewer>
-                    <StackPanel Spacing="3">
-                        <!-- Titre du menu -->
-                        <TextBlock Text="MENU" FontSize="11" FontWeight="700" Foreground="#A1A1A6" Margin="12,16,0,12" LetterSpacing="0.8"/>
-                        
-                        <!-- Boutons de navigation avec icônes -->
-                        <Button Content="📊  Tableau de Bord" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Dashboard"/>
-                        <Button Content="👥  Clients" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Customers"/>
-                        <Button Content="📦  Produits" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Products"/>
-                        <Button Content="🔖  Ordonnances" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Prescriptions"/>
-                        <Button Content="📋  Commandes" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Orders"/>
-                        <Button Content="💳  Ventes" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Sales"/>
-                        <Button Content="📑  Inventaire" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Inventory"/>
-                        
-                        <!-- Bouton Notifications avec badge -->
-                        <Grid>
-                            <Button Content="🔔  Notifications" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Notifications"/>
-                            <Border Background="#FF453A"
-                                    CornerRadius="10"
-                                    Width="20"
-                                    Height="20"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Top"
-                                    Margin="0,8,8,0"
-                                    IsVisible="{Binding UnreadNotificationsCount, Converter={x:Static converters:IsGreaterThanZeroConverter.Instance}}">
-                                <TextBlock Text="{Binding UnreadNotificationsCount}"
-                                           FontSize="10"
-                                           FontWeight="700"
-                                           Foreground="White"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"/>
-                            </Border>
-                        </Grid>
-                        
-                        <Button Content="📈  Rapports" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Reports"/>
-                        
-                        <!-- Séparateur -->
-                        <Separator Margin="0,12" Background="#424245"/>
-                        
-                        <Button Content="⚙️  Paramètres" Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Settings"/>
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
-
-            <!-- Zone de contenu principal -->
-            <Border Background="#1D1D1D" Padding="28">
-                <Grid RowDefinitions="Auto,*">
-                    <!-- Barre d'erreur Apple style -->
-                    <StackPanel Spacing="12" IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <Border Background="#3A1010" CornerRadius="10" Padding="16" BorderBrush="#652020" BorderThickness="1">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <TextBlock Text="⚠️" FontSize="18" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="{Binding ErrorMessage}" Foreground="#FF3B30" TextWrapping="Wrap" Margin="12,0,0,0" FontSize="13" FontWeight="500"/>
-                                <Button Grid.Column="2" Content="×" Foreground="#FF3B30" Background="Transparent" BorderThickness="0" FontSize="22" Padding="0" Cursor="Hand"/>
-                            </Grid>
-                        </Border>
-                    </StackPanel>
-
-                    <!-- Contenu dynamique (CurrentView) -->
-                    <ContentControl Grid.Row="1" Content="{Binding CurrentView}" Margin="0,12,0,0"/>
+        <Grid Grid.Column="1" RowDefinitions="Auto, *">
+            
+            <Border IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" 
+                     Background="#33FF453A" BorderBrush="{DynamicResource ErrorBrush}" BorderThickness="0,0,0,1" Padding="15,10">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <PathIcon Data="M12,2 L2,22 H22 L12,2 Z M12,18 V20 M12,10 V16" Foreground="{DynamicResource ErrorBrush}" Width="16"/>
+                    <TextBlock Grid.Column="1" Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}" Margin="10,0" VerticalAlignment="Center" FontWeight="Medium"/>
+                    <Button Grid.Column="2" Content="✕" Background="Transparent" Foreground="{DynamicResource ErrorBrush}" Padding="5"/>
                 </Grid>
             </Border>
-        </DockPanel>
-    </DockPanel>
 
+            <ContentControl Grid.Row="1" Content="{Binding CurrentView}" Margin="30"/>
+        </Grid>
+    </Grid>
 </Window>

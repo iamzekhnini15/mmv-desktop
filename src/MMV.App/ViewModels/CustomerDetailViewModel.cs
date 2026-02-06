@@ -119,7 +119,8 @@ public class CustomerDetailViewModel : BaseViewModel
         PrescriptionsViewModel = new CustomerPrescriptionsViewModel(_prescriptionRepository, _unitOfWork);
         await PrescriptionsViewModel.InitializeAsync(customer.CustomerId);
 
-        CustomerInfoViewModel = new CustomerInfoViewModel(customer);
+        CustomerInfoViewModel = new CustomerInfoViewModel(customer, _orderRepository);
+        await CustomerInfoViewModel.LoadOrdersAsync();
 
         PurchaseHistoryViewModel = new CustomerPurchaseHistoryViewModel(_orderRepository);
         await PurchaseHistoryViewModel.LoadAsync(customer.CustomerId);

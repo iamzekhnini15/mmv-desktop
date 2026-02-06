@@ -8,173 +8,153 @@
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="MMV.App.Views.Clients.CustomerDetailView"
              x:DataType="vm:CustomerDetailViewModel"
-             Background="#1D1D1D">
+             Background="{DynamicResource BackgroundBrush}">
 
     <UserControl.Styles>
-        <!-- Style Apple pour la barre d'onglets -->
         <Style Selector="TabControl">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
             <Setter Property="Padding" Value="0"/>
-        </Style>
-
-        <!-- Conteneur de l'en-tête des onglets (TabStrip) -->
-        <Style Selector="TabControl > TabControl.ItemsPanel > ItemsPanelTemplate > StackPanel">
-            <Setter Property="Margin" Value="0,0,0,0"/>
-            <Setter Property="Spacing" Value="24"/>
-        </Style>
-
-        <!-- Style de base de l'onglet -->
-        <Style Selector="TabItem">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <!-- Padding ajusté pour coller le trait bleu au texte -->
-            <Setter Property="Padding" Value="12,6,12,10"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="500"/>
-            <Setter Property="Foreground" Value="#858585"/>
+        </Style>
+
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,0"/>
+            <Setter Property="Padding" Value="24,16"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Border Name="PART_IndicatorBorder" 
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            Padding="{TemplateBinding Padding}">
+                    <Grid>
                         <ContentPresenter Name="PART_HeaderContentPresenter"
                                           Content="{TemplateBinding Header}"
-                                          TextElement.FontSize="{TemplateBinding FontSize}"
-                                          TextElement.FontWeight="{TemplateBinding FontWeight}"
+                                          Margin="{TemplateBinding Padding}"
                                           HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"
-                                          HorizontalContentAlignment="Center"/>
-                    </Border>
+                                          VerticalAlignment="Center"/>
+                        
+                        <Border Name="PART_Indicator"
+                                Background="{DynamicResource AccentBrush}"
+                                Height="2"
+                                VerticalAlignment="Bottom"
+                                IsVisible="False"/>
+                    </Grid>
                 </ControlTemplate>
             </Setter>
         </Style>
 
-        <!-- État : Sélectionné (Active) -->
+        <Style Selector="TabItem:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
+
         <Style Selector="TabItem:selected">
-            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
-
-        <!-- L'indicateur visuel (le trait bleu Apple) -->
-        <Style Selector="TabItem:selected > Border#PART_IndicatorBorder">
-            <Setter Property="BorderBrush" Value="#0071E3"/>
-            <Setter Property="BorderThickness" Value="0,0,0,2"/>
-        </Style>
-
-        <!-- Effet de survol subtil -->
-        <Style Selector="TabItem:pointerover > Border#PART_IndicatorBorder">
-            <Setter Property="Background" Value="#2D2D2D"/>
-        </Style>
-
-        <!-- Badge de date -->
-        <Style Selector="Border.DateBadge">
-            <Setter Property="Background" Value="#2D2D2D"/>
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="BorderBrush" Value="#404040"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-
-        <!-- IMPORTANT: Force le contenu des TabItems à prendre toute la hauteur -->
-        <Style Selector="TabItem > ContentPresenter">
-            <Setter Property="VerticalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-        </Style>
-
-        <!-- Force le contenu du TabItem à remplir l'espace -->
-        <Style Selector="TabItem">
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+        
+        <Style Selector="TabItem:selected /template/ Border#PART_Indicator">
+            <Setter Property="IsVisible" Value="True"/>
         </Style>
     </UserControl.Styles>
 
-    <DockPanel LastChildFill="True">
+    <Grid RowDefinitions="Auto, *">
         
-        <!-- Header: Minimaliste et épuré - DOCKED TO TOP -->
-        <Border DockPanel.Dock="Top"
-                Background="Transparent" 
-                Padding="32,28,32,0">
-            <Grid ColumnDefinitions="Auto,*,Auto">
+        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="32,24">
+            <Grid ColumnDefinitions="Auto, *, Auto">
                 
                 <controls:BackButton Grid.Column="0"
-                            Command="{Binding BackCommand}"
-                            ButtonText="← Retour"
-                            Margin="0,0,32,0"/>
-                
-                <!-- Titre et Infos Client -->
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                    <TextBlock Text="{Binding Title}" 
-                              FontSize="20" 
-                              FontWeight="700" 
-                              Foreground="#FFFFFF"
-                              LetterSpacing="-0.5"/>
+                                     Command="{Binding BackCommand}"
+                                     ButtonText="Retour"
+                                     VerticalAlignment="Top"
+                                     Margin="0,4,32,0"/>
+
+                <Grid Grid.Column="1" ColumnDefinitions="Auto, *">
                     
-                    <StackPanel Orientation="Horizontal" Spacing="24">
-                        <!-- Email -->
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="{Binding Customer.Email}" 
-                                      FontSize="13" 
-                                      Foreground="#858585"
-                                      VerticalAlignment="Center"/>
-                        </StackPanel>
+                    <Border Grid.Column="0" Width="64" Height="64" CornerRadius="32" Background="{DynamicResource SurfaceLightBrush}" Margin="0,0,24,0">
+                         <PathIcon Data="{StaticResource IconUser}" Width="24" Height="24" Foreground="{DynamicResource AccentBrush}"/>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
+                        <TextBlock Text="{Binding Title}" 
+                                   FontSize="24" 
+                                   FontWeight="Bold" 
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   LetterSpacing="-0.5"/>
                         
-                        <!-- Téléphone -->
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="{Binding Customer.Phone}" 
-                                      FontSize="13" 
-                                      Foreground="#858585"
-                                      VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" Spacing="20">
+                            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding Customer.Email, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <PathIcon Data="{StaticResource IconMail}" Width="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding Customer.Email}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding Customer.Phone, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <PathIcon Data="{StaticResource IconPhone}" Width="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding Customer.Phone}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
-                </StackPanel>
+                </Grid>
 
-                <!-- Badge Date (À droite) -->
-                <Border Grid.Column="2" 
-                        Classes="DateBadge"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Customer.CreatedAt, StringFormat='Client depuis le {0:dd/MM/yyyy}'}" 
-                              FontSize="12" 
-                              FontWeight="500"
-                              Foreground="#A0A0A0"
-                              VerticalAlignment="Center"/>
-                </Border>
+                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="20" Padding="16,8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconCalendar}" Width="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <TextBlock Text="{Binding Customer.CreatedAt, StringFormat='Client depuis {0:dd/MM/yyyy}'}" 
+                                       FontSize="12" 
+                                       FontWeight="Medium" 
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
             </Grid>
         </Border>
-        
-        <!-- Séparateur horizontal - DOCKED TO TOP -->
-        <Border DockPanel.Dock="Top" Height="1" Background="#333333" Margin="32,16,32,0"/>
 
-        <!-- Contenu Principal avec Onglets - FILLS REMAINING SPACE -->
-        <TabControl SelectedIndex="{Binding SelectedTabIndex}"
-                   Background="#1D1D1D"
-                   Padding="0"
-                   VerticalAlignment="Stretch"
-                   HorizontalAlignment="Stretch">
+        <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}">
             
-            <!-- Onglet 1: Vente -->
-            <TabItem Header="Nouvelle Vente">
-                <views:SaleFormView DataContext="{Binding SaleFormViewModel}"/>
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource IconSales}" Width="14"/>
+                        <TextBlock Text="Nouvelle Vente"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <Border Padding="0" Background="{DynamicResource BackgroundBrush}">
+                    <views:SaleFormView DataContext="{Binding SaleFormViewModel}"/>
+                </Border>
             </TabItem>
 
-            <!-- Onglet 2: Ordonnances -->
-            <TabItem Header="Ordonnances">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource IconPrescriptions}" Width="14"/>
+                        <TextBlock Text="Ordonnances"/>
+                    </StackPanel>
+                </TabItem.Header>
                 <views:CustomerPrescriptionsView DataContext="{Binding PrescriptionsViewModel}"/>
             </TabItem>
 
-            <!-- Onglet 3: Infos -->
-            <TabItem Header="Informations Client">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource IconUser}" Width="14"/>
+                        <TextBlock Text="Informations"/>
+                    </StackPanel>
+                </TabItem.Header>
                 <views:CustomerInfoView DataContext="{Binding CustomerInfoViewModel}"/>
             </TabItem>
 
-            <!-- Onglet 4: Historique d'achats -->
-            <TabItem Header="Historique d'achats">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource IconCard}" Width="14"/>
+                        <TextBlock Text="Historique"/>
+                    </StackPanel>
+                </TabItem.Header>
                 <views:CustomerPurchaseHistoryView DataContext="{Binding PurchaseHistoryViewModel}"/>
             </TabItem>
+
         </TabControl>
-    </DockPanel>
+
+    </Grid>
 </UserControl>

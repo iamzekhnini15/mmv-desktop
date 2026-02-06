@@ -7,7 +7,7 @@
              x:Class="MMV.App.Controls.BackButton"
              x:DataType="controls:BackButton"
              x:CompileBindings="True">
-    
+
     <UserControl.Styles>
         <Style Selector="Button.BackButtonStyle">
             <Setter Property="Background" Value="Transparent"/>
@@ -19,13 +19,20 @@
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
-        
+
         <Style Selector="Button.BackButtonStyle:pointerover">
             <Setter Property="Foreground" Value="#FFFFFF"/>
         </Style>
     </UserControl.Styles>
-    
+    <!--
     <Button Classes="BackButtonStyle"
             Content="{Binding $parent[controls:BackButton].ButtonText}"
-            Command="{Binding $parent[controls:BackButton].Command}"/>
+            Command="{Binding $parent[controls:BackButton].Command}"/> -->
+
+    <Button Command="{Binding $parent[controls:BackButton].Command}" Classes="BackButtonStyle">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconBack}" Width="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
+            <TextBlock Text="{Binding $parent[controls:BackButton].ButtonText}" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
+        </StackPanel>
+    </Button>
 </UserControl>
