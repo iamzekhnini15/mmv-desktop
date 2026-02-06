@@ -10,78 +10,149 @@
              Background="{DynamicResource BackgroundBrush}">
 
     <UserControl.Styles>
-        <Style Selector="DataGridColumnHeader">
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-            <Setter Property="Padding" Value="8"/>
+        <Style Selector="Border.PrescriptionRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="20,16"/>
+            <Setter Property="Cursor" Value="Hand"/>
         </Style>
-        <Style Selector="DataGridCell">
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Style Selector="Border.PrescriptionRow:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
+        </Style>
+
+        <Style Selector="TextBlock.TechLabel">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+        </Style>
+        <Style Selector="TextBlock.TechValue">
             <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        
+        <Style Selector="TextBlock.ColHeader">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="Opacity" Value="0.8"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto, *">
+    <Grid RowDefinitions="Auto, *, Auto">
         
         <Border Grid.Row="0" Padding="20,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" IsVisible="{Binding ShowList}">
             <Grid ColumnDefinitions="*, Auto">
-                <StackPanel>
-                    <TextBlock Text="Historique des Ordonnances" FontWeight="Bold" FontSize="16"/>
-                    <TextBlock Text="Suivi de l'évolution visuelle" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="Historique des Ordonnances" FontWeight="Bold" FontSize="18" VerticalAlignment="Center"/>
+                    <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="12" Padding="10,4" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Prescriptions.Count, StringFormat='{}{0}'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </Border>
                 </StackPanel>
+                
                 <Button Grid.Column="1" Command="{Binding CreateCommand}" Classes="Primary" Padding="12,6">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{StaticResource IconPlus}" Width="10" Foreground="White"/>
-                        <TextBlock Text="Nouvelle Ordonnance" FontSize="12"/>
+                        <TextBlock Text="Nouvelle Ordonnance" FontSize="13"/>
                     </StackPanel>
                 </Button>
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" IsVisible="{Binding ShowList}">
-            <DataGrid ItemsSource="{Binding Prescriptions}" 
-                      AutoGenerateColumns="False" 
-                      IsReadOnly="True"
-                      GridLinesVisibility="All"
-                      HorizontalGridLinesBrush="{DynamicResource BorderBrush}"
-                      VerticalGridLinesBrush="{DynamicResource BorderBrush}"
-                      BorderThickness="0"
-                      RowHeight="40"
-                      IsVisible="{Binding !HasNoPrescriptions}">
-                
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="DATE" Binding="{Binding IssueDate, StringFormat='{}{0:dd/MM/yyyy}'}" Width="120"/>
-                    <DataGridTextColumn Header="PRESCRIPTEUR" Binding="{Binding DoctorName}" Width="200" Foreground="{DynamicResource TextSecondaryBrush}"/>
+        <Grid Grid.Row="1" RowDefinitions="Auto, *" IsVisible="{Binding ShowList}">
+            
+            <Border Grid.Row="0" Background="{DynamicResource BackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,10">
+                <Grid ColumnDefinitions="120, 2*, 3*, 3*, 40">
+                    <TextBlock Grid.Column="0" Text="DATE" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="1" Text="PRESCRIPTEUR" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="2" Text="ŒIL DROIT (OD)" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="3" Text="ŒIL GAUCHE (OG)" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="4" Text="" Classes="ColHeader"/>
+                </Grid>
+            </Border>
 
-                    <DataGridTextColumn Header="OD SPH" Binding="{Binding OdSphere, StringFormat='{}{0:+0.00;-0.00}'}" Width="100" FontWeight="SemiBold"/>
-                    <DataGridTextColumn Header="OD CYL" Binding="{Binding OdCylinder, StringFormat='{}{0:+0.00;-0.00}'}" Width="100"/>
-                    <DataGridTextColumn Header="OD AXE" Binding="{Binding OdAxis, StringFormat='{}{0}°'}" Width="100"/>
-                    <DataGridTextColumn Header="OD ADD" Binding="{Binding OdAddition, StringFormat='{}{0}°'}" Width="100"/>
-                    <DataGridTextColumn Header="OD PRISME" Binding="{Binding OdPrismValue, StringFormat='{}{0}°'}" Width="110"/>
-                    <DataGridTextColumn Header="OD BASE" Binding="{Binding OdPrismBase, StringFormat='{}{0}°'}" Width="100"/>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding Prescriptions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="PrescriptionRow" 
+                                        PointerPressed="OnPrescriptionTapped" 
+                                        Tag="{Binding}"> <Grid ColumnDefinitions="120, 2*, 3*, 3*, 40">
+                                        
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding IssueDate, StringFormat='{}{0:dd/MM/yyyy}'}" FontWeight="SemiBold" FontSize="13"/>
+                                            <TextBlock Text="Ordonnance" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0"/>
+                                        </StackPanel>
 
-                    <DataGridTextColumn Header="OG SPH" Binding="{Binding OgSphere, StringFormat='{}{0:+0.00;-0.00}'}" Width="100" FontWeight="SemiBold"/>
-                    <DataGridTextColumn Header="OG CYL" Binding="{Binding OgCylinder, StringFormat='{}{0:+0.00;-0.00}'}" Width="100"/>
-                    <DataGridTextColumn Header="OG AXE" Binding="{Binding OgAxis, StringFormat='{}{0}°'}" Width="100"/>
-                    <DataGridTextColumn Header="OG ADD" Binding="{Binding OgAddition, StringFormat='{}{0}°'}" Width="100"/>
-                    <DataGridTextColumn Header="OG PRISME" Binding="{Binding OgPrismValue, StringFormat='{}{0}°'}" Width="110"/>
-                    <DataGridTextColumn Header="OG BASE" Binding="{Binding OgPrismBase, StringFormat='{}{0}°'}" Width="100"/>
-                </DataGrid.Columns>
-            </DataGrid>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                                            <TextBlock Text="{Binding DoctorName}" FontWeight="Medium" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="Ophtalmologiste" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        </StackPanel>
 
-            <StackPanel IsVisible="{Binding HasNoPrescriptions}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Opacity="0.5">
-                <TextBlock Text="Aucun historique disponible" FontSize="14"/>
-            </StackPanel>
+                                        <Border Grid.Column="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0" Padding="16,0" Margin="0,0,16,0">
+                                            <Grid ColumnDefinitions="Auto, Auto, Auto" RowDefinitions="Auto, Auto">
+                                                <StackPanel Orientation="Horizontal" Spacing="12" Grid.ColumnSpan="3">
+                                                    <StackPanel Orientation="Horizontal"><TextBlock Text="SPH" Classes="TechLabel"/><TextBlock Text="{Binding OdSphere, StringFormat='{}{0:+0.00;-0.00}'}" Classes="TechValue"/></StackPanel>
+                                                    <StackPanel Orientation="Horizontal"><TextBlock Text="CYL" Classes="TechLabel"/><TextBlock Text="{Binding OdCylinder, StringFormat='{}{0:+0.00;-0.00}'}" Classes="TechValue"/></StackPanel>
+                                                    <StackPanel Orientation="Horizontal"><TextBlock Text="AXE" Classes="TechLabel"/><TextBlock Text="{Binding OdAxis, StringFormat='{}{0}°'}" Classes="TechValue"/></StackPanel>
+                                                </StackPanel>
+                                                
+                                                <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,4,0,0" IsVisible="{Binding OdAddition, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                                    <TextBlock Text="ADD" Classes="TechLabel"/>
+                                                    <TextBlock Text="{Binding OdAddition, StringFormat='{}{0:+0.00}'}" Classes="TechValue" Foreground="{DynamicResource AccentBrush}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+
+                                        <Border Grid.Column="3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0" Padding="16,0">
+                                            <Grid ColumnDefinitions="Auto, Auto, Auto" RowDefinitions="Auto, Auto">
+                                                <StackPanel Orientation="Horizontal" Spacing="12" Grid.ColumnSpan="3">
+                                                    <StackPanel Orientation="Horizontal"><TextBlock Text="SPH" Classes="TechLabel"/><TextBlock Text="{Binding OgSphere, StringFormat='{}{0:+0.00;-0.00}'}" Classes="TechValue"/></StackPanel>
+                                                    <StackPanel Orientation="Horizontal"><TextBlock Text="CYL" Classes="TechLabel"/><TextBlock Text="{Binding OgCylinder, StringFormat='{}{0:+0.00;-0.00}'}" Classes="TechValue"/></StackPanel>
+                                                    <StackPanel Orientation="Horizontal"><TextBlock Text="AXE" Classes="TechLabel"/><TextBlock Text="{Binding OgAxis, StringFormat='{}{0}°'}" Classes="TechValue"/></StackPanel>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,4,0,0" IsVisible="{Binding OgAddition, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                                    <TextBlock Text="ADD" Classes="TechLabel"/>
+                                                    <TextBlock Text="{Binding OgAddition, StringFormat='{}{0:+0.00}'}" Classes="TechValue" Foreground="{DynamicResource AccentBrush}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+
+                                        <PathIcon Grid.Column="4" Data="{StaticResource IconBack}" Width="10" RenderTransform="rotate(180deg)" 
+                                                  Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel IsVisible="{Binding HasNoPrescriptions}" HorizontalAlignment="Center" Margin="0,80" Spacing="16" Opacity="0.6">
+                        <PathIcon Data="{StaticResource IconPrescriptions}" Width="48" Height="48" Foreground="{DynamicResource TextDisabledBrush}"/>
+                        <TextBlock Text="Aucune ordonnance enregistrée" FontSize="16" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
 
-        <ContentControl Grid.Row="0" Grid.RowSpan="2" Content="{Binding FormViewModel}" IsVisible="{Binding IsInEditMode}">
-            <ContentControl.DataTemplates>
-                <DataTemplate DataType="vm:PrescriptionFormViewModel">
-                    <views:PrescriptionFormView/>
-                </DataTemplate>
-            </ContentControl.DataTemplates>
-        </ContentControl>
+        <Panel Grid.Row="0" Grid.RowSpan="3" Background="#80000000" IsVisible="{Binding IsInEditMode}">
+            <ContentControl Content="{Binding FormViewModel}">
+                <ContentControl.DataTemplates>
+                    <DataTemplate DataType="vm:PrescriptionFormViewModel">
+                        <views:PrescriptionFormView/>
+                    </DataTemplate>
+                </ContentControl.DataTemplates>
+            </ContentControl>
+        </Panel>
+
+        <Panel Grid.Row="0" Grid.RowSpan="3" Background="#80000000" IsVisible="{Binding IsShowingDetail}">
+            <views:PrescriptionDetailView DataContext="{Binding DetailViewModel}"/>
+        </Panel>
+
     </Grid>
 </UserControl>
