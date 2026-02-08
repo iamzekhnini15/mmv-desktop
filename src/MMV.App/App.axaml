@@ -6,7 +6,7 @@
              xmlns:clients="using:MMV.App.Views.Clients"
              xmlns:converters="using:MMV.App.Converters"
              x:Class="MMV.App.App"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Dark">
     <Application.Resources>
         <local:ViewLocator x:Key="ViewLocator"/>
         <converters:IsZeroConverter x:Key="IsZeroConverter"/>
@@ -34,6 +34,8 @@
     
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
         <StyleInclude Source="/Styles/AppStyles.axaml"/>
+        <StyleInclude Source="/Styles/Icons.axaml"/>
     </Application.Styles>
 </Application>

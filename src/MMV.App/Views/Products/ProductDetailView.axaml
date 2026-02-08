@@ -9,317 +9,255 @@
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="MMV.App.Views.Products.ProductDetailView"
              x:DataType="vm:ProductDetailViewModel"
-             Background="#1D1D1D">
+             Background="{DynamicResource BackgroundBrush}">
 
     <UserControl.Styles>
-        <Style Selector="Button.PrimaryButton">
-            <Setter Property="Background" Value="#0071E3"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="16,8"/>
-            <Setter Property="FontWeight" Value="600"/>
-            <Setter Property="Cursor" Value="Hand"/>
+        <Style Selector="TabControl">
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
-
-        <Style Selector="Button.DangerButton">
-            <Setter Property="Background" Value="#E74C3C"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="16,8"/>
-            <Setter Property="FontWeight" Value="600"/>
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="Padding" Value="24,16"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid>
+                        <ContentPresenter Name="PART_HeaderContentPresenter"
+                                          Content="{TemplateBinding Header}"
+                                          Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                        <Border Name="PART_Indicator"
+                                Background="{DynamicResource AccentBrush}"
+                                Height="2"
+                                VerticalAlignment="Bottom"
+                                IsVisible="False"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
         </Style>
-
-        <Style Selector="Border.Card">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="16"/>
-            <Setter Property="Margin" Value="0,0,0,12"/>
+        <Style Selector="TabItem:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
+        <Style Selector="TabItem:selected">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="TabItem:selected /template/ Border#PART_Indicator">
+            <Setter Property="IsVisible" Value="True"/>
         </Style>
 
         <Style Selector="TextBlock.Label">
-            <Setter Property="Foreground" Value="#858585"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
-
         <Style Selector="TextBlock.Value">
-            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="600"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
-
-        <!-- Badge de date -->
-        <Style Selector="Border.DateBadge">
-            <Setter Property="Background" Value="#2D2D2D"/>
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="BorderBrush" Value="#404040"/>
-            <Setter Property="BorderThickness" Value="1"/>
+        
+        <Style Selector="Border.DetailSection">
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="0,24"/>
         </Style>
     </UserControl.Styles>
 
-    <Border Padding="32,24,32,24">
+    <Grid RowDefinitions="Auto, *">
+        
+        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="32,24">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+                
+                <controls:BackButton Grid.Column="0"
+                                     Command="{Binding BackCommand}"
+                                     ButtonText="Retour"
+                                     VerticalAlignment="Top"
+                                     Margin="0,4,32,0"/>
 
-        <Grid RowDefinitions="Auto,*,Auto">
-            <!-- Header -->
-            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,16">
-
-            <controls:BackButton Grid.Column="0"
-                        Command="{Binding BackCommand}"
-                        ButtonText="← Retour"
-                        Margin="0,0,32,0"/>
-
-            <StackPanel Grid.Column="1" Spacing="4">
-                <TextBlock Text="{Binding Title}"
-                           FontSize="20"
-                           FontWeight="700"
-                           Foreground="#FFFFFF"/>
-                <TextBlock Text="{Binding Product.Reference}"
-                           FontSize="12"
-                           Foreground="#858585"/>
-            </StackPanel>
-
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                <Button Content="Modifier"
-                        Command="{Binding EditCommand}"
-                        Classes="PrimaryButton"/>
-                <Button Content="Supprimer"
-                        Command="{Binding DeleteCommand}"
-                        Classes="DangerButton"/>
-            </StackPanel>
-        </Grid>
-
-        <!-- Content: TabControl with Informations and Historique -->
-        <TabControl Grid.Row="1">
-            <TabControl.Styles>
-                <!-- Style Apple pour la barre d'onglets -->
-                <Style Selector="TabControl">
-                    <Setter Property="Background" Value="Transparent"/>
-                    <Setter Property="BorderThickness" Value="0"/>
-                    <Setter Property="Padding" Value="0"/> 
-                </Style>
-
-                <!-- Conteneur de l'en-tête des onglets (TabStrip) -->
-                <Style Selector="TabControl > TabControl.ItemsPanel > ItemsPanelTemplate > StackPanel">
-                    <Setter Property="Margin" Value="0,0,0,0"/>
-                    <Setter Property="Spacing" Value="24"/>
-                </Style>
-
-                <!-- Style de base de l'onglet -->
-                <Style Selector="TabItem">
-                    <Setter Property="Background" Value="Transparent"/>
-                    <Setter Property="BorderThickness" Value="0"/>
-                    <Setter Property="Padding" Value="12,6,12,10"/>
-                    <Setter Property="FontSize" Value="13"/>
-                    <Setter Property="FontWeight" Value="500"/>
-                    <Setter Property="Foreground" Value="#858585"/>
-                    <Setter Property="Cursor" Value="Hand"/>
-                    <Setter Property="HorizontalAlignment" Value="Center"/>
-                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                    <Setter Property="Template">
-                        <ControlTemplate>
-                            <Border Name="PART_IndicatorBorder" 
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    Padding="{TemplateBinding Padding}"
-                                    HorizontalAlignment="{TemplateBinding HorizontalAlignment}">
-                                
-                                <ContentPresenter Name="PART_HeaderContentPresenter"
-                                                Content="{TemplateBinding Header}"
-                                                TextElement.FontSize="{TemplateBinding FontSize}"
-                                                TextElement.FontWeight="{TemplateBinding FontWeight}"
-                                                HorizontalAlignment="Center"
-                                                VerticalAlignment="Center"
-                                                HorizontalContentAlignment="Center"/>
-                            </Border>
-                        </ControlTemplate>
-                    </Setter>
-                </Style>
-
-                <!-- État : Sélectionné (Active) -->
-                <Style Selector="TabItem:selected">
-                    <Setter Property="Foreground" Value="#FFFFFF"/>
-                </Style>
-
-                <!-- L'indicateur visuel (le trait bleu Apple) qui apparaît quand sélectionné -->
-                <Style Selector="TabItem:selected > Border#PART_IndicatorBorder">
-                    <Setter Property="BorderBrush" Value="#0071E3"/>
-                    <Setter Property="BorderThickness" Value="0,0,0,2"/>
-                </Style>
-
-                <!-- Effet de survol subtil -->
-                <Style Selector="TabItem:pointerover > Border#PART_IndicatorBorder">
-                    <Setter Property="Background" Value="#2D2D2D"/>
-                </Style>
-            </TabControl.Styles>
-
-            <TabItem Header="Informations">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <Border Padding="0,12" Background="Transparent">
-                    <StackPanel Spacing="12">
-                        <Border Classes="Card">
-                            <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto,Auto">
-                                <StackPanel Grid.Column="0" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
-                                    <TextBlock Text="Nom" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.Name}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
-                                    <TextBlock Text="Catégorie" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.Category}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Grid.Row="0" Spacing="4" Margin="0,0,0,12">
-                                    <TextBlock Text="Fournisseur" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.Supplier.Name}" Classes="Value"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="3" Grid.Row="0" Spacing="4" Margin="0,0,0,8">
-                                    <TextBlock Text="Date d'entrée" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.EntryDate, StringFormat='{}{0:dd/MM/yyyy}'}" Classes="Value"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="0" Grid.Row="1" Spacing="4" Margin="0,0,16,0">
-                                    <TextBlock Text="Prix d'achat" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.PurchasePrice, StringFormat='{}{0:C2}'}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Grid.Row="1" Spacing="4" Margin="0,0,16,0">
-                                    <TextBlock Text="Prix de vente" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.SalePrice, StringFormat='{}{0:C2}'}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Grid.Row="1" Spacing="4">
-                                    <TextBlock Text="Stock" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.StockQuantity}" Classes="Value"/>
-                                </StackPanel>                                                 
-                            </Grid>
-                        </Border>
-
-                        <Border Classes="Card">
-                            <StackPanel Spacing="8">
-                                <TextBlock Text="Description" Classes="Label"/>
-                                <TextBlock Text="{Binding Product.Description}" Foreground="#E0E0E0" FontSize="13"/>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Classes="Card" IsVisible="{Binding IsGlassCategory}">
-                            <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto,Auto">
-                                <StackPanel Grid.Column="0" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
-                                    <TextBlock Text="Matière" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.GlassDetail.Material}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
-                                    <TextBlock Text="Type" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.GlassDetail.GlassType}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
-                                    <TextBlock Text="Diamètre" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.GlassDetail.Diameter}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="3" Grid.Row="0" Spacing="4" Margin="0,0,0,12">
-                                    <TextBlock Text="Indice" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.GlassDetail.Index}" Classes="Value"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="0" Grid.Row="1" Spacing="4" Margin="0,0,16,0">
-                                    <TextBlock Text="Puissance Min" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.GlassDetail.PowerLimitMin}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Grid.Row="1" Spacing="4" Margin="0,0,16,0">
-                                    <TextBlock Text="Puissance Max" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.GlassDetail.PowerLimitMax}" Classes="Value"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <Border Classes="Card" IsVisible="{Binding IsLensCategory}">
-                            <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto,Auto">
-                                <StackPanel Grid.Column="0" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
-                                    <TextBlock Text="Marque" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.LensDetail.Brand}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
-                                    <TextBlock Text="Modèle" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.LensDetail.Model}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Grid.Row="0" Spacing="4" Margin="0,0,16,12">
-                                    <TextBlock Text="Matière" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.LensDetail.Material}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="3" Grid.Row="0" Spacing="4" Margin="0,0,0,12">
-                                    <TextBlock Text="Type" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.LensDetail.LensType}" Classes="Value"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="0" Grid.Row="1" Spacing="4" Margin="0,0,16,0">
-                                    <TextBlock Text="Diamètre" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.LensDetail.Diameter}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Grid.Row="1" Spacing="4" Margin="0,0,16,0">
-                                    <TextBlock Text="Courbure" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.LensDetail.BaseCurve}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Grid.Row="1" Spacing="4" Margin="0,0,16,0">
-                                    <TextBlock Text="Colorée" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.LensDetail.IsColored}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="3" Grid.Row="1" Spacing="4" Margin="0,0,0,0">
-                                    <TextBlock Text="Durée" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.LensDetail.Duration}" Classes="Value"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <Border Classes="Card" IsVisible="{Binding IsAccessoryCategory}">
-                            <Grid ColumnDefinitions="*,*,*">
-                                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,16,0">
-                                    <TextBlock Text="Couleur" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.AccessoryDetail.Color}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,16,0">
-                                    <TextBlock Text="Taille" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.AccessoryDetail.Size}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Spacing="4">
-                                    <TextBlock Text="Matière" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.AccessoryDetail.Material}" Classes="Value"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <Border Classes="Card">
-                            <StackPanel Spacing="8">
-                                <TextBlock Text="Spécifications techniques" Classes="Label"/>
-                                <TextBlock Text="{Binding Product.TechnicalSpecs}" Foreground="#E0E0E0" FontSize="13" TextWrapping="Wrap"/>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Classes="Card">
-                            <Grid ColumnDefinitions="Auto,Auto,Auto">
-                                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,16,0">
-                                    <TextBlock Text="Seuil d'alerte" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.StockAlertThreshold}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,16,0">
-                                    <TextBlock Text="Actif" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.IsActive}" Classes="Value"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Spacing="4">
-                                    <TextBlock Text="ID" Classes="Label"/>
-                                    <TextBlock Text="{Binding Product.ProductId}" Classes="Value"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </StackPanel>
+                <Grid Grid.Column="1" ColumnDefinitions="Auto, *">
+                    <Border Grid.Column="0" VerticalAlignment="Top" Width="64" Height="64" CornerRadius="8" Background="{DynamicResource SurfaceLightBrush}" Margin="0,0,24,0">
+                         <PathIcon Data="{StaticResource IconProducts}" Width="24" Height="24" Foreground="{DynamicResource AccentBrush}"/>
                     </Border>
-                </ScrollViewer>
-            </TabItem>
 
-            <TabItem Header="Historique">
-                <views:ProductOrderHistoryView DataContext="{Binding}" />
-            </TabItem>
-        </TabControl>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Top" Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="{Binding Product.Name}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                            <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="4" Padding="8,2" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Product.Category}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Bold"/>
+                            </Border>
+                        </StackPanel>
+                        
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <TextBlock Text="{Binding Product.Reference}" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <TextBlock Text="•" Foreground="{DynamicResource BorderBrush}"/>
+                            <TextBlock Text="{Binding Product.Supplier.Name}" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
 
-        </Grid>
-    </Border>
+                <StackPanel Grid.Column="2" HorizontalAlignment="Right" Spacing="16">
+                    <StackPanel HorizontalAlignment="Right">
+                        <TextBlock Text="{Binding Product.SalePrice, StringFormat='{}{0:C2}'}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Right"/>
+                        <TextBlock Text="Prix TTC" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Command="{Binding EditCommand}" Classes="Primary" Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource IconSettings}" Width="14" />
+                                <TextBlock Text="Modifier"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding DeleteCommand}" Background="{DynamicResource ErrorBrush}" Foreground="{DynamicResource ErrorBrush}" CornerRadius="{DynamicResource MediumCornerRadius}" BorderThickness="0" Cursor="Hand" Padding="16,8">
+                            <PathIcon Data="{StaticResource IconTrash}" Width="14"/>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+            <TabControl>
+                <TabItem Header="Fiche Technique">
+                    <ScrollViewer Padding="40">
+                        <Grid ColumnDefinitions="2*, 40, 1*">
+                            
+                            <StackPanel Grid.Column="0">
+                                
+                                <Border Classes="DetailSection" BorderThickness="0,0,0,1" Padding="0,0,0,24" Margin="0,0,0,24">
+                                    <StackPanel Spacing="16">
+                                        <TextBlock Text="STOCK ET PRIX" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                                        <Grid ColumnDefinitions="*, *">
+                                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                                <TextBlock Text="Stock Actuel" Classes="Label"/>
+                                                <TextBlock Text="{Binding Product.StockQuantity}" Classes="Value" FontSize="18"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                                                <TextBlock Text="Prix Achat HT" Classes="Label"/>
+                                                <TextBlock Text="{Binding Product.PurchasePrice, StringFormat='{}{0:C2}'}" Classes="Value"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <StackPanel>
+                                    <TextBlock Text="CARACTÉRISTIQUES TECHNIQUES" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,16"/>
+                                    
+                                    <Grid IsVisible="{Binding IsGlassCategory}" ColumnDefinitions="*,*" RowDefinitions="Auto, Auto, Auto">
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,16">
+                                            <TextBlock Text="Matière" Classes="Label"/>
+                                            <TextBlock Text="{Binding GlassMaterial}" Classes="Value"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,16">
+                                            <TextBlock Text="Type" Classes="Label"/>
+                                            <TextBlock Text="{Binding GlassType}" Classes="Value"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,16">
+                                            <TextBlock Text="Indice" Classes="Label"/>
+                                            <TextBlock Text="{Binding GlassIndex}" Classes="Value"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,16">
+                                            <TextBlock Text="Diamètre" Classes="Label"/>
+                                            <TextBlock Text="{Binding GlassDiameter}" Classes="Value"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="0">
+                                            <TextBlock Text="Puissance" Classes="Label"/>
+                                            <TextBlock Classes="Value">
+                                                <Run Text="{Binding GlassPowerLimitMin}"/>
+                                                <Run Text=" à " Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
+                                                <Run Text="{Binding GlassPowerLimitMax}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid IsVisible="{Binding IsLensCategory}" ColumnDefinitions="*,*" RowDefinitions="Auto, Auto, Auto">
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,16">
+                                            <TextBlock Text="Marque / Modèle" Classes="Label"/>
+                                            <TextBlock Classes="Value">
+                                                <Run Text="{Binding LensBrand}"/>
+                                                <Run Text=" "/>
+                                                <Run Text="{Binding LensModel}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,16">
+                                            <TextBlock Text="Type" Classes="Label"/>
+                                            <TextBlock Text="{Binding LensType}" Classes="Value"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,16">
+                                            <TextBlock Text="Matériau" Classes="Label"/>
+                                            <TextBlock Text="{Binding LensMaterial}" Classes="Value"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,16">
+                                            <TextBlock Text="Durée" Classes="Label"/>
+                                            <TextBlock Text="{Binding LensDuration}" Classes="Value"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="0">
+                                            <TextBlock Text="Paramètres" Classes="Label"/>
+                                            <TextBlock Classes="Value">
+                                                <Run Text="BC: " Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
+                                                <Run Text="{Binding LensBaseCurve}"/>
+                                                <Run Text="  DIA: " Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
+                                                <Run Text="{Binding LensDiameter}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid IsVisible="{Binding IsAccessoryCategory}" ColumnDefinitions="*,*" RowDefinitions="Auto, Auto">
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,16">
+                                            <TextBlock Text="Couleur" Classes="Label"/>
+                                            <TextBlock Text="{Binding AccessoryColor}" Classes="Value"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,16">
+                                            <TextBlock Text="Matière" Classes="Label"/>
+                                            <TextBlock Text="{Binding AccessoryMaterial}" Classes="Value"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="0">
+                                            <TextBlock Text="Taille" Classes="Label"/>
+                                            <TextBlock Text="{Binding AccessorySize}" Classes="Value"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Stretch" Margin="19,0"/>
+
+                            <StackPanel Grid.Column="2" Spacing="32">
+                                <StackPanel>
+                                    <TextBlock Text="DESCRIPTION" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,16"/>
+                                    <TextBlock Text="{Binding Product.Description}" TextWrapping="Wrap" LineHeight="22" Foreground="{DynamicResource TextPrimaryBrush}" Opacity="0.8"/>
+                                </StackPanel>
+
+                                <StackPanel>
+                                    <TextBlock Text="ADMINISTRATION" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,16"/>
+                                    <Grid ColumnDefinitions="Auto, *">
+                                        <StackPanel>
+                                            <TextBlock Text="Date entrée" Classes="Label"/>
+                                            <TextBlock Text="{Binding Product.EntryDate, StringFormat='{}{0:dd/MM/yyyy}'}" Classes="Value"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Margin="20,0,0,0">
+                                            <TextBlock Text="Seuil Alerte" Classes="Label"/>
+                                            <TextBlock Text="{Binding Product.StockAlertThreshold}" Classes="Value" Foreground="{DynamicResource WarningBrush}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+
+                        </Grid>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem Header="Mouvements de Stock">
+                    <views:ProductOrderHistoryView DataContext="{Binding}"/>
+                </TabItem>
+            </TabControl>
+        </Border>
+    </Grid>
 </UserControl>

@@ -8,280 +8,208 @@
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="MMV.App.Views.Products.StockMovementsView"
              x:DataType="vm:StockMovementsViewModel"
-             Background="#1D1D1D">
+             Background="{DynamicResource BackgroundBrush}">
 
     <UserControl.Styles>
-        <!-- Styles réutilisés -->
-        <Style Selector="Border.ToolbarCard">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="16,12"/>
-            <Setter Property="Margin" Value="0,0,0,12"/>
-            <Setter Property="BorderThickness" Value="0"/>
-        </Style>
-
-        <!-- Style des cartes mouvements -->
-        <Style Selector="Border.MovementCard">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="Margin" Value="0,0,0,4"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        
-        <Style Selector="Border.MovementCard:pointerover">
-            <Setter Property="Background" Value="#2A2A2E"/>
-            <Setter Property="BorderBrush" Value="#3A3A3E"/>
-        </Style>
-
-        <!-- Bouton Primary -->
-        <Style Selector="Button.PrimaryButton">
-            <Setter Property="Background" Value="#0071E3"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="20,8"/>
-            <Setter Property="FontWeight" Value="600"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        
-        <Style Selector="Button.PrimaryButton:pointerover">
-            <Setter Property="Background" Value="#005BB5"/>
-        </Style>
-
-        <!-- Style boutons pagination -->
-        <Style Selector="Button.PaginationButton">
+        <Style Selector="Border.MovementRow">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#E0E0E0"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="4"/>
-            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="20,12"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
         
-        <Style Selector="Button.PaginationButton:pointerover">
-            <Setter Property="Background" Value="#3C3C3C"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Style Selector="Border.MovementRow:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
         </Style>
 
-        <Style Selector="TextBox">
+        <Style Selector="TextBlock.ColHeader">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="Opacity" Value="0.8"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="TextBox.FilterInput">
             <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="Background" Value="#3C3C3C"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="FontSize" Value="13"/>
         </Style>
 
-        <Style Selector="ComboBox">
+        <Style Selector="ComboBox.FilterInput">
             <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="Background" Value="#3C3C3C"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="FontSize" Value="13"/>
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto, *, Auto">
         
-        <!-- HEADER -->
-        <Border Grid.Row="0" Padding="32,20,32,8" IsVisible="{Binding ShowList}">
-            <Grid ColumnDefinitions="Auto,*,Auto">
+        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,16" IsVisible="{Binding ShowList}">
+            <Grid ColumnDefinitions="Auto, *, Auto">
 
-                <controls:BackButton Grid.Column="0"
-                        Command="{Binding BackToProductsCommand}"
-                        ButtonText="← Retour"
-                        Margin="0,0,32,0"/>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <controls:BackButton Command="{Binding BackToProductsCommand}" ButtonText="Retour" VerticalAlignment="Center"/>
+                    <Rectangle Width="1" Height="20" Fill="{DynamicResource BorderBrush}"/>
     
-                <StackPanel Grid.Column="1" Spacing="2">
-                    <TextBlock Text="Mouvements de Stock" FontSize="24" FontWeight="700" Foreground="#FFFFFF"/>
-                    <TextBlock Text="{Binding ListViewModel.TotalMovements, StringFormat='{}{0} mouvement(s)'}" 
-                              FontSize="12" Foreground="#858585"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <TextBlock Text="Mouvements de Stock" FontSize="18" FontWeight="Bold"/>
+                        <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="12" Padding="10,4">
+                            <TextBlock Text="{Binding ListViewModel.TotalMovements, StringFormat='{}{0}'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </Border>
+                    </StackPanel>
                 </StackPanel>
                 
                 <Button Grid.Column="2" 
-                       Content="Nouveau Mouvement"
-                       Classes="PrimaryButton"
-                       Command="{Binding ListViewModel.CreateMovementCommand}"/>
+                       Command="{Binding ListViewModel.CreateMovementCommand}"
+                       Classes="Primary" Padding="16,6">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource IconPlus}" Width="10" Foreground="White"/>
+                        <TextBlock Text="Nouveau Mouvement" FontSize="13"/>
+                    </StackPanel>
+                </Button>
             </Grid>
         </Border>
 
-        <!-- CONTENU SCROLLABLE -->
-        <ScrollViewer Grid.Row="1" 
-                      Padding="32,0,32,0" 
-                      VerticalScrollBarVisibility="Auto" 
-                      HorizontalScrollBarVisibility="Disabled"
-                      IsVisible="{Binding ShowList}">
-            <StackPanel Spacing="0">
-                
-                <!-- Barre de Recherche et Filtres -->
-                <Border Classes="ToolbarCard">
-                    <Grid RowDefinitions="Auto" ColumnDefinitions="Auto">
-                        <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Orientation="Horizontal" Spacing="12" Margin="0,12,0,0">
-                                <TextBox Text="{Binding ListViewModel.SearchText, Mode=TwoWay}"
-                                    Watermark="Rechercher (réf, produit, raison...)"
-                                    Padding="12,8"
-                                    Width="300"
-                                    Grid.Row="0" 
-                                    Grid.Column="0"/>
-                            
-                                <ComboBox 
-                                        ItemsSource="{Binding ListViewModel.MovementTypes}" 
-                                        SelectedItem="{Binding ListViewModel.SelectedMovementType}" 
-                                        PlaceholderText="Tous types"
-                                        Grid.Row="0" 
-                                        Grid.Column="1"
-                                        >
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding}"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-                                
-                                <ComboBox 
-                                        ItemsSource="{Binding ListViewModel.Products}" 
-                                        SelectedValue="{Binding ListViewModel.SelectedProductId}" 
-                                        PlaceholderText="Tous les produits"
-                                        Grid.Row="0"
-                                        Grid.Column="2">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding Name}"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-
-                                <Button 
-                                    Content="Exporter"
-                                    Classes="PrimaryButton"
-                                    Command="{Binding ListViewModel.ExportCommand}"
-                                    Grid.Row="0"
-                                    Grid.Column="3"
-                                    Margin="12,0,0,0"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <!-- Loading -->
-                <Border Background="#252526" CornerRadius="8" Padding="48" IsVisible="{Binding ListViewModel.IsLoading}">
-                    <controls:LoadingSpinner />
-                </Border>
-
-                <!-- Liste des Mouvements -->
-                <ItemsControl ItemsSource="{Binding ListViewModel.Movements}" IsVisible="{Binding !ListViewModel.IsLoading}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Classes="MovementCard">
-                                <Grid ColumnDefinitions="150,*,*,120,100,Auto">
-                                    <!-- Date/Heure -->
-                                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding CreatedAt, StringFormat='{}{0:dd/MM/yyyy}'}" 
-                                                  Foreground="#FFFFFF" FontWeight="600" FontSize="13"/>
-                                        <TextBlock Text="{Binding CreatedAt, StringFormat='{}{0:HH:mm}'}" 
-                                                  Foreground="#A0A0A0" FontSize="11"/>
-                                    </StackPanel>
-
-                                    <!-- Produit + Raison -->
-                                    <StackPanel Grid.Column="1" Spacing="2" Margin="12,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Product.Name}" Foreground="#FFFFFF" FontWeight="600" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Text="{Binding Product.Reference}" Foreground="#A0A0A0" FontSize="11"/>
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Reason}" Foreground="#A0A0A0" FontSize="12"/>
-                                    </StackPanel>
-                                    
-
-                                    <!-- Type -->
-                                    <Border Grid.Column="3" Background="#1F1F1F" CornerRadius="6" Padding="8,4" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding MovementType}" 
-                                                  Foreground="#FFFFFF" 
-                                                  FontSize="12"
-                                                  FontWeight="600"/>
-                                    </Border>
-
-                                    <!-- Quantité -->
-                                    <TextBlock Grid.Column="4" Text="{Binding Quantity}" Foreground="#FFFFFF" VerticalAlignment="Center" FontWeight="600"/>
-
-                                    <!-- Bouton Détails -->
-                                    <!-- <Button Grid.Column="5" 
-                                           Content="Détails" 
-                                           Classes="PrimaryButton"
-                                           Command="{Binding $parent[UserControl].((vm:StockMovementsViewModel)DataContext).ListViewModel.ShowDetailCommand}" 
-                                           CommandParameter="{Binding}"
-                                           Margin="12,0,0,0"/> -->
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                
-                <!-- Message si vide -->
-                <Border IsVisible="{Binding ListViewModel.Movements.Count, Converter={x:Static ObjectConverters.IsNull}}" 
-                       Background="#252526" 
-                       CornerRadius="8" 
-                       Padding="40"
-                       Margin="0,20,0,20">
-                    <StackPanel HorizontalAlignment="Center" Spacing="8">
-                        <TextBlock Text="Aucun mouvement trouvé" FontSize="15" Foreground="#A0A0A0" FontWeight="600"/>
-                        <TextBlock Text="Créez un nouveau mouvement pour commencer" FontSize="12" Foreground="#666"/>
+        <Grid Grid.Row="1" RowDefinitions="Auto, Auto, *" IsVisible="{Binding ShowList}" MaxHeight="850">
+            
+            <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,12">
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <TextBox Classes="FilterInput"
+                                     Text="{Binding ListViewModel.SearchText, Mode=TwoWay}"
+                                     Watermark="Rechercher..."
+                                     Width="250"/>
+                            <PathIcon Data="{StaticResource IconSearch}" Width="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,10,0" HorizontalAlignment="Right" IsHitTestVisible="False"/>
+                        </Grid>
+                    
+                        <ComboBox Classes="FilterInput"
+                                  ItemsSource="{Binding ListViewModel.MovementTypes}" 
+                                  SelectedItem="{Binding ListViewModel.SelectedMovementType}" 
+                                  PlaceholderText="Type"
+                                  Width="150">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        
+                        <ComboBox Classes="FilterInput"
+                                  ItemsSource="{Binding ListViewModel.Products}" 
+                                  SelectedValue="{Binding ListViewModel.SelectedProductId}" 
+                                  PlaceholderText="Produit"
+                                  Width="200">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                     </StackPanel>
-                </Border>
-                
-                <!-- Espace en bas -->
-                <Border Height="10"/>
-            </StackPanel>
-        </ScrollViewer>
 
-        <!-- FOOTER / PAGINATION -->
-        <Border Grid.Row="2" Padding="32,12,32,12" BorderBrush="#333333" BorderThickness="0,1,0,0" IsVisible="{Binding ShowList}">
+                    <Button Grid.Column="1" Command="{Binding ListViewModel.ExportCommand}" Classes="Secondary" Padding="12,6">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource IconReports}" Width="12"/>
+                            <TextBlock Text="Exporter" FontSize="12"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" Background="{DynamicResource BackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,10">
+                <Grid ColumnDefinitions="140, 2*, 2*, 120, 80">
+                    <TextBlock Grid.Column="0" Text="DATE &amp; HEURE" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="1" Text="PRODUIT CONCERNÉ" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="2" Text="MOTIF / RAISON" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="3" Text="TYPE" Classes="ColHeader" HorizontalAlignment="Center"/>
+                    <TextBlock Grid.Column="4" Text="QUANTITÉ" Classes="ColHeader" HorizontalAlignment="Right"/>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="2">
+                <Grid RowDefinitions="Auto, *, Auto">
+                    
+                    <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" Padding="20" IsVisible="{Binding ListViewModel.IsLoading}">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
+                            <ProgressBar IsIndeterminate="True" Width="20" Height="20" Classes="Circular"/>
+                            <TextBlock Text="Chargement..." VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <ItemsControl Grid.Row="1" ItemsSource="{Binding ListViewModel.Movements}" IsVisible="{Binding !ListViewModel.IsLoading}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="MovementRow">
+                                    <Grid ColumnDefinitions="140, 2*, 2*, 120, 80">
+                                        
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                                            <TextBlock Text="{Binding CreatedAt, StringFormat='{}{0:dd/MM/yyyy}'}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="13"/>
+                                            <TextBlock Text="{Binding CreatedAt, StringFormat='{}{0:HH:mm}'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Spacing="2" Margin="0,0,16,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Product.Name}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Product.Reference}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                                        </StackPanel>
+
+                                        <TextBlock Grid.Column="2" Text="{Binding Reason}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
+
+                                        <Border Grid.Column="3" Background="{DynamicResource SurfaceLightBrush}" CornerRadius="4" Padding="8,4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding MovementType}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                        </Border>
+
+                                        <TextBlock Grid.Column="4" Text="{Binding Quantity, StringFormat='{}{0:+0;-0}'}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" FontWeight="Bold" HorizontalAlignment="Right" FontSize="14"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    
+                    <StackPanel Grid.Row="2" IsVisible="{Binding ListViewModel.Movements.Count, Converter={x:Static ObjectConverters.IsNull}}" 
+                                HorizontalAlignment="Center" Margin="0,100" Spacing="15" Opacity="0.5">
+                        <PathIcon Data="{StaticResource IconInventory}" Width="48" Height="48" Foreground="{DynamicResource TextDisabledBrush}"/>
+                        <TextBlock Text="Aucun mouvement de stock" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </StackPanel>
+                    
+                </Grid>
+            </ScrollViewer>
+        </Grid>
+
+        <Border Grid.Row="2" Padding="16,12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" IsVisible="{Binding ShowList}">
             <Grid ColumnDefinitions="*,Auto">
-                <!-- Indicateurs -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                    <ProgressBar IsIndeterminate="True"
-                                IsVisible="{Binding ListViewModel.IsLoading}"
-                                Width="80"
-                                Height="2"
-                                Foreground="#0071E3"/>
-                    <TextBlock Text="{Binding ListViewModel.ErrorMessage}"
-                              Foreground="#FF453A"
-                              IsVisible="{Binding ListViewModel.ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                              VerticalAlignment="Center"
-                              FontSize="11"
-                              FontWeight="500"/>
-                </StackPanel>
+                <TextBlock Grid.Column="0" Text="{Binding ListViewModel.ErrorMessage}" Foreground="{DynamicResource ErrorBrush}" VerticalAlignment="Center" FontSize="12"/>
                 
-                <!-- Pagination -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                    <Button Content="← Précédent"
-                           Command="{Binding ListViewModel.PreviousPageCommand}"
-                           Classes="PaginationButton"
-                           FontSize="12"/>
+                    <Button Classes="NavButton" Command="{Binding ListViewModel.PreviousPageCommand}">
+                        <PathIcon Data="{StaticResource IconBack}" Width="10"/>
+                    </Button>
                     
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding ListViewModel.CurrentPage}" 
-                                  VerticalAlignment="Center" FontWeight="600" Foreground="#FFFFFF" FontSize="12"/>
-                        <TextBlock Text="/" VerticalAlignment="Center" Foreground="#666" FontSize="12" Margin="4,0"/>
-                        <TextBlock Text="{Binding ListViewModel.TotalPages}" 
-                                  VerticalAlignment="Center" Foreground="#E0E0E0" FontSize="12"/>
+                        <TextBlock Text="{Binding ListViewModel.CurrentPage}" VerticalAlignment="Center" FontWeight="600" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12"/>
+                        <TextBlock Text="/" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" Margin="4,0"/>
+                        <TextBlock Text="{Binding ListViewModel.TotalPages}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
                     </StackPanel>
                     
-                    <Button Content="Suivant →"
-                           Command="{Binding ListViewModel.NextPageCommand}"
-                           Classes="PaginationButton"
-                           FontSize="12"/>
+                    <Button Classes="NavButton" Command="{Binding ListViewModel.NextPageCommand}">
+                        <PathIcon Data="{StaticResource IconBack}" Width="10" RenderTransform="rotate(180deg)"/>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- FORMULAIRE -->
-        <Panel IsVisible="{Binding IsShowingForm}">
+        <Panel Grid.Row="0" Grid.RowSpan="3" Background="#80000000" IsVisible="{Binding IsShowingForm}">
             <views:StockMovementFormView DataContext="{Binding FormViewModel}"/>
         </Panel>
     </Grid>
-
 </UserControl>

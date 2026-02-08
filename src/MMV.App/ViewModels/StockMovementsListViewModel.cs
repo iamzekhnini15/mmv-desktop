@@ -18,18 +18,33 @@ public class StockMovementsListViewModel : BaseViewModel
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IProductRepository _productRepository;
 
-    private ObservableCollection<StockMovement> _movements = new();
+    private ObservableCollection<StockMovement> _movements;
+    private ObservableCollection<StockMovement> _filteredMovements;
     private ObservableCollection<Product> _products = new();
     private string _searchText = string.Empty;
     private string? _selectedMovementType = "Tous types";
     private long? _selectedProductId = 0;
-    private bool _isLoading;
+    private int _currentPage = 1;
+    private int _pageSize = 20;
     private int _totalMovements;
+
+    private ICommand? _createMovementCommand;
+    private ICommand? _refreshCommand;
+    private ICommand? _exportCommand;
+    private ICommand? _showDetailCommand;
+    private ICommand? _previousPageCommand;
+    private ICommand? _nextPageCommand;
 
     public ObservableCollection<StockMovement> Movements
     {
         get => _movements;
         set => SetProperty(ref _movements, value);
+    }
+
+    public ObservableCollection<StockMovement> FilteredMovements
+    {
+        get => _filteredMovements;
+        set => SetProperty(ref _filteredMovements, value);
     }
 
     public ObservableCollection<Product> Products
@@ -45,7 +60,8 @@ public class StockMovementsListViewModel : BaseViewModel
         {
             if (SetProperty(ref _searchText, value))
             {
-                _ = LoadMovementsAsync();
+                CurrentPage = 1;
+                ApplyFilter();
             }
         }
     }
@@ -57,7 +73,8 @@ public class StockMovementsListViewModel : BaseViewModel
         {
             if (SetProperty(ref _selectedMovementType, value))
             {
-                _ = LoadMovementsAsync();
+                CurrentPage = 1;
+                ApplyFilter();
             }
         }
     }
@@ -69,22 +86,48 @@ public class StockMovementsListViewModel : BaseViewModel
         {
             if (SetProperty(ref _selectedProductId, value))
             {
-                _ = LoadMovementsAsync();
+                CurrentPage = 1;
+                ApplyFilter();
             }
         }
     }
 
-    public bool IsLoading
+    public int CurrentPage
     {
-        get => _isLoading;
-        set => SetProperty(ref _isLoading, value);
+        get => _currentPage;
+        set
+        {
+            if (SetProperty(ref _currentPage, value))
+            {
+                ApplyFilter();
+                OnPropertyChanged(nameof(CanGoToPreviousPage));
+                OnPropertyChanged(nameof(CanGoToNextPage));
+            }
+        }
+    }
+
+    public int PageSize
+    {
+        get => _pageSize;
+        set => SetProperty(ref _pageSize, value);
     }
 
     public int TotalMovements
     {
         get => _totalMovements;
-        set => SetProperty(ref _totalMovements, value);
+        set
+        {
+            if (SetProperty(ref _totalMovements, value))
+                OnPropertyChanged(nameof(TotalPages));
+        }
     }
+
+    public int TotalPages => (int)Math.Ceiling((double)TotalMovements / PageSize);
+
+    public int FilteredCount => FilteredMovements?.Count ?? 0;
+
+    public bool CanGoToPreviousPage => CurrentPage > 1;
+    public bool CanGoToNextPage => CurrentPage < TotalPages;
 
     public ObservableCollection<string> MovementTypes { get; } = new()
     {
@@ -94,27 +137,12 @@ public class StockMovementsListViewModel : BaseViewModel
         "Adjustment"
     };
 
-    public ICommand CreateMovementCommand { get; }
-    public ICommand RefreshCommand { get; }
-    public ICommand ExportCommand { get; }
-    public ICommand ShowDetailCommand { get; }
-    public ICommand PreviousPageCommand { get; }
-    public ICommand NextPageCommand { get; }
-
-    private int _currentPage = 1;
-    private int _totalPages = 1;
-
-    public int CurrentPage
-    {
-        get => _currentPage;
-        set => SetProperty(ref _currentPage, value);
-    }
-
-    public int TotalPages
-    {
-        get => _totalPages;
-        set => SetProperty(ref _totalPages, value);
-    }
+    public ICommand CreateMovementCommand => _createMovementCommand ??= new RelayCommand(ExecuteCreateMovement);
+    public ICommand RefreshCommand => _refreshCommand ??= new RelayCommand(async () => await LoadMovementsAsync());
+    public ICommand ExportCommand => _exportCommand ??= new RelayCommand(ExecuteExport);
+    public ICommand ShowDetailCommand => _showDetailCommand ??= new RelayCommand<StockMovement>(ExecuteShowDetail);
+    public ICommand PreviousPageCommand => _previousPageCommand ??= new RelayCommand(ExecutePreviousPage, () => CanGoToPreviousPage);
+    public ICommand NextPageCommand => _nextPageCommand ??= new RelayCommand(ExecuteNextPage, () => CanGoToNextPage);
 
     public event EventHandler? CreateMovementRequested;
     public event EventHandler<StockMovement>? ShowDetailRequested;
@@ -126,12 +154,8 @@ public class StockMovementsListViewModel : BaseViewModel
         _stockMovementRepository = stockMovementRepository;
         _productRepository = productRepository;
 
-        CreateMovementCommand = new RelayCommand(ExecuteCreateMovement);
-        RefreshCommand = new RelayCommand(async () => await LoadMovementsAsync());
-        ExportCommand = new RelayCommand(ExecuteExport);
-        ShowDetailCommand = new RelayCommand<StockMovement>(ExecuteShowDetail);
-        PreviousPageCommand = new RelayCommand(ExecutePreviousPage, CanExecutePreviousPage);
-        NextPageCommand = new RelayCommand(ExecuteNextPage, CanExecuteNextPage);
+        _movements = new ObservableCollection<StockMovement>();
+        _filteredMovements = new ObservableCollection<StockMovement>();
 
         _ = InitializeAsync();
     }
@@ -179,49 +203,76 @@ public class StockMovementsListViewModel : BaseViewModel
     public async Task LoadMovementsAsync()
     {
         IsLoading = true;
+        ErrorMessage = string.Empty;
+
         try
         {
-            var allMovements = await _stockMovementRepository.GetAllAsync();
-
-            // Apply filters
-            var filtered = allMovements.AsEnumerable();
-
-            if (!string.IsNullOrWhiteSpace(SearchText))
+            var movements = await _stockMovementRepository.GetAllAsync() ?? Array.Empty<StockMovement>();
+            Movements.Clear();
+            foreach (var movement in movements)
             {
-                filtered = filtered.Where(m =>
-                    (m.Product?.Name?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                    (m.Product?.Reference?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                    (m.Reason?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false));
+                Movements.Add(movement);
             }
 
-            if (!string.IsNullOrEmpty(SelectedMovementType) && SelectedMovementType != "Tous types")
-            {
-                if (Enum.TryParse<StockMovementType>(SelectedMovementType, out var movementType))
-                {
-                    filtered = filtered.Where(m => m.MovementType == movementType);
-                }
-            }
-
-            if (SelectedProductId.HasValue && SelectedProductId.Value != 0)
-            {
-                filtered = filtered.Where(m => m.ProductId == SelectedProductId.Value);
-            }
-
-            var result = filtered.OrderByDescending(m => m.CreatedAt).ToList();
-            
-            Movements = new ObservableCollection<StockMovement>(result);
-            TotalMovements = result.Count;
+            TotalMovements = Movements.Count;
+            ApplyFilter();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[StockMovementsListViewModel] Error loading movements: {ex.Message}");
-            Movements.Clear();
-            TotalMovements = 0;
+            ErrorMessage = $"Erreur lors du chargement des mouvements : {ex.Message}";
         }
         finally
         {
             IsLoading = false;
         }
+    }
+
+    private void ApplyFilter()
+    {
+        if (Movements == null) return;
+
+        var filtered = Movements.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(SearchText))
+        {
+            filtered = filtered.Where(m =>
+                (m.Product?.Name?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (m.Product?.Reference?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (m.Reason?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        if (!string.IsNullOrEmpty(SelectedMovementType) && SelectedMovementType != "Tous types")
+        {
+            if (Enum.TryParse<StockMovementType>(SelectedMovementType, out var movementType))
+            {
+                filtered = filtered.Where(m => m.MovementType == movementType);
+            }
+        }
+
+        if (SelectedProductId.HasValue && SelectedProductId.Value != 0)
+        {
+            filtered = filtered.Where(m => m.ProductId == SelectedProductId.Value);
+        }
+
+        // Calculer le total APRES les filtres mais AVANT la pagination
+        var filteredList = filtered.OrderByDescending(m => m.CreatedAt).ToList();
+        TotalMovements = filteredList.Count;
+
+        // Puis paginer
+        var paginatedResults = filteredList
+            .Skip((CurrentPage - 1) * PageSize)
+            .Take(PageSize)
+            .ToList();
+
+        FilteredMovements.Clear();
+        foreach (var movement in paginatedResults)
+        {
+            FilteredMovements.Add(movement);
+        }
+
+        OnPropertyChanged(nameof(FilteredCount));
+        (NextPageCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (PreviousPageCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
 
     private void ExecuteCreateMovement()
@@ -243,31 +294,19 @@ public class StockMovementsListViewModel : BaseViewModel
         }
     }
 
-    private bool CanExecutePreviousPage()
-    {
-        return CurrentPage > 1;
-    }
-
     private void ExecutePreviousPage()
     {
-        if (CanExecutePreviousPage())
+        if (CanGoToPreviousPage)
         {
             CurrentPage--;
-            _ = LoadMovementsAsync();
         }
-    }
-
-    private bool CanExecuteNextPage()
-    {
-        return CurrentPage < TotalPages;
     }
 
     private void ExecuteNextPage()
     {
-        if (CanExecuteNextPage())
+        if (CanGoToNextPage)
         {
             CurrentPage++;
-            _ = LoadMovementsAsync();
         }
     }
 }

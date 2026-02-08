@@ -8,7 +8,7 @@ namespace MMV.App.Converters
     {
         public static readonly IsZeroConverter Instance = new IsZeroConverter();
 
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             if (value == null) return true;
             if (value is int i) return i == 0;
@@ -20,7 +20,7 @@ namespace MMV.App.Converters
             return true;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             throw new NotSupportedException();
         }
