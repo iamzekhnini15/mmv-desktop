@@ -87,7 +87,8 @@ public class OrderServiceTests
         await service.UpdateOrderStatusAsync(order.OrderId, OrderStatus.ToFabricate);
         
         var updated = await service.GetOrderAsync(order.OrderId);
-        updated.Status.Should().Be(OrderStatus.ToFabricate);
+        updated.Should().NotBeNull();
+        updated!.Status.Should().Be(OrderStatus.ToFabricate);
     }
 
     [Fact]
