@@ -85,6 +85,11 @@
                                 <PathIcon Data="{StaticResource IconUser}" Width="14" Margin="12,0,0,0" Foreground="{DynamicResource TextSecondaryBrush}"/>
                             </TextBox.InnerLeftContent>
                         </TextBox>
+                        <TextBlock Text="{Binding DoctorNameError}" 
+                                   Foreground="{DynamicResource ErrorBrush}" 
+                                   FontSize="11" 
+                                   Margin="4,0,0,0"
+                                   IsVisible="{Binding DoctorNameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="4" Spacing="8">
@@ -110,18 +115,42 @@
                                 <StackPanel Margin="0,0,12,20">
                                     <TextBlock Text="SPHÈRE" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OdSphere}" Classes="OpticInput" Watermark="±0.00"/>
+                                    <TextBlock Text="{Binding OdSphereError}" 
+                                               Foreground="{DynamicResource ErrorBrush}" 
+                                               FontSize="10" 
+                                               TextAlignment="Center"
+                                               Margin="0,4,0,0"
+                                               IsVisible="{Binding OdSphereError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,20">
                                     <TextBlock Text="CYLINDRE" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OdCylinder}" Classes="OpticInput" Watermark="±0.00"/>
+                                    <TextBlock Text="{Binding OdCylinderError}" 
+                                               Foreground="{DynamicResource ErrorBrush}" 
+                                               FontSize="10" 
+                                               TextAlignment="Center"
+                                               Margin="0,4,0,0"
+                                               IsVisible="{Binding OdCylinderError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,0,20">
                                     <TextBlock Text="AXE" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OdAxis}" Classes="OpticInput" Watermark="0°"/>
+                                    <TextBlock Text="{Binding OdAxisError}" 
+                                               Foreground="{DynamicResource ErrorBrush}" 
+                                               FontSize="10" 
+                                               TextAlignment="Center"
+                                               Margin="0,4,0,0"
+                                               IsVisible="{Binding OdAxisError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,0">
                                     <TextBlock Text="ADDITION" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OdAddition}" Classes="OpticInput" Foreground="{DynamicResource SuccessBrush}" Watermark="+0.00"/>
+                                    <TextBlock Text="{Binding OdAdditionError}" 
+                                               Foreground="{DynamicResource ErrorBrush}" 
+                                               FontSize="10" 
+                                               TextAlignment="Center"
+                                               Margin="0,4,0,0"
+                                               IsVisible="{Binding OdAdditionError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,0">
                                     <TextBlock Text="PRISME" Classes="FieldLabel"/>
@@ -150,18 +179,42 @@
                                 <StackPanel Margin="0,0,12,20">
                                     <TextBlock Text="SPHÈRE" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OgSphere}" Classes="OpticInput" Watermark="±0.00"/>
+                                    <TextBlock Text="{Binding OgSphereError}" 
+                                               Foreground="{DynamicResource ErrorBrush}" 
+                                               FontSize="10" 
+                                               TextAlignment="Center"
+                                               Margin="0,4,0,0"
+                                               IsVisible="{Binding OgSphereError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,20">
                                     <TextBlock Text="CYLINDRE" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OgCylinder}" Classes="OpticInput" Watermark="±0.00"/>
+                                    <TextBlock Text="{Binding OgCylinderError}" 
+                                               Foreground="{DynamicResource ErrorBrush}" 
+                                               FontSize="10" 
+                                               TextAlignment="Center"
+                                               Margin="0,4,0,0"
+                                               IsVisible="{Binding OgCylinderError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,0,20">
                                     <TextBlock Text="AXE" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OgAxis}" Classes="OpticInput" Watermark="0°"/>
+                                    <TextBlock Text="{Binding OgAxisError}" 
+                                               Foreground="{DynamicResource ErrorBrush}" 
+                                               FontSize="10" 
+                                               TextAlignment="Center"
+                                               Margin="0,4,0,0"
+                                               IsVisible="{Binding OgAxisError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,0">
                                     <TextBlock Text="ADDITION" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OgAddition}" Classes="OpticInput" Foreground="{DynamicResource SuccessBrush}" Watermark="+0.00"/>
+                                    <TextBlock Text="{Binding OgAdditionError}" 
+                                               Foreground="{DynamicResource ErrorBrush}" 
+                                               FontSize="10" 
+                                               TextAlignment="Center"
+                                               Margin="0,4,0,0"
+                                               IsVisible="{Binding OgAdditionError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,0">
                                     <TextBlock Text="PRISME" Classes="FieldLabel"/>

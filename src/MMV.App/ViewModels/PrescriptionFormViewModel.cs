@@ -37,6 +37,17 @@ public class PrescriptionFormViewModel : BaseViewModel
     private string _notes = string.Empty;
     private bool _isSaving;
 
+    // Propriétés d'erreur pour la validation
+    private string _odSphereError = string.Empty;
+    private string _odCylinderError = string.Empty;
+    private string _odAxisError = string.Empty;
+    private string _odAdditionError = string.Empty;
+    private string _ogSphereError = string.Empty;
+    private string _ogCylinderError = string.Empty;
+    private string _ogAxisError = string.Empty;
+    private string _ogAdditionError = string.Empty;
+    private string _doctorNameError = string.Empty;
+
     #region Propriétés OD (Œil Droit)
 
     /// <summary>
@@ -60,7 +71,13 @@ public class PrescriptionFormViewModel : BaseViewModel
     public double? OdCylinder
     {
         get => _odCylinder;
-        set => SetProperty(ref _odCylinder, value);
+        set
+        {
+            if (SetProperty(ref _odCylinder, value))
+            {
+                ValidateOdCylinder();
+            }
+        }
     }
 
     /// <summary>
@@ -69,7 +86,13 @@ public class PrescriptionFormViewModel : BaseViewModel
     public int? OdAxis
     {
         get => _odAxis;
-        set => SetProperty(ref _odAxis, value);
+        set
+        {
+            if (SetProperty(ref _odAxis, value))
+            {
+                ValidateOdAxis();
+            }
+        }
     }
 
     /// <summary>
@@ -78,7 +101,13 @@ public class PrescriptionFormViewModel : BaseViewModel
     public double? OdAddition
     {
         get => _odAddition;
-        set => SetProperty(ref _odAddition, value);
+        set
+        {
+            if (SetProperty(ref _odAddition, value))
+            {
+                ValidateOdAddition();
+            }
+        }
     }
 
     /// <summary>
@@ -118,7 +147,13 @@ public class PrescriptionFormViewModel : BaseViewModel
     public double? OgSphere
     {
         get => _ogSphere;
-        set => SetProperty(ref _ogSphere, value);
+        set
+        {
+            if (SetProperty(ref _ogSphere, value))
+            {
+                ValidateOgSphere();
+            }
+        }
     }
 
     /// <summary>
@@ -127,7 +162,13 @@ public class PrescriptionFormViewModel : BaseViewModel
     public double? OgCylinder
     {
         get => _ogCylinder;
-        set => SetProperty(ref _ogCylinder, value);
+        set
+        {
+            if (SetProperty(ref _ogCylinder, value))
+            {
+                ValidateOgCylinder();
+            }
+        }
     }
 
     /// <summary>
@@ -136,7 +177,13 @@ public class PrescriptionFormViewModel : BaseViewModel
     public int? OgAxis
     {
         get => _ogAxis;
-        set => SetProperty(ref _ogAxis, value);
+        set
+        {
+            if (SetProperty(ref _ogAxis, value))
+            {
+                ValidateOgAxis();
+            }
+        }
     }
 
     /// <summary>
@@ -145,7 +192,13 @@ public class PrescriptionFormViewModel : BaseViewModel
     public double? OgAddition
     {
         get => _ogAddition;
-        set => SetProperty(ref _ogAddition, value);
+        set
+        {
+            if (SetProperty(ref _ogAddition, value))
+            {
+                ValidateOgAddition();
+            }
+        }
     }
 
     /// <summary>
@@ -203,7 +256,13 @@ public class PrescriptionFormViewModel : BaseViewModel
     public string DoctorName
     {
         get => _doctorName;
-        set => SetProperty(ref _doctorName, value);
+        set
+        {
+            if (SetProperty(ref _doctorName, value))
+            {
+                ValidateDoctorName();
+            }
+        }
     }
 
     /// <summary>
@@ -222,6 +281,91 @@ public class PrescriptionFormViewModel : BaseViewModel
     {
         get => _isSaving;
         set => SetProperty(ref _isSaving, value);
+    }
+
+    #endregion
+
+    #region Propriétés d'erreur pour la validation
+
+    /// <summary>
+    /// Message d'erreur pour la sphère de l'œil droit.
+    /// </summary>
+    public string OdSphereError
+    {
+        get => _odSphereError;
+        set => SetProperty(ref _odSphereError, value);
+    }
+
+    /// <summary>
+    /// Message d'erreur pour le cylindre de l'œil droit.
+    /// </summary>
+    public string OdCylinderError
+    {
+        get => _odCylinderError;
+        set => SetProperty(ref _odCylinderError, value);
+    }
+
+    /// <summary>
+    /// Message d'erreur pour l'axe de l'œil droit.
+    /// </summary>
+    public string OdAxisError
+    {
+        get => _odAxisError;
+        set => SetProperty(ref _odAxisError, value);
+    }
+
+    /// <summary>
+    /// Message d'erreur pour l'addition de l'œil droit.
+    /// </summary>
+    public string OdAdditionError
+    {
+        get => _odAdditionError;
+        set => SetProperty(ref _odAdditionError, value);
+    }
+
+    /// <summary>
+    /// Message d'erreur pour la sphère de l'œil gauche.
+    /// </summary>
+    public string OgSphereError
+    {
+        get => _ogSphereError;
+        set => SetProperty(ref _ogSphereError, value);
+    }
+
+    /// <summary>
+    /// Message d'erreur pour le cylindre de l'œil gauche.
+    /// </summary>
+    public string OgCylinderError
+    {
+        get => _ogCylinderError;
+        set => SetProperty(ref _ogCylinderError, value);
+    }
+
+    /// <summary>
+    /// Message d'erreur pour l'axe de l'œil gauche.
+    /// </summary>
+    public string OgAxisError
+    {
+        get => _ogAxisError;
+        set => SetProperty(ref _ogAxisError, value);
+    }
+
+    /// <summary>
+    /// Message d'erreur pour l'addition de l'œil gauche.
+    /// </summary>
+    public string OgAdditionError
+    {
+        get => _ogAdditionError;
+        set => SetProperty(ref _ogAdditionError, value);
+    }
+
+    /// <summary>
+    /// Message d'erreur pour le nom du médecin.
+    /// </summary>
+    public string DoctorNameError
+    {
+        get => _doctorNameError;
+        set => SetProperty(ref _doctorNameError, value);
     }
 
     #endregion
@@ -282,6 +426,7 @@ public class PrescriptionFormViewModel : BaseViewModel
         OgPrismBase = null;
         OgVisualAcuity = null;
         Notes = string.Empty;
+        ClearErrors();
     }
 
     /// <summary>
@@ -319,11 +464,226 @@ public class PrescriptionFormViewModel : BaseViewModel
     /// </summary>
     private void ValidateOdSphere()
     {
-        if (OdSphere.HasValue && (OdSphere.Value < -20 || OdSphere.Value > 20))
+        if (!OdSphere.HasValue)
         {
-            // Note: Pour l'instant, pas de propriété d'erreur visible
-            // À ajouter si nécessaire
+            OdSphereError = string.Empty;
+            return;
         }
+
+        if (OdSphere.Value < -20 || OdSphere.Value > 20)
+        {
+            OdSphereError = "Doit être entre -20.00 et +20.00";
+        }
+        else
+        {
+            OdSphereError = string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Valide le cylindre de l'œil droit.
+    /// </summary>
+    private void ValidateOdCylinder()
+    {
+        if (!OdCylinder.HasValue)
+        {
+            OdCylinderError = string.Empty;
+            return;
+        }
+
+        if (OdCylinder.Value < -6 || OdCylinder.Value > 6)
+        {
+            OdCylinderError = "Doit être entre -6.00 et +6.00";
+        }
+        else
+        {
+            OdCylinderError = string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Valide l'axe de l'œil droit.
+    /// </summary>
+    private void ValidateOdAxis()
+    {
+        if (!OdAxis.HasValue)
+        {
+            OdAxisError = string.Empty;
+            return;
+        }
+
+        if (OdAxis.Value < 0 || OdAxis.Value > 180)
+        {
+            OdAxisError = "Doit être entre 0° et 180°";
+        }
+        else
+        {
+            OdAxisError = string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Valide l'addition de l'œil droit.
+    /// </summary>
+    private void ValidateOdAddition()
+    {
+        if (!OdAddition.HasValue)
+        {
+            OdAdditionError = string.Empty;
+            return;
+        }
+
+        if (OdAddition.Value < 0 || OdAddition.Value > 4)
+        {
+            OdAdditionError = "Doit être entre 0.00 et +4.00";
+        }
+        else
+        {
+            OdAdditionError = string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Valide la sphère de l'œil gauche.
+    /// </summary>
+    private void ValidateOgSphere()
+    {
+        if (!OgSphere.HasValue)
+        {
+            OgSphereError = string.Empty;
+            return;
+        }
+
+        if (OgSphere.Value < -20 || OgSphere.Value > 20)
+        {
+            OgSphereError = "Doit être entre -20.00 et +20.00";
+        }
+        else
+        {
+            OgSphereError = string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Valide le cylindre de l'œil gauche.
+    /// </summary>
+    private void ValidateOgCylinder()
+    {
+        if (!OgCylinder.HasValue)
+        {
+            OgCylinderError = string.Empty;
+            return;
+        }
+
+        if (OgCylinder.Value < -6 || OgCylinder.Value > 6)
+        {
+            OgCylinderError = "Doit être entre -6.00 et +6.00";
+        }
+        else
+        {
+            OgCylinderError = string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Valide l'axe de l'œil gauche.
+    /// </summary>
+    private void ValidateOgAxis()
+    {
+        if (!OgAxis.HasValue)
+        {
+            OgAxisError = string.Empty;
+            return;
+        }
+
+        if (OgAxis.Value < 0 || OgAxis.Value > 180)
+        {
+            OgAxisError = "Doit être entre 0° et 180°";
+        }
+        else
+        {
+            OgAxisError = string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Valide l'addition de l'œil gauche.
+    /// </summary>
+    private void ValidateOgAddition()
+    {
+        if (!OgAddition.HasValue)
+        {
+            OgAdditionError = string.Empty;
+            return;
+        }
+
+        if (OgAddition.Value < 0 || OgAddition.Value > 4)
+        {
+            OgAdditionError = "Doit être entre 0.00 et +4.00";
+        }
+        else
+        {
+            OgAdditionError = string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Valide le nom du médecin.
+    /// </summary>
+    private void ValidateDoctorName()
+    {
+        if (string.IsNullOrWhiteSpace(DoctorName))
+        {
+            DoctorNameError = "Le nom du médecin est requis";
+        }
+        else
+        {
+            DoctorNameError = string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Efface toutes les erreurs de validation.
+    /// </summary>
+    private void ClearErrors()
+    {
+        OdSphereError = string.Empty;
+        OdCylinderError = string.Empty;
+        OdAxisError = string.Empty;
+        OdAdditionError = string.Empty;
+        OgSphereError = string.Empty;
+        OgCylinderError = string.Empty;
+        OgAxisError = string.Empty;
+        OgAdditionError = string.Empty;
+        DoctorNameError = string.Empty;
+        ErrorMessage = string.Empty;
+    }
+
+    /// <summary>
+    /// Valide tout le formulaire.
+    /// </summary>
+    /// <returns>True si le formulaire est valide, sinon False.</returns>
+    private bool ValidateForm()
+    {
+        ValidateOdSphere();
+        ValidateOdCylinder();
+        ValidateOdAxis();
+        ValidateOdAddition();
+        ValidateOgSphere();
+        ValidateOgCylinder();
+        ValidateOgAxis();
+        ValidateOgAddition();
+        ValidateDoctorName();
+
+        return string.IsNullOrEmpty(OdSphereError) &&
+               string.IsNullOrEmpty(OdCylinderError) &&
+               string.IsNullOrEmpty(OdAxisError) &&
+               string.IsNullOrEmpty(OdAdditionError) &&
+               string.IsNullOrEmpty(OgSphereError) &&
+               string.IsNullOrEmpty(OgCylinderError) &&
+               string.IsNullOrEmpty(OgAxisError) &&
+               string.IsNullOrEmpty(OgAdditionError) &&
+               string.IsNullOrEmpty(DoctorNameError);
     }
 
     /// <summary>
@@ -334,6 +694,13 @@ public class PrescriptionFormViewModel : BaseViewModel
         if (_prescriptionRepository == null || _unitOfWork == null)
         {
             ErrorMessage = "Impossible de sauvegarder : repository non initialisé";
+            return;
+        }
+
+        // Validation du formulaire
+        if (!ValidateForm())
+        {
+            ErrorMessage = "Veuillez corriger les erreurs de saisie avant d'enregistrer.";
             return;
         }
 

@@ -17,7 +17,7 @@
 | **Sprint 4** | ✅ **TERMINÉ** | Interface Avalonia - Structure & Navigation | 2 semaines |
 | **Sprint 5** | ✅ **TERMINÉ** | Module Gestion Clients (CRM) | 2 semaines |
 | **Sprint 6** | ✅ **TERMINÉ** | Module Gestion Produits & Stock | 2 semaines |
-| **Sprint 7** | ⏳ En cours | Module Ordonnances Médicales | 1-2 semaines |
+| **Sprint 7** | ✅ **TERMINÉ** | Module Ordonnances Médicales | 2 jours |
 | **Sprint 8** | ⏳ Planifié | Module Commandes (Workflow Atelier) | 2-3 semaines |
 | **Sprint 9** | ⏳ Planifié | Module Point de Vente (POS/Caisse) | 2-3 semaines |
 | **Sprint 10** | ⏳ Planifié | Gestion Utilisateurs & Authentification | 1-2 semaines |
@@ -509,30 +509,44 @@ Module complet et fonctionnel, intégration parfaite avec l'architecture existan
 
 ---
 
-## Sprint 7 : Module Ordonnances Médicales ⏳ **EN COURS**
+## Sprint 7 : Module Ordonnances Médicales ✅ **TERMINÉ**
 
 ### Objectifs
-- [ ] Liste des ordonnances par client
-- [ ] Formulaire de saisie ordonnance
-- [ ] Validation des valeurs optiques
-- [ ] Visualisation graphique (schéma œil)
-- [ ] Impression ordonnance
-- [ ] Historique des corrections
+- [x] Liste des ordonnances par client (intégré dans module Clients)
+- [x] Formulaire de saisie ordonnance avec validation stricte
+- [x] Validation des valeurs optiques (temps réel)
+- [x] Visualisation graphique (schéma œil)
+- [x] Fiche détaillée ordonnance
+- [ ] Impression ordonnance (reporté Sprint 8)
+- [ ] Historique des corrections (reporté Sprint 8)
+- [ ] Auto-complétion médecins (reporté Sprint 8)
 
-### Écrans
-1. **PrescriptionsListView** : Liste avec recherche par client
-2. **PrescriptionFormView** : Saisie OD/OG structurée
-3. **PrescriptionDetailView** : Visualisation + impression
+### Livrables
+- ✅ `PrescriptionFormViewModel.cs` - Formulaire avec validation stricte (9 méthodes)
+- ✅ `CustomerPrescriptionsViewModel.cs` - Gestion liste ordonnances client
+- ✅ `PrescriptionDetailViewModel.cs` - Affichage détaillé
+- ✅ `PrescriptionFormView.axaml` - Design professionnel OD/OG
+- ✅ `CustomerPrescriptionsView.axaml` - Liste avec formatage +/-
+- ✅ `PrescriptionDetailView.axaml` - Visualisation graphique
+- ✅ Validation stricte : Sphère (-20/+20), Cylindre (-6/+6), Axe (0-180°), Addition (0-4)
+- ✅ Affichage des erreurs dans la vue (TextBlock conditionnels)
 
-### Fonctionnalités Clés
-- **Validation métier** :
+### Fonctionnalités Clés Implémentées
+- ✅ **Validation métier stricte** :
   - Sphère : -20 à +20
   - Cylindre : -6 à +6
   - Axe : 0 à 180°
   - Addition : 0 à +4
-- **Auto-complétion nom médecin**
-- **Suggestion de verres** basée sur la prescription
-- **Lien direct vers création de commande**
+- ✅ **Formatage professionnel** : `+2.50`, `-1.75`, `180°`
+- ✅ **Visualisation graphique** : Canvas avec cercles (OD bleu, OG orange)
+- ✅ **Validation temps réel** : Messages affichés sous chaque champ
+- ✅ **Navigation fluide** : Liste ↔ Formulaire ↔ Détails
+- ⏳ **Auto-complétion nom médecin** (reporté Sprint 8)
+- ⏳ **Suggestion de verres** basée sur prescription (reporté Sprint 8)
+- ⏳ **Lien direct vers création de commande** (reporté Sprint 8)
+
+### Résultat
+Module complet et opérationnel, intégration parfaite dans module Clients. Validation stricte selon normes optiques professionnelles. Documentation détaillée dans `docs/SPRINT7_PROGRESS.md`.
 
 ---
 
