@@ -4,215 +4,188 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MMV.App.ViewModels"
              xmlns:controls="using:MMV.App.Controls"
+             xmlns:converters="using:MMV.App.Converters"
              xmlns:views="using:MMV.App.Views.Products"
-             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="MMV.App.Views.Products.SuppliersView"
              x:DataType="vm:SuppliersViewModel"
-             Background="#1D1D1D">
+             Background="{DynamicResource BackgroundBrush}">
 
     <UserControl.Styles>
-        <Style Selector="Border.ToolbarCard">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="16,12"/>
-            <Setter Property="Margin" Value="0,0,0,12"/>
-            <Setter Property="BorderThickness" Value="0"/>
-        </Style>
-
-        <Style Selector="Border.SupplierCard">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="Margin" Value="0,0,0,4"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-
-        <Style Selector="Border.SupplierCard:pointerover">
-            <Setter Property="Background" Value="#2A2A2E"/>
-            <Setter Property="BorderBrush" Value="#3A3A3E"/>
-        </Style>
-
-        <Style Selector="Button.PrimaryButton">
-            <Setter Property="Background" Value="#0071E3"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="20,8"/>
-            <Setter Property="FontWeight" Value="600"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-
-        <Style Selector="Button.PrimaryButton:pointerover">
-            <Setter Property="Background" Value="#005BB5"/>
-        </Style>
-
-        <Style Selector="Button.PaginationButton">
+        <Style Selector="Border.SupplierRow">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#E0E0E0"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="4"/>
-            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="20,12"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="CornerRadius" Value="0"/>
         </Style>
 
-        <Style Selector="Button.PaginationButton:pointerover">
-            <Setter Property="Background" Value="#3C3C3C"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Style Selector="Border.SupplierRow:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
         </Style>
 
-        <Style Selector="TextBox">
+        <Style Selector="TextBlock.ColHeader">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="Opacity" Value="0.8"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="TextBox.FilterInput">
             <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="Background" Value="#3C3C3C"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="FontSize" Value="13"/>
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto">
-        <!-- HEADER -->
-        <Border Grid.Row="0" Padding="32,20,32,8" IsVisible="{Binding ShowList}">
-            <Grid ColumnDefinitions="Auto,*,Auto">
-                <controls:BackButton Grid.Column="0"
-                                     Command="{Binding BackToProductsCommand}"
-                                     ButtonText="← Produits"
-                                     Margin="0,0,24,0"/>
+    <Grid RowDefinitions="Auto, *, Auto">
 
-                <StackPanel Grid.Column="1" Spacing="2">
-                    <TextBlock Text="Fournisseurs" FontSize="24" FontWeight="700" Foreground="#FFFFFF"/>
-                    <TextBlock Text="{Binding SuppliersListViewModel.TotalSuppliers, StringFormat='{}{0} fournisseur(s)'}"
-                               FontSize="12" Foreground="#858585"/>
+        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,15" IsVisible="{Binding ShowList}">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="20" VerticalAlignment="Center">
+                    <controls:BackButton Command="{Binding BackToProductsCommand}"
+                                         ButtonText="Retour"
+                                         VerticalAlignment="Center"/>
+                    <Rectangle Width="1" Height="24" Fill="{DynamicResource BorderBrush}"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <TextBlock Text="Fournisseurs" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="12" Padding="10,4" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding SuppliersListViewModel.TotalSuppliers, StringFormat='{}{0}'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding SuppliersListViewModel.IsLoading}" Width="80" Height="2" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
                 </StackPanel>
 
-                <Button Grid.Column="2"
-                        Content="Nouveau fournisseur"
-                        Classes="PrimaryButton"
-                        Command="{Binding SuppliersListViewModel.CreateCommand}"/>
-            </Grid>
-        </Border>
-
-        <!-- LISTE -->
-        <ScrollViewer Grid.Row="1"
-                      Padding="32,0,32,0"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled"
-                      IsVisible="{Binding ShowList}">
-            <StackPanel Spacing="0">
-                <!-- Barre de Recherche -->
-                <Border Classes="ToolbarCard">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBox Grid.Column="0"
-                                 Text="{Binding SuppliersListViewModel.SearchText}"
-                                 Watermark="Rechercher (nom, email, téléphone, référence...)"
-                                 Padding="12,8"/>
-
-                        <TextBlock Grid.Column="1"
-                                   Text="{Binding SuppliersListViewModel.FilteredCount, StringFormat='{}{0}'}"
-                                   FontSize="12"
-                                   Foreground="#858585"
-                                   VerticalAlignment="Center"
-                                   Margin="12,0,0,0"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBox Classes="FilterInput"
+                                 Text="{Binding SuppliersListViewModel.SearchText, Mode=TwoWay}"
+                                 Watermark="Rechercher..."
+                                 Width="250"/>
+                        <PathIcon Data="{StaticResource IconSearch}" Width="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,10,0" HorizontalAlignment="Right" IsHitTestVisible="False"/>
                     </Grid>
-                </Border>
 
-                <!-- Liste des fournisseurs -->
-                <ItemsControl ItemsSource="{Binding SuppliersListViewModel.FilteredSuppliers}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Classes="SupplierCard" PointerPressed="Border_PointerPressed">
-                                <Grid ColumnDefinitions="*,*,*,Auto">
-                                    <StackPanel Grid.Column="0" Spacing="2">
-                                        <TextBlock Text="{Binding Name}" Foreground="#FFFFFF" FontWeight="600" FontSize="14"/>
-                                        <TextBlock Text="{Binding ReferenceCode}" Foreground="#A0A0A0" FontSize="12"/>
-                                    </StackPanel>
 
-                                    <StackPanel Grid.Column="1" Spacing="1" Margin="12,0,0,0">
-                                        <TextBlock Text="{Binding ContactEmail}" Foreground="#A0A0A0" FontSize="12" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Text="{Binding Phone}" Foreground="#888888" FontSize="11"/>
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Column="2" Spacing="1" Margin="12,0,0,0">
-                                        <TextBlock Text="{Binding Address}" Foreground="#A0A0A0" FontSize="12" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
-                                    </StackPanel>
-
-                                    <Border Grid.Column="3" Background="#1F1F1F" CornerRadius="8" Padding="8,4" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Products.Count, StringFormat='{}{0} produit(s)'}"
-                                                   FontSize="10"
-                                                   Foreground="#888"
-                                                   FontWeight="600"/>
-                                    </Border>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <!-- Message si vide -->
-                <Border IsVisible="{Binding SuppliersListViewModel.FilteredSuppliers, Converter={x:Static ObjectConverters.IsNull}}"
-                        Background="#252526"
-                        CornerRadius="8"
-                        Padding="40"
-                        Margin="0,20,0,20">
-                    <StackPanel HorizontalAlignment="Center" Spacing="8">
-                        <TextBlock Text="Aucun fournisseur trouvé" FontSize="15" Foreground="#A0A0A0" FontWeight="600"/>
-                        <TextBlock Text="Essayez de modifier votre recherche" FontSize="12" Foreground="#666"/>
-                    </StackPanel>
-                </Border>
-
-                <Border Height="10"/>
-            </StackPanel>
-        </ScrollViewer>
-
-        <!-- FOOTER / PAGINATION -->
-        <Border Grid.Row="2" Padding="32,12,32,12" BorderBrush="#333333" BorderThickness="0,1,0,0" IsVisible="{Binding ShowList}">
-            <Grid ColumnDefinitions="*,Auto">
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                    <ProgressBar IsIndeterminate="True"
-                                 IsVisible="{Binding SuppliersListViewModel.IsLoading}"
-                                 Width="80"
-                                 Height="2"
-                                 Foreground="#0071E3"/>
-                    <TextBlock Text="{Binding SuppliersListViewModel.ErrorMessage}"
-                               Foreground="#FF453A"
-                               IsVisible="{Binding SuppliersListViewModel.ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                               VerticalAlignment="Center"
-                               FontSize="11"
-                               FontWeight="500"/>
-                </StackPanel>
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                    <Button Content="← Précédent"
-                            Command="{Binding SuppliersListViewModel.PreviousPageCommand}"
-                            Classes="PaginationButton"
-                            FontSize="12"/>
-
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding SuppliersListViewModel.CurrentPage}"
-                                   VerticalAlignment="Center" FontWeight="600" Foreground="#FFFFFF" FontSize="12"/>
-                        <TextBlock Text="/" VerticalAlignment="Center" Foreground="#666" FontSize="12" Margin="4,0"/>
-                        <TextBlock Text="{Binding SuppliersListViewModel.TotalPages}"
-                                   VerticalAlignment="Center" Foreground="#E0E0E0" FontSize="12"/>
-                    </StackPanel>
-
-                    <Button Content="Suivant →"
-                            Command="{Binding SuppliersListViewModel.NextPageCommand}"
-                            Classes="PaginationButton"
-                            FontSize="12"/>
+                    <Button Command="{Binding SuppliersListViewModel.CreateCommand}" Classes="Primary" Padding="16,6">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconPlus}" Width="10" Height="10" Foreground="White"/>
+                            <TextBlock Text="Nouveau" FontSize="13"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- FORMULAIRE FOURNISSEUR -->
-        <Panel IsVisible="{Binding IsInEditMode}">
+        <Grid Grid.Row="1" RowDefinitions="Auto, *" IsVisible="{Binding ShowList}" MaxHeight="850">
+
+            <Border Grid.Row="0" Background="{DynamicResource BackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,10">
+                <Grid ColumnDefinitions="80, 2*, 2*, 2*, 2*, 100">
+                    <TextBlock Grid.Column="0" Text="CODE" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="1" Text="ENTREPRISE" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="2" Text="CONTACT" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="3" Text="ADRESSE" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="4" Text="EMAIL" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="5" Text="CATALOGUE" Classes="ColHeader" HorizontalAlignment="Right"/>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="1">
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding SuppliersListViewModel.FilteredSuppliers}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="SupplierRow" PointerPressed="Border_PointerPressed">
+                                    <Grid ColumnDefinitions="80, 2*, 2*, 2*, 2*, 100">
+
+                                        <TextBlock Grid.Column="0" Text="{Binding ReferenceCode}" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                                            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Phone, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                                <PathIcon Data="{StaticResource IconPhone}" Width="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                <TextBlock Text="{Binding Phone}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="3" VerticalAlignment="Center" Orientation="Horizontal" Spacing="6" Opacity="0.8">
+                                            <PathIcon Data="{StaticResource IconLocation}" Width="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Address}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="4" HorizontalAlignment="Left" VerticalAlignment="Center" Orientation="Horizontal" Spacing="6" Opacity="0.8" IsVisible="{Binding ContactEmail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                            <PathIcon Data="{StaticResource IconMail}" Width="10" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding ContactEmail}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+
+                                        <Border Grid.Column="5" HorizontalAlignment="Right" VerticalAlignment="Center" Background="{DynamicResource SurfaceLightBrush}" CornerRadius="12" Padding="12,4">
+                                            <TextBlock FontWeight="Bold" FontSize="12" Foreground="{DynamicResource AccentBrush}">
+                                                <Run Text="{Binding Products.Count}"/>
+                                                <Run Text=" ref." FontWeight="Normal" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            </TextBlock>
+                                        </Border>
+
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel IsVisible="{Binding SuppliersListViewModel.FilteredSuppliers, Converter={x:Static ObjectConverters.IsNull}}"
+                                HorizontalAlignment="Center" Margin="0,100" Spacing="15" Opacity="0.5">
+                        <PathIcon Data="{StaticResource IconSearch}" Width="48" Height="48" Foreground="{DynamicResource TextDisabledBrush}"/>
+                        <TextBlock Text="Aucun fournisseur trouvé" FontSize="16" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="15,10" IsVisible="{Binding ShowList}">
+            <Grid ColumnDefinitions="*, Auto">
+
+                <TextBlock Grid.Column="0"
+                           Text="{Binding SuppliersListViewModel.ErrorMessage}"
+                           Foreground="{DynamicResource ErrorBrush}"
+                           VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                    <Button Classes="NavButton" Command="{Binding SuppliersListViewModel.PreviousPageCommand}">
+                        <PathIcon Data="{StaticResource IconBack}" Width="12"/>
+                    </Button>
+
+                    <TextBlock Text="{Binding SuppliersListViewModel.CurrentPage, StringFormat='Page {0}'}"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               FontSize="13"/>
+
+                    <Button Classes="NavButton" Command="{Binding SuppliersListViewModel.NextPageCommand}">
+                        <PathIcon Data="{StaticResource IconBack}" Width="12" RenderTransform="rotate(180deg)"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Panel Background="#80000000">
+            <Panel.IsVisible>
+                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="IsInEditMode"/>
+                    <Binding Path="IsCreatingNew"/>
+                </MultiBinding>
+            </Panel.IsVisible>
             <views:SupplierFormView DataContext="{Binding SupplierFormViewModel}"/>
         </Panel>
 
-        <!-- FICHE DÉTAILLÉE FOURNISSEUR -->
-        <Panel IsVisible="{Binding IsShowingDetail}">
+        <Panel IsVisible="{Binding IsShowingDetail}" Background="#80000000">
             <views:SupplierDetailView DataContext="{Binding SupplierDetailViewModel}"/>
         </Panel>
+
     </Grid>
 </UserControl>

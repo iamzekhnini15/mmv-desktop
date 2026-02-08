@@ -1,0 +1,192 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:MMV.App.Controls"
+             xmlns:vm="using:MMV.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="900"
+             x:Class="MMV.App.Views.Clients.PrescriptionDetailView"
+             x:DataType="vm:PrescriptionDetailViewModel"
+             Background="{DynamicResource BackgroundBrush}">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.CategoryTitle">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="LetterSpacing" Value="1.5"/>
+            <Setter Property="Margin" Value="0,0,0,20"/>
+        </Style>
+
+        <Style Selector="Border.ValueBadge">
+            <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="MinWidth" Value="70"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <Style Selector="TextBlock.ValueText">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
+
+        <Style Selector="TextBlock.ValueLabel">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, *">
+        
+        <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="32,24">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+                <controls:BackButton Grid.Column="0" Command="{Binding BackCommand}" ButtonText="Retour" VerticalAlignment="Center" Margin="0,0="/>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="32,0" Spacing="4">
+                    <TextBlock Text="Analyse de Prescription" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="{Binding CurrentPrescription.IssueDate, StringFormat='Examen du {0:dd/MM/yyyy}'}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        <TextBlock Text="•" Foreground="{DynamicResource BorderBrush}"/>
+                        <TextBlock Text="{Binding CurrentPrescription.DoctorName, StringFormat='Dr. {0}'}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
+                    <Button Command="{Binding EditCommand}" Classes="Primary" Padding="20,10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconSettings}" Width="14"/>
+                            <TextBlock Text="Éditer"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding DeleteCommand}" Background="Transparent" BorderThickness="1" BorderBrush="{DynamicResource ErrorBrush}" Padding="10">
+                         <PathIcon Data="{StaticResource IconTrash}" Width="16" Foreground="{DynamicResource ErrorBrush}"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1">
+            <Grid ColumnDefinitions="2*, 40, 1*" Margin="40">
+                
+                <StackPanel Grid.Column="0" Spacing="40">
+                    
+                    <StackPanel>
+                        <TextBlock Text="MESURES OPTOMÉTRIQUES" Classes="CategoryTitle"/>
+                        
+                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="24" Margin="0,0,0,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <Grid ColumnDefinitions="50, *">
+                                <Border Width="40" Height="40" CornerRadius="8" Background="{DynamicResource AccentFadeBrush}" VerticalAlignment="Top">
+                                    <TextBlock Text="OD" FontWeight="Heavy" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                
+                                <UniformGrid Grid.Column="1" Columns="6" Margin="24,0,0,0">
+                                    <StackPanel><TextBlock Text="SPH" Classes="ValueLabel"/><Border Classes="ValueBadge"><TextBlock Text="{Binding CurrentPrescription.OdSphere, StringFormat={}{0:+0.00;-0.00;0.00}}" Classes="ValueText"/></Border></StackPanel>
+                                    <StackPanel><TextBlock Text="CYL" Classes="ValueLabel"/><Border Classes="ValueBadge"><TextBlock Text="{Binding CurrentPrescription.OdCylinder, StringFormat={}{0:+0.00;-0.00;—}}" Classes="ValueText"/></Border></StackPanel>
+                                    <StackPanel><TextBlock Text="AXE" Classes="ValueLabel"/><Border Classes="ValueBadge"><TextBlock Text="{Binding CurrentPrescription.OdAxis, StringFormat={}{0}°}}" Classes="ValueText"/></Border></StackPanel>
+                                    <StackPanel><TextBlock Text="ADD" Classes="ValueLabel"/><Border Classes="ValueBadge"><TextBlock Text="{Binding CurrentPrescription.OdAddition, StringFormat={}{0:+0.00;—}}" Classes="ValueText" Foreground="{DynamicResource SuccessBrush}"/></Border></StackPanel>
+                                    <StackPanel><TextBlock Text="PRISME" Classes="ValueLabel"/><Border Classes="ValueBadge"><TextBlock Text="{Binding CurrentPrescription.OdPrismValue, StringFormat={}{0;—}}" Classes="ValueText"/></Border></StackPanel>
+                                    <StackPanel><TextBlock Text="BASE" Classes="ValueLabel"/><Border Classes="ValueBadge"><TextBlock Text="{Binding CurrentPrescription.OdPrismBase, TargetNullValue=—}" Classes="ValueText"/></Border></StackPanel>
+                                </UniformGrid>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="24" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <Grid ColumnDefinitions="50, *">
+                                <Border Width="40" Height="40" CornerRadius="8" Background="#33FF9500" VerticalAlignment="Top">
+                                    <TextBlock Text="OG" FontWeight="Heavy" Foreground="#FF9500" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                
+                                <UniformGrid Grid.Column="1" Columns="6" Margin="24,0,0,0">
+                                    <StackPanel><TextBlock Text="SPH" Classes="ValueLabel"/><Border Classes="ValueBadge"><TextBlock Text="{Binding CurrentPrescription.OgSphere, StringFormat={}{0:+0.00;-0.00;0.00}}" Classes="ValueText"/></Border></StackPanel>
+                                    <StackPanel><TextBlock Text="CYL" Classes="ValueLabel"/><Border Classes="ValueBadge"><TextBlock Text="{Binding CurrentPrescription.OgCylinder, StringFormat={}{0:+0.00;-0.00;—}}" Classes="ValueText"/></Border></StackPanel>
+                                    <StackPanel><TextBlock Text="AXE" Classes="ValueLabel"/><Border Classes="ValueBadge"><TextBlock Text="{Binding CurrentPrescription.OgAxis, StringFormat={}{0}°}}" Classes="ValueText"/></Border></StackPanel>
+                                    <StackPanel><TextBlock Text="ADD" Classes="ValueLabel"/><Border Classes="ValueBadge"><TextBlock Text="{Binding CurrentPrescription.OgAddition, StringFormat={}{0:+0.00;—}}" Classes="ValueText" Foreground="{DynamicResource SuccessBrush}"/></Border></StackPanel>
+                                    <StackPanel><TextBlock Text="PRISME" Classes="ValueLabel"/><Border Classes="ValueBadge"><TextBlock Text="{Binding CurrentPrescription.OgPrismValue, StringFormat={}{0;—}}" Classes="ValueText"/></Border></StackPanel>
+                                    <StackPanel><TextBlock Text="BASE" Classes="ValueLabel"/><Border Classes="ValueBadge"><TextBlock Text="{Binding CurrentPrescription.OgPrismBase, TargetNullValue=—}" Classes="ValueText"/></Border></StackPanel>
+                                </UniformGrid>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel>
+                        <TextBlock Text="VISUALISATION DES AXES" Classes="CategoryTitle"/>
+                        <Grid ColumnDefinitions="*, 24, *">
+                            <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" CornerRadius="16" Padding="24" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                <StackPanel Spacing="16">
+                                    <TextBlock Text="Oeil Droit" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Opacity="0.5"/>
+                                    <Canvas Width="180" Height="180" HorizontalAlignment="Center">
+                                        <Ellipse Width="180" Height="180" Stroke="{DynamicResource BorderBrush}" StrokeThickness="1" StrokeDashArray="4,2"/>
+                                        <Ellipse Width="100" Height="100" Fill="{DynamicResource BackgroundBrush}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" Canvas.Left="40" Canvas.Top="40"/>
+                                        <Ellipse Width="15" Height="15" Fill="#000000" Canvas.Left="82.5" Canvas.Top="82.5"/>
+                                        <Line StartPoint="90,10" EndPoint="90,170" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1" Opacity="0.3"/>
+                                        <Line StartPoint="10,90" EndPoint="170,90" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1" Opacity="0.3"/>
+                                    </Canvas>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="16" Padding="24" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                <StackPanel Spacing="16">
+                                    <TextBlock Text="Oeil Gauche" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Opacity="0.5"/>
+                                    <Canvas Width="180" Height="180" HorizontalAlignment="Center">
+                                        <Ellipse Width="180" Height="180" Stroke="{DynamicResource BorderBrush}" StrokeThickness="1" StrokeDashArray="4,2"/>
+                                        <Ellipse Width="100" Height="100" Fill="{DynamicResource BackgroundBrush}" Stroke="#FF9500" StrokeThickness="2" Canvas.Left="40" Canvas.Top="40"/>
+                                        <Ellipse Width="15" Height="15" Fill="#000000" Canvas.Left="82.5" Canvas.Top="82.5"/>
+                                        <Line StartPoint="90,10" EndPoint="90,170" Stroke="#FF9500" StrokeThickness="1" Opacity="0.3"/>
+                                        <Line StartPoint="10,90" EndPoint="170,90" Stroke="#FF9500" StrokeThickness="1" Opacity="0.3"/>
+                                    </Canvas>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+
+                <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Stretch" Margin="19,0"/>
+
+                <StackPanel Grid.Column="2" Spacing="32">
+                    <StackPanel>
+                        <TextBlock Text="NOTES MÉDICALES" Classes="CategoryTitle"/>
+                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="20" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <TextBlock Text="{Binding CurrentPrescription.Notes}" 
+                                       TextWrapping="Wrap" 
+                                       LineHeight="22" 
+                                       FontSize="14" 
+                                       FontStyle="Italic"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       Opacity="0.8"/>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="RÉCAPITULATIF" Classes="CategoryTitle"/>
+                        <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="12" Padding="20">
+                            <StackPanel Spacing="12">
+                                <Grid ColumnDefinitions="Auto, *">
+                                    <PathIcon Data="{StaticResource IconCustomers}" Width="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    <TextBlock Grid.Column="1" Text="Acuité: Non spécifiée" Margin="12,0,0,0" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="Auto, *">
+                                    <PathIcon Data="{StaticResource IconInventory}" Width="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    <TextBlock Grid.Column="1" Text="Validité: 3 ans" Margin="12,0,0,0" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <Button HorizontalAlignment="Stretch" Background="{DynamicResource SurfaceLightBrush}" Padding="16" CornerRadius="12">
+                        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                            <PathIcon Data="{StaticResource IconReports}" Width="16"/>
+                            <TextBlock Text="Exporter en PDF" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

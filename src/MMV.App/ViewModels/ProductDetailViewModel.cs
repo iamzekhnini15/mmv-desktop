@@ -26,6 +26,26 @@ public class ProductDetailViewModel : BaseViewModel
     }
 
     /// <summary>
+    /// Calcul de la marge en euros (vente - achat) pour affichage.
+    /// </summary>
+    public decimal Margin => (Product?.SalePrice ?? 0m) - (Product?.PurchasePrice ?? 0m);
+
+    /// <summary>
+    /// Calcul de la marge en pourcentage pour affichage.
+    /// </summary>
+    public string MarginPercentage
+    {
+        get
+        {
+            var purchase = Product?.PurchasePrice ?? 0m;
+            var sale = Product?.SalePrice ?? 0m;
+            if (purchase == 0m) return "0%";
+            var perc = ((sale - purchase) / purchase) * 100m;
+            return $"{perc:F1}%";
+        }
+    }
+
+    /// <summary>
     /// Historique des commandes contenant ce produit.
     /// </summary>
     public ObservableCollection<OrderItem> OrderHistory
@@ -52,6 +72,30 @@ public class ProductDetailViewModel : BaseViewModel
                                        Product?.Category == ProductCategoryEnum.PLASTIC ||
                                        Product?.Category == ProductCategoryEnum.SOLAIRE;
 
+    // Propriétés calculées pour les détails du produit (conversion enum -> string)
+    
+    // GlassDetail properties
+    public string? GlassMaterial => Product?.GlassDetail?.Material?.ToString();
+    public string? GlassType => Product?.GlassDetail?.GlassType?.ToString();
+    public string? GlassDiameter => Product?.GlassDetail?.Diameter;
+    public string? GlassIndex => Product?.GlassDetail?.Index?.ToString("F2");
+    public string? GlassPowerLimitMin => Product?.GlassDetail?.PowerLimitMin?.ToString("F2");
+    public string? GlassPowerLimitMax => Product?.GlassDetail?.PowerLimitMax?.ToString("F2");
+
+    // LensDetail properties
+    public string? LensBrand => Product?.LensDetail?.Brand;
+    public string? LensModel => Product?.LensDetail?.Model;
+    public string? LensMaterial => Product?.LensDetail?.Material?.ToString();
+    public string? LensType => Product?.LensDetail?.LensType?.ToString();
+    public string? LensDuration => Product?.LensDetail?.Duration?.ToString();
+    public string? LensDiameter => Product?.LensDetail?.Diameter?.ToString("F1");
+    public string? LensBaseCurve => Product?.LensDetail?.BaseCurve?.ToString("F1");
+
+    // AccessoryDetail properties
+    public string? AccessoryColor => Product?.AccessoryDetail?.Color;
+    public string? AccessorySize => Product?.AccessoryDetail?.Size;
+    public string? AccessoryMaterial => Product?.AccessoryDetail?.Material;
+
     private RelayCommand? _editCommand;
     private RelayCommand? _deleteCommand;
 
@@ -77,6 +121,26 @@ public class ProductDetailViewModel : BaseViewModel
         OnPropertyChanged(nameof(IsGlassCategory));
         OnPropertyChanged(nameof(IsLensCategory));
         OnPropertyChanged(nameof(IsAccessoryCategory));
+        OnPropertyChanged(nameof(Margin));
+        OnPropertyChanged(nameof(MarginPercentage));
+        
+        // Notifier les propriétés calculées des détails
+        OnPropertyChanged(nameof(GlassMaterial));
+        OnPropertyChanged(nameof(GlassType));
+        OnPropertyChanged(nameof(GlassDiameter));
+        OnPropertyChanged(nameof(GlassIndex));
+        OnPropertyChanged(nameof(GlassPowerLimitMin));
+        OnPropertyChanged(nameof(GlassPowerLimitMax));
+        OnPropertyChanged(nameof(LensBrand));
+        OnPropertyChanged(nameof(LensModel));
+        OnPropertyChanged(nameof(LensMaterial));
+        OnPropertyChanged(nameof(LensType));
+        OnPropertyChanged(nameof(LensDuration));
+        OnPropertyChanged(nameof(LensDiameter));
+        OnPropertyChanged(nameof(LensBaseCurve));
+        OnPropertyChanged(nameof(AccessoryColor));
+        OnPropertyChanged(nameof(AccessorySize));
+        OnPropertyChanged(nameof(AccessoryMaterial));
         
         // Notifier les commandes que le produit a changé
         _editCommand?.RaiseCanExecuteChanged();

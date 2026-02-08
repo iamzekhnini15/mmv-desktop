@@ -4,261 +4,152 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MMV.App.ViewModels"
              xmlns:controls="using:MMV.App.Controls"
-             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="800"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="MMV.App.Views.Clients.CustomerFormView"
              x:DataType="vm:CustomerFormViewModel"
-             Background="#1D1D1D">
+             Background="{DynamicResource BackgroundBrush}">
 
     <UserControl.Styles>
-        <!-- Styles réutilisés -->
-        <Style Selector="TextBlock.Label">
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="FontWeight" Value="500"/>
-            <Setter Property="Foreground" Value="#858585"/>
-            <Setter Property="Margin" Value="0,0,0,6"/>
-        </Style>
-
-        <Style Selector="TextBox">
-            <Setter Property="Padding" Value="10,8"/>
-            <Setter Property="Background" Value="#3C3C3C"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="FontSize" Value="14"/>
-        </Style>
-        
-        <Style Selector="TextBox:focus">
-            <Setter Property="BorderBrush" Value="#0071E3"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-
-        <Style Selector="DatePicker">
-            <Setter Property="Padding" Value="10,8"/>
-            <Setter Property="Background" Value="#3C3C3C"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="FontSize" Value="14"/>
-        </Style>
-
-        <!-- Bouton Secondaire -->
-        <Style Selector="Button.SecondaryButton">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#E0E0E0"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#404040"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="20,10"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        
-        <Style Selector="Button.SecondaryButton:pointerover">
-            <Setter Property="Background" Value="#3C3C3C"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-        </Style>
-
-        <Style Selector="Border.Card">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="20"/>
+        <Style Selector="TextBlock.SectionTitle">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="Opacity" Value="0.9"/>
+            <Setter Property="LetterSpacing" Value="1"/>
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto, *">
         
-        <!-- HEADER -->
-        <Border Grid.Row="0" Padding="32,24,32,10">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                <controls:BackButton Grid.Column="0"
-                            Command="{Binding BackCommand}"
-                            ButtonText="← Retour"
-                            Margin="0,0,32,0"/>
-                
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                    <TextBlock Text="Nouveau Client" 
-                              FontSize="20" 
-                              FontWeight="700" 
-                              Foreground="#FFFFFF"/>
-                    <TextBlock Text="Complétez les informations ci-dessous" 
-                              FontSize="13" 
-                              Foreground="#858585"/>
+        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="24,20">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <controls:BackButton Command="{Binding BackCommand}"
+                                         ButtonText="Retour à la liste"
+                                         Margin="0,0,0,0"/>
+
+                    <Rectangle Width="1" Height="24" Fill="{DynamicResource BorderBrush}"/>
+
+                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <TextBlock Text="Nouveau Client" FontWeight="Bold" FontSize="16" HorizontalAlignment="Left"/>
+                    </StackPanel>
                 </StackPanel>
-                
-                <Button Grid.Column="2" 
-                        Content="Annuler" 
-                        Command="{Binding CancelCommand}"
-                        Classes="SecondaryButton"
-                        FontSize="13"
-                        FontWeight="500"
-                        Margin="0,0,12,0"/>
-                
-                <Button Grid.Column="3" 
-                        Content="Enregistrer" 
-                        Command="{Binding SaveCommand}"
-                        Background="#0071E3" 
-                        Foreground="White" 
-                        Padding="24,10" 
-                        BorderThickness="0" 
-                        CornerRadius="6" 
-                        FontWeight="600"
-                        FontSize="13"
-                        Cursor="Hand"/>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Button Content="Annuler" Padding="20,12" Cursor="Hand" CornerRadius="10" Command="{Binding CancelCommand}" Background="Transparent" Foreground="{DynamicResource TextSecondaryBrush}" BorderThickness="0"/>
+                    <Button Content="Enregistrer le client" Command="{Binding SaveCommand}" Classes="Primary"/>
+                </StackPanel>
             </Grid>
         </Border>
         
-        <!-- CONTENU SCROLLABLE -->
-        <ScrollViewer Grid.Row="1" Padding="32,0,32,0">
-            <StackPanel Spacing="16">
+        <ScrollViewer Grid.Row="1">
+            <Grid ColumnDefinitions="1.5*, 1, 1*" Margin="40">
                 
-                <!-- PREMIÈRE LIGNE: Info personnelle + Contact -->
-                <Grid ColumnDefinitions="*,*">
+                <StackPanel Grid.Column="0" Spacing="40" Margin="0,0,40,0">
                     
-                    <!-- Section: Informations personnelles -->
-                    <Border Grid.Column="0" Classes="Card" Margin="0,0,8,0">
-                        <StackPanel Spacing="16">
-                            <TextBlock Text="👤 Informations personnelles" 
-                                      FontSize="15" 
-                                      FontWeight="600" 
-                                      Foreground="#FFFFFF" 
-                                      Margin="0,0,0,8"/>
-                            
-                            <StackPanel Spacing="12">
-                                <!-- Prénom -->
-                                <StackPanel>
-                                    <TextBlock Text="Prénom" Classes="Label"/>
-                                    <TextBox Text="{Binding FirstName}" Watermark="Jean"/>
-                                </StackPanel>
-                                
-                                <!-- Nom -->
-                                <StackPanel>
-                                    <TextBlock Text="Nom" Classes="Label"/>
-                                    <TextBox Text="{Binding LastName}" Watermark="Dupont"/>
-                                </StackPanel>
-                                
-                                <!-- Date de naissance -->
-                                <StackPanel>
-                                    <TextBlock Text="Date de naissance" Classes="Label"/>
-                                    <DatePicker SelectedDate="{Binding BirthDate}" HorizontalAlignment="Stretch"/>
-                                </StackPanel>
-                            </StackPanel>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
+                            <PathIcon Data="{StaticResource IconUser}" Width="16" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="ÉTAT CIVIL" Classes="SectionTitle" Margin="0"/>
                         </StackPanel>
-                    </Border>
-
-                    <!-- Section: Contact -->
-                    <Border Grid.Column="1" Classes="Card" Margin="8,0,0,0">
-                        <StackPanel Spacing="16">
-                            <TextBlock Text="📞 Contact" 
-                                      FontSize="15" 
-                                      FontWeight="600" 
-                                      Foreground="#FFFFFF" 
-                                      Margin="0,0,0,8"/>
-                            
-                            <StackPanel Spacing="12">
-                                <!-- Email -->
-                                <StackPanel>
-                                    <TextBlock Text="Email" Classes="Label"/>
-                                    <TextBox Text="{Binding Email}" Watermark="exemple@email.com"/>
-                                </StackPanel>
-                                
-                                <!-- Téléphone -->
-                                <StackPanel>
-                                    <TextBlock Text="Téléphone" Classes="Label"/>
-                                    <TextBox Text="{Binding Phone}" Watermark="06 12 34 56 78"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-
-                <!-- DEUXIÈME LIGNE: Adresse + Sécurité sociale -->
-                <Grid ColumnDefinitions="*,*">
-                    
-                    <!-- Section: Adresse -->
-                    <Border Grid.Column="0" Classes="Card" Margin="0,0,8,0">
-                        <StackPanel Spacing="16">
-                            <TextBlock Text="🏠 Adresse" 
-                                      FontSize="15" 
-                                      FontWeight="600" 
-                                      Foreground="#FFFFFF" 
-                                      Margin="0,0,0,8"/>
-                            
-                            <StackPanel Spacing="12">
-                                <!-- Adresse -->
-                                <StackPanel>
-                                    <TextBlock Text="Adresse" Classes="Label"/>
-                                    <TextBox Text="{Binding Address}" Watermark="Rue, numéro..."/>
-                                </StackPanel>
-                                
-                                <!-- Ville et Code postal -->
-                                <Grid ColumnDefinitions="2*,*">
-                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                        <TextBlock Text="Ville" Classes="Label"/>
-                                        <TextBox Text="{Binding City}" Watermark="Paris"/>
-                                    </StackPanel>
-                                    
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="Code postal" Classes="Label"/>
-                                        <TextBox Text="{Binding PostalCode}" Watermark="75000"/>
-                                    </StackPanel>
-                                </Grid>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Section: Sécurité sociale -->
-                    <Border Grid.Column="1" Classes="Card" Margin="8,0,0,0">
-                        <StackPanel Spacing="16">
-                            <TextBlock Text="🏥 Sécurité sociale" 
-                                      FontSize="15" 
-                                      FontWeight="600" 
-                                      Foreground="#FFFFFF" 
-                                      Margin="0,0,0,8"/>
-                            
-                            <StackPanel Spacing="12">
-                                <!-- Numéro SS -->
-                                <StackPanel>
-                                    <TextBlock Text="Numéro de sécurité sociale" Classes="Label"/>
-                                    <TextBox Text="{Binding SocialSecurityNumber}" Watermark="13 chiffres"/>
-                                </StackPanel>
-                                
-                                <!-- Mutuelle -->
-                                <StackPanel>
-                                    <TextBlock Text="Mutuelle" Classes="Label"/>
-                                    <TextBox Text="{Binding InsuranceName}" Watermark="Nom de l'organisme"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-
-                <!-- TROISIÈME LIGNE: Notes (pleine largeur) -->
-                <Border Classes="Card">
-                    <StackPanel Spacing="12">
-                        <TextBlock Text="📝 Notes" 
-                                  FontSize="15" 
-                                  FontWeight="600" 
-                                  Foreground="#FFFFFF" 
-                                  Margin="0,0,0,8"/>
                         
-                        <TextBox Text="{Binding Notes}" 
-                                Watermark="Informations supplémentaires..."
-                                AcceptsReturn="True" 
-                                TextWrapping="Wrap"
-                                Height="80" 
-                                VerticalContentAlignment="Top"/>
-                    </StackPanel>
-                </Border>
+                        <Grid ColumnDefinitions="*, 20, *" RowDefinitions="Auto, 20, Auto">
+                            <StackPanel Grid.Row="0" Grid.Column="0" Spacing="8">
+                                <TextBlock Text="Prénom" Classes="label"/>
+                                <TextBox Text="{Binding FirstName}" Watermark="ex: Jean" Classes="Input"/>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Row="0" Grid.Column="2" Spacing="8">
+                                <TextBlock Text="Nom" Classes="label"/>
+                                <TextBox Text="{Binding LastName}" Watermark="ex: Dupont" Classes="Input"/>
+                            </StackPanel>
 
-            </StackPanel>
+                            <StackPanel Grid.Row="2" Grid.Column="0" Spacing="8">
+                                <TextBlock Text="Date de naissance" Classes="label"/>
+                                <DatePicker SelectedDate="{Binding BirthDate}" HorizontalAlignment="Stretch" Background="{DynamicResource SurfaceLightBrush}" CornerRadius="8"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+
+                    <Separator Background="{DynamicResource BorderBrush}" Height="1"/>
+
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
+                            <PathIcon Data="{StaticResource IconLocation}" Width="16" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="ADRESSE &amp; LOCALISATION" Classes="SectionTitle" Margin="0"/>
+                        </StackPanel>
+
+                        <Grid RowDefinitions="Auto, 16, Auto">
+                            <StackPanel Grid.Row="0" Spacing="8">
+                                <TextBlock Text="Adresse postale" Classes="label"/>
+                                <TextBox Text="{Binding Address}" Watermark="Numéro et nom de rue" Classes="Input"/>
+                            </StackPanel>
+
+                            <Grid Grid.Row="2" ColumnDefinitions="*, 20, 2*">
+                                <StackPanel Grid.Column="0" Spacing="8">
+                                    <TextBlock Text="Code Postal" Classes="label"/>
+                                    <TextBox Text="{Binding PostalCode}" Watermark="75000" Classes="Input"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="8">
+                                    <TextBlock Text="Ville" Classes="label"/>
+                                    <TextBox Text="{Binding City}" Watermark="Paris" Classes="Input"/>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+
+                <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Stretch"/>
+
+                <StackPanel Grid.Column="2" Spacing="40" Margin="40,0,0,0">
+                    
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
+                            <PathIcon Data="{StaticResource IconPhone}" Width="16" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <TextBlock Text="COORDONNÉES" Classes="SectionTitle" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Téléphone mobile" Classes="label"/>
+                                <TextBox Text="{Binding Phone}" Watermark="06 00 00 00 00" Classes="Input"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Adresse Email" Classes="label"/>
+                                <TextBox Text="{Binding Email}" Watermark="client@email.com" Classes="Input"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
+                            <PathIcon Data="{StaticResource IconCard}" Width="16" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <TextBlock Text="COUVERTURE SOCIALE" Classes="SectionTitle" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Numéro de Sécurité Sociale" Classes="label"/>
+                                <TextBox Text="{Binding SocialSecurityNumber}" Watermark="13 ou 15 chiffres" Classes="Input"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Mutuelle / Organisme" Classes="label"/>
+                                <TextBox Text="{Binding InsuranceName}" Watermark="Nom de la mutuelle" Classes="Input"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel>
+                         <TextBlock Text="NOTES &amp; OBSERVATIONS" Classes="SectionTitle" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        <TextBox Text="{Binding Notes}" Classes="Input" AcceptsReturn="True" Height="100" TextWrapping="Wrap" Watermark="Ajouter une note interne..."/>
+                    </StackPanel>
+
+                </StackPanel>
+            </Grid>
         </ScrollViewer>
-        
-        <!-- FOOTER -->
-        <Border Grid.Row="2" Padding="32,12,32,12" BorderBrush="#333333" BorderThickness="0,1,0,0">
-            <TextBlock Text="💡 Tous les champs sont optionnels sauf le prénom et le nom" 
-                      FontSize="12" 
-                      Foreground="#858585"
-                      VerticalAlignment="Center"/>
-        </Border>
     </Grid>
 </UserControl>
+

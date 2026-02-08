@@ -1,143 +1,150 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Color Palette Apple Dark Mode -->
-    <!-- 
-        Primary BG: #1D1D1D (pure black for contrast)
-        Secondary BG: #2D2D2D (darker sections)
-        Tertiary BG: #424245 (even darker)
-        Separator: #424245 (subtle dividers)
-        Text Primary: #FFFFFF (white text)
-        Text Secondary: #A1A1A6 (secondary text)
-        Accent: #0A84FF (Apple blue)
-        Error: #FF3B30 (Apple red)
-    -->
+    <Styles.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="ColorBackground">#151517</Color>     <Color x:Key="ColorSurface">#1E1E21</Color>         <Color x:Key="ColorSurfaceLight">#2C2C30</Color>    <Color x:Key="ColorTextPrimary">#FFFFFF</Color>     <Color x:Key="ColorTextSecondary">#98989F</Color>   <Color x:Key="ColorTextDisabled">#55555A</Color>
+                    
+                    <Color x:Key="ColorAccent">#0A84FF</Color>          
+                    <Color x:Key="ColorAccentFade">#330A84FF</Color>    <Color x:Key="ColorSuccess">#30D158</Color>         <Color x:Key="ColorWarning">#FFD60A</Color>         <Color x:Key="ColorError">#FF453A</Color>           <Color x:Key="ColorBorder">#2C2C30</Color>
+                </ResourceDictionary>
 
-    <!-- ===== NAVIGATION BUTTONS ===== -->
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="ColorBackground">#F2F2F7</Color>
+                    <Color x:Key="ColorSurface">#FFFFFF</Color>
+                    <Color x:Key="ColorSurfaceLight">#F5F5F9</Color>
+                    <Color x:Key="ColorTextPrimary">#000000</Color>
+                    <Color x:Key="ColorTextSecondary">#8A8A8E</Color>
+                    <Color x:Key="ColorTextDisabled">#C7C7CC</Color>
+                    <Color x:Key="ColorAccent">#007AFF</Color>
+                    <Color x:Key="ColorAccentFade">#20007AFF</Color>
+                    <Color x:Key="ColorSuccess">#34C759</Color>
+                    <Color x:Key="ColorWarning">#FFCC00</Color>
+                    <Color x:Key="ColorError">#FF3B30</Color>
+                    <Color x:Key="ColorBorder">#E5E5EA</Color>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <SolidColorBrush x:Key="BackgroundBrush" Color="{DynamicResource ColorBackground}"/>
+            <SolidColorBrush x:Key="SurfaceBrush" Color="{DynamicResource ColorSurface}"/>
+            <SolidColorBrush x:Key="SurfaceLightBrush" Color="{DynamicResource ColorSurfaceLight}"/>
+            
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="{DynamicResource ColorTextPrimary}"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="{DynamicResource ColorTextSecondary}"/>
+            <SolidColorBrush x:Key="TextDisabledBrush" Color="{DynamicResource ColorTextDisabled}"/>
+            
+            <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource ColorAccent}"/>
+            <SolidColorBrush x:Key="AccentFadeBrush" Color="{DynamicResource ColorAccentFade}"/>
+            
+            <SolidColorBrush x:Key="SuccessBrush" Color="{DynamicResource ColorSuccess}"/>
+            <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource ColorWarning}"/>
+            <SolidColorBrush x:Key="ErrorBrush" Color="{DynamicResource ColorError}"/>
+            
+            <SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource ColorBorder}"/>
+
+            <FontFamily x:Key="MainFont">Segoe UI, Inter, Helvetica Neue, Arial</FontFamily>
+            
+            <x:Double x:Key="ListRowHeight">52</x:Double>
+            <CornerRadius x:Key="SmallCornerRadius">6</CornerRadius>
+            <CornerRadius x:Key="MediumCornerRadius">10</CornerRadius>
+            <CornerRadius x:Key="LargeCornerRadius">16</CornerRadius>
+        </ResourceDictionary>
+    </Styles.Resources>
+
+    <Style Selector="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource MainFont}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="TextBlock.h1">
+        <Setter Property="FontSize" Value="24"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="Margin" Value="0,0,0,20"/>
+    </Style>
+
+    <Style Selector="TextBlock.h2">
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="Margin" Value="0,15,0,10"/>
+    </Style>
+
+    <Style Selector="TextBlock.label">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="Margin" Value="0,0,0,6"/>
+    </Style>
+
+
     <Style Selector="Button.NavButton">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="16,12"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="FontWeight" Value="500"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="Padding" Value="12,10"/>
+        <Setter Property="Margin" Value="0,2"/>
+        <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Margin" Value="8,4"/>
-    </Style>
-    
-    <Style Selector="Button.NavButton:pointerover">
-        <Setter Property="Background" Value="#2D2D2D"/>
-    </Style>
-    
-    <Style Selector="Button.NavButton:pressed">
-        <Setter Property="Background" Value="#3A3A3C"/>
+        
+        <Style Selector="^:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ColorSurfaceLight}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
+
+        <Style Selector="^:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentFadeBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ColorAccent}"/>
+        </Style>
     </Style>
 
-    <!-- ===== PRIMARY BUTTONS ===== -->
-    <Style Selector="Button.PrimaryButton">
-        <Setter Property="Background" Value="#0A84FF"/>
-        <Setter Property="Foreground" Value="White"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="16,10"/>
-        <Setter Property="FontSize" Value="13"/>
-        <Setter Property="FontWeight" Value="600"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Cursor" Value="Hand"/>
-    </Style>
-    
-    <Style Selector="Button.PrimaryButton:pointerover">
-        <Setter Property="Background" Value="#1B92FF"/>
-    </Style>
-
-    <Style Selector="Button.PrimaryButton:pressed">
-        <Setter Property="Background" Value="#0073D6"/>
-    </Style>
-
-    <!-- ===== SECONDARY BUTTONS ===== -->
-    <Style Selector="Button.SecondaryButton">
-        <Setter Property="Background" Value="#2D2D2D"/>
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="BorderBrush" Value="#424245"/>
-        <Setter Property="Padding" Value="16,10"/>
-        <Setter Property="FontSize" Value="13"/>
-        <Setter Property="FontWeight" Value="500"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Cursor" Value="Hand"/>
-    </Style>
-    
-    <Style Selector="Button.SecondaryButton:pointerover">
-        <Setter Property="Background" Value="#3A3A3C"/>
-    </Style>
-
-    <!-- ===== TEXTBOX / INPUT FIELDS ===== -->
     <Style Selector="TextBox">
-        <Setter Property="Background" Value="#2D2D2D"/>
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-        <Setter Property="BorderBrush" Value="#424245"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="12,10"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource MediumCornerRadius}"/> <Setter Property="Padding" Value="12,10"/>
         <Setter Property="FontSize" Value="14"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="CaretBrush" Value="#0A84FF"/>
-    </Style>
-    
-    <Style Selector="TextBox:focus">
-        <Setter Property="BorderBrush" Value="#0A84FF"/>
-        <Setter Property="BorderThickness" Value="2"/>
-        <Setter Property="Background" Value="#2D2D2D"/>
-    </Style>
-    
-    <Style Selector="TextBox:pointerover">
-        <Setter Property="BorderBrush" Value="#5A5A5F"/>
-        <Setter Property="Background" Value="#2D2D2D"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        
+        <Style Selector="^:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
     </Style>
 
-    <!-- ===== CARD / BORDER STYLES ===== -->
-    <Style Selector="Border.Card">
-        <Setter Property="Background" Value="#2D2D2D"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="BorderBrush" Value="#424245"/>
-        <Setter Property="BorderThickness" Value="1"/>
+    <Style Selector="Button.Primary">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource MediumCornerRadius}"/>
+        <Setter Property="Padding" Value="20,12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        
+        <Style Selector="^:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentFadeBrush}"/> <Setter Property="Foreground" Value="White"/> 
+        </Style>
+        
+        <Style Selector="^:pressed /template/ ContentPresenter">
+            <Setter Property="Opacity" Value="0.8"/>
+        </Style>
+        
+        <Style Selector="^:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}"/>
+        </Style>
     </Style>
 
-    <!-- ===== TYPOGRAPHY ===== -->
-    <Style Selector="TextBlock.Heading1">
-        <Setter Property="FontSize" Value="28"/>
-        <Setter Property="FontWeight" Value="700"/>
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-    </Style>
-
-    <Style Selector="TextBlock.Heading2">
-        <Setter Property="FontSize" Value="22"/>
-        <Setter Property="FontWeight" Value="600"/>
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-    </Style>
-
-    <Style Selector="TextBlock.Heading3">
-        <Setter Property="FontSize" Value="18"/>
-        <Setter Property="FontWeight" Value="600"/>
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-    </Style>
-
-    <Style Selector="TextBlock.BodyText">
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="FontWeight" Value="400"/>
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-    </Style>
-
-    <Style Selector="TextBlock.SecondaryText">
-        <Setter Property="FontSize" Value="13"/>
-        <Setter Property="FontWeight" Value="400"/>
-        <Setter Property="Foreground" Value="#A1A1A6"/>
-    </Style>
-
-    <Style Selector="TextBlock.SmallText">
+    <Style Selector="TextBlock.caption">
         <Setter Property="FontSize" Value="12"/>
-        <Setter Property="FontWeight" Value="400"/>
-        <Setter Property="Foreground" Value="#A1A1A6"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
 
 </Styles>

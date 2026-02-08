@@ -13,8 +13,8 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class PrescriptionFormViewModel : BaseViewModel
 {
-    private readonly IPrescriptionRepository? _prescriptionRepository;
-    private readonly IUnitOfWork? _unitOfWork;
+    private readonly IPrescriptionRepository _prescriptionRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     private long _customerId;
     private DateTimeOffset _issueDate = DateTimeOffset.Now;
@@ -45,7 +45,13 @@ public class PrescriptionFormViewModel : BaseViewModel
     public double? OdSphere
     {
         get => _odSphere;
-        set => SetProperty(ref _odSphere, value);
+        set
+        {
+            if (SetProperty(ref _odSphere, value))
+            {
+                ValidateOdSphere();
+            }
+        }
     }
 
     /// <summary>
@@ -240,56 +246,15 @@ public class PrescriptionFormViewModel : BaseViewModel
     /// </summary>
     public event EventHandler? Cancelled;
 
-    public PrescriptionFormViewModel(IPrescriptionRepository? prescriptionRepository, IUnitOfWork? unitOfWork)
+    public PrescriptionFormViewModel(IPrescriptionRepository prescriptionRepository, IUnitOfWork unitOfWork)
     {
-        _prescriptionRepository = prescriptionRepository;
-        _unitOfWork = unitOfWork;
+        _prescriptionRepository = prescriptionRepository ?? throw new ArgumentNullException(nameof(prescriptionRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
 
-        SaveCommand = new RelayCommand(ExecuteSave);
+        SaveCommand = new RelayCommand(async () => await SavePrescriptionAsync());
         CancelCommand = new RelayCommand(ExecuteCancel);
 
         Title = "Nouvelle Ordonnance";
-    }
-
-    private void ExecuteSave()
-    {
-        IsSaving = true;
-        try
-        {
-            // Créer l'ordonnance
-            var prescription = new Prescription
-            {
-                CustomerId = CustomerId,
-                IssueDate = IssueDate.UtcDateTime,
-                DoctorName = DoctorName,
-                OdSphere = OdSphere,
-                OdCylinder = OdCylinder,
-                OdAxis = OdAxis,
-                OdAddition = OdAddition,
-                OdPrismValue = OdPrismValue,
-                OdPrismBase = OdPrismBase,
-                OdVisualAcuity = OdVisualAcuity,
-                OgSphere = OgSphere,
-                OgCylinder = OgCylinder,
-                OgAxis = OgAxis,
-                OgAddition = OgAddition,
-                OgPrismValue = OgPrismValue,
-                OgPrismBase = OgPrismBase,
-                OgVisualAcuity = OgVisualAcuity,
-                Notes = Notes
-            };
-
-            PrescriptionSaved?.Invoke(this, prescription);
-            ClearForm();
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Erreur lors de la sauvegarde : {ex.Message}";
-        }
-        finally
-        {
-            IsSaving = false;
-        }
     }
 
     private void ExecuteCancel()
@@ -317,5 +282,101 @@ public class PrescriptionFormViewModel : BaseViewModel
         OgPrismBase = null;
         OgVisualAcuity = null;
         Notes = string.Empty;
+    }
+
+    /// <summary>
+    /// Charge les données d'une ordonnance existante pour modification.
+    /// </summary>
+    public void LoadPrescription(Prescription prescription)
+    {
+        CustomerId = prescription.CustomerId;
+        IssueDate = new DateTimeOffset(prescription.IssueDate);
+        DoctorName = prescription.DoctorName ?? string.Empty;
+        
+        OdSphere = prescription.OdSphere;
+        OdCylinder = prescription.OdCylinder;
+        OdAxis = prescription.OdAxis;
+        OdAddition = prescription.OdAddition;
+        OdPrismValue = prescription.OdPrismValue;
+        OdPrismBase = prescription.OdPrismBase;
+        OdVisualAcuity = prescription.OdVisualAcuity;
+        
+        OgSphere = prescription.OgSphere;
+        OgCylinder = prescription.OgCylinder;
+        OgAxis = prescription.OgAxis;
+        OgAddition = prescription.OgAddition;
+        OgPrismValue = prescription.OgPrismValue;
+        OgPrismBase = prescription.OgPrismBase;
+        OgVisualAcuity = prescription.OgVisualAcuity;
+        
+        Notes = prescription.Notes ?? string.Empty;
+        
+        Title = "Modifier Ordonnance";
+    }
+
+    /// <summary>
+    /// Valide la sphère de l'œil droit.
+    /// </summary>
+    private void ValidateOdSphere()
+    {
+        if (OdSphere.HasValue && (OdSphere.Value < -20 || OdSphere.Value > 20))
+        {
+            // Note: Pour l'instant, pas de propriété d'erreur visible
+            // À ajouter si nécessaire
+        }
+    }
+
+    /// <summary>
+    /// Sauvegarde l'ordonnance dans la base de données.
+    /// </summary>
+    private async Task SavePrescriptionAsync()
+    {
+        if (_prescriptionRepository == null || _unitOfWork == null)
+        {
+            ErrorMessage = "Impossible de sauvegarder : repository non initialisé";
+            return;
+        }
+
+        IsSaving = true;
+        ErrorMessage = string.Empty;
+
+        try
+        {
+            var prescription = new Prescription
+            {
+                CustomerId = CustomerId,
+                IssueDate = IssueDate.UtcDateTime,
+                DoctorName = DoctorName,
+                OdSphere = OdSphere,
+                OdCylinder = OdCylinder,
+                OdAxis = OdAxis,
+                OdAddition = OdAddition,
+                OdPrismValue = OdPrismValue,
+                OdPrismBase = OdPrismBase,
+                OdVisualAcuity = OdVisualAcuity,
+                OgSphere = OgSphere,
+                OgCylinder = OgCylinder,
+                OgAxis = OgAxis,
+                OgAddition = OgAddition,
+                OgPrismValue = OgPrismValue,
+                OgPrismBase = OgPrismBase,
+                OgVisualAcuity = OgVisualAcuity,
+                Notes = Notes
+            };
+
+            await _prescriptionRepository.CreateAsync(prescription);
+            await _unitOfWork.CommitAsync();
+
+            PrescriptionSaved?.Invoke(this, prescription);
+            ClearForm();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Erreur lors de la sauvegarde : {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
     }
 }

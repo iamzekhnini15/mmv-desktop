@@ -1,79 +1,237 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-            xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-            xmlns:local="using:MMV.App.ViewModels"
-            mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
-            x:Class="MMV.App.Views.DashboardView"
-            x:DataType="local:DashboardViewModel"
-            Background="#1D1D1D">
-    
-    <ScrollViewer>
-        <Border Padding="0">
-            <StackPanel Spacing="28" Margin="0">
-                <!-- Titre de la page -->
-                <StackPanel Spacing="6">
-                    <TextBlock Text="Tableau de Bord" FontSize="28" FontWeight="700" Foreground="#FFFFFF"/>
-                    <TextBlock Text="Aperçu des performances et statistiques clés" FontSize="14" Foreground="#A1A1A6"/>
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:converters="using:MMV.App.Converters"
+             xmlns:s="clr-namespace:System;assembly=mscorlib"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="850"
+             x:Class="MMV.App.Views.DashboardView"
+             x:DataType="vm:DashboardViewModel"
+             Background="{DynamicResource BackgroundBrush}">
+
+    <UserControl.Styles>
+        <Style Selector="Border.StatCard">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BoxShadow" Value="0 4 10 0 #1A000000"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1"/>
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="Border.StatCard:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
+            <Setter Property="RenderTransform" Value="scale(1.02)"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="TextBlock.StatValue">
+            <Setter Property="FontSize" Value="32"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="LetterSpacing" Value="-0.5"/>
+        </Style>
+
+        <Style Selector="TextBlock.StatLabel">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        </Style>
+
+        <Style Selector="TextBlock.SectionHeader">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="32" Spacing="32">
+
+            <Grid ColumnDefinitions="*, Auto">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Tableau de Bord" FontSize="28" FontWeight="Heavy" LetterSpacing="-0.5"/>
+                    <TextBlock Text="Vue d'ensemble de l'activité" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </StackPanel>
 
-                <!-- Grille de statistiques - Cartes colorées Apple Style -->
-                <Grid ColumnDefinitions="1*,1*,1*,1*" RowDefinitions="Auto">
-                    <Grid.Styles>
-                        <Style Selector="Border">
-                            <Setter Property="Margin" Value="0,0,16,0"/>
-                        </Style>
-                    </Grid.Styles>
-                
-                    <!-- Carte Clients - Bleu Apple -->
-                    <Border Grid.Column="0" Background="#0A84FF" CornerRadius="12" Padding="24">
-                        <StackPanel Spacing="14">
-                            <TextBlock Text="👥  Clients" FontSize="14" Foreground="White" Opacity="0.95" FontWeight="600"/>
-                            <TextBlock Text="{Binding TotalCustomers}" FontSize="40" FontWeight="700" Foreground="White"/>
-                            <TextBlock Text="Total des clients" FontSize="12" Foreground="White" Opacity="0.85"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Carte Produits - Vert Apple -->
-                    <Border Grid.Column="1" Background="#30B0C0" CornerRadius="12" Padding="24">
-                        <StackPanel Spacing="14">
-                            <TextBlock Text="📦  Produits" FontSize="14" Foreground="White" Opacity="0.95" FontWeight="600"/>
-                            <TextBlock Text="{Binding TotalProducts}" FontSize="40" FontWeight="700" Foreground="White"/>
-                            <TextBlock Text="Articles en stock" FontSize="12" Foreground="White" Opacity="0.85"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Carte Ventes - Orange Apple -->
-                    <Border Grid.Column="2" Background="#FF9500" CornerRadius="12" Padding="24">
-                        <StackPanel Spacing="14">
-                            <TextBlock Text="💰  Chiffre d'affaires" FontSize="14" Foreground="White" Opacity="0.95" FontWeight="600"/>
-                            <TextBlock Text="{Binding TotalSales}" FontSize="40" FontWeight="700" Foreground="White"/>
-                            <TextBlock Text="Ventes totales" FontSize="12" Foreground="White" Opacity="0.85"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Carte Commandes en attente - Rouge Apple -->
-                    <Border Grid.Column="3" Background="#FF3B30" CornerRadius="12" Padding="24">
-                        <StackPanel Spacing="14">
-                            <TextBlock Text="🔔  En attente" FontSize="14" Foreground="White" Opacity="0.95" FontWeight="600"/>
-                            <TextBlock Text="{Binding PendingOrders}" FontSize="40" FontWeight="700" Foreground="White"/>
-                            <TextBlock Text="Commandes en cours" FontSize="12" Foreground="White" Opacity="0.85"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-
-                <!-- Section info - Dark Card -->
-                <Border Background="#2D2D2D" CornerRadius="12" Padding="24" BorderBrush="#424245" BorderThickness="1">
-                    <StackPanel Spacing="14">
-                        <TextBlock Text="Bienvenue dans ManageMyVision" FontSize="18" FontWeight="700" Foreground="#FFFFFF"/>
-                        <TextBlock Text="Votre solution complète de gestion pour opticiens. Utilisez le menu pour accéder aux différents modules de gestion de votre activité." 
-                                  FontSize="14"
-                                  TextWrapping="Wrap"
-                                  Foreground="#A1A1A6"/>
+                <Border Grid.Column="1" Background="{DynamicResource SurfaceLightBrush}" CornerRadius="8" Padding="12,6" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource IconCalendar}" Width="14" Foreground="{DynamicResource AccentBrush}"/>
+                        <TextBlock Text="{Binding Source={x:Static s:DateTime.Now}, StringFormat='{}{0:dd MMMM yyyy}'}"
+                                   FontSize="13" FontWeight="SemiBold"/>
                     </StackPanel>
                 </Border>
-            </StackPanel>
-        </Border>
-    </ScrollViewer>
+            </Grid>
 
+            <Grid ColumnDefinitions="*, 20, *, 20, *, 20, *">
+
+                <Border Grid.Column="0" Classes="StatCard">
+                    <Grid RowDefinitions="Auto, *, Auto">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <Border Width="40" Height="40" CornerRadius="10" Background="#260A84FF">
+                                <PathIcon Data="{StaticResource IconCustomers}" Width="20" Foreground="#0A84FF"/>
+                            </Border>
+                            <Border Grid.Column="1" Background="#2634C759" CornerRadius="12" Padding="8,4" VerticalAlignment="Top">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <PathIcon Data="M 0 10 L 5 0 L 10 10" Width="8" Height="8" Foreground="#30D158"/>
+                                    <TextBlock Text="+5%" FontSize="11" FontWeight="Bold" Foreground="#30D158"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <StackPanel Grid.Row="1" Margin="0,16,0,0">
+                            <TextBlock Text="{Binding TotalCustomers}" Classes="StatValue"/>
+                            <TextBlock Text="Clients Actifs" Classes="StatLabel"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="2" Classes="StatCard">
+                    <Grid RowDefinitions="Auto, *, Auto">
+                        <Border Width="40" Height="40" CornerRadius="10" Background="#2630B0C0" HorizontalAlignment="Left">
+                            <PathIcon Data="{StaticResource IconProducts}" Width="20" Foreground="#30B0C0"/>
+                        </Border>
+                        <StackPanel Grid.Row="1" Margin="0,16,0,0">
+                            <TextBlock Text="{Binding TotalProducts}" Classes="StatValue"/>
+                            <TextBlock Text="Références Stock" Classes="StatLabel"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="4" Classes="StatCard">
+                    <Grid RowDefinitions="Auto, *, Auto">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <Border Width="40" Height="40" CornerRadius="10" Background="#26FF9500">
+                                <PathIcon Data="{StaticResource IconSales}" Width="20" Foreground="#FF9500"/>
+                            </Border>
+                            <Border Grid.Column="1" Background="#2634C759" CornerRadius="12" Padding="8,4" VerticalAlignment="Top">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <PathIcon Data="M 0 10 L 5 0 L 10 10" Width="8" Height="8" Foreground="#30D158"/>
+                                    <TextBlock Text="+12%" FontSize="11" FontWeight="Bold" Foreground="#30D158"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                        <StackPanel Grid.Row="1" Margin="0,16,0,0">
+                            <TextBlock Text="{Binding TotalSales, StringFormat='{}{0} €'}" Classes="StatValue"/>
+                            <TextBlock Text="Chiffre d'Affaires" Classes="StatLabel"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="6" Classes="StatCard">
+                    <Grid RowDefinitions="Auto, *, Auto">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <Border Width="40" Height="40" CornerRadius="10" Background="#26FF3B30">
+                                <PathIcon Data="{StaticResource IconOrders}" Width="20" Foreground="#FF3B30"/>
+                            </Border>
+                            <Border Grid.Column="1" Background="#26FF3B30" CornerRadius="12" Padding="8,4" VerticalAlignment="Top"
+                                    IsVisible="{Binding PendingOrders, Converter={x:Static converters:IsGreaterThanZeroConverter.Instance}}">
+                                <TextBlock Text="Action requise" FontSize="10" FontWeight="Bold" Foreground="#FF453A"/>
+                            </Border>
+                        </Grid>
+                        <StackPanel Grid.Row="1" Margin="0,16,0,0">
+                            <TextBlock Text="{Binding PendingOrders}" Classes="StatValue" Foreground="#FF453A"/>
+                            <TextBlock Text="Commandes en cours" Classes="StatLabel"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <Grid ColumnDefinitions="2.5*, 32, 1*">
+
+                <StackPanel Grid.Column="0">
+                    <Grid ColumnDefinitions="*, Auto">
+                        <TextBlock Text="Activités Récentes" Classes="SectionHeader"/>
+                        <Button Content="Voir tout" Classes="GhostLink" Foreground="{DynamicResource AccentBrush}" FontSize="13" Padding="0" Background="Transparent" BorderThickness="0" Cursor="Hand"/>
+                    </Grid>
+
+                    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="0">
+                        <StackPanel>
+                            <Grid ColumnDefinitions="50, *, Auto" Margin="16">
+                                <Border Width="36" Height="36" CornerRadius="18" Background="#2630D158">
+                                    <PathIcon Data="{StaticResource IconCheck}" Width="14" Foreground="#30D158"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                                    <TextBlock Text="Vente #1024 - Martin Dupont" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Monture Ray-Ban + Verres Essilor" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Text="Il y a 2h" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Separator Background="{DynamicResource BorderBrush}" Height="1" Opacity="0.5"/>
+
+                            <Grid ColumnDefinitions="50, *, Auto" Margin="16">
+                                <Border Width="36" Height="36" CornerRadius="18" Background="#260A84FF">
+                                    <PathIcon Data="{StaticResource IconPlus}" Width="14" Foreground="#0A84FF"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                                    <TextBlock Text="Nouveau Client - Sarah Connor" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Fiche créée par Admin" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Text="Il y a 5h" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="Actions Rapides" Classes="SectionHeader"/>
+
+                    <StackPanel Spacing="12">
+
+                        <Button Command="{Binding NavigateToSaleCommand}"
+                                HorizontalAlignment="Stretch" Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16" Cursor="Hand">
+                            <Grid ColumnDefinitions="Auto, *">
+                                <Border Width="32" Height="32" CornerRadius="8" Background="#260071E3">
+                                    <PathIcon Data="{StaticResource IconSales}" Width="16" Foreground="#0071E3"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="Nouvelle Vente" VerticalAlignment="Center" Margin="12,0,0,0" FontWeight="SemiBold"/>
+                                <PathIcon Grid.Column="1" Data="{StaticResource IconBack}" Width="10" RenderTransform="rotate(180deg)" HorizontalAlignment="Right" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </Grid>
+                        </Button>
+
+                        <Button Command="{Binding NavigateToCustomerCommand}"
+                                HorizontalAlignment="Stretch" Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16" Cursor="Hand">
+                            <Grid ColumnDefinitions="Auto, *">
+                                <Border Width="32" Height="32" CornerRadius="8" Background="#2630B0C0">
+                                    <PathIcon Data="{StaticResource IconCustomers}" Width="16" Foreground="#30B0C0"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="Nouveau Client" VerticalAlignment="Center" Margin="12,0,0,0" FontWeight="SemiBold"/>
+                                <PathIcon Grid.Column="1" Data="{StaticResource IconBack}" Width="10" RenderTransform="rotate(180deg)" HorizontalAlignment="Right" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </Grid>
+                        </Button>
+
+                        <Button Command="{Binding NavigateToInventoryCommand}"
+                                HorizontalAlignment="Stretch" Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="16" Cursor="Hand">
+                            <Grid ColumnDefinitions="Auto, *">
+                                <Border Width="32" Height="32" CornerRadius="8" Background="#26FF9500">
+                                    <PathIcon Data="{StaticResource IconInventory}" Width="16" Foreground="#FF9500"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="Inventaire Rapide" VerticalAlignment="Center" Margin="12,0,0,0" FontWeight="SemiBold"/>
+                                <PathIcon Grid.Column="1" Data="{StaticResource IconBack}" Width="10" RenderTransform="rotate(180deg)" HorizontalAlignment="Right" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </Grid>
+                        </Button>
+
+                        <Border Margin="0,20,0,0" Background="Transparent" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="20">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="💡 Conseil Pro" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                                <TextBlock Text="Pensez à vérifier les stocks bas avant de passer vos commandes fournisseurs du vendredi."
+                                           FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" LineHeight="18"/>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
 </UserControl>

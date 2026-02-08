@@ -3,93 +3,51 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MMV.App.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="800"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="MMV.App.Views.Clients.CustomerPurchaseHistoryView"
              x:DataType="vm:CustomerPurchaseHistoryViewModel"
-             Background="#1D1D1D">
+             Background="{DynamicResource BackgroundBrush}">
 
-    <UserControl.Styles>
-        <Style Selector="Border.SectionCard">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="24"/>
-            <Setter Property="Margin" Value="0,0,0,20"/>
-            <Setter Property="BorderThickness" Value="0"/>
-        </Style>
-
-        <Style Selector="TextBlock.Label">
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="FontWeight" Value="500"/>
-            <Setter Property="Foreground" Value="#858585"/>
-        </Style>
-
-        <Style Selector="DataGrid">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="GridLinesVisibility" Value="None"/>
-            <Setter Property="Foreground" Value="#E0E0E0"/>
-            <Setter Property="IsReadOnly" Value="True"/>
-        </Style>
-
-        <Style Selector="DataGridColumnHeader">
-            <Setter Property="Background" Value="#1F1F1F"/>
-            <Setter Property="Foreground" Value="#B0B0B0"/>
-            <Setter Property="FontWeight" Value="600"/>
-            <Setter Property="BorderThickness" Value="0,0,0,1"/>
-            <Setter Property="BorderBrush" Value="#333333"/>
-        </Style>
-
-        <Style Selector="DataGridRow">
-            <Setter Property="MinHeight" Value="36"/>
-            <Setter Property="BorderThickness" Value="0"/>
-        </Style>
-
-        <Style Selector="DataGridCell">
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="8,6"/>
-        </Style>
-    </UserControl.Styles>
-
-    <Grid RowDefinitions="Auto,*">
-        <!-- En-tête -->
-        <Border Grid.Row="0" Padding="32,24,32,10">
-            <StackPanel Spacing="4">
-                <TextBlock Text="Historique d'achats" FontSize="22" FontWeight="700" Foreground="#FFFFFF"/>
-                <TextBlock Text="Commandes passées par le client" FontSize="13" Foreground="#858585"/>
+    <Grid RowDefinitions="Auto, *">
+        <Border Grid.Row="0" Padding="20,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+            <StackPanel>
+                <TextBlock Text="Historique des Achats" FontWeight="Bold" FontSize="16"/>
+                <TextBlock Text="Toutes les transactions passées." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
             </StackPanel>
         </Border>
 
-        <Grid Grid.Row="1">
-            <StackPanel Spacing="16">
-                <!-- Message d'erreur -->
-                <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF6B6B" IsVisible="{Binding HasError}"/>
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding Orders}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  HorizontalGridLinesBrush="{DynamicResource BorderBrush}"
+                  BorderThickness="0"
+                  RowHeight="44">
+            
+            <DataGrid.Styles>
+                <Style Selector="DataGridColumnHeader">
+                    <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
+                    <Setter Property="FontSize" Value="11"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Padding" Value="12,8"/>
+                </Style>
+                <Style Selector="DataGridCell">
+                    <Setter Property="FontSize" Value="13"/>
+                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                </Style>
+            </DataGrid.Styles>
 
-                <!-- Chargement -->
-                <TextBlock Text="Chargement..." Foreground="#858585" IsVisible="{Binding IsLoading}"/>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="DATE" Binding="{Binding OrderDate, StringFormat='{}{0:dd/MM/yyyy}'}" Width="120"/>
+                <DataGridTextColumn Header="N° FACTURE" Binding="{Binding OrderNumber}" Width="*" FontWeight="Medium"/>
+                <DataGridTextColumn Header="STATUT" Binding="{Binding Status}" Width="150" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <DataGridTextColumn Header="MONTANT" Binding="{Binding TotalAmount, StringFormat='{}{0:F2} €'}" Width="120" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+            </DataGrid.Columns>
+        </DataGrid>
 
-                <!-- Aucun achat -->
-                <Border Classes="SectionCard" IsVisible="{Binding !HasOrders}">
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="Aucun achat" FontSize="16" FontWeight="600" Foreground="#FFFFFF"/>
-                        <TextBlock Text="Ce client n'a pas encore de commandes enregistrées." Foreground="#858585"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- Liste des commandes -->
-                <Border Classes="SectionCard" IsVisible="{Binding HasOrders}">
-                    <DataGrid ItemsSource="{Binding Orders}"
-                              AutoGenerateColumns="False"
-                              Height="420"
-                              RowBackground="#252526">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Date" Binding="{Binding OrderDate, StringFormat='{}{0:dd/MM/yyyy}'}" Width="120"/>
-                            <DataGridTextColumn Header="Commande" Binding="{Binding OrderNumber}" Width="*"/>
-                            <DataGridTextColumn Header="Statut" Binding="{Binding Status}" Width="140"/>
-                            <DataGridTextColumn Header="Total" Binding="{Binding TotalAmount, StringFormat='{}{0:F2} €'}" Width="120"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Border>
-            </StackPanel>
-        </Grid>
+        <ProgressBar Grid.Row="1" IsIndeterminate="True" IsVisible="{Binding IsLoading}" VerticalAlignment="Top" Height="2" Background="Transparent"/>
+        <TextBlock Grid.Row="1" Text="Aucune commande trouvée" IsVisible="{Binding !HasOrders}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextDisabledBrush}"/>
     </Grid>
 </UserControl>

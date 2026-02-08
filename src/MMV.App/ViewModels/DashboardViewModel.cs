@@ -1,3 +1,8 @@
+using System;
+using System.Windows.Input;
+using MMV.App.Commands;
+using MMV.App.Services;
+
 namespace MMV.App.ViewModels;
 
 /// <summary>
@@ -6,6 +11,7 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class DashboardViewModel : BaseViewModel
 {
+    private readonly INavigationService? _navigationService;
     private int _totalCustomers = 0;
     private int _totalProducts = 0;
     private decimal _totalSales = 0m;
@@ -35,10 +41,30 @@ public class DashboardViewModel : BaseViewModel
         set => SetProperty(ref _pendingOrders, value);
     }
 
-    public DashboardViewModel()
+    public ICommand NavigateToSaleCommand { get; }
+    public ICommand NavigateToCustomerCommand { get; }
+    public ICommand NavigateToInventoryCommand { get; }
+
+    public DashboardViewModel(INavigationService? navigationService = null)
     {
+        _navigationService = navigationService;
         Title = "Tableau de Bord";
+
+        NavigateToSaleCommand = new RelayCommand(() => ExecuteNavigate("Sales"), CanNavigate);
+        NavigateToCustomerCommand = new RelayCommand(() => ExecuteNavigate("Customers"), CanNavigate);
+        NavigateToInventoryCommand = new RelayCommand(() => ExecuteNavigate("Inventory"), CanNavigate);
+
         LoadData();
+    }
+
+    private void ExecuteNavigate(string viewName)
+    {
+        _navigationService?.Navigate(viewName);
+    }
+
+    private bool CanNavigate()
+    {
+        return _navigationService != null;
     }
 
     private void LoadData()
