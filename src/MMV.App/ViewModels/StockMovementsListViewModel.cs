@@ -23,6 +23,7 @@ public class StockMovementsListViewModel : BaseViewModel
     private string _searchText = string.Empty;
     private string? _selectedMovementType = "Tous types";
     private long? _selectedProductId = 0;
+    private bool _isLoading;
     private int _totalMovements;
 
     public ObservableCollection<StockMovement> Movements
@@ -71,6 +72,12 @@ public class StockMovementsListViewModel : BaseViewModel
                 _ = LoadMovementsAsync();
             }
         }
+    }
+
+    public bool IsLoading
+    {
+        get => _isLoading;
+        set => SetProperty(ref _isLoading, value);
     }
 
     public int TotalMovements

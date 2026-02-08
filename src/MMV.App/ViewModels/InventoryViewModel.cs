@@ -25,9 +25,11 @@ public class InventoryViewModel : BaseViewModel
     private ObservableCollection<InventoryItem> _filteredItems = new();
     private ObservableCollection<Product> _products = new();
     private string _searchText = string.Empty;
+    private bool _isLoading;
     private bool _isProcessing;
     private int _totalItems;
     private int _itemsWithDifference;
+    private string? _errorMessage;
 
     public ObservableCollection<InventoryItem> Items
     {
@@ -59,6 +61,12 @@ public class InventoryViewModel : BaseViewModel
         }
     }
 
+    public bool IsLoading
+    {
+        get => _isLoading;
+        set => SetProperty(ref _isLoading, value);
+    }
+
     public bool IsProcessing
     {
         get => _isProcessing;
@@ -75,6 +83,12 @@ public class InventoryViewModel : BaseViewModel
     {
         get => _itemsWithDifference;
         set => SetProperty(ref _itemsWithDifference, value);
+    }
+
+    public string? ErrorMessage
+    {
+        get => _errorMessage;
+        set => SetProperty(ref _errorMessage, value);
     }
 
     public ICommand LoadInventoryCommand { get; }

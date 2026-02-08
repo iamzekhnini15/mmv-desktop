@@ -146,6 +146,7 @@ public class StockMovementFormViewModel : BaseViewModel
     private ObservableCollection<Product> _products = new();
     private ObservableCollection<ProductMovementLine> _movementLines = new();
     private bool _isSaving;
+    private string? _errorMessage;
 
     public ObservableCollection<Product> Products
     {
@@ -163,6 +164,12 @@ public class StockMovementFormViewModel : BaseViewModel
     {
         get => _isSaving;
         set => SetProperty(ref _isSaving, value);
+    }
+
+    public string? ErrorMessage
+    {
+        get => _errorMessage;
+        set => SetProperty(ref _errorMessage, value);
     }
 
     public ObservableCollection<string> MovementTypes { get; } = new()
