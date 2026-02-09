@@ -1,0 +1,236 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:converters="using:MMV.App.Converters"
+             xmlns:controls="using:MMV.App.Controls"
+             xmlns:entities="using:MMV.Domain.Entities"
+             mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="900"
+             x:Class="MMV.App.Views.Orders.FabricationSheetView"
+             x:DataType="vm:FabricationSheetViewModel"
+             Background="{DynamicResource BackgroundBrush}">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.MajorTitle">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="LetterSpacing" Value="0.5"/>
+        </Style>
+
+        <Style Selector="TextBlock.TechHeader">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="LetterSpacing" Value="1"/>
+        </Style>
+
+        <Style Selector="TextBlock.DataLabel">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+
+        <Style Selector="TextBlock.DataValue">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
+
+        <Style Selector="Border.ContentBlock">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="24"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, *">
+
+        <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="24,16">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <controls:BackButton Command="{Binding BackCommand}" ButtonText="Retour" Margin="0"/>
+                    <Rectangle Width="1" Height="20" Fill="{DynamicResource BorderBrush}"/>
+                    <StackPanel>
+                        <TextBlock Text="Fiche de Fabrication" FontSize="16" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding OrderNumber, StringFormat='Commande #{0}'}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
+                    <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="8" Padding="12,6" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding StatusDisplay}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource AccentBrush}"/>
+                    </Border>
+                    
+                    <Button Classes="Secondary" Padding="16,8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconReports}" Width="14"/>
+                            <TextBlock Text="Imprimer"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1">
+            <Grid ColumnDefinitions="2*, 32, 3*" Margin="32">
+                
+                <StackPanel Grid.Column="0" Spacing="32">
+                    
+                    <Border Classes="ContentBlock">
+                        <StackPanel Spacing="24">
+                            <TextBlock Text="INFORMATIONS GÉNÉRALES" Classes="MajorTitle"/>
+                            
+                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Date de commande" Classes="DataLabel"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <PathIcon Data="{StaticResource IconCalendar}" Width="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        <TextBlock Text="{Binding OrderDate, StringFormat='{}{0:dd/MM/yyyy}'}" Classes="DataValue"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Livraison estimée" Classes="DataLabel"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <PathIcon Data="{StaticResource IconCalendar}" Width="14" Foreground="{DynamicResource AccentBrush}"/>
+                                        <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd/MM/yyyy}'}" Classes="DataValue" Foreground="{DynamicResource AccentBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2">
+                                    <TextBlock Text="Client" Classes="DataLabel"/>
+                                    <Grid ColumnDefinitions="Auto, *">
+                                        <Border Width="40" Height="40" CornerRadius="20" Background="{DynamicResource SurfaceLightBrush}" VerticalAlignment="Center">
+                                            <PathIcon Data="{StaticResource IconCustomers}" Width="18" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding CustomerName}" Classes="DataValue"/>
+                                            <TextBlock Text="{Binding CustomerPhone}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="ContentBlock" IsVisible="{Binding HasFrame}">
+                         <StackPanel Spacing="20">
+                            <TextBlock Text="MONTURE" Classes="MajorTitle"/>
+                             <Grid ColumnDefinitions="Auto, *">
+                                 <Border Width="60" Height="60" Background="{DynamicResource SurfaceLightBrush}" CornerRadius="8" VerticalAlignment="Top">
+                                     <PathIcon Data="{StaticResource IconGlasses}" Width="30" Foreground="{DynamicResource TextPrimaryBrush}" Opacity="0.8"/>
+                                 </Border>
+                                 <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                                     <TextBlock Text="{Binding FrameItem.Product.Name}" FontSize="18" FontWeight="Bold"/>
+                                     <TextBlock Text="{Binding FrameItem.Product.Reference, StringFormat='Réf: {0}'}" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                                     <TextBlock Text="{Binding FrameItem.Product.Category}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Opacity="0.7" Margin="0,4,0,0"/>
+                                 </StackPanel>
+                             </Grid>
+                         </StackPanel>
+                    </Border>
+
+                    <Border Classes="ContentBlock" IsVisible="{Binding Notes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <StackPanel Spacing="16">
+                             <TextBlock Text="INSTRUCTIONS / NOTES" Classes="MajorTitle"/>
+                             <TextBlock Text="{Binding Notes}" TextWrapping="Wrap" FontStyle="Italic" FontSize="14" LineHeight="22" Opacity="0.9"/>
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Spacing="32">
+                    
+                    <Border Classes="ContentBlock" Padding="0" ClipToBounds="True">
+                        <StackPanel>
+                            <Border Padding="24,24,24,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                                <TextBlock Text="PARAMÈTRES TECHNIQUES DES VERRES" Classes="MajorTitle" Margin="0"/>
+                            </Border>
+                            
+                            <Grid RowDefinitions="Auto, Auto, Auto">
+                                
+                                <Border Grid.Row="0" Background="{DynamicResource SurfaceLightBrush}" Padding="16,12">
+                                     <Grid ColumnDefinitions="60, *, 80, 80, 80, 80">
+                                        <TextBlock Grid.Column="1" Text="TYPE DE VERRE" Classes="TechHeader"/>
+                                        <TextBlock Grid.Column="2" Text="SPH" Classes="TechHeader" HorizontalAlignment="Center"/>
+                                        <TextBlock Grid.Column="3" Text="CYL" Classes="TechHeader" HorizontalAlignment="Center"/>
+                                        <TextBlock Grid.Column="4" Text="AXE" Classes="TechHeader" HorizontalAlignment="Center"/>
+                                        <TextBlock Grid.Column="5" Text="ADD" Classes="TechHeader" HorizontalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Grid.Row="1" Padding="16,20" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" IsVisible="{Binding HasLensOd}">
+                                     <Grid ColumnDefinitions="60, *, 80, 80, 80, 80">
+                                        <Border Width="32" Height="32" CornerRadius="16" Background="{DynamicResource AccentFadeBrush}" HorizontalAlignment="Left">
+                                            <TextBlock Text="OD" FontSize="11" FontWeight="Heavy" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                                            <TextBlock Text="{Binding LensOdItem.Product.Name}" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding LensOdItem.Product.Reference}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        </StackPanel>
+                                        
+                                        <TextBlock Grid.Column="2" Text="{Binding LensOdItem.Sphere, StringFormat='{}{0:+0.00;-0.00;0.00}'}" Classes="DataValue" HorizontalAlignment="Center"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding LensOdItem.Cylinder, StringFormat='{}{0:+0.00;-0.00;—}'}" Classes="DataValue" HorizontalAlignment="Center"/>
+                                        <TextBlock Grid.Column="4" Text="{Binding LensOdItem.Axis, StringFormat='{}{0}°'}" Classes="DataValue" HorizontalAlignment="Center"/>
+                                        <TextBlock Grid.Column="5" Text="{Binding LensOdItem.Addition, StringFormat='{}{0:+0.00;—}'}" Classes="DataValue" HorizontalAlignment="Center" Foreground="{DynamicResource SuccessBrush}"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Grid.Row="2" Padding="16,20" IsVisible="{Binding HasLensOg}">
+                                     <Grid ColumnDefinitions="60, *, 80, 80, 80, 80">
+                                        <Border Width="32" Height="32" CornerRadius="16" Background="#33FF9500" HorizontalAlignment="Left">
+                                            <TextBlock Text="OG" FontSize="11" FontWeight="Heavy" Foreground="#FF9500" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                                            <TextBlock Text="{Binding LensOgItem.Product.Name}" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding LensOgItem.Product.Reference}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        </StackPanel>
+                                        
+                                        <TextBlock Grid.Column="2" Text="{Binding LensOgItem.Sphere, StringFormat='{}{0:+0.00;-0.00;0.00}'}" Classes="DataValue" HorizontalAlignment="Center"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding LensOgItem.Cylinder, StringFormat='{}{0:+0.00;-0.00;—}'}" Classes="DataValue" HorizontalAlignment="Center"/>
+                                        <TextBlock Grid.Column="4" Text="{Binding LensOgItem.Axis, StringFormat='{}{0}°'}" Classes="DataValue" HorizontalAlignment="Center"/>
+                                        <TextBlock Grid.Column="5" Text="{Binding LensOgItem.Addition, StringFormat='{}{0:+0.00;—}'}" Classes="DataValue" HorizontalAlignment="Center" Foreground="{DynamicResource SuccessBrush}"/>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="ContentBlock">
+                        <StackPanel Spacing="20">
+                            <TextBlock Text="CONTRÔLE QUALITÉ ATELIER" Classes="MajorTitle"/>
+                            
+                            <Grid ColumnDefinitions="*, 32, *">
+                                <StackPanel Grid.Column="0" Spacing="16">
+                                    <TextBlock Text="Montage" Classes="TechHeader"/>
+                                    <CheckBox Content="Conformité verres (Puiss./Axe)"/>
+                                    <CheckBox Content="Centrage et Axage"/>
+                                    <CheckBox Content="Tension des verres"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Spacing="16">
+                                     <TextBlock Text="Finition" Classes="TechHeader"/>
+                                    <CheckBox Content="Ajustage branches/plaquettes"/>
+                                    <CheckBox Content="Nettoyage final"/>
+                                    <CheckBox Content="Validation Responsable"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="16" Margin="0,16,0,0">
+                        <TextBlock Text="VALEUR TOTALE COMMANDE" VerticalAlignment="Center" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13"/>
+                        <TextBlock Text="{Binding TotalAmount, StringFormat='{}{0:F2} €'}" FontSize="24" FontWeight="Heavy" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </StackPanel>
+
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -1,0 +1,334 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:converters="using:MMV.App.Converters"
+             xmlns:controls="using:MMV.App.Controls"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="MMV.App.Views.Orders.OrderDetailView"
+             x:DataType="vm:OrderDetailViewModel"
+             Background="{DynamicResource BackgroundBrush}">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.Label">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="TextBlock.Value">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="Border.DetailSection">
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="0,20"/>
+        </Style>
+        <Style Selector="Border.ItemRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="0,10"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, *">
+
+        <!-- ═══ HEADER ═══ -->
+        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="32,24">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+
+                <controls:BackButton Grid.Column="0" Command="{Binding BackCommand}"
+                                     ButtonText="Retour" VerticalAlignment="Top" Margin="0,4,32,0"/>
+
+                <Grid Grid.Column="1" ColumnDefinitions="Auto, *">
+                    <Border Grid.Column="0" VerticalAlignment="Top" Width="64" Height="64" CornerRadius="8"
+                            Background="{DynamicResource SurfaceLightBrush}" Margin="0,0,24,0">
+                        <PathIcon Data="{StaticResource IconOrders}" Width="24" Height="24"
+                                  Foreground="{DynamicResource AccentBrush}"/>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Top" Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="{Binding OrderNumber}" FontSize="24" FontWeight="Bold"/>
+                            <!-- Status badge -->
+                            <Border Background="{Binding CurrentStatus, Converter={x:Static converters:OrderStatusToColorConverter.Instance}, ConverterParameter=bg}"
+                                    CornerRadius="6" Padding="10,4" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding StatusDisplay}" FontSize="12" FontWeight="Bold"
+                                           Foreground="{Binding CurrentStatus, Converter={x:Static converters:OrderStatusToColorConverter.Instance}}"/>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <TextBlock Text="{Binding CustomerName}" FontSize="14"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <TextBlock Text="•" Foreground="{DynamicResource BorderBrush}"/>
+                            <TextBlock Text="{Binding OrderDate, StringFormat='{}{0:dd/MM/yyyy}'}" FontSize="14"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </StackPanel>
+
+                        <!-- Delay indicator -->
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                            <Border IsVisible="{Binding IsOverdue}"
+                                    Background="#33FF453A" CornerRadius="4" Padding="8,3">
+                                <TextBlock Text="{Binding DaysRemaining, StringFormat='⚠ En retard de {0} jour(s)'}"
+                                           FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource ErrorBrush}"/>
+                            </Border>
+                            <Border IsVisible="{Binding !IsOverdue}"
+                                    Background="#3330D158" CornerRadius="4" Padding="8,3">
+                                <TextBlock Text="{Binding DaysRemaining, StringFormat='{}{0} jour(s) restant(s)'}"
+                                           FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"/>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Action buttons -->
+                <StackPanel Grid.Column="2" HorizontalAlignment="Right" Spacing="16">
+                    <StackPanel HorizontalAlignment="Right">
+                        <TextBlock Text="{Binding TotalAmount, StringFormat='{}{0:C2}'}" FontSize="24"
+                                   FontWeight="Bold" HorizontalAlignment="Right"/>
+                        <TextBlock Text="Montant total" FontSize="11"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Command="{Binding PrintFabSheetCommand}" Background="{DynamicResource SurfaceLightBrush}"
+                                CornerRadius="8" Padding="12,8" BorderThickness="0" Cursor="Hand">
+                            <TextBlock Text="📋 Fiche Fabrication" FontSize="12"/>
+                        </Button>
+                        <Button Command="{Binding EditCommand}" Classes="Primary" Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource IconSettings}" Width="14"/>
+                                <TextBlock Text="Modifier"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding DeleteCommand}" Background="{DynamicResource ErrorBrush}"
+                                CornerRadius="{DynamicResource MediumCornerRadius}" BorderThickness="0"
+                                Cursor="Hand" Padding="12,8">
+                            <PathIcon Data="{StaticResource IconTrash}" Width="14"/>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ═══ BODY ═══ -->
+        <ScrollViewer Grid.Row="1" Padding="40">
+            <Grid ColumnDefinitions="2*, 40, 1*">
+
+                <!-- Left side: Items + Workflow -->
+                <StackPanel Grid.Column="0" Spacing="32">
+
+                    <!-- Workflow -->
+                    <StackPanel>
+                        <TextBlock Text="AVANCEMENT DU WORKFLOW" FontSize="11" FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,16"/>
+
+                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="20"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <TextBlock Text="Statut actuel :" FontSize="13" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    <Border Background="{Binding CurrentStatus, Converter={x:Static converters:OrderStatusToColorConverter.Instance}, ConverterParameter=bg}"
+                                            CornerRadius="4" Padding="10,4">
+                                        <TextBlock Text="{Binding StatusDisplay}" FontWeight="Bold"
+                                                   Foreground="{Binding CurrentStatus, Converter={x:Static converters:OrderStatusToColorConverter.Instance}}"/>
+                                    </Border>
+                                </StackPanel>
+
+                                <Button Command="{Binding AdvanceStatusCommand}" Classes="Primary" Padding="16,10"
+                                        IsVisible="{Binding CanAdvanceStatus}" HorizontalAlignment="Left">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="→"/>
+                                        <TextBlock Text="{Binding NextStatusDisplay, StringFormat='Passer à : {0}'}"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <TextBlock IsVisible="{Binding !CanAdvanceStatus}" FontSize="12" Opacity="0.5"
+                                           Text="La commande est livrée ou nécessite la validation du contrôle qualité."/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Items list -->
+                    <StackPanel>
+                        <TextBlock Text="ARTICLES DE LA COMMANDE" FontSize="11" FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,16"/>
+
+                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="4">
+                            <ItemsControl ItemsSource="{Binding Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="ItemRow" Padding="16,12">
+                                            <Grid ColumnDefinitions="Auto, *, Auto">
+                                                <Border Grid.Column="0" Background="{DynamicResource SurfaceLightBrush}"
+                                                        CornerRadius="4" Padding="8,3" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                    <TextBlock Text="{Binding ItemType}" FontSize="10" FontWeight="Bold"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                </Border>
+
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Product.Name}" FontWeight="SemiBold" FontSize="13"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                                        <TextBlock Text="{Binding Product.Reference}" FontSize="11"
+                                                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                        <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                   IsVisible="{Binding Sphere, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                                            <TextBlock.Text>
+                                                                <MultiBinding StringFormat="Sph: {0} | Cyl: {1} | Axe: {2}">
+                                                                    <Binding Path="Sphere"/>
+                                                                    <Binding Path="Cylinder"/>
+                                                                    <Binding Path="Axis"/>
+                                                                </MultiBinding>
+                                                            </TextBlock.Text>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding UnitPrice, StringFormat='{}{0:F2} €'}"
+                                                               FontWeight="Bold" FontSize="13" HorizontalAlignment="Right"/>
+                                                    <TextBlock Text="{Binding Quantity, StringFormat='x{0}'}"
+                                                               FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                               HorizontalAlignment="Right"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Notes -->
+                    <StackPanel IsVisible="{Binding Notes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <TextBlock Text="NOTES" FontSize="11" FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,12"/>
+                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="16"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <TextBlock Text="{Binding Notes}" TextWrapping="Wrap" LineHeight="22"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" Opacity="0.8"/>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+
+                <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Stretch" Margin="19,0"/>
+
+                <!-- Right side: Quality checklist -->
+                <StackPanel Grid.Column="2" Spacing="32">
+
+                    <!-- Quality Checklist -->
+                    <StackPanel>
+                        <TextBlock Text="CONTRÔLE QUALITÉ" FontSize="11" FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,16"/>
+
+                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="20">
+                            <StackPanel Spacing="14">
+
+                                <TextBlock Text="Tous les points doivent être validés pour passer au statut « Prêt »."
+                                           FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                                <CheckBox IsChecked="{Binding CheckFrameAlignment}"
+                                          IsEnabled="{Binding IsQualityCheckPhase}">
+                                    <TextBlock Text="Alignement monture" FontSize="13"/>
+                                </CheckBox>
+                                <CheckBox IsChecked="{Binding CheckLensOd}"
+                                          IsEnabled="{Binding IsQualityCheckPhase}">
+                                    <TextBlock Text="Verre OD conforme" FontSize="13"/>
+                                </CheckBox>
+                                <CheckBox IsChecked="{Binding CheckLensOg}"
+                                          IsEnabled="{Binding IsQualityCheckPhase}">
+                                    <TextBlock Text="Verre OG conforme" FontSize="13"/>
+                                </CheckBox>
+                                <CheckBox IsChecked="{Binding CheckCleanliness}"
+                                          IsEnabled="{Binding IsQualityCheckPhase}">
+                                    <TextBlock Text="Propreté et finition" FontSize="13"/>
+                                </CheckBox>
+                                <CheckBox IsChecked="{Binding CheckOverall}"
+                                          IsEnabled="{Binding IsQualityCheckPhase}">
+                                    <TextBlock Text="Validation finale" FontSize="13"/>
+                                </CheckBox>
+
+                                <Separator Background="{DynamicResource BorderBrush}" Height="1" Margin="0,4"/>
+
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Border CornerRadius="10" Width="20" Height="20"
+                                            Background="{DynamicResource SuccessBrush}"
+                                            IsVisible="{Binding AllChecksComplete}"/>
+                                    <Border CornerRadius="10" Width="20" Height="20"
+                                            Background="{DynamicResource WarningBrush}"
+                                            IsVisible="{Binding !AllChecksComplete}"/>
+                                    <TextBlock FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               Text="Checklist complète"
+                                               IsVisible="{Binding AllChecksComplete}"/>
+                                    <TextBlock FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               Text="Checklist incomplète"
+                                               IsVisible="{Binding !AllChecksComplete}"/>
+                                </StackPanel>
+
+                                <TextBlock IsVisible="{Binding AllChecksComplete}"
+                                           Text="✓ Tous les contrôles sont validés"
+                                           Foreground="{DynamicResource SuccessBrush}"
+                                           FontSize="12" FontWeight="SemiBold"/>
+
+                                <TextBlock IsVisible="{Binding !AllChecksComplete}"
+                                           Text="⏳ En attente de validation"
+                                           Foreground="{DynamicResource WarningBrush}"
+                                           FontSize="12" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Delivery info -->
+                    <StackPanel>
+                        <TextBlock Text="LIVRAISON" FontSize="11" FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,16"/>
+
+                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="20">
+                            <StackPanel Spacing="12">
+                                <StackPanel>
+                                    <TextBlock Text="Date estimée" Classes="Label"/>
+                                    <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd MMMM yyyy}'}"
+                                               Classes="Value"/>
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="Date commande" Classes="Label"/>
+                                    <TextBlock Text="{Binding OrderDate, StringFormat='{}{0:dd MMMM yyyy}'}"
+                                               Classes="Value"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Error banner -->
+        <Border Grid.Row="1" VerticalAlignment="Top" Margin="40,10"
+                Background="#33FF453A" CornerRadius="8" Padding="16,10"
+                IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}"
+                       FontSize="12" TextWrapping="Wrap"/>
+        </Border>
+
+        <!-- Loading overlay -->
+        <Grid Grid.Row="0" Grid.RowSpan="2" Background="#80000000" IsVisible="{Binding IsLoading}">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
+                <ProgressBar IsIndeterminate="True" Width="50" Height="50" Classes="Circular"/>
+                <TextBlock Text="Traitement..." Foreground="White"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>
