@@ -97,6 +97,8 @@ public partial class App : Application
         // Enregistrer les services
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IDialogService, DialogService>();
+        services.AddSingleton<LocalAiService>();
+        services.AddScoped<SqlExecutorService>();
 
         // Enregistrer les ViewModels
         services.AddSingleton<MainWindowViewModel>();
@@ -107,6 +109,7 @@ public partial class App : Application
         services.AddTransient<OrdersViewModel>();
         services.AddTransient<SalesViewModel>();
         services.AddTransient<ReportsViewModel>();
+        services.AddTransient<ChatDataViewModel>();
         services.AddTransient<SettingsViewModel>();
 
         var serviceProvider = services.BuildServiceProvider();

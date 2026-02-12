@@ -132,6 +132,12 @@ public class MainWindowViewModel : BaseViewModel
         });
         NavigationItems.Add(new NavigationItem 
         { 
+            Icon = "💬", 
+            Label = "Chat IA", 
+            ViewName = "ChatData" 
+        });
+        NavigationItems.Add(new NavigationItem 
+        { 
             Icon = "⚙️", 
             Label = "Paramètres", 
             ViewName = "Settings" 
@@ -152,6 +158,7 @@ public class MainWindowViewModel : BaseViewModel
         _navigationService.RegisterViewModel("Inventory", typeof(InventoryViewModel));
         _navigationService.RegisterViewModel("Notifications", typeof(NotificationsViewModel));
         _navigationService.RegisterViewModel("Reports", typeof(ReportsViewModel));
+        _navigationService.RegisterViewModel("ChatData", typeof(ChatDataViewModel));
         _navigationService.RegisterViewModel("Settings", typeof(SettingsViewModel));
     }
 

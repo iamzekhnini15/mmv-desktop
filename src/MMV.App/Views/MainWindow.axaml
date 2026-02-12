@@ -8,7 +8,7 @@
         x:Class="MMV.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="ManageMyVision"
-        
+
         WindowStartupLocation="CenterScreen"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="PreferSystemChrome"
@@ -16,10 +16,10 @@
         Background="{DynamicResource BackgroundBrush}">
 
     <Grid ColumnDefinitions="260, *" Background="{DynamicResource BackgroundBrush}">
-        
+
         <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
             <Grid RowDefinitions="Auto, *, Auto">
-                
+
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="24,40,24,30">
                     <PathIcon Data="{StaticResource IconGlasses}" Width="24" Height="24" Foreground="{DynamicResource AccentBrush}"/>
                     <TextBlock Text="MMV Optic" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" LetterSpacing="-0.5"/>
@@ -49,7 +49,7 @@
                                 <TextBlock Text="Produits"/>
                             </StackPanel>
                         </Button>
-                        
+
                         <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Prescriptions">
                             <StackPanel Orientation="Horizontal" Spacing="14">
                                 <PathIcon Data="{StaticResource IconPrescriptions}" Width="18"/>
@@ -65,7 +65,7 @@
                         </Button>
 
                         <Separator Margin="8,15" Background="{DynamicResource BorderBrush}" Opacity="0.5"/>
-                        
+
                         <TextBlock Text="GESTION" Classes="label" Margin="12,0,0,8" Opacity="0.6"/>
 
                         <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Inventory">
@@ -81,39 +81,46 @@
                                 <TextBlock Text="Commandes Frns."/>
                             </StackPanel>
                         </Button>
-                        
+
                         <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Reports">
                             <StackPanel Orientation="Horizontal" Spacing="14">
                                 <PathIcon Data="{StaticResource IconReports}" Width="18"/>
                                 <TextBlock Text="Rapports"/>
                             </StackPanel>
                         </Button>
+                        
+                        <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="ChatData">
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <PathIcon Data="{StaticResource IconChatData}" Width="18"/>
+                                <TextBlock Text="Chat IA"/>
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </ScrollViewer>
 
                 <StackPanel Grid.Row="2" Margin="16,20">
-                     <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Notifications">
-                         <Grid>
-                             <StackPanel Orientation="Horizontal" Spacing="14">
-                                 <PathIcon Data="{StaticResource IconNotifications}" Width="18"/>
-                                 <TextBlock Text="Notifications"/>
-                             </StackPanel>
-                             <Border Background="{DynamicResource ErrorBrush}" 
-                                     CornerRadius="10" MinWidth="18" Height="18" 
-                                     HorizontalAlignment="Right" Margin="0,0,0,0"
-                                     IsVisible="{Binding UnreadNotificationsCount, Converter={x:Static converters:IsGreaterThanZeroConverter.Instance}}">
-                                 <TextBlock Text="{Binding UnreadNotificationsCount}" FontSize="10" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="5,0"/>
-                             </Border>
-                         </Grid>
+                    <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Notifications">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <PathIcon Data="{StaticResource IconNotifications}" Width="18"/>
+                                <TextBlock Text="Notifications"/>
+                            </StackPanel>
+                            <Border Background="{DynamicResource ErrorBrush}"
+                                    CornerRadius="10" MinWidth="18" Height="18"
+                                    HorizontalAlignment="Right" Margin="0,0,0,0"
+                                    IsVisible="{Binding UnreadNotificationsCount, Converter={x:Static converters:IsGreaterThanZeroConverter.Instance}}">
+                                <TextBlock Text="{Binding UnreadNotificationsCount}" FontSize="10" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="5,0"/>
+                            </Border>
+                        </Grid>
                     </Button>
-                    
+
                     <Button Classes="NavButton" Command="{Binding NavigateCommand}" CommandParameter="Settings" Margin="0,2,0,10">
                         <StackPanel Orientation="Horizontal" Spacing="14">
                             <PathIcon Data="{StaticResource IconSettings}" Width="18"/>
                             <TextBlock Text="Paramètres"/>
                         </StackPanel>
                     </Button>
-                    
+
                     <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="8" Padding="12">
                         <Grid ColumnDefinitions="Auto, *">
                             <Border Width="32" Height="32" CornerRadius="16" Background="{DynamicResource AccentFadeBrush}">
@@ -130,9 +137,9 @@
         </Border>
 
         <Grid Grid.Column="1" RowDefinitions="Auto, *">
-            
-            <Border IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" 
-                     Background="#33FF453A" BorderBrush="{DynamicResource ErrorBrush}" BorderThickness="0,0,0,1" Padding="15,10">
+
+            <Border IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    Background="#33FF453A" BorderBrush="{DynamicResource ErrorBrush}" BorderThickness="0,0,0,1" Padding="15,10">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                     <PathIcon Data="M12,2 L2,22 H22 L12,2 Z M12,18 V20 M12,10 V16" Foreground="{DynamicResource ErrorBrush}" Width="16"/>
                     <TextBlock Grid.Column="1" Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}" Margin="10,0" VerticalAlignment="Center" FontWeight="Medium"/>
