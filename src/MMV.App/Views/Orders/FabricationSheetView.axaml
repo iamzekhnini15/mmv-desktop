@@ -6,7 +6,7 @@
              xmlns:converters="using:MMV.App.Converters"
              xmlns:controls="using:MMV.App.Controls"
              xmlns:entities="using:MMV.Domain.Entities"
-             mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="900"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="MMV.App.Views.Orders.FabricationSheetView"
              x:DataType="vm:FabricationSheetViewModel"
              Background="{DynamicResource BackgroundBrush}">

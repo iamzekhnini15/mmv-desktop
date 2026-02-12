@@ -5,7 +5,7 @@
              xmlns:vm="using:MMV.App.ViewModels"
              xmlns:converters="using:MMV.App.Converters"
              xmlns:controls="using:MMV.App.Controls"
-             mc:Ignorable="d" d:DesignWidth="1400" d:DesignHeight="800"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="MMV.App.Views.Orders.OrderKanbanView"
              x:DataType="vm:OrderKanbanViewModel"
              Background="{DynamicResource BackgroundBrush}">
