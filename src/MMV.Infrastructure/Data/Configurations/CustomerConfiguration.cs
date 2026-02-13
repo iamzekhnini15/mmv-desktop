@@ -63,11 +63,6 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             .HasForeignKey(p => p.CustomerId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasMany(c => c.Orders)
-            .WithOne(o => o.Customer)
-            .HasForeignKey(o => o.CustomerId)
-            .OnDelete(DeleteBehavior.SetNull);
-
         builder.HasMany(c => c.Sales)
             .WithOne(s => s.Customer)
             .HasForeignKey(s => s.CustomerId)

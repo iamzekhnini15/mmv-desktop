@@ -1,17 +1,20 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using MMV.Domain.Entities;
+using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour l'historique d'achats d'un client.
+/// Affiche toutes les ventes du client.
 /// </summary>
 public class CustomerPurchaseHistoryViewModel : BaseViewModel
 {
-    private readonly IOrderRepository _orderRepository;
+    private readonly ISaleRepository _saleRepository;
     private long _customerId;
 
     /// <summary>
@@ -24,30 +27,33 @@ public class CustomerPurchaseHistoryViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Liste des commandes du client.
+    /// Liste des ventes du client.
     /// </summary>
-    public ObservableCollection<Order> Orders { get; } = new();
+    public ObservableCollection<Sale> Sales { get; } = new();
 
     /// <summary>
-    /// Indique s'il existe des commandes.
+    /// Indique s'il existe des ventes.
     /// </summary>
-    public bool HasOrders => Orders.Count > 0;
+    public bool HasSales => Sales.Count > 0;
 
     /// <summary>
     /// Indique si un message d'erreur est présent.
     /// </summary>
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
 
-    public CustomerPurchaseHistoryViewModel(IOrderRepository orderRepository)
+    public CustomerPurchaseHistoryViewModel(ISaleRepository saleRepository)
     {
-        _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
+        _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
         Title = "Historique d'achats";
 
-        Orders.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasOrders));
+        Sales.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasSales));
+        };
     }
 
     /// <summary>
-    /// Charge l'historique d'achats du client.
+    /// Charge l'historique d'achats du client (toutes les ventes).
     /// </summary>
     public async Task LoadAsync(long customerId)
     {
@@ -55,26 +61,25 @@ public class CustomerPurchaseHistoryViewModel : BaseViewModel
         IsLoading = true;
         ErrorMessage = null;
         OnPropertyChanged(nameof(HasError));
-        Orders.Clear();
+        Sales.Clear();
 
         try
         {
-            var orders = await _orderRepository.GetByCustomerIdAsync(customerId);
-            foreach (var order in orders)
+            // Charger toutes les ventes du client
+            var sales = await _saleRepository.GetByCustomerIdAsync(customerId);
+            foreach (var sale in sales)
             {
-                Orders.Add(order);
+                Sales.Add(sale);
             }
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Erreur lors du chargement des achats : {ex.Message}";
+            ErrorMessage = $"Erreur lors du chargement : {ex.Message}";
             OnPropertyChanged(nameof(HasError));
         }
         finally
         {
             IsLoading = false;
-            OnPropertyChanged(nameof(HasOrders));
-            OnPropertyChanged(nameof(HasError));
         }
     }
 }

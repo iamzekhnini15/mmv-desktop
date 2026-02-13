@@ -44,11 +44,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasDefaultValue(DateTime.UtcNow);
 
         // Relations
-        builder.HasMany(u => u.Orders)
-            .WithOne(o => o.Staff)
-            .HasForeignKey(o => o.StaffId)
-            .OnDelete(DeleteBehavior.SetNull);
-
         builder.HasMany(u => u.Sales)
             .WithOne(s => s.Staff)
             .HasForeignKey(s => s.StaffId)

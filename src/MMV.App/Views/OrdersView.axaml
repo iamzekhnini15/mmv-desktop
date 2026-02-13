@@ -116,13 +116,15 @@
             <!-- Column headers -->
             <Border Grid.Row="0" Background="{DynamicResource BackgroundBrush}"
                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,10">
-                <Grid ColumnDefinitions="130, 1.5*, 130, 120, 120, 100">
+                <Grid ColumnDefinitions="130, 1.5*, 130, 120, 120, 100, 100, 100">
                     <TextBlock Grid.Column="0" Text="N° COMMANDE" Classes="ColHeader"/>
                     <TextBlock Grid.Column="1" Text="CLIENT" Classes="ColHeader"/>
                     <TextBlock Grid.Column="2" Text="STATUT" Classes="ColHeader"/>
                     <TextBlock Grid.Column="3" Text="DATE" Classes="ColHeader"/>
                     <TextBlock Grid.Column="4" Text="LIVRAISON" Classes="ColHeader"/>
                     <TextBlock Grid.Column="5" Text="MONTANT" Classes="ColHeader" HorizontalAlignment="Right" Margin="0,0,10,0"/>
+                    <TextBlock Grid.Column="6" Text="ACOMPTE" Classes="ColHeader" HorizontalAlignment="Right" Margin="0,0,10,0"/>
+                    <TextBlock Grid.Column="7" Text="RESTANT" Classes="ColHeader" HorizontalAlignment="Right" Margin="0,0,10,0"/>
                 </Grid>
             </Border>
 
@@ -133,7 +135,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Classes="DataRow" PointerPressed="OrderRow_PointerPressed">
-                                    <Grid ColumnDefinitions="130, 1.5*, 130, 120, 120, 100">
+                                    <Grid ColumnDefinitions="130, 1.5*, 130, 120, 120, 100, 100, 100">
 
                                         <TextBlock Grid.Column="0" Text="{Binding OrderNumber}"
                                                    FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
@@ -143,8 +145,8 @@
                                                    TextTrimming="CharacterEllipsis">
                                             <TextBlock.Text>
                                                 <MultiBinding StringFormat="{}{0} {1}">
-                                                    <Binding Path="Customer.FirstName"/>
-                                                    <Binding Path="Customer.LastName"/>
+                                                    <Binding Path="Sale.Customer.FirstName"/>
+                                                    <Binding Path="Sale.Customer.LastName"/>
                                                 </MultiBinding>
                                             </TextBlock.Text>
                                         </TextBlock>
@@ -169,8 +171,21 @@
                                                    VerticalAlignment="Center"/>
 
                                         <TextBlock Grid.Column="5"
-                                                   Text="{Binding TotalAmount, StringFormat='{}{0:F2} €'}"
+                                                   Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F2} €'}"
                                                    FontWeight="SemiBold" FontSize="13"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                   Margin="0,0,10,0"/>
+
+                                        <TextBlock Grid.Column="6"
+                                                   Text="{Binding Sale.DepositAmount, StringFormat='{}{0:F2} €', TargetNullValue='-'}"
+                                                   FontSize="13" Foreground="{DynamicResource SuccessBrush}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                   Margin="0,0,10,0"/>
+
+                                        <TextBlock Grid.Column="7"
+                                                   Text="{Binding Sale.RemainingAmount, StringFormat='{}{0:F2} €', TargetNullValue='-'}"
+                                                   FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource WarningBrush}"
                                                    HorizontalAlignment="Right" VerticalAlignment="Center"
                                                    Margin="0,0,10,0"/>
                                     </Grid>

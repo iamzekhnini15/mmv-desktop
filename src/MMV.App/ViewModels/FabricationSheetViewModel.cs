@@ -57,13 +57,13 @@ public class FabricationSheetViewModel : BaseViewModel
     public DateTime? EstimatedDelivery => Order?.EstimatedDelivery;
     public string StatusDisplay => OrdersListViewModel.StatusEnumToDisplay(Order?.Status ?? OrderStatus.New);
     public string Notes => Order?.Notes ?? string.Empty;
-    public decimal TotalAmount => Order?.TotalAmount ?? 0m;
+    public decimal TotalAmount => Order?.Sale?.FinalAmount ?? 0m;
 
     // Infos client
-    public string CustomerName => Order?.Customer != null
-        ? $"{Order.Customer.FirstName} {Order.Customer.LastName}"
+    public string CustomerName => Order?.Sale?.Customer != null
+        ? $"{Order.Sale.Customer.FirstName} {Order.Sale.Customer.LastName}"
         : "—";
-    public string CustomerPhone => Order?.Customer?.Phone ?? "—";
+    public string CustomerPhone => Order?.Sale?.Customer?.Phone ?? "—";
 
     // Articles par type
     public OrderItem? FrameItem => Order?.OrderItems?.FirstOrDefault(i => i.ItemType == OrderItemType.Frame);

@@ -3,6 +3,7 @@ using System;
 using MMV.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MMV.Infrastructure.Migrations
 {
     [DbContext(typeof(OpticDbContext))]
-    partial class OpticDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260212164646_AddCounterSaleFieldsToOrder")]
+    partial class AddCounterSaleFieldsToOrder
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
@@ -59,7 +62,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 282, DateTimeKind.Utc).AddTicks(4997));
+                        .HasDefaultValue(new DateTime(2026, 2, 12, 16, 46, 46, 443, DateTimeKind.Utc).AddTicks(7944));
 
                     b.Property<string>("Email")
                         .HasMaxLength(254)
@@ -98,7 +101,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 282, DateTimeKind.Utc).AddTicks(5262));
+                        .HasDefaultValue(new DateTime(2026, 2, 12, 16, 46, 46, 443, DateTimeKind.Utc).AddTicks(8346));
 
                     b.HasKey("CustomerId");
 
@@ -278,8 +281,20 @@ namespace MMV.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<long?>("CustomerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("DiscountAmount")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("EstimatedDelivery")
                         .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("FinalAmount")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsCounterSale")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)
@@ -288,17 +303,17 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("OrderDate")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 282, DateTimeKind.Utc).AddTicks(9524));
+                        .HasDefaultValue(new DateTime(2026, 2, 12, 16, 46, 46, 444, DateTimeKind.Utc).AddTicks(3832));
 
                     b.Property<string>("OrderNumber")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("ReceivedDate")
-                        .HasColumnType("TEXT");
+                    b.Property<int?>("PaymentMethod")
+                        .HasColumnType("INTEGER");
 
-                    b.Property<long>("SaleId")
+                    b.Property<long?>("StaffId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Status")
@@ -307,17 +322,19 @@ namespace MMV.Infrastructure.Migrations
                         .HasColumnType("TEXT")
                         .HasDefaultValue("New");
 
-                    b.Property<long?>("SupplierId")
-                        .HasColumnType("INTEGER");
+                    b.Property<decimal?>("TotalAmount")
+                        .HasColumnType("REAL");
 
                     b.HasKey("OrderId");
+
+                    b.HasIndex("CustomerId")
+                        .HasDatabaseName("idx_orders_customer_id");
 
                     b.HasIndex("OrderNumber")
                         .IsUnique()
                         .HasDatabaseName("idx_orders_order_number_unique");
 
-                    b.HasIndex("SaleId")
-                        .HasDatabaseName("idx_orders_sale_id");
+                    b.HasIndex("StaffId");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("idx_orders_status");
@@ -392,7 +409,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 282, DateTimeKind.Utc).AddTicks(8445));
+                        .HasDefaultValue(new DateTime(2026, 2, 12, 16, 46, 46, 444, DateTimeKind.Utc).AddTicks(2892));
 
                     b.Property<long>("CustomerId")
                         .HasColumnType("INTEGER");
@@ -566,16 +583,10 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<long?>("CustomerId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<decimal?>("DepositAmount")
-                        .HasColumnType("REAL");
-
                     b.Property<decimal>("DiscountAmount")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("REAL")
                         .HasDefaultValue(0m);
-
-                    b.Property<DateTime?>("EstimatedDelivery")
-                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("FinalAmount")
                         .HasColumnType("REAL");
@@ -594,13 +605,10 @@ namespace MMV.Infrastructure.Migrations
                         .HasColumnType("TEXT")
                         .HasDefaultValue("Paid");
 
-                    b.Property<decimal?>("RemainingAmount")
-                        .HasColumnType("REAL");
-
                     b.Property<DateTime>("SaleDate")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 283, DateTimeKind.Utc).AddTicks(4405));
+                        .HasDefaultValue(new DateTime(2026, 2, 12, 16, 46, 46, 444, DateTimeKind.Utc).AddTicks(8618));
 
                     b.Property<string>("SaleNumber")
                         .IsRequired()
@@ -609,12 +617,6 @@ namespace MMV.Infrastructure.Migrations
 
                     b.Property<long?>("StaffId")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue("Draft");
 
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("REAL");
@@ -641,27 +643,6 @@ namespace MMV.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<double?>("Addition")
-                        .HasColumnType("REAL");
-
-                    b.Property<int?>("Axis")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<double?>("Cylinder")
-                        .HasColumnType("REAL");
-
-                    b.Property<string>("ItemType")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue("Frame");
-
-                    b.Property<string>("PrismBase")
-                        .HasColumnType("TEXT");
-
-                    b.Property<double?>("PrismValue")
-                        .HasColumnType("REAL");
-
                     b.Property<long?>("ProductId")
                         .HasColumnType("INTEGER");
 
@@ -671,21 +652,11 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<long>("SaleId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<double?>("Sphere")
-                        .HasColumnType("REAL");
-
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("REAL");
 
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("REAL");
-
-                    b.Property<string>("UsageType")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("VisualAcuity")
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
 
                     b.HasKey("SaleItemId");
 
@@ -705,7 +676,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 284, DateTimeKind.Utc).AddTicks(119));
+                        .HasDefaultValue(new DateTime(2026, 2, 12, 16, 46, 46, 445, DateTimeKind.Utc).AddTicks(3134));
 
                     b.Property<string>("MovementType")
                         .IsRequired()
@@ -794,7 +765,7 @@ namespace MMV.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 279, DateTimeKind.Utc).AddTicks(2902));
+                        .HasDefaultValue(new DateTime(2026, 2, 12, 16, 46, 46, 440, DateTimeKind.Utc).AddTicks(5101));
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -901,13 +872,19 @@ namespace MMV.Infrastructure.Migrations
 
             modelBuilder.Entity("MMV.Domain.Entities.Order", b =>
                 {
-                    b.HasOne("MMV.Domain.Entities.Sale", "Sale")
+                    b.HasOne("MMV.Domain.Entities.Customer", "Customer")
                         .WithMany("Orders")
-                        .HasForeignKey("SaleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("Sale");
+                    b.HasOne("MMV.Domain.Entities.User", "Staff")
+                        .WithMany("Orders")
+                        .HasForeignKey("StaffId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Staff");
                 });
 
             modelBuilder.Entity("MMV.Domain.Entities.OrderItem", b =>
@@ -1012,6 +989,8 @@ namespace MMV.Infrastructure.Migrations
 
             modelBuilder.Entity("MMV.Domain.Entities.Customer", b =>
                 {
+                    b.Navigation("Orders");
+
                     b.Navigation("Prescriptions");
 
                     b.Navigation("Sales");
@@ -1051,8 +1030,6 @@ namespace MMV.Infrastructure.Migrations
 
             modelBuilder.Entity("MMV.Domain.Entities.Sale", b =>
                 {
-                    b.Navigation("Orders");
-
                     b.Navigation("SaleItems");
                 });
 
@@ -1068,6 +1045,8 @@ namespace MMV.Infrastructure.Migrations
 
             modelBuilder.Entity("MMV.Domain.Entities.User", b =>
                 {
+                    b.Navigation("Orders");
+
                     b.Navigation("Sales");
 
                     b.Navigation("StockMovements");

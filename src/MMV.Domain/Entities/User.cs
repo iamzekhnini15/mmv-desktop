@@ -54,11 +54,6 @@ public class User
 
     // Navigation Properties
     /// <summary>
-    /// Commandes gérées par cet utilisateur.
-    /// </summary>
-    public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
-
-    /// <summary>
     /// Ventes effectuées par cet utilisateur.
     /// </summary>
     public virtual ICollection<Sale> Sales { get; set; } = new List<Sale>();

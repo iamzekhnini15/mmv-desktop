@@ -14,28 +14,30 @@ public class OrderRepository : BaseRepository<Order, long>, IOrderRepository
     public OrderRepository(OpticDbContext context) : base(context) { }
 
     /// <summary>
-    /// Récupère toutes les commandes avec leurs articles (OrderItems).
+    /// Récupère toutes les commandes avec leurs articles (OrderItems) et la vente parente.
     /// </summary>
     public async Task<IList<Order>> GetAllWithItemsAsync(CancellationToken cancellationToken = default)
     {
         return await _context.Orders
             .Include(o => o.OrderItems)
-            .Include(o => o.Customer)
-            .Include(o => o.Staff)
+                .ThenInclude(oi => oi.Product)
+            .Include(o => o.Sale)
+                .ThenInclude(s => s!.Customer)
             .AsNoTracking()
             .OrderByDescending(o => o.OrderDate)
             .ToListAsync(cancellationToken);
     }
 
     /// <summary>
-    /// Récupère une commande avec tous ses articles.
+    /// Récupère une commande avec tous ses articles et la vente parente.
     /// </summary>
     public async Task<Order?> GetWithItemsAsync(long orderId, CancellationToken cancellationToken = default)
     {
         return await _context.Orders
             .Include(o => o.OrderItems)
-            .Include(o => o.Customer)
-            .Include(o => o.Staff)
+                .ThenInclude(oi => oi.Product)
+            .Include(o => o.Sale)
+                .ThenInclude(s => s!.Customer)
             .FirstOrDefaultAsync(o => o.OrderId == orderId, cancellationToken);
     }
 
@@ -51,12 +53,12 @@ public class OrderRepository : BaseRepository<Order, long>, IOrderRepository
     }
 
     /// <summary>
-    /// Récupère les commandes d'un client.
+    /// Récupère les commandes d'une vente spécifique.
     /// </summary>
-    public async Task<IList<Order>> GetByCustomerIdAsync(long customerId, CancellationToken cancellationToken = default)
+    public async Task<IList<Order>> GetBySaleIdAsync(long saleId, CancellationToken cancellationToken = default)
     {
         return await GetQueryable()
-            .Where(o => o.CustomerId == customerId)
+            .Where(o => o.SaleId == saleId)
             .OrderByDescending(o => o.OrderDate)
             .ToListAsync(cancellationToken);
     }

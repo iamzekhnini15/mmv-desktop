@@ -11,7 +11,7 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class CustomerInfoViewModel : BaseViewModel
 {
-    private readonly IOrderRepository? _orderRepository;
+    private readonly ISaleRepository? _saleRepository;
     private Customer? _customer;
 
     /// <summary>
@@ -24,39 +24,39 @@ public class CustomerInfoViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Liste des commandes du client.
+    /// Liste des ventes du client.
     /// </summary>
-    public ObservableCollection<Order> Orders { get; } = new();
+    public ObservableCollection<Sale> Sales { get; } = new();
 
     /// <summary>
-    /// Indique s'il existe des commandes.
+    /// Indique s'il existe des ventes.
     /// </summary>
-    public bool HasOrders => Orders.Count > 0;
+    public bool HasSales => Sales.Count > 0;
 
-    public CustomerInfoViewModel(Customer customer, IOrderRepository? orderRepository = null)
+    public CustomerInfoViewModel(Customer customer, ISaleRepository? saleRepository = null)
     {
         Customer = customer;
-        _orderRepository = orderRepository;
+        _saleRepository = saleRepository;
         Title = "Informations Personnelles";
     }
 
     /// <summary>
     /// Charge l'historique d'achats du client.
     /// </summary>
-    public async Task LoadOrdersAsync()
+    public async Task LoadSalesAsync()
     {
-        if (_orderRepository == null || Customer == null)
+        if (_saleRepository == null || Customer == null)
             return;
 
         IsLoading = true;
-        Orders.Clear();
+        Sales.Clear();
 
         try
         {
-            var orders = await _orderRepository.GetByCustomerIdAsync(Customer.CustomerId);
-            foreach (var order in orders)
+            var sales = await _saleRepository.GetByCustomerIdAsync(Customer.CustomerId);
+            foreach (var sale in sales)
             {
-                Orders.Add(order);
+                Sales.Add(sale);
             }
         }
         catch (Exception ex)
@@ -66,7 +66,7 @@ public class CustomerInfoViewModel : BaseViewModel
         finally
         {
             IsLoading = false;
-            OnPropertyChanged(nameof(HasOrders));
+            OnPropertyChanged(nameof(HasSales));
         }
     }
 }

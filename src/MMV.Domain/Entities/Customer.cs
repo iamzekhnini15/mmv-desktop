@@ -82,11 +82,6 @@ public class Customer
     public virtual ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
 
     /// <summary>
-    /// Commandes passées par le client.
-    /// </summary>
-    public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
-
-    /// <summary>
     /// Ventes effectuées au client.
     /// </summary>
     public virtual ICollection<Sale> Sales { get; set; } = new List<Sale>();

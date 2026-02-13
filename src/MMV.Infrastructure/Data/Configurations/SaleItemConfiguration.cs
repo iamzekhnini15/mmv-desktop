@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MMV.Domain.Entities;
+using MMV.Domain.Enums;
 
 namespace MMV.Infrastructure.Data.Configurations;
 
@@ -16,6 +17,11 @@ public class SaleItemConfiguration : IEntityTypeConfiguration<SaleItem>
         builder.Property(si => si.SaleId)
             .IsRequired();
 
+        builder.Property(si => si.ItemType)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasDefaultValue(OrderItemType.Frame);
+
         builder.Property(si => si.Quantity)
             .IsRequired();
 
@@ -26,6 +32,16 @@ public class SaleItemConfiguration : IEntityTypeConfiguration<SaleItem>
         builder.Property(si => si.TotalPrice)
             .HasColumnType("REAL")
             .IsRequired();
+
+        // Prescription fields (nullable)
+        builder.Property(si => si.UsageType)
+            .HasConversion<string>();
+
+        builder.Property(si => si.PrismBase)
+            .HasConversion<string>();
+
+        builder.Property(si => si.VisualAcuity)
+            .HasMaxLength(20);
 
         // Relations
         builder.HasOne(si => si.Sale)
@@ -39,3 +55,4 @@ public class SaleItemConfiguration : IEntityTypeConfiguration<SaleItem>
             .OnDelete(DeleteBehavior.SetNull);
     }
 }
+

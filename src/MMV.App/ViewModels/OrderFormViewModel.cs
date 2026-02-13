@@ -458,9 +458,13 @@ public class OrderFormViewModel : BaseViewModel
         Notes = _existingOrder.Notes ?? string.Empty;
         EstimatedDelivery = _existingOrder.EstimatedDelivery;
 
-        if (_existingOrder.CustomerId.HasValue)
+        if (_existingOrder.SaleId > 0)
         {
-            SelectedCustomer = _allCustomers.FirstOrDefault(c => c.CustomerId == _existingOrder.CustomerId);
+            // Charger le client depuis la vente liée
+            if (_existingOrder.Sale?.CustomerId != null)
+            {
+                SelectedCustomer = _allCustomers.FirstOrDefault(c => c.CustomerId == _existingOrder.Sale.CustomerId);
+            }
         }
 
         foreach (var item in _existingOrder.OrderItems)
@@ -601,10 +605,9 @@ public class OrderFormViewModel : BaseViewModel
         {
             var order = _existingOrder ?? new Order();
             order.OrderNumber = OrderNumber;
-            order.CustomerId = SelectedCustomer!.CustomerId;
             order.EstimatedDelivery = EstimatedDelivery;
             order.Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes;
-            order.TotalAmount = TotalAmount;
+            // Note: Order n'a plus CustomerId/TotalAmount - ces propriétés sont sur Sale
 
             if (!_isEditMode)
             {

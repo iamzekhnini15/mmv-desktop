@@ -179,8 +179,8 @@ public class OrdersListViewModel : BaseViewModel
             var search = SearchText.Trim();
             filtered = filtered.Where(o =>
                 (o.OrderNumber?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (o.Customer?.FirstName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (o.Customer?.LastName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (o.Sale?.Customer?.FirstName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (o.Sale?.Customer?.LastName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 (o.Notes?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false));
         }
 

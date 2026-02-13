@@ -35,7 +35,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto, *">
+    <Grid RowDefinitions="Auto, 800">
 
         <!-- ═══ HEADER ═══ -->
         <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="32,24">
@@ -207,6 +207,28 @@
                         </Border>
                     </StackPanel>
 
+                    <!-- Delivery info -->
+                    <StackPanel>
+                        <TextBlock Text="LIVRAISON" FontSize="11" FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,16"/>
+
+                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="20">
+                            <StackPanel Spacing="12">
+                                <StackPanel>
+                                    <TextBlock Text="Date estimée" Classes="Label"/>
+                                    <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd MMMM yyyy}'}"
+                                               Classes="Value"/>
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="Date commande" Classes="Label"/>
+                                    <TextBlock Text="{Binding OrderDate, StringFormat='{}{0:dd MMMM yyyy}'}"
+                                               Classes="Value"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
                     <!-- Notes -->
                     <StackPanel IsVisible="{Binding Notes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                         <TextBlock Text="NOTES" FontSize="11" FontWeight="Bold"
@@ -290,24 +312,54 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Delivery info -->
+                    <!-- Payment info -->
                     <StackPanel>
-                        <TextBlock Text="LIVRAISON" FontSize="11" FontWeight="Bold"
+                        <TextBlock Text="PAIEMENT" FontSize="11" FontWeight="Bold"
                                    Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,16"/>
 
                         <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10"
                                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="20">
-                            <StackPanel Spacing="12">
-                                <StackPanel>
-                                    <TextBlock Text="Date estimée" Classes="Label"/>
-                                    <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd MMMM yyyy}'}"
-                                               Classes="Value"/>
+                            <StackPanel Spacing="16">
+                                <StackPanel Spacing="12">
+                                    <StackPanel>
+                                        <TextBlock Text="Montant total" Classes="Label"/>
+                                        <TextBlock Text="{Binding TotalAmount, StringFormat='{}{0:F2} €'}" 
+                                                   Classes="Value" FontWeight="Bold"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Acompte versé" Classes="Label"/>
+                                        <TextBlock Text="{Binding DepositAmount, StringFormat='{}{0:F2} €', TargetNullValue='-'}" 
+                                                   Classes="Value" Foreground="{DynamicResource SuccessBrush}"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Montant restant" Classes="Label"/>
+                                        <TextBlock Text="{Binding RemainingAmount, StringFormat='{}{0:F2} €', TargetNullValue='-'}" 
+                                                   Classes="Value" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Moyen de paiement" Classes="Label"/>
+                                        <TextBlock Text="{Binding PaymentMethod}" Classes="Value"/>
+                                    </StackPanel>
                                 </StackPanel>
-                                <StackPanel>
-                                    <TextBlock Text="Date commande" Classes="Label"/>
-                                    <TextBlock Text="{Binding OrderDate, StringFormat='{}{0:dd MMMM yyyy}'}"
-                                               Classes="Value"/>
-                                </StackPanel>
+
+                                <!-- Bouton d'encaissement -->
+                                <Button Command="{Binding EncashBalanceCommand}" 
+                                        IsVisible="{Binding HasRemainingBalance}"
+                                        Classes="Primary" 
+                                        HorizontalAlignment="Stretch" 
+                                        Padding="16,10">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                        <TextBlock Text="💰" FontSize="14"/>
+                                        <TextBlock Text="Encaisser le solde"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <TextBlock IsVisible="{Binding !HasRemainingBalance}"
+                                           Text="✓ Paiement complet" 
+                                           Foreground="{DynamicResource SuccessBrush}" 
+                                           FontSize="12" 
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>

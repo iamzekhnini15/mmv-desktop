@@ -33,10 +33,25 @@ public class OrderServiceTests
         await unitOfWork.Customers.CreateAsync(customer);
         await unitOfWork.SaveChangesAsync();
         
+        // Create a Sale first (Order must be linked to a Sale now)
+        var sale = new Sale
+        {
+            CustomerId = customer.CustomerId,
+            SaleDate = DateTime.Now,
+            SaleNumber = "SALE-001",
+            TotalAmount = 100m,
+            DiscountAmount = 0m,
+            FinalAmount = 100m,
+            PaymentMethod = PaymentMethod.Cash,
+            Status = SaleStatus.Draft
+        };
+        await unitOfWork.Sales.CreateAsync(sale);
+        await unitOfWork.SaveChangesAsync();
+        
         var service = new OrderService(unitOfWork);
         var order = new Order
         {
-            CustomerId = customer.CustomerId,
+            SaleId = sale.SaleId,
             OrderDate = DateTime.Now,
             Status = OrderStatus.New,
             OrderItems = new List<OrderItem> { new OrderItem { Quantity = 1, UnitPrice = 100m } }
@@ -58,8 +73,23 @@ public class OrderServiceTests
         await unitOfWork.Customers.CreateAsync(customer);
         await unitOfWork.SaveChangesAsync();
         
+        // Create a Sale first
+        var sale = new Sale
+        {
+            CustomerId = customer.CustomerId,
+            SaleDate = DateTime.Now,
+            SaleNumber = "SALE-002",
+            TotalAmount = 0m,
+            DiscountAmount = 0m,
+            FinalAmount = 0m,
+            PaymentMethod = PaymentMethod.Cash,
+            Status = SaleStatus.Draft
+        };
+        await unitOfWork.Sales.CreateAsync(sale);
+        await unitOfWork.SaveChangesAsync();
+        
         var service = new OrderService(unitOfWork);
-        var order = new Order { CustomerId = customer.CustomerId, OrderDate = DateTime.Now, Status = OrderStatus.New, OrderItems = new List<OrderItem>() };
+        var order = new Order { SaleId = sale.SaleId, OrderDate = DateTime.Now, Status = OrderStatus.New, OrderItems = new List<OrderItem>() };
         
         await Assert.ThrowsAsync<BusinessRuleException>(() => service.CreateOrderAsync(order));
     }
@@ -74,10 +104,25 @@ public class OrderServiceTests
         await unitOfWork.Customers.CreateAsync(customer);
         await unitOfWork.SaveChangesAsync();
         
+        // Create a Sale first
+        var sale = new Sale
+        {
+            CustomerId = customer.CustomerId,
+            SaleDate = DateTime.Now,
+            SaleNumber = "SALE-003",
+            TotalAmount = 100m,
+            DiscountAmount = 0m,
+            FinalAmount = 100m,
+            PaymentMethod = PaymentMethod.Cash,
+            Status = SaleStatus.AwaitingLenses
+        };
+        await unitOfWork.Sales.CreateAsync(sale);
+        await unitOfWork.SaveChangesAsync();
+        
         var service = new OrderService(unitOfWork);
         var order = new Order
         {
-            CustomerId = customer.CustomerId,
+            SaleId = sale.SaleId,
             OrderDate = DateTime.Now,
             Status = OrderStatus.New,
             OrderItems = new List<OrderItem> { new OrderItem { Quantity = 1, UnitPrice = 100m } }
@@ -101,10 +146,25 @@ public class OrderServiceTests
         await unitOfWork.Customers.CreateAsync(customer);
         await unitOfWork.SaveChangesAsync();
         
+        // Create a Sale first
+        var sale = new Sale
+        {
+            CustomerId = customer.CustomerId,
+            SaleDate = DateTime.Now,
+            SaleNumber = "SALE-004",
+            TotalAmount = 100m,
+            DiscountAmount = 0m,
+            FinalAmount = 100m,
+            PaymentMethod = PaymentMethod.Cash,
+            Status = SaleStatus.Draft
+        };
+        await unitOfWork.Sales.CreateAsync(sale);
+        await unitOfWork.SaveChangesAsync();
+        
         var service = new OrderService(unitOfWork);
         var order = new Order
         {
-            CustomerId = customer.CustomerId,
+            SaleId = sale.SaleId,
             OrderDate = DateTime.Now,
             Status = OrderStatus.New,
             OrderItems = new List<OrderItem> { new OrderItem { Quantity = 2, UnitPrice = 50m } }

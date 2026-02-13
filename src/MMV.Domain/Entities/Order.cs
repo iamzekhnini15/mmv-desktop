@@ -3,12 +3,13 @@ using MMV.Domain.Enums;
 namespace MMV.Domain.Entities;
 
 /// <summary>
-/// Représente une commande client (workflow atelier).
+/// Représente une commande fournisseur (uniquement pour les verres).
+/// L'Order est créé automatiquement lorsqu'une Sale contient des verres.
 /// </summary>
 public class Order
 {
     /// <summary>
-    /// Identifiant unique de la commande.
+    /// Identifiant unique de la commande fournisseur.
     /// </summary>
     public long OrderId { get; set; }
 
@@ -18,14 +19,15 @@ public class Order
     public string OrderNumber { get; set; } = string.Empty;
 
     /// <summary>
-    /// Identifiant du client (optionnel).
+    /// Identifiant de la vente parente (OBLIGATOIRE).
+    /// Une commande fournisseur est toujours liée à une vente.
     /// </summary>
-    public long? CustomerId { get; set; }
+    public long SaleId { get; set; }
 
     /// <summary>
-    /// Identifiant du membre du personnel ayant créé la commande.
+    /// Identifiant du fournisseur (optionnel pour l'instant).
     /// </summary>
-    public long? StaffId { get; set; }
+    public long? SupplierId { get; set; }
 
     /// <summary>
     /// Date et heure de création de la commande.
@@ -33,14 +35,14 @@ public class Order
     public DateTime OrderDate { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Date estimée de livraison.
+    /// Date estimée de réception des verres.
     /// </summary>
     public DateTime? EstimatedDelivery { get; set; }
 
     /// <summary>
-    /// Montant total de la commande (OBLIGATOIRE: type decimal pour argent).
+    /// Date de réception effective des verres.
     /// </summary>
-    public decimal? TotalAmount { get; set; }
+    public DateTime? ReceivedDate { get; set; }
 
     /// <summary>
     /// Statut de la commande dans le workflow.
@@ -48,23 +50,19 @@ public class Order
     public OrderStatus Status { get; set; } = OrderStatus.New;
 
     /// <summary>
-    /// Notes relatives à la commande.
+    /// Notes relatives à la commande fournisseur.
     /// </summary>
     public string? Notes { get; set; }
 
     // Navigation Properties
     /// <summary>
-    /// Client associé à cette commande.
+    /// Vente parente à laquelle appartient cette commande fournisseur.
     /// </summary>
-    public virtual Customer? Customer { get; set; }
+    public virtual Sale Sale { get; set; } = null!;
 
     /// <summary>
-    /// Membre du personnel ayant créé la commande.
-    /// </summary>
-    public virtual User? Staff { get; set; }
-
-    /// <summary>
-    /// Articles composant cette commande.
+    /// Articles (verres) commandés au fournisseur.
     /// </summary>
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 }
+

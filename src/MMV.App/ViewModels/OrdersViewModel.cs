@@ -217,6 +217,7 @@ public class OrdersViewModel : BaseViewModel
             DetailViewModel.EditRequested += OnEditOrderRequested;
             DetailViewModel.DeleteRequested += OnDeleteOrderRequested;
             DetailViewModel.PrintFabSheetRequested += OnPrintFabSheetRequested;
+            DetailViewModel.OrderUpdated += OnOrderUpdated;
 
             IsShowingKanban = false;
             IsShowingDetail = true;
@@ -319,6 +320,21 @@ public class OrdersViewModel : BaseViewModel
     {
         IsShowingFabricationSheet = false;
         FabricationSheetViewModel = null;
+    }
+
+    /// <summary>
+    /// Rafraîchit discrètement la liste et le Kanban après une mise à jour de commande.
+    /// </summary>
+    private async void OnOrderUpdated(object? sender, Order order)
+    {
+        // Rafraîchir la liste en arrière-plan
+        await ListViewModel.LoadOrdersAsync();
+
+        // Rafraîchir le Kanban s'il est visible
+        if (KanbanViewModel != null)
+        {
+            await KanbanViewModel.LoadOrdersAsync();
+        }
     }
 
     #endregion

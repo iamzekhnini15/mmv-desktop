@@ -25,9 +25,6 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.OrderDate)
             .HasDefaultValue(DateTime.UtcNow);
 
-        builder.Property(o => o.TotalAmount)
-            .HasColumnType("REAL");
-
         builder.Property(o => o.Status)
             .IsRequired()
             .HasConversion<string>()
@@ -36,22 +33,17 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.Notes)
             .HasMaxLength(2000);
 
-        builder.HasIndex(o => o.CustomerId)
-            .HasDatabaseName("idx_orders_customer_id");
+        builder.HasIndex(o => o.SaleId)
+            .HasDatabaseName("idx_orders_sale_id");
 
         builder.HasIndex(o => o.Status)
             .HasDatabaseName("idx_orders_status");
 
         // Relations
-        builder.HasOne(o => o.Customer)
-            .WithMany(c => c.Orders)
-            .HasForeignKey(o => o.CustomerId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        builder.HasOne(o => o.Staff)
-            .WithMany(u => u.Orders)
-            .HasForeignKey(o => o.StaffId)
-            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(o => o.Sale)
+            .WithMany(s => s.Orders)
+            .HasForeignKey(o => o.SaleId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(o => o.OrderItems)
             .WithOne(oi => oi.Order)

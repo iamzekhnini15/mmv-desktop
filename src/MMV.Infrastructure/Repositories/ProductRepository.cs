@@ -26,7 +26,6 @@ public class ProductRepository : BaseRepository<Product, long>, IProductReposito
             .Include(p => p.AccessoryDetail)
             .Include(p => p.OrderItems)
                 .ThenInclude(oi => oi.Order)
-                    .ThenInclude(o => o.Customer)
             .ToListAsync(cancellationToken);
     }
 
@@ -126,7 +125,6 @@ public class ProductRepository : BaseRepository<Product, long>, IProductReposito
             .Include(p => p.AccessoryDetail)
             .Include(p => p.OrderItems)
                 .ThenInclude(oi => oi.Order)
-                    .ThenInclude(o => o.Customer)
             .FirstOrDefaultAsync(p => p.ProductId == id, cancellationToken);
     }
 }

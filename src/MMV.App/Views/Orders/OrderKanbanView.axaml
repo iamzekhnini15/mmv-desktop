@@ -81,14 +81,14 @@
                                                 <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis">
                                                     <TextBlock.Text>
                                                         <MultiBinding StringFormat="{}{0} {1}">
-                                                            <Binding Path="Customer.FirstName"/>
-                                                            <Binding Path="Customer.LastName"/>
+                                                            <Binding Path="Sale.Customer.FirstName"/>
+                                                            <Binding Path="Sale.Customer.LastName"/>
                                                         </MultiBinding>
                                                     </TextBlock.Text>
                                                 </TextBlock>
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                                     <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd/MM}'}" FontSize="11" Opacity="0.6"/>
-                                                    <TextBlock Text="{Binding TotalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
                                                 </StackPanel>
                                                 <Button Content="→ À fabriquer" FontSize="11" Padding="6,3"
                                                         Background="#220A84FF" Foreground="#0A84FF"
@@ -126,14 +126,14 @@
                                                 <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis">
                                                     <TextBlock.Text>
                                                         <MultiBinding StringFormat="{}{0} {1}">
-                                                            <Binding Path="Customer.FirstName"/>
-                                                            <Binding Path="Customer.LastName"/>
+                                                            <Binding Path="Sale.Customer.FirstName"/>
+                                                            <Binding Path="Sale.Customer.LastName"/>
                                                         </MultiBinding>
                                                     </TextBlock.Text>
                                                 </TextBlock>
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                                     <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd/MM}'}" FontSize="11" Opacity="0.6"/>
-                                                    <TextBlock Text="{Binding TotalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
                                                 </StackPanel>
                                                 <Button Content="→ En fabrication" FontSize="11" Padding="6,3"
                                                         Background="#22FF9500" Foreground="#FF9500"
@@ -171,14 +171,14 @@
                                                 <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis">
                                                     <TextBlock.Text>
                                                         <MultiBinding StringFormat="{}{0} {1}">
-                                                            <Binding Path="Customer.FirstName"/>
-                                                            <Binding Path="Customer.LastName"/>
+                                                            <Binding Path="Sale.Customer.FirstName"/>
+                                                            <Binding Path="Sale.Customer.LastName"/>
                                                         </MultiBinding>
                                                     </TextBlock.Text>
                                                 </TextBlock>
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                                     <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd/MM}'}" FontSize="11" Opacity="0.6"/>
-                                                    <TextBlock Text="{Binding TotalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
                                                 </StackPanel>
                                                 <Button Content="→ Contrôle qualité" FontSize="11" Padding="6,3"
                                                         Background="#22AF52DE" Foreground="#AF52DE"
@@ -216,14 +216,14 @@
                                                 <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis">
                                                     <TextBlock.Text>
                                                         <MultiBinding StringFormat="{}{0} {1}">
-                                                            <Binding Path="Customer.FirstName"/>
-                                                            <Binding Path="Customer.LastName"/>
+                                                            <Binding Path="Sale.Customer.FirstName"/>
+                                                            <Binding Path="Sale.Customer.LastName"/>
                                                         </MultiBinding>
                                                     </TextBlock.Text>
                                                 </TextBlock>
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                                     <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd/MM}'}" FontSize="11" Opacity="0.6"/>
-                                                    <TextBlock Text="{Binding TotalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
                                                 </StackPanel>
                                                 <Button Content="→ Prêt" FontSize="11" Padding="6,3"
                                                         Background="#22FFD60A" Foreground="#FFD60A"
@@ -261,14 +261,14 @@
                                                 <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis">
                                                     <TextBlock.Text>
                                                         <MultiBinding StringFormat="{}{0} {1}">
-                                                            <Binding Path="Customer.FirstName"/>
-                                                            <Binding Path="Customer.LastName"/>
+                                                            <Binding Path="Sale.Customer.FirstName"/>
+                                                            <Binding Path="Sale.Customer.LastName"/>
                                                         </MultiBinding>
                                                     </TextBlock.Text>
                                                 </TextBlock>
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                                     <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd/MM}'}" FontSize="11" Opacity="0.6"/>
-                                                    <TextBlock Text="{Binding TotalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
                                                 </StackPanel>
                                                 <Button Content="→ Livré" FontSize="11" Padding="6,3"
                                                         Background="#2230D158" Foreground="#30D158"
@@ -306,12 +306,12 @@
                                                 <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis">
                                                     <TextBlock.Text>
                                                         <MultiBinding StringFormat="{}{0} {1}">
-                                                            <Binding Path="Customer.FirstName"/>
-                                                            <Binding Path="Customer.LastName"/>
+                                                            <Binding Path="Sale.Customer.FirstName"/>
+                                                            <Binding Path="Sale.Customer.LastName"/>
                                                         </MultiBinding>
                                                     </TextBlock.Text>
                                                 </TextBlock>
-                                                <TextBlock Text="{Binding TotalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold" Opacity="0.6"/>
+                                                <TextBlock Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold" Opacity="0.6"/>
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>

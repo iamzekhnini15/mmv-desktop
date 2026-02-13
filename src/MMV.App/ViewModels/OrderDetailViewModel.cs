@@ -55,6 +55,10 @@ public class OrderDetailViewModel : BaseViewModel
                 OnPropertyChanged(nameof(Notes));
                 OnPropertyChanged(nameof(CurrentStatus));
                 OnPropertyChanged(nameof(IsQualityCheckPhase));
+                OnPropertyChanged(nameof(DepositAmount));
+                OnPropertyChanged(nameof(RemainingAmount));
+                OnPropertyChanged(nameof(PaymentMethod));
+                OnPropertyChanged(nameof(HasRemainingBalance));
                 UpdateWorkflowState();
             }
         }
@@ -67,8 +71,8 @@ public class OrderDetailViewModel : BaseViewModel
     }
 
     public string OrderNumber => Order?.OrderNumber ?? string.Empty;
-    public string CustomerName => Order?.Customer != null
-        ? $"{Order.Customer.FirstName} {Order.Customer.LastName}"
+    public string CustomerName => Order?.Sale?.Customer != null
+        ? $"{Order.Sale.Customer.FirstName} {Order.Sale.Customer.LastName}"
         : "Client inconnu";
     public OrderStatus CurrentStatus => Order?.Status ?? OrderStatus.New;
     public string StatusDisplay => OrdersListViewModel.StatusEnumToDisplay(CurrentStatus);
@@ -82,7 +86,7 @@ public class OrderDetailViewModel : BaseViewModel
         }
     }
 
-    public decimal TotalAmount => Order?.TotalAmount ?? 0m;
+    public decimal TotalAmount => Order?.Sale?.FinalAmount ?? 0m;
     public DateTime OrderDate => Order?.OrderDate ?? DateTime.MinValue;
     public DateTime? EstimatedDelivery => Order?.EstimatedDelivery;
     public string Notes => Order?.Notes ?? string.Empty;
@@ -91,6 +95,26 @@ public class OrderDetailViewModel : BaseViewModel
     /// Indique si on est dans la phase contrôle qualité.
     /// </summary>
     public bool IsQualityCheckPhase => CurrentStatus == OrderStatus.QualityCheck;
+
+    /// <summary>
+    /// Montant de l'acompte versé.
+    /// </summary>
+    public decimal? DepositAmount => Order?.Sale?.DepositAmount;
+
+    /// <summary>
+    /// Montant restant à payer.
+    /// </summary>
+    public decimal? RemainingAmount => Order?.Sale?.RemainingAmount;
+
+    /// <summary>
+    /// Moyen de paiement.
+    /// </summary>
+    public string PaymentMethod => Order?.Sale?.PaymentMethod.ToString() ?? "-";
+
+    /// <summary>
+    /// Indique s'il y a un solde restant à encaisser.
+    /// </summary>
+    public bool HasRemainingBalance => RemainingAmount.HasValue && RemainingAmount.Value > 0;
 
     public bool CanAdvanceStatus
     {
@@ -191,6 +215,7 @@ public class OrderDetailViewModel : BaseViewModel
     public ICommand EditCommand { get; }
     public ICommand DeleteCommand { get; }
     public ICommand PrintFabSheetCommand { get; }
+    public ICommand EncashBalanceCommand { get; }
 
     #endregion
 
@@ -200,6 +225,7 @@ public class OrderDetailViewModel : BaseViewModel
     public event EventHandler<Order>? EditRequested;
     public event EventHandler<Order>? DeleteRequested;
     public event EventHandler<Order>? PrintFabSheetRequested;
+    public event EventHandler<Order>? OrderUpdated;
 
     #endregion
 
@@ -228,6 +254,7 @@ public class OrderDetailViewModel : BaseViewModel
         {
             if (Order != null) PrintFabSheetRequested?.Invoke(this, Order);
         });
+        EncashBalanceCommand = new RelayCommand(async () => await ExecuteEncashBalanceAsync(), () => HasRemainingBalance);
 
         Title = "Détail Commande";
     }
@@ -257,6 +284,7 @@ public class OrderDetailViewModel : BaseViewModel
 
         CanAdvanceStatus = canAdvance;
         (AdvanceStatusCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (EncashBalanceCommand as RelayCommand)?.RaiseCanExecuteChanged();
 
         // Calcul du retard
         if (Order?.EstimatedDelivery.HasValue == true && CurrentStatus != OrderStatus.Delivered)
@@ -342,6 +370,9 @@ public class OrderDetailViewModel : BaseViewModel
             // Mettre à jour l'état local
             Order = fresh;
             Items = new ObservableCollection<OrderItem>(fresh.OrderItems);
+
+            // Signaler que la commande a été mise à jour pour rafraîchir la liste/Kanban
+            OrderUpdated?.Invoke(this, fresh);
         }
         catch (Exception ex)
         {
@@ -378,6 +409,74 @@ public class OrderDetailViewModel : BaseViewModel
                 item.Product.StockQuantity -= item.Quantity;
                 // Note: le SaveChanges est fait au niveau appelant
             }
+        }
+    }
+
+    /// <summary>
+    /// Encaisse le montant restant d'une commande.
+    /// </summary>
+    private async Task ExecuteEncashBalanceAsync()
+    {
+        if (Order == null || !HasRemainingBalance || Order.Sale == null) return;
+
+        IsLoading = true;
+        ErrorMessage = null;
+
+        try
+        {
+            // Recharger la commande fraîche avec sa vente
+            var fresh = await _orderRepository.GetWithItemsAsync(Order.OrderId);
+            if (fresh == null || fresh.Sale == null)
+            {
+                ErrorMessage = "Commande introuvable.";
+                return;
+            }
+
+            // Sauvegarder le montant restant avant modification pour la notification
+            var amountToEncash = fresh.Sale.RemainingAmount ?? 0;
+
+            // Mettre à jour le paiement sur la vente : acompte devient le montant total, restant devient 0
+            fresh.Sale.DepositAmount = fresh.Sale.FinalAmount;
+            fresh.Sale.RemainingAmount = 0;
+
+            await _orderRepository.UpdateAsync(fresh);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Mettre à jour l'état local
+            Order = fresh;
+            OnPropertyChanged(nameof(DepositAmount));
+            OnPropertyChanged(nameof(RemainingAmount));
+            OnPropertyChanged(nameof(HasRemainingBalance));
+            (EncashBalanceCommand as RelayCommand)?.RaiseCanExecuteChanged();
+
+            // Créer une notification
+            if (_notificationRepository != null)
+            {
+                var notification = new Notification
+                {
+                    Type = "PaymentReceived",
+                    Title = $"Paiement encaissé - {fresh.OrderNumber}",
+                    Message = $"Le solde de {amountToEncash:F2} € a été encaissé pour la commande {fresh.OrderNumber}.",
+                    EntityId = fresh.OrderId,
+                    EntityType = "Order",
+                    IsRead = false,
+                    CreatedAt = DateTime.Now
+                };
+                await _notificationRepository.CreateAsync(notification);
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            // Signaler que la commande a été mise à jour pour rafraîchir la liste/Kanban
+            OrderUpdated?.Invoke(this, fresh);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Erreur lors de l'encaissement : {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[OrderDetailViewModel] Encashment error: {ex}");
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 }

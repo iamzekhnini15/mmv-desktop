@@ -62,13 +62,12 @@ public class CustomerRepository : BaseRepository<Customer, long>, ICustomerRepos
     }
 
     /// <summary>
-    /// Récupère un client avec tout son historique (commandes et ventes).
+    /// Récupère un client avec tout son historique (ventes).
     /// </summary>
     public async Task<Customer?> GetWithHistoryAsync(long customerId, CancellationToken cancellationToken = default)
     {
         return await _context.Customers
             .Include(c => c.Prescriptions)
-            .Include(c => c.Orders)
             .Include(c => c.Sales)
             .FirstOrDefaultAsync(c => c.CustomerId == customerId, cancellationToken);
     }
