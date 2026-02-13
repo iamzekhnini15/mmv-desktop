@@ -9,15 +9,6 @@ public class PrescriptionsViewModel : BaseViewModel
     }
 }
 
-/// <summary>ViewModel pour la gestion des commandes.</summary>
-public class OrdersViewModel : BaseViewModel
-{
-    public OrdersViewModel()
-    {
-        Title = "Gestion des Commandes";
-    }
-}
-
 /// <summary>ViewModel pour la gestion des ventes (POS).</summary>
 public class SalesViewModel : BaseViewModel
 {

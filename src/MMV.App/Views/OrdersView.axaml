@@ -1,10 +1,258 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-            x:Class="MMV.App.Views.OrdersView">
-    <Border Padding="20">
-        <StackPanel Spacing="10" VerticalAlignment="Center">
-            <TextBlock Text="🏭 Gestion des Commandes" FontSize="28" FontWeight="Bold"/>
-            <TextBlock Text="Module de gestion des commandes atelier - En cours de développement..." Opacity="0.7"/>
-        </StackPanel>
-    </Border>
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:converters="using:MMV.App.Converters"
+             xmlns:orders="using:MMV.App.Views.Orders"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="MMV.App.Views.OrdersView"
+             x:DataType="vm:OrdersViewModel"
+             Background="{DynamicResource BackgroundBrush}">
+
+    <UserControl.Styles>
+        <Style Selector="Border.DataRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="20,12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Border.DataRow:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
+        </Style>
+
+        <Style Selector="TextBlock.ColHeader">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="Opacity" Value="0.8"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="TextBox.FilterInput">
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <Style Selector="Button.GhostLink">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.GhostLink:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, *, Auto">
+
+        <!-- ═════════ HEADER ═════════ -->
+        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,15"
+                IsVisible="{Binding ShowList}">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="20" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="Commandes" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="12" Padding="10,4" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding ListViewModel.TotalOrders}" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <Rectangle Width="1" Height="24" Fill="{DynamicResource BorderBrush}"/>
+
+                    <Button Classes="GhostLink" Content="Vue Kanban" Command="{Binding ListViewModel.ShowKanbanCommand}"/>
+
+                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding ListViewModel.IsLoading}"
+                                 Width="80" Height="2" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
+
+                    <ComboBox ItemsSource="{Binding ListViewModel.StatusFilters}"
+                              SelectedItem="{Binding ListViewModel.SelectedStatus}"
+                              PlaceholderText="Statut"
+                              Width="180"
+                              Background="{DynamicResource BackgroundBrush}"
+                              CornerRadius="6"
+                              BorderThickness="1"
+                              BorderBrush="{DynamicResource BorderBrush}"
+                              VerticalAlignment="Center"/>
+
+                    <Grid>
+                        <TextBox Classes="FilterInput"
+                                 Text="{Binding ListViewModel.SearchText, Mode=TwoWay}"
+                                 Watermark="Rechercher..."
+                                 Width="250"/>
+                        <PathIcon Data="{StaticResource IconSearch}" Width="12"
+                                  Foreground="{DynamicResource TextSecondaryBrush}"
+                                  Margin="0,0,10,0" HorizontalAlignment="Right" IsHitTestVisible="False"/>
+                    </Grid>
+
+                    <Button Command="{Binding ListViewModel.CreateCommand}" Classes="Primary" Padding="16,6">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconPlus}" Width="10" Height="10" Foreground="White"/>
+                            <TextBlock Text="Nouvelle" FontSize="13"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ═════════ LIST CONTENT ═════════ -->
+        <Grid Grid.Row="1" RowDefinitions="Auto, *" IsVisible="{Binding ShowList}">
+
+            <!-- Column headers -->
+            <Border Grid.Row="0" Background="{DynamicResource BackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,10">
+                <Grid ColumnDefinitions="130, 1.5*, 130, 120, 120, 100, 100, 100">
+                    <TextBlock Grid.Column="0" Text="N° COMMANDE" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="1" Text="CLIENT" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="2" Text="STATUT" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="3" Text="DATE" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="4" Text="LIVRAISON" Classes="ColHeader"/>
+                    <TextBlock Grid.Column="5" Text="MONTANT" Classes="ColHeader" HorizontalAlignment="Right" Margin="0,0,10,0"/>
+                    <TextBlock Grid.Column="6" Text="ACOMPTE" Classes="ColHeader" HorizontalAlignment="Right" Margin="0,0,10,0"/>
+                    <TextBlock Grid.Column="7" Text="RESTANT" Classes="ColHeader" HorizontalAlignment="Right" Margin="0,0,10,0"/>
+                </Grid>
+            </Border>
+
+            <!-- Rows -->
+            <ScrollViewer Grid.Row="1">
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding ListViewModel.FilteredOrders}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="DataRow" PointerPressed="OrderRow_PointerPressed">
+                                    <Grid ColumnDefinitions="130, 1.5*, 130, 120, 120, 100, 100, 100">
+
+                                        <TextBlock Grid.Column="0" Text="{Binding OrderNumber}"
+                                                   FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+
+                                        <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                                                   FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   TextTrimming="CharacterEllipsis">
+                                            <TextBlock.Text>
+                                                <MultiBinding StringFormat="{}{0} {1}">
+                                                    <Binding Path="Sale.Customer.FirstName"/>
+                                                    <Binding Path="Sale.Customer.LastName"/>
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+
+                                        <!-- Status badge -->
+                                        <Border Grid.Column="2" HorizontalAlignment="Left"
+                                                Background="{Binding Status, Converter={x:Static converters:OrderStatusToColorConverter.Instance}, ConverterParameter=bg}"
+                                                CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Status, Converter={x:Static converters:OrderStatusToStringConverter.Instance}}"
+                                                       FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{Binding Status, Converter={x:Static converters:OrderStatusToColorConverter.Instance}}"/>
+                                        </Border>
+
+                                        <TextBlock Grid.Column="3"
+                                                   Text="{Binding OrderDate, StringFormat='{}{0:dd/MM/yyyy}'}"
+                                                   FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   VerticalAlignment="Center"/>
+
+                                        <TextBlock Grid.Column="4"
+                                                   Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd/MM/yyyy}'}"
+                                                   FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   VerticalAlignment="Center"/>
+
+                                        <TextBlock Grid.Column="5"
+                                                   Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F2} €'}"
+                                                   FontWeight="SemiBold" FontSize="13"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                   Margin="0,0,10,0"/>
+
+                                        <TextBlock Grid.Column="6"
+                                                   Text="{Binding Sale.DepositAmount, StringFormat='{}{0:F2} €', TargetNullValue='-'}"
+                                                   FontSize="13" Foreground="{DynamicResource SuccessBrush}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                   Margin="0,0,10,0"/>
+
+                                        <TextBlock Grid.Column="7"
+                                                   Text="{Binding Sale.RemainingAmount, StringFormat='{}{0:F2} €', TargetNullValue='-'}"
+                                                   FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource WarningBrush}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                   Margin="0,0,10,0"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Empty state -->
+                    <StackPanel IsVisible="{Binding ListViewModel.TotalOrders, Converter={x:Static converters:IsZeroConverter.Instance}}"
+                                HorizontalAlignment="Center" Margin="0,100" Spacing="15" Opacity="0.5">
+                        <PathIcon Data="{StaticResource IconSearch}" Width="48" Height="48"
+                                  Foreground="{DynamicResource TextDisabledBrush}"/>
+                        <TextBlock Text="Aucune commande trouvée" FontSize="16" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Créez une nouvelle commande ou modifiez vos filtres."
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- ═════════ FOOTER / PAGINATION ═════════ -->
+        <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"
+                Padding="15,10" IsVisible="{Binding ShowList}">
+            <Grid ColumnDefinitions="*, Auto">
+
+                <TextBlock Grid.Column="0"
+                           Text="{Binding ListViewModel.ErrorMessage}"
+                           Foreground="{DynamicResource ErrorBrush}"
+                           VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                    <Button Classes="NavButton" Command="{Binding ListViewModel.PreviousPageCommand}">
+                        <PathIcon Data="{StaticResource IconBack}" Width="12"/>
+                    </Button>
+                    <TextBlock Text="{Binding ListViewModel.CurrentPage, StringFormat='Page {0}'}"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13"/>
+                    <Button Classes="NavButton" Command="{Binding ListViewModel.NextPageCommand}">
+                        <PathIcon Data="{StaticResource IconBack}" Width="12" RenderTransform="rotate(180deg)"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ═════════ SUB-VIEWS ═════════ -->
+
+        <!-- Form (edit / create) -->
+        <Panel IsVisible="{Binding IsInEditMode}">
+            <orders:OrderFormView DataContext="{Binding FormViewModel}"/>
+        </Panel>
+
+        <!-- Detail -->
+        <Panel IsVisible="{Binding IsShowingDetail}">
+            <orders:OrderDetailView DataContext="{Binding DetailViewModel}"/>
+        </Panel>
+
+        <!-- Kanban -->
+        <Panel IsVisible="{Binding IsShowingKanban}">
+            <orders:OrderKanbanView DataContext="{Binding KanbanViewModel}"/>
+        </Panel>
+
+        <!-- Fabrication Sheet -->
+        <Panel IsVisible="{Binding IsShowingFabricationSheet}">
+            <orders:FabricationSheetView DataContext="{Binding FabricationSheetViewModel}"/>
+        </Panel>
+
+    </Grid>
 </UserControl>

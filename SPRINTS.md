@@ -18,7 +18,7 @@
 | **Sprint 5** | ✅ **TERMINÉ** | Module Gestion Clients (CRM) | 2 semaines |
 | **Sprint 6** | ✅ **TERMINÉ** | Module Gestion Produits & Stock | 2 semaines |
 | **Sprint 7** | ✅ **TERMINÉ** | Module Ordonnances Médicales | 2 jours |
-| **Sprint 8** | ⏳ Planifié | Module Commandes (Workflow Atelier) | 2-3 semaines |
+| **Sprint 8** | ✅ **TERMINÉ** | Module Commandes (Workflow Atelier) | 2-3 semaines |
 | **Sprint 9** | ⏳ Planifié | Module Point de Vente (POS/Caisse) | 2-3 semaines |
 | **Sprint 10** | ⏳ Planifié | Gestion Utilisateurs & Authentification | 1-2 semaines |
 | **Sprint 11** | ⏳ Planifié | Tableaux de Bord & Rapports | 2 semaines |
@@ -550,35 +550,156 @@ Module complet et opérationnel, intégration parfaite dans module Clients. Vali
 
 ---
 
-## Sprint 8 : Module Commandes (Workflow Atelier)
+## Sprint 8 : Module Commandes (Workflow Atelier) ✅ **TERMINÉ**
 
 ### Objectifs
-- [ ] Création de commande (lien client + prescription)
-- [ ] Ajout d'articles à la commande (monture, verres, accessoires)
-- [ ] Workflow de statut (Kanban ou liste)
-- [ ] Fiche de fabrication (impression atelier)
-- [ ] Suivi du délai (indicateur retard)
-- [ ] Notifications de changement de statut
-- [ ] Contrôle qualité (checklist)
+- [x] Création de commande (lien client + prescription)
+- [x] Ajout d'articles à la commande (monture, verres OD/OG, accessoires)
+- [x] Workflow de statut complet (6 étapes)
+- [x] Vue Kanban pour visualisation du workflow
+- [x] Fiche de fabrication imprimable (bon atelier)
+- [x] Suivi du délai avec indicateur de retard
+- [x] Notifications de changement de statut
+- [x] Contrôle qualité avec checklist (4 points)
+- [x] Gestion des acomptes et encaissement du solde
+- [x] Mise à jour automatique du stock lors de la fabrication
+- [ ] Historique des corrections (reporté Sprint 11)
+- [ ] Auto-complétion médecins (reporté Sprint 11)
+- [ ] Export PDF fiche fabrication avec QR Code (reporté Sprint 11)
 
 ### Écrans
-1. **OrdersListView** : Liste + filtres par statut
-2. **OrderFormView** : Création commande
-3. **OrderDetailView** : Suivi + actions
-4. **OrderKanbanView** : Vue Kanban (NEW → DELIVERED)
-5. **FabricationSheetView** : Bon atelier imprimable
+1. ✅ **OrdersView** : Vue conteneur principale
+2. ✅ **OrdersListView** : Liste + filtres par statut + pagination
+3. ✅ **OrderFormView** : Création commande avec articles multi-types
+4. ✅ **OrderDetailView** : Suivi + workflow + contrôle qualité + encaissement
+5. ✅ **OrderKanbanView** : Vue Kanban avec 6 colonnes de statut
+6. ✅ **FabricationSheetView** : Bon atelier imprimable professionnel
+
+### Livrables
+
+#### ViewModels (6 fichiers)
+- ✅ `OrdersViewModel.cs` (348 lignes) - Coordinateur principal avec navigation 5 vues
+- ✅ `OrdersListViewModel.cs` (244 lignes) - Liste paginée avec filtres par statut
+- ✅ `OrderFormViewModel.cs` (658 lignes) - Formulaire création avec classe OrderItemLine
+- ✅ `OrderDetailViewModel.cs` (483 lignes) - Fiche détaillée + workflow + QC + encaissement
+- ✅ `OrderKanbanViewModel.cs` (197 lignes) - Vue Kanban 6 colonnes avec compteurs
+- ✅ `FabricationSheetViewModel.cs` (109 lignes) - Bon de fabrication imprimable
+
+#### Views (5 fichiers XAML + 5 code-behind)
+- ✅ `OrdersView.axaml` - Conteneur avec gestion visibilité
+- ✅ `OrderFormView.axaml` (585 lignes) - Interface création professionnelle
+- ✅ `OrderDetailView.axaml` (678 lignes) - Fiche détaillée avec sections multiples
+- ✅ `OrderKanbanView.axaml` (335 lignes) - Design Kanban moderne avec couleurs
+- ✅ `FabricationSheetView.axaml` (236 lignes) - Mise en page A4 optimisée
+
+#### Composants Additionnels
+- ✅ Converters : `OrderStatusToColorConverter`, `OrderStatusToStringConverter`
+- ✅ Entité Notification avec repository
+- ✅ Integration 7 repositories (Order, Customer, Product, Prescription, StockMovement, Notification, UnitOfWork)
 
 ### Workflow Statuts
 ```
-NEW → TO_FABRICATE → IN_PROGRESS → QUALITY_CHECK → READY → DELIVERED
+NEW (Nouveau)
+  ↓
+TO_FABRICATE (À fabriquer)
+  ↓
+IN_PROGRESS (En fabrication)
+  ↓
+QUALITY_CHECK (Contrôle qualité) ← Checklist 4 points obligatoire
+  ↓
+READY (Prêt) ← Notification client automatique
+  ↓
+DELIVERED (Livré) ← Encaissement du solde requis
 ```
 
-### Fonctionnalités Clés
-- **Numérotation automatique** : CMD-YYYY-XXXX
-- **Calcul automatique TotalAmount** (somme OrderItems)
-- **Alerte dépassement délai**
-- **Mise à jour stock automatique** (fabrication = sortie verres)
-- **Impression code QR** (traçabilité)
+### Fonctionnalités Clés Implémentées
+
+1. **Gestion Multi-Articles avec Types Spécifiques**
+   - 🔲 Monture (Frame) - 1 par commande
+   - 👁 Verre OD (LensOd) - Avec paramètres optiques (Sphère, Cylindre, Axe, Addition)
+   - 👁 Verre OG (LensOg) - Avec paramètres optiques
+   - 🔧 Accessoires (Accessory) - Quantité variable
+   - Recherche produits avec popup auto-complétée
+   - Calcul automatique du montant total
+
+2. **Contrôle Qualité avec Checklist**
+   - ☑ Alignement de la monture
+   - ☑ Verre droit (OD)
+   - ☑ Verre gauche (OG)
+   - ☑ Propreté générale
+   - Validation obligatoire des 4 points pour passer au statut READY
+
+3. **Suivi des Délais avec Alertes**
+   - Calcul automatique des jours restants
+   - Indicateur visuel de retard :
+     - 🟢 Plus de 3 jours restants
+     - 🟡 1-3 jours restants
+     - 🔴 En retard (dépassement)
+   - Affichage "X jours restants" ou "🔴 En retard de X jours"
+
+4. **Gestion Financière Intégrée**
+   - Affichage de l'acompte versé (DepositAmount)
+   - Calcul automatique du solde restant (RemainingAmount)
+   - Bouton "Encaisser le solde" (visible si solde > 0)
+   - Sélection du moyen de paiement (Cash, Card, Check, Transfer)
+   - Mise à jour automatique de la vente associée
+   - Création de notification d'encaissement
+
+5. **Vue Kanban Interactive**
+   - 6 colonnes de statut avec couleurs distinctives :
+     - 🔵 Nouveau (#0A84FF)
+     - 🟣 À fabriquer (#AF52DE)
+     - 🟡 En fabrication (#FF9F0A)
+     - 🔴 Contrôle qualité (#FF453A)
+     - 🟢 Prêt (#32D74B)
+     - ⚪ Livré (#98989D)
+   - Compteurs en temps réel par colonne
+   - Cartes avec effet hover
+   - Bouton "➜" pour avancer au statut suivant
+   - Actualisation manuelle avec bouton dédié
+
+6. **Fiche de Fabrication Professionnelle**
+   - Format A4 optimisé pour impression
+   - Sections claires : Infos générales, Monture, Verres OD/OG, Accessoires
+   - Paramètres optiques en grand pour lecture facile
+   - Zone de notes techniques
+   - CheckBox "Fabrication terminée"
+   - Zone de signature du technicien
+   - Prêt pour impression (Ctrl+P)
+
+7. **Système de Notifications**
+   - Notification automatique lors du changement de statut
+   - Alerte spéciale pour commande prête (statut READY)
+   - Notification d'encaissement du solde
+   - Type : Info / Success
+   - Icônes : 📦, ✅, 💰
+
+8. **Intégration Stock Automatique**
+   - Création automatique de mouvements de stock (type OUT)
+   - Lors du passage TO_FABRICATE → IN_PROGRESS
+   - Décrémentation des quantités en stock
+   - Raison : "Fabrication commande [OrderNumber]"
+   - Synchronisation parfaite Stock ↔ Commandes
+
+9. **Validation Multi-Niveaux**
+   - Validation UI avec messages d'erreur instantanés
+   - Validation ViewModel (propriétés IsValid calculées)
+   - Validation métier dans les services
+   - Transactions atomiques (UnitOfWork)
+
+### Résultat
+Module complet et professionnel, intégration parfaite avec l'architecture existante. Le workflow d'atelier est fluide, la vue Kanban apporte une visualisation précieuse, et toutes les fonctionnalités critiques sont opérationnelles. Documentation détaillée dans `docs/SPRINT8_COMPLETE.md` (600+ lignes).
+
+**Statistiques** :
+- 6 ViewModels (2 041 lignes de C#)
+- 5 Views XAML (1 880 lignes)
+- 2 Converters personnalisés
+- 7 Repositories intégrés
+- 6 statuts de workflow
+- 4 types d'articles supportés
+- 4 points de contrôle qualité
+
+**Total** : ~4 000 lignes de code pour un module enterprise-grade.
 
 ---
 

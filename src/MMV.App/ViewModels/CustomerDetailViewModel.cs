@@ -17,6 +17,9 @@ public class CustomerDetailViewModel : BaseViewModel
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOrderRepository _orderRepository;
     private readonly IPrescriptionRepository _prescriptionRepository;
+    private readonly IProductRepository _productRepository;
+    private readonly ISaleRepository _saleRepository; // Pour historique uniquement
+    private readonly IStockMovementRepository _stockMovementRepository;
     
     private Customer? _customer;
     private int _selectedTabIndex = 0;
@@ -89,12 +92,22 @@ public class CustomerDetailViewModel : BaseViewModel
     /// </summary>
     public event EventHandler? BackRequested;
 
-    public CustomerDetailViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository, IPrescriptionRepository prescriptionRepository)
+    public CustomerDetailViewModel(
+        ICustomerRepository customerRepository, 
+        IUnitOfWork unitOfWork, 
+        IOrderRepository orderRepository, 
+        IPrescriptionRepository prescriptionRepository,
+        IProductRepository productRepository,
+        ISaleRepository saleRepository,
+        IStockMovementRepository stockMovementRepository)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _prescriptionRepository = prescriptionRepository ?? throw new ArgumentNullException(nameof(prescriptionRepository));
+        _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
+        _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
+        _stockMovementRepository = stockMovementRepository ?? throw new ArgumentNullException(nameof(stockMovementRepository));
 
         BackCommand = new RelayCommand(ExecuteBack);
         
@@ -109,23 +122,46 @@ public class CustomerDetailViewModel : BaseViewModel
         Customer = customer;
         Title = $"Fiche - {customer.FirstName} {customer.LastName}";
 
-        // Initialiser les ViewModels des onglets
-        SaleFormViewModel = new SaleFormViewModel(null, null)
+        // Initialiser le ViewModel de commande/vente avec les repositories nécessaires
+        SaleFormViewModel = new SaleFormViewModel(_saleRepository, _orderRepository, _productRepository, _prescriptionRepository, _stockMovementRepository, _unitOfWork)
         {
-            CustomerId = customer.CustomerId,
             Title = "Nouvelle Vente"
         };
+        
+        // Écouter l'événement de sauvegarde de la commande/vente pour rafraîchir l'historique
+        SaleFormViewModel.OrderSaved += OnOrderSaved;
+        
+        // Charger les produits compatibles avec l'ordonnance du client
+        await SaleFormViewModel.InitializeForCustomerAsync(customer.CustomerId);
 
         PrescriptionsViewModel = new CustomerPrescriptionsViewModel(_prescriptionRepository, _unitOfWork);
         await PrescriptionsViewModel.InitializeAsync(customer.CustomerId);
 
-        CustomerInfoViewModel = new CustomerInfoViewModel(customer, _orderRepository);
-        await CustomerInfoViewModel.LoadOrdersAsync();
+        CustomerInfoViewModel = new CustomerInfoViewModel(customer, _saleRepository);
+        await CustomerInfoViewModel.LoadSalesAsync();
 
-        PurchaseHistoryViewModel = new CustomerPurchaseHistoryViewModel(_orderRepository);
+        PurchaseHistoryViewModel = new CustomerPurchaseHistoryViewModel(_saleRepository);
         await PurchaseHistoryViewModel.LoadAsync(customer.CustomerId);
 
         SelectedTabIndex = 0; // Commencer par l'onglet Vente
+    }
+
+    /// <summary>
+    /// Gère la sauvegarde d'une commande/vente pour rafraîchir l'historique.
+    /// </summary>
+    private async void OnOrderSaved(object? sender, Sale sale)
+    {
+        // Rafraîchir l'historique d'achats
+        if (PurchaseHistoryViewModel != null)
+        {
+            await PurchaseHistoryViewModel.LoadAsync(Customer?.CustomerId ?? 0);
+        }
+        
+        // Rafraîchir les infos du client (nombre de ventes, etc.)
+        if (CustomerInfoViewModel != null)
+        {
+            await CustomerInfoViewModel.LoadSalesAsync();
+        }
     }
 
     private void ExecuteBack()

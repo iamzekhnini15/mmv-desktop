@@ -1,0 +1,334 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:converters="using:MMV.App.Converters"
+             xmlns:controls="using:MMV.App.Controls"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="MMV.App.Views.Orders.OrderKanbanView"
+             x:DataType="vm:OrderKanbanViewModel"
+             Background="{DynamicResource BackgroundBrush}">
+
+    <UserControl.Styles>
+        <Style Selector="Border.KanbanColumn">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <Style Selector="Border.KanbanCard">
+            <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Border.KanbanCard:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, *">
+
+        <!-- Header -->
+        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,15">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <controls:BackButton Command="{Binding BackToListCommand}" ButtonText="Liste" Margin="0"/>
+                    <Rectangle Width="1" Height="24" Fill="{DynamicResource BorderBrush}"/>
+                    <TextBlock Text="Vue Kanban" FontSize="18" FontWeight="Bold"/>
+                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}"
+                                 Width="80" Height="2" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <Button Grid.Column="2" Command="{Binding RefreshCommand}"
+                        Background="{DynamicResource SurfaceLightBrush}" CornerRadius="6"
+                        Padding="12,6" Cursor="Hand" BorderThickness="0">
+                    <TextBlock Text="↻ Actualiser" FontSize="12"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Kanban Columns -->
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Padding="16">
+            <Grid ColumnDefinitions="*, *, *, *, *, *" MinWidth="1200">
+
+                <!-- Column: Nouveau -->
+                <Border Grid.Column="0" Classes="KanbanColumn" Margin="4">
+                    <StackPanel Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Background="#330A84FF" CornerRadius="4" Padding="8,3">
+                                <TextBlock Text="Nouveau" FontSize="12" FontWeight="Bold" Foreground="#0A84FF"/>
+                            </Border>
+                            <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="10" Padding="6,2">
+                                <TextBlock Text="{Binding NewCount}" FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </Border>
+                        </StackPanel>
+
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
+                            <ItemsControl ItemsSource="{Binding NewOrders}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="KanbanCard" PointerPressed="KanbanCard_PointerPressed">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="{Binding OrderNumber}" FontWeight="Bold" FontSize="13"/>
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding StringFormat="{}{0} {1}">
+                                                            <Binding Path="Sale.Customer.FirstName"/>
+                                                            <Binding Path="Sale.Customer.LastName"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd/MM}'}" FontSize="11" Opacity="0.6"/>
+                                                    <TextBlock Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                                <Button Content="→ À fabriquer" FontSize="11" Padding="6,3"
+                                                        Background="#220A84FF" Foreground="#0A84FF"
+                                                        BorderThickness="0" CornerRadius="4" Cursor="Hand"
+                                                        Command="{Binding $parent[ItemsControl].((vm:OrderKanbanViewModel)DataContext).AdvanceStatusCommand}"
+                                                        CommandParameter="{Binding}" HorizontalAlignment="Left"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+
+                <!-- Column: À fabriquer -->
+                <Border Grid.Column="1" Classes="KanbanColumn" Margin="4">
+                    <StackPanel Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Background="#33FF9500" CornerRadius="4" Padding="8,3">
+                                <TextBlock Text="À fabriquer" FontSize="12" FontWeight="Bold" Foreground="#FF9500"/>
+                            </Border>
+                            <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="10" Padding="6,2">
+                                <TextBlock Text="{Binding ToFabricateCount}" FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </Border>
+                        </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
+                            <ItemsControl ItemsSource="{Binding ToFabricateOrders}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="KanbanCard" PointerPressed="KanbanCard_PointerPressed">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="{Binding OrderNumber}" FontWeight="Bold" FontSize="13"/>
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding StringFormat="{}{0} {1}">
+                                                            <Binding Path="Sale.Customer.FirstName"/>
+                                                            <Binding Path="Sale.Customer.LastName"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd/MM}'}" FontSize="11" Opacity="0.6"/>
+                                                    <TextBlock Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                                <Button Content="→ En fabrication" FontSize="11" Padding="6,3"
+                                                        Background="#22FF9500" Foreground="#FF9500"
+                                                        BorderThickness="0" CornerRadius="4" Cursor="Hand"
+                                                        Command="{Binding $parent[ItemsControl].((vm:OrderKanbanViewModel)DataContext).AdvanceStatusCommand}"
+                                                        CommandParameter="{Binding}" HorizontalAlignment="Left"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+
+                <!-- Column: En fabrication -->
+                <Border Grid.Column="2" Classes="KanbanColumn" Margin="4">
+                    <StackPanel Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Background="#33AF52DE" CornerRadius="4" Padding="8,3">
+                                <TextBlock Text="En fabrication" FontSize="12" FontWeight="Bold" Foreground="#AF52DE"/>
+                            </Border>
+                            <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="10" Padding="6,2">
+                                <TextBlock Text="{Binding InProgressCount}" FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </Border>
+                        </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
+                            <ItemsControl ItemsSource="{Binding InProgressOrders}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="KanbanCard" PointerPressed="KanbanCard_PointerPressed">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="{Binding OrderNumber}" FontWeight="Bold" FontSize="13"/>
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding StringFormat="{}{0} {1}">
+                                                            <Binding Path="Sale.Customer.FirstName"/>
+                                                            <Binding Path="Sale.Customer.LastName"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd/MM}'}" FontSize="11" Opacity="0.6"/>
+                                                    <TextBlock Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                                <Button Content="→ Contrôle qualité" FontSize="11" Padding="6,3"
+                                                        Background="#22AF52DE" Foreground="#AF52DE"
+                                                        BorderThickness="0" CornerRadius="4" Cursor="Hand"
+                                                        Command="{Binding $parent[ItemsControl].((vm:OrderKanbanViewModel)DataContext).AdvanceStatusCommand}"
+                                                        CommandParameter="{Binding}" HorizontalAlignment="Left"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+
+                <!-- Column: Contrôle qualité -->
+                <Border Grid.Column="3" Classes="KanbanColumn" Margin="4">
+                    <StackPanel Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Background="#33FFD60A" CornerRadius="4" Padding="8,3">
+                                <TextBlock Text="Contrôle" FontSize="12" FontWeight="Bold" Foreground="#FFD60A"/>
+                            </Border>
+                            <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="10" Padding="6,2">
+                                <TextBlock Text="{Binding QualityCheckCount}" FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </Border>
+                        </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
+                            <ItemsControl ItemsSource="{Binding QualityCheckOrders}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="KanbanCard" PointerPressed="KanbanCard_PointerPressed">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="{Binding OrderNumber}" FontWeight="Bold" FontSize="13"/>
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding StringFormat="{}{0} {1}">
+                                                            <Binding Path="Sale.Customer.FirstName"/>
+                                                            <Binding Path="Sale.Customer.LastName"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd/MM}'}" FontSize="11" Opacity="0.6"/>
+                                                    <TextBlock Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                                <Button Content="→ Prêt" FontSize="11" Padding="6,3"
+                                                        Background="#22FFD60A" Foreground="#FFD60A"
+                                                        BorderThickness="0" CornerRadius="4" Cursor="Hand"
+                                                        Command="{Binding $parent[ItemsControl].((vm:OrderKanbanViewModel)DataContext).AdvanceStatusCommand}"
+                                                        CommandParameter="{Binding}" HorizontalAlignment="Left"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+
+                <!-- Column: Prêt -->
+                <Border Grid.Column="4" Classes="KanbanColumn" Margin="4">
+                    <StackPanel Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Background="#3330D158" CornerRadius="4" Padding="8,3">
+                                <TextBlock Text="Prêt" FontSize="12" FontWeight="Bold" Foreground="#30D158"/>
+                            </Border>
+                            <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="10" Padding="6,2">
+                                <TextBlock Text="{Binding ReadyCount}" FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </Border>
+                        </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
+                            <ItemsControl ItemsSource="{Binding ReadyOrders}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="KanbanCard" PointerPressed="KanbanCard_PointerPressed">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="{Binding OrderNumber}" FontWeight="Bold" FontSize="13"/>
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding StringFormat="{}{0} {1}">
+                                                            <Binding Path="Sale.Customer.FirstName"/>
+                                                            <Binding Path="Sale.Customer.LastName"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="{Binding EstimatedDelivery, StringFormat='{}{0:dd/MM}'}" FontSize="11" Opacity="0.6"/>
+                                                    <TextBlock Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                                <Button Content="→ Livré" FontSize="11" Padding="6,3"
+                                                        Background="#2230D158" Foreground="#30D158"
+                                                        BorderThickness="0" CornerRadius="4" Cursor="Hand"
+                                                        Command="{Binding $parent[ItemsControl].((vm:OrderKanbanViewModel)DataContext).AdvanceStatusCommand}"
+                                                        CommandParameter="{Binding}" HorizontalAlignment="Left"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+
+                <!-- Column: Livré -->
+                <Border Grid.Column="5" Classes="KanbanColumn" Margin="4">
+                    <StackPanel Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Background="#3398989F" CornerRadius="4" Padding="8,3">
+                                <TextBlock Text="Livré" FontSize="12" FontWeight="Bold" Foreground="#98989F"/>
+                            </Border>
+                            <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="10" Padding="6,2">
+                                <TextBlock Text="{Binding DeliveredCount}" FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </Border>
+                        </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
+                            <ItemsControl ItemsSource="{Binding DeliveredOrders}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="KanbanCard" PointerPressed="KanbanCard_PointerPressed">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="{Binding OrderNumber}" FontWeight="Bold" FontSize="13"/>
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding StringFormat="{}{0} {1}">
+                                                            <Binding Path="Sale.Customer.FirstName"/>
+                                                            <Binding Path="Sale.Customer.LastName"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding Sale.FinalAmount, StringFormat='{}{0:F0} €'}" FontSize="11" FontWeight="SemiBold" Opacity="0.6"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Error -->
+        <Border Grid.Row="1" VerticalAlignment="Top" Margin="16,10"
+                Background="#33FF453A" CornerRadius="8" Padding="16,10"
+                IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}"
+                       FontSize="12" TextWrapping="Wrap"/>
+        </Border>
+    </Grid>
+</UserControl>

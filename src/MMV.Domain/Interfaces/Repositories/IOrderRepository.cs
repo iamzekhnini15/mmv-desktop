@@ -24,9 +24,9 @@ public interface IOrderRepository : IGenericRepository<Order, long>
     Task<Order?> GetByOrderNumberAsync(string orderNumber, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Récupère les commandes d'un client.
+    /// Récupère les commandes d'une vente spécifique.
     /// </summary>
-    Task<IList<Order>> GetByCustomerIdAsync(long customerId, CancellationToken cancellationToken = default);
+    Task<IList<Order>> GetBySaleIdAsync(long saleId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Récupère les commandes par statut.

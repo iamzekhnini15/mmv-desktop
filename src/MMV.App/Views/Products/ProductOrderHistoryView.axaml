@@ -21,9 +21,9 @@
                     <TextBlock Text="{Binding Order.OrderDate, StringFormat='Le {0:dd/MM/yyyy HH:mm}'}" FontSize="12" Foreground="#888"/>
                     <TextBlock FontSize="12" Foreground="#888">
                       <Run Text="Client: "/>
-                      <Run Text="{Binding Order.Customer.FirstName}"/>
+                      <Run Text="{Binding Order.Sale.Customer.FirstName}"/>
                       <Run Text=" "/>
-                      <Run Text="{Binding Order.Customer.LastName}"/>
+                      <Run Text="{Binding Order.Sale.Customer.LastName}"/>
                     </TextBlock>
                   </StackPanel>
 

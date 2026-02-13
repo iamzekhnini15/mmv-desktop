@@ -13,6 +13,8 @@
         <converters:StringToColorConverter x:Key="StringToColorConverter"/>
         <converters:StringToBoolConverter x:Key="StringToBoolConverter"/>
         <converters:CategoryToDetailConverter x:Key="CategoryToDetailConverter"/>
+        <converters:OrderStatusToStringConverter x:Key="OrderStatusToStringConverter"/>
+        <converters:OrderStatusToColorConverter x:Key="OrderStatusToColorConverter"/>
         
         <!-- DataTemplates pour les formulaires de fiche client -->
         <DataTemplate x:Key="SaleFormTemplate" DataType="vm:SaleFormViewModel">

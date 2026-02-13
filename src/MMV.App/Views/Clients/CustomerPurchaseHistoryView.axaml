@@ -12,42 +12,61 @@
         <Border Grid.Row="0" Padding="20,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
             <StackPanel>
                 <TextBlock Text="Historique des Achats" FontWeight="Bold" FontSize="16"/>
-                <TextBlock Text="Toutes les transactions passées." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <TextBlock Text="Toutes les ventes du client." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
             </StackPanel>
         </Border>
 
-        <DataGrid Grid.Row="1"
-                  ItemsSource="{Binding Orders}"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  HeadersVisibility="Column"
-                  GridLinesVisibility="Horizontal"
-                  HorizontalGridLinesBrush="{DynamicResource BorderBrush}"
-                  BorderThickness="0"
-                  RowHeight="44">
-            
-            <DataGrid.Styles>
-                <Style Selector="DataGridColumnHeader">
-                    <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
-                    <Setter Property="FontSize" Value="11"/>
-                    <Setter Property="FontWeight" Value="SemiBold"/>
-                    <Setter Property="Padding" Value="12,8"/>
-                </Style>
-                <Style Selector="DataGridCell">
-                    <Setter Property="FontSize" Value="13"/>
-                    <Setter Property="VerticalContentAlignment" Value="Center"/>
-                </Style>
-            </DataGrid.Styles>
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Margin="20" Spacing="20">
+                <!-- Section Toutes les Ventes -->
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Ventes" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource AccentBrush}"/>
+                    
+                    <DataGrid ItemsSource="{Binding Sales}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="{DynamicResource BorderBrush}"
+                              BorderThickness="1"
+                              BorderBrush="{DynamicResource BorderBrush}"
+                              RowHeight="44"
+                              Background="{DynamicResource SurfaceBrush}">
+                        
+                        <DataGrid.Styles>
+                            <Style Selector="DataGridColumnHeader">
+                                <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
+                                <Setter Property="FontSize" Value="11"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="Padding" Value="12,8"/>
+                            </Style>
+                            <Style Selector="DataGridCell">
+                                <Setter Property="FontSize" Value="13"/>
+                                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                            </Style>
+                        </DataGrid.Styles>
 
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="DATE" Binding="{Binding OrderDate, StringFormat='{}{0:dd/MM/yyyy}'}" Width="120"/>
-                <DataGridTextColumn Header="N° FACTURE" Binding="{Binding OrderNumber}" Width="*" FontWeight="Medium"/>
-                <DataGridTextColumn Header="STATUT" Binding="{Binding Status}" Width="150" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                <DataGridTextColumn Header="MONTANT" Binding="{Binding TotalAmount, StringFormat='{}{0:F2} €'}" Width="120" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
-            </DataGrid.Columns>
-        </DataGrid>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="DATE" Binding="{Binding SaleDate, StringFormat='{}{0:dd/MM/yyyy}'}" Width="110"/>
+                            <DataGridTextColumn Header="N° VENTE" Binding="{Binding SaleNumber}" Width="*" FontWeight="Medium"/>
+                            <DataGridTextColumn Header="STATUT" Binding="{Binding Status}" Width="130" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <DataGridTextColumn Header="LIVRAISON EST." Binding="{Binding EstimatedDelivery, StringFormat='{}{0:dd/MM/yyyy}', TargetNullValue='-'}" Width="120" Foreground="{DynamicResource WarningBrush}"/>
+                            <DataGridTextColumn Header="MONTANT" Binding="{Binding FinalAmount, StringFormat='{}{0:F2} €'}" Width="110" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <DataGridTextColumn Header="ACOMPTE" Binding="{Binding DepositAmount, StringFormat='{}{0:F2} €', TargetNullValue='-'}" Width="110" Foreground="{DynamicResource SuccessBrush}"/>
+                            <DataGridTextColumn Header="RESTANT" Binding="{Binding RemainingAmount, StringFormat='{}{0:F2} €', TargetNullValue='-'}" Width="110" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <TextBlock Text="Aucune vente trouvée" 
+                               IsVisible="{Binding !HasSales}" 
+                               HorizontalAlignment="Center" 
+                               Foreground="{DynamicResource TextDisabledBrush}" 
+                               FontStyle="Italic"
+                               Margin="0,12"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
 
         <ProgressBar Grid.Row="1" IsIndeterminate="True" IsVisible="{Binding IsLoading}" VerticalAlignment="Top" Height="2" Background="Transparent"/>
-        <TextBlock Grid.Row="1" Text="Aucune commande trouvée" IsVisible="{Binding !HasOrders}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextDisabledBrush}"/>
     </Grid>
 </UserControl>

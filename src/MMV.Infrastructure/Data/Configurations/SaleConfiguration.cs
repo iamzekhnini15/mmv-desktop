@@ -37,6 +37,12 @@ public class SaleConfiguration : IEntityTypeConfiguration<Sale>
             .HasColumnType("REAL")
             .IsRequired();
 
+        builder.Property(s => s.DepositAmount)
+            .HasColumnType("REAL");
+
+        builder.Property(s => s.RemainingAmount)
+            .HasColumnType("REAL");
+
         builder.Property(s => s.PaymentMethod)
             .IsRequired()
             .HasConversion<string>();
@@ -44,6 +50,11 @@ public class SaleConfiguration : IEntityTypeConfiguration<Sale>
         builder.Property(s => s.PaymentStatus)
             .HasConversion<string>()
             .HasDefaultValue(PaymentStatus.Paid);
+
+        builder.Property(s => s.Status)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasDefaultValue(SaleStatus.Draft);
 
         builder.Property(s => s.Notes)
             .HasMaxLength(2000);
@@ -65,6 +76,11 @@ public class SaleConfiguration : IEntityTypeConfiguration<Sale>
         builder.HasMany(s => s.SaleItems)
             .WithOne(si => si.Sale)
             .HasForeignKey(si => si.SaleId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(s => s.Orders)
+            .WithOne(o => o.Sale)
+            .HasForeignKey(o => o.SaleId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

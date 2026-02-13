@@ -120,7 +120,7 @@
                 </Border>
 
                 <DataGrid Grid.Row="1"
-                          ItemsSource="{Binding Orders}"
+                          ItemsSource="{Binding Sales}"
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           HeadersVisibility="Column"
@@ -128,7 +128,7 @@
                           HorizontalGridLinesBrush="{DynamicResource BorderBrush}"
                           BorderThickness="0"
                           RowHeight="44"
-                          IsVisible="{Binding HasOrders}">
+                          IsVisible="{Binding HasSales}">
                     
                     <DataGrid.Styles>
                         <Style Selector="DataGridColumnHeader">
@@ -144,15 +144,15 @@
                     </DataGrid.Styles>
 
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="DATE" Binding="{Binding OrderDate, StringFormat='{}{0:dd/MM/yyyy}'}" Width="120"/>
-                        <DataGridTextColumn Header="N° FACTURE" Binding="{Binding OrderNumber}" Width="*" FontWeight="Medium"/>
+                        <DataGridTextColumn Header="DATE" Binding="{Binding SaleDate, StringFormat='{}{0:dd/MM/yyyy}'}" Width="120"/>
+                        <DataGridTextColumn Header="N° FACTURE" Binding="{Binding SaleNumber}" Width="*" FontWeight="Medium"/>
                         <DataGridTextColumn Header="STATUT" Binding="{Binding Status}" Width="150" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                        <DataGridTextColumn Header="MONTANT" Binding="{Binding TotalAmount, StringFormat='{}{0:F2} €'}" Width="120" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <DataGridTextColumn Header="MONTANT" Binding="{Binding FinalAmount, StringFormat='{}{0:F2} €'}" Width="120" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                     </DataGrid.Columns>
                 </DataGrid>
 
                 <ProgressBar Grid.Row="1" IsIndeterminate="True" IsVisible="{Binding IsLoading}" VerticalAlignment="Top" Height="2" Background="Transparent"/>
-                <TextBlock Grid.Row="1" Text="Aucune commande trouvée" IsVisible="{Binding !HasOrders}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextDisabledBrush}" Margin="0,40,0,0"/>
+                <TextBlock Grid.Row="1" Text="Aucune vente trouvée" IsVisible="{Binding !HasSales}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextDisabledBrush}" Margin="0,40,0,0"/>
             </Grid>
         </StackPanel>
     </ScrollViewer>

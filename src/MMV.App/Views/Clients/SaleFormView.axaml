@@ -15,110 +15,328 @@
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="CornerRadius" Value="6"/>
         </Style>
-        
-        <Style Selector="DataGrid">
-            <Setter Property="RowHeight" Value="36"/> <Setter Property="HeadersVisibility" Value="Column"/>
-            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
-            <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource BorderBrush}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-        
-        <Style Selector="DataGridColumnHeader">
-            <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
-            <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="MinHeight" Value="32"/>
-        </Style>
     </UserControl.Styles>
 
-    <Grid ColumnDefinitions="*, 350"> <Grid Grid.Column="0" RowDefinitions="Auto, *, Auto" Margin="0,0,1,0">
-            
-            <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,1" Padding="16,10">
-                <Grid ColumnDefinitions="*, Auto">
-                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <PathIcon Data="{StaticResource IconSales}" Width="14"/>
-                        <TextBlock Text="Panier en cours" FontWeight="Bold" FontSize="14"/>
-                    </StackPanel>
-                    <Button Grid.Column="1" Classes="Secondary" Padding="12,6">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <PathIcon Data="{StaticResource IconPlus}" Width="10"/>
-                            <TextBlock Text="Ajouter Article (F2)" FontSize="12"/>
+    <Grid ColumnDefinitions="*, 400" MaxHeight="800">
+
+        <!-- ============ COLONNE GAUCHE : Produits + Recherche ============ -->
+        <Grid Grid.Column="0" RowDefinitions="Auto, Auto, Auto, *" Margin="0,0,1,0">
+
+            <!-- Bandeau Ordonnance (si existante) -->
+            <Border Grid.Row="0" 
+                    IsVisible="{Binding HasPrescription}"
+                    Background="{DynamicResource AccentFadeBrush}" 
+                    BorderBrush="{DynamicResource AccentBrush}" 
+                    BorderThickness="0,0,0,1" 
+                    Padding="16,12">
+                <Grid ColumnDefinitions="Auto, *, Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconPrescriptions}" Width="16" Foreground="{DynamicResource AccentBrush}"/>
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Ordonnance active" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="{Binding PrescriptionSummary}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
                         </StackPanel>
-                    </Button>
+                    </StackPanel>
+                    <Border Grid.Column="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="12,6" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding SuggestedGlassType}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"/>
+                    </Border>
                 </Grid>
             </Border>
 
-            <DataGrid Grid.Row="1" ItemsSource="{Binding SaleItems}" AutoGenerateColumns="False" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="RÉFÉRENCE" Binding="{Binding Product.Reference}" Width="2*" FontWeight="Medium"/>
-                    <DataGridTextColumn Header="QTÉ" Binding="{Binding Quantity}" Width="100"/>
-                    <DataGridTextColumn Header="PRIX UNITAIRE" Binding="{Binding UnitPrice, StringFormat='{}{0:F2} €'}" Width="150" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                    <DataGridTextColumn Header="TOTAL" Binding="{Binding TotalPrice, StringFormat='{}{0:F2} €'}" Width="100" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
-                </DataGrid.Columns>
-            </DataGrid>
-            
-            <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,1,0" Padding="16">
-                <TextBlock Text="Aucun article scanne" IsVisible="{Binding !SaleItems.Count}" Foreground="{DynamicResource TextSecondaryBrush}" FontStyle="Italic" FontSize="12"/>
+            <!-- Bandeau sans ordonnance -->
+            <Border Grid.Row="0" 
+                    IsVisible="{Binding !HasPrescription}"
+                    Background="{DynamicResource SurfaceLightBrush}" 
+                    BorderBrush="{DynamicResource BorderBrush}" 
+                    BorderThickness="0,0,0,1" 
+                    Padding="16,10">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <PathIcon Data="{StaticResource IconPrescriptions}" Width="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <TextBlock Text="Aucune ordonnance — Vente libre" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" FontStyle="Italic"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Barre de recherche + Filtre catégorie -->
+            <Border Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="16,10">
+                <Grid ColumnDefinitions="*, Auto">
+                    <TextBox Grid.Column="0" 
+                             Text="{Binding ProductSearchText}" 
+                             Watermark="🔍 Rechercher un produit (nom, référence...)"
+                             Margin="0,0,10,0"/>
+                    <ComboBox Grid.Column="1" 
+                              ItemsSource="{Binding CategoryFilters}"
+                              SelectedItem="{Binding SelectedCategoryFilter}"
+                              MinWidth="160"/>
+                </Grid>
+            </Border>
+
+            <!-- En-tête liste produits -->
+            <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="16,8">
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconProducts}" Width="14"/>
+                        <TextBlock Text="Produits disponibles" FontWeight="Bold" FontSize="13"/>
+                        <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="10" Padding="8,2" Margin="8,0,0,0">
+                            <TextBlock Text="{Binding FilteredProducts.Count, StringFormat='{}{0} résultats'}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Liste des produits (ItemsControl avec cartes) -->
+            <Border Grid.Row="3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0" MaxHeight="650">
+                <Panel>
+                    <!-- Loading -->
+                    <StackPanel IsVisible="{Binding IsLoadingProducts}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
+                        <TextBlock Text="Chargement des produits..." FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Liste produits -->
+                    <ScrollViewer IsVisible="{Binding !IsLoadingProducts}">
+                        <ItemsControl ItemsSource="{Binding FilteredProducts}" Margin="0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{DynamicResource SurfaceBrush}" 
+                                            BorderBrush="{DynamicResource BorderBrush}" 
+                                            BorderThickness="0,0,0,1"
+                                            Padding="16,12">
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <StackPanel Grid.Column="0" Spacing="6">
+                                                <Grid ColumnDefinitions="Auto, *">
+                                                    <TextBlock Text="{Binding Reference}" 
+                                                               FontWeight="SemiBold" 
+                                                               FontSize="12" 
+                                                               Foreground="{DynamicResource AccentBrush}"
+                                                               Margin="0,0,12,0"/>
+                                                    <TextBlock Grid.Column="1" 
+                                                               Text="{Binding Name}" 
+                                                               FontWeight="Medium" 
+                                                               FontSize="13"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </Grid>
+                                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                                    <TextBlock Text="{Binding Category}" 
+                                                               FontSize="11" 
+                                                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Text="{Binding StockQuantity, StringFormat='Stock: {0}'}" 
+                                                               FontSize="11" 
+                                                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Text="{Binding SalePrice, StringFormat='{}{0:F2} €'}" 
+                                                               FontSize="12" 
+                                                               FontWeight="Bold" 
+                                                               Foreground="{DynamicResource AccentBrush}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <Button Grid.Column="1"
+                                                    Command="{Binding $parent[ItemsControl].((vm:SaleFormViewModel)DataContext).AddToCartCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="Primary"
+                                                    Padding="16,6" 
+                                                    FontSize="12"
+                                                    VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <PathIcon Data="{StaticResource IconPlus}" Width="10" Foreground="White"/>
+                                                    <TextBlock Text="Ajouter" Foreground="White"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Panel>
             </Border>
         </Grid>
 
+        <!-- ============ COLONNE DROITE : Panier + Règlement ============ -->
         <Border Grid.Column="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,0">
-            <Grid RowDefinitions="*, Auto">
-                <ScrollViewer Grid.Row="0" Padding="20">
-                    <StackPanel Spacing="24">
-                        
-                        <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="8" Padding="20">
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="NET À PAYER" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                                <TextBlock Text="{Binding TotalAmount, StringFormat='{}{0:F2} €'}" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+            <Grid RowDefinitions="Auto, 200, Auto, Auto, *">
+
+                <!-- En-tête panier -->
+                <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="16,12">
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconSales}" Width="14"/>
+                        <TextBlock Text="Panier" FontWeight="Bold" FontSize="14"/>
+                        <Border Background="{DynamicResource AccentFadeBrush}" CornerRadius="10" Padding="8,2" Margin="8,0,0,0">
+                            <TextBlock Text="{Binding OrderItems.Count, StringFormat='{}{0} article(s)'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Articles du panier (FIXE avec hauteur de 300) -->
+                <ScrollViewer Grid.Row="1" Padding="0">
+                    <Panel>
+                        <!-- Panier vide -->
+                        <StackPanel IsVisible="{Binding !OrderItems.Count}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" Margin="0,40">
+                            <PathIcon Data="{StaticResource IconSales}" Width="32" Foreground="{DynamicResource TextDisabledBrush}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Panier vide" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Sélectionnez un produit à gauche" Foreground="{DynamicResource TextDisabledBrush}" FontSize="11" HorizontalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Articles -->
+                        <ItemsControl ItemsSource="{Binding OrderItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="12,10" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                                        <Grid ColumnDefinitions="*, Auto, Auto">
+                                            <StackPanel Grid.Column="0" Spacing="4">
+                                                <!-- Nom du produit + Type (OD/OG pour verres) -->
+                                                <Grid ColumnDefinitions="Auto, Auto">
+                                                    <TextBlock Text="{Binding Product.Name}" FontWeight="Medium" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                                                    <Border Grid.Column="1" 
+                                                            Background="{DynamicResource AccentBrush}" 
+                                                            CornerRadius="3" 
+                                                            Padding="4,1" 
+                                                            Margin="8,0,0,0"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding ItemType}" 
+                                                                   FontSize="9" 
+                                                                   FontWeight="Bold" 
+                                                                   Foreground="White"/>
+                                                    </Border>
+                                                </Grid>
+                                                
+                                                <!-- Paramètres de correction (si verre) -->
+                                                <StackPanel Spacing="2">
+                                                    <!-- Ligne 1: Sphère + Cylindre -->
+                                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                                        <TextBlock FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}">
+                                                            <Run Text="SPH: "/><Run Text="{Binding Sphere, StringFormat='{}{0:+0.00;-0.00;0.00}', TargetNullValue='-'}" FontWeight="SemiBold"/>
+                                                        </TextBlock>
+                                                        <TextBlock FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}">
+                                                            <Run Text="CYL: "/><Run Text="{Binding Cylinder, StringFormat='{}{0:+0.00;-0.00;0.00}', TargetNullValue='-'}" FontWeight="SemiBold"/>
+                                                        </TextBlock>
+                                                        <TextBlock FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}">
+                                                            <Run Text="AXE: "/><Run Text="{Binding Axis, StringFormat='{}{0}°', TargetNullValue='-'}" FontWeight="SemiBold"/>
+                                                        </TextBlock>
+                                                        <TextBlock FontSize="10" Foreground="{DynamicResource WarningBrush}">
+                                                            <Run Text="ADD: "/><Run Text="{Binding Addition, StringFormat='{}{0:+0.00}', TargetNullValue='-'}" FontWeight="SemiBold"/>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                    
+                                                    <!-- Ligne 2: Référence + Qté + Prix unitaire -->
+                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                        <TextBlock Text="{Binding Product.Reference}" FontSize="10" Foreground="{DynamicResource TextDisabledBrush}"/>
+                                                        <TextBlock Text="{Binding Quantity, StringFormat='Qté: {0}'}" FontSize="10" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="{Binding UnitPrice, StringFormat='@ {0:F2} €'}" FontSize="10" Foreground="{DynamicResource TextDisabledBrush}"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </StackPanel>
+                                            
+                                            <TextBlock Grid.Column="1" 
+                                                       Text="{Binding UnitPrice, StringFormat='{}{0:F2} €'}" 
+                                                       FontWeight="Bold" FontSize="13" 
+                                                       Foreground="{DynamicResource AccentBrush}"
+                                                       VerticalAlignment="Center"
+                                                       Margin="8,0"/>
+                                            <Button Grid.Column="2" 
+                                                    Command="{Binding $parent[ItemsControl].((vm:SaleFormViewModel)DataContext).RemoveFromCartCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Background="Transparent"
+                                                    Padding="6"
+                                                    VerticalAlignment="Center">
+                                                <PathIcon Data="{StaticResource IconTrash}" Width="12" Foreground="{DynamicResource ErrorBrush}"/>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Panel>
+                </ScrollViewer>
+
+                <!-- Résumé financier -->
+                <Border Grid.Row="2" Background="{DynamicResource SurfaceLightBrush}" Padding="16,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+                    <StackPanel Spacing="10">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBlock Text="Sous-total" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding TotalAmount, StringFormat='{}{0:F2} €'}" FontSize="13" FontWeight="Medium"/>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*, *">
+                            <TextBlock Text="Remise (€)" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" Text="{Binding DiscountAmount}" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Stretch"/>
+                        </Grid>
+
+                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4"/>
+
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBlock Text="NET À PAYER" FontSize="14" FontWeight="Bold"/>
+                            <TextBlock Grid.Column="1" Text="{Binding FinalAmount, StringFormat='{}{0:F2} €'}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                        </Grid>
+
+                        <!-- Acompte (visible uniquement pour commandes de fabrication) -->
+                        <StackPanel IsVisible="{Binding !IsCounterSale}" Spacing="8">
+                            <Grid ColumnDefinitions="*, *">
+                                <TextBlock Text="Acompte versé (€)" FontSize="12" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                <TextBox Grid.Column="1" Text="{Binding DepositAmount}" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Stretch"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Text="RESTE À PAYER" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource ErrorBrush}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding RemainingAmount, StringFormat='{}{0:F2} €'}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource ErrorBrush}"/>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Paiement + Actions -->
+                <Border Grid.Row="3" Padding="16,12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+                    <StackPanel Spacing="12">
+                        <!-- Checkbox Vente Comptoir -->
+                        <Border Background="{DynamicResource SurfaceLightBrush}" 
+                                CornerRadius="8" 
+                                Padding="12,10" 
+                                BorderBrush="{DynamicResource AccentBrush}" 
+                                BorderThickness="1">
+                            <StackPanel Spacing="6">
+                                <CheckBox IsChecked="{Binding IsCounterSale}" 
+                                          FontWeight="SemiBold" 
+                                          FontSize="13">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <PathIcon Data="{StaticResource IconSales}" Width="14" Foreground="{DynamicResource AccentBrush}"/>
+                                        <TextBlock Text="Vente Comptoir (immédiate)" Foreground="{DynamicResource AccentBrush}"/>
+                                    </StackPanel>
+                                </CheckBox>
                             </StackPanel>
                         </Border>
 
-                        <StackPanel Spacing="16">
-                            <TextBlock Text="RÈGLEMENT" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" LetterSpacing="1"/>
-                            
-                            <Grid RowDefinitions="Auto, Auto, Auto" ColumnDefinitions="*, *" ShowGridLines="False">
-                                <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
-                                    <TextBlock Text="Mode de paiement" Classes="label"/>
-                                    <ComboBox SelectedItem="{Binding PaymentMethod}" HorizontalAlignment="Stretch">
-                                        <ComboBoxItem>Espèces</ComboBoxItem>
-                                        <ComboBoxItem>Carte Bancaire</ComboBoxItem>
-                                        <ComboBoxItem>Chèque</ComboBoxItem>
-                                        <ComboBoxItem>Virement</ComboBoxItem>
-                                    </ComboBox>
-                                </StackPanel>
+                        <!-- Mode de paiement (toujours visible) -->
+                        <StackPanel>
+                            <TextBlock Text="Mode de paiement" Classes="label"/>
+                            <ComboBox ItemsSource="{Binding PaymentMethodOptions}"
+                                      SelectedItem="{Binding SelectedPaymentMethod}" 
+                                      HorizontalAlignment="Stretch"/>
+                        </StackPanel>
 
-                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,6,12">
-                                    <TextBlock Text="Remise (€)" Classes="label"/>
-                                    <TextBox Text="{Binding DiscountAmount}" Foreground="{DynamicResource WarningBrush}"/>
-                                </StackPanel>
-                                
-                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="6,0,0,12">
-                                    <TextBlock Text="TVA (20%)" Classes="label"/>
-                                    <TextBox Text="-" IsReadOnly="True" Background="Transparent" BorderThickness="0" Padding="0,6"/>
-                                </StackPanel>
-                            </Grid>
+                        <StackPanel>
+                            <TextBlock Text="Note interne" Classes="label"/>
+                            <TextBox Text="{Binding Notes}" Height="60" AcceptsReturn="True" TextWrapping="Wrap"/>
+                        </StackPanel>
 
-                            <StackPanel>
-                                <TextBlock Text="Note interne" Classes="label"/>
-                                <TextBox Text="{Binding Notes}" Height="100" AcceptsReturn="True" TextWrapping="Wrap"/>
+                        <!-- Message d'erreur -->
+                        <TextBlock Text="{Binding ErrorMessage}" 
+                                   IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   Foreground="{DynamicResource ErrorBrush}" 
+                                   FontSize="12" 
+                                   TextWrapping="Wrap"/>
+
+                        <Button Command="{Binding SaveCommand}" 
+                                IsEnabled="{Binding !IsSaving}" 
+                                Classes="Primary" 
+                                HorizontalAlignment="Stretch" 
+                                Padding="0,12">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource IconSales}" Width="16" Foreground="White"/>
+                                <TextBlock Text="ENCAISSER" FontWeight="Bold"/>
                             </StackPanel>
-                        </StackPanel>
+                        </Button>
                     </StackPanel>
-                </ScrollViewer>
-
-                <StackPanel Grid.Row="1" Spacing="10" Margin="20,20,20,20">
-                    <Button Command="{Binding SaveCommand}" IsEnabled="{Binding !IsSaving}" Classes="Primary" HorizontalAlignment="Stretch" Padding="0,12">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconSales}" Width="16" Foreground="White"/>
-                            <TextBlock Text="ENCAISSER" FontWeight="Bold"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Command="{Binding CancelCommand}" Content="Annuler" Background="Transparent" Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="Center" FontSize="12"/>
-                </StackPanel>
+                </Border>
+                
+                <!-- Spacer pour pousser le contenu vers le haut -->
+                <Border Grid.Row="4"/>
             </Grid>
         </Border>
     </Grid>

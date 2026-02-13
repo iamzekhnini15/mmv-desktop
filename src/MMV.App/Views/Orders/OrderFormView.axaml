@@ -1,0 +1,372 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             xmlns:converters="using:MMV.App.Converters"
+             xmlns:controls="using:MMV.App.Controls"
+             xmlns:entities="using:MMV.Domain.Entities"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="MMV.App.Views.Orders.OrderFormView"
+             x:DataType="vm:OrderFormViewModel"
+             Background="{DynamicResource BackgroundBrush}">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.SectionTitle">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="Opacity" Value="0.9"/>
+            <Setter Property="LetterSpacing" Value="1"/>
+        </Style>
+
+        <Style Selector="Border.ItemCard">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, *">
+
+        <!-- ═══ HEADER ═══ -->
+        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="24,16">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <controls:BackButton Command="{Binding CancelCommand}" ButtonText="Retour" Margin="0"/>
+                    <Rectangle Width="1" Height="24" Fill="{DynamicResource BorderBrush}"/>
+                    <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="16"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Button Content="Annuler" Padding="20,12" Cursor="Hand" CornerRadius="10"
+                            Command="{Binding CancelCommand}" Background="Transparent"
+                            Foreground="{DynamicResource TextSecondaryBrush}" BorderThickness="0"/>
+                    <Button Content="Enregistrer" Command="{Binding SaveCommand}" Classes="Primary"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ═══ FORM BODY ═══ -->
+        <ScrollViewer Grid.Row="1">
+            <Grid ColumnDefinitions="1.2*, 1, 1*" Margin="40">
+
+                <!-- LEFT COLUMN -->
+                <StackPanel Grid.Column="0" Spacing="40" Margin="0,0,40,0">
+
+                    <!-- Section Client -->
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
+                            <PathIcon Data="{StaticResource IconCustomers}" Width="16" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="CLIENT" Classes="SectionTitle" Margin="0"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Rechercher un client *" Classes="label"/>
+                                <Grid>
+                                    <TextBox Text="{Binding CustomerSearchText, Mode=TwoWay}"
+                                             Watermark="Nom, prénom ou téléphone..."
+                                             Classes="Input"/>
+                                    <Button Content="✕" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                            Margin="0,0,4,0" Padding="6,4" Background="Transparent"
+                                            Foreground="{DynamicResource TextSecondaryBrush}"
+                                            BorderThickness="0" Cursor="Hand"
+                                            Command="{Binding ClearCustomerCommand}"
+                                            IsVisible="{Binding HasSelectedCustomer}"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Customer autocomplete popup -->
+                            <Border IsVisible="{Binding IsCustomerPopupOpen}"
+                                    Background="{DynamicResource SurfaceBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="1" CornerRadius="6"
+                                    MaxHeight="200" Padding="4">
+                                <ScrollViewer>
+                                    <ItemsControl ItemsSource="{Binding FilteredCustomers}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Background="Transparent" BorderThickness="0"
+                                                        HorizontalContentAlignment="Stretch"
+                                                        HorizontalAlignment="Stretch"
+                                                        Padding="10,8" Cursor="Hand"
+                                                        Command="{Binding $parent[ItemsControl].((vm:OrderFormViewModel)DataContext).SelectCustomerCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                        <TextBlock FontWeight="SemiBold">
+                                                            <TextBlock.Text>
+                                                                <MultiBinding StringFormat="{}{0} {1}">
+                                                                    <Binding Path="FirstName"/>
+                                                                    <Binding Path="LastName"/>
+                                                                </MultiBinding>
+                                                            </TextBlock.Text>
+                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding Phone}" Opacity="0.6" FontSize="12"/>
+                                                    </StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+
+                            <!-- Selected customer info -->
+                            <Border IsVisible="{Binding HasSelectedCustomer}"
+                                    Background="{DynamicResource SurfaceLightBrush}"
+                                    CornerRadius="6" Padding="12">
+                                <StackPanel Spacing="4">
+                                    <TextBlock FontWeight="SemiBold">
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="✓ {0} {1}">
+                                                <Binding Path="SelectedCustomer.FirstName"/>
+                                                <Binding Path="SelectedCustomer.LastName"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding SelectedCustomer.Phone}" FontSize="12"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Separator Background="{DynamicResource BorderBrush}" Height="1"/>
+
+                    <!-- Section Ordonnance -->
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
+                            <PathIcon Data="{StaticResource IconPrescriptions}" Width="16" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="ORDONNANCE (OPTIONNEL)" Classes="SectionTitle" Margin="0"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Ordonnance du client" Classes="label"/>
+                                <ComboBox ItemsSource="{Binding CustomerPrescriptions}"
+                                          SelectedItem="{Binding SelectedPrescription}"
+                                          PlaceholderText="Aucune ordonnance"
+                                          HorizontalAlignment="Stretch" Classes="Input">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock>
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="Dr {0} — {1:dd/MM/yyyy}">
+                                                        <Binding Path="DoctorName"/>
+                                                        <Binding Path="IssueDate"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <Button Content="Remplir verres depuis l'ordonnance"
+                                    Command="{Binding AutoFillFromPrescriptionCommand}"
+                                    Background="Transparent" Foreground="{DynamicResource AccentBrush}"
+                                    BorderThickness="0" Cursor="Hand" FontSize="12" Padding="0,4"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Separator Background="{DynamicResource BorderBrush}" Height="1"/>
+
+                    <!-- Section Informations -->
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
+                            <PathIcon Data="{StaticResource IconOrders}" Width="16" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="INFORMATIONS" Classes="SectionTitle" Margin="0"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="16">
+                            <Grid ColumnDefinitions="*, *">
+                                <StackPanel Grid.Column="0" Spacing="8" Margin="0,0,12,0">
+                                    <TextBlock Text="N° Commande" Classes="label"/>
+                                    <TextBox Text="{Binding OrderNumber}" IsReadOnly="True" Classes="Input" Opacity="0.6"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="8">
+                                    <TextBlock Text="Livraison estimée" Classes="label"/>
+                                    <DatePicker SelectedDate="{Binding EstimatedDelivery}"
+                                                HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Notes" Classes="label"/>
+                                <TextBox Text="{Binding Notes}" Height="80" AcceptsReturn="True"
+                                         TextWrapping="Wrap" Classes="Input"
+                                         Watermark="Notes internes..."/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+
+                <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Stretch"/>
+
+                <!-- RIGHT COLUMN — Articles -->
+                <StackPanel Grid.Column="2" Spacing="24" Margin="40,0,0,0">
+
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,4">
+                        <PathIcon Data="{StaticResource IconProducts}" Width="16" Foreground="{DynamicResource AccentBrush}"/>
+                        <TextBlock Text="ARTICLES DE LA COMMANDE" Classes="SectionTitle" Margin="0"/>
+                    </StackPanel>
+
+                    <!-- Add item buttons -->
+                    <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <Button Command="{Binding AddFrameCommand}" Margin="0,0,8,8"
+                                Background="{DynamicResource SurfaceLightBrush}" CornerRadius="6"
+                                Padding="12,6" Cursor="Hand" BorderThickness="0">
+                            <TextBlock Text="+ Monture" FontSize="12"/>
+                        </Button>
+                        <Button Command="{Binding AddLensOdCommand}" Margin="0,0,8,8"
+                                Background="{DynamicResource SurfaceLightBrush}" CornerRadius="6"
+                                Padding="12,6" Cursor="Hand" BorderThickness="0">
+                            <TextBlock Text="+ Verre OD" FontSize="12"/>
+                        </Button>
+                        <Button Command="{Binding AddLensOgCommand}" Margin="0,0,8,8"
+                                Background="{DynamicResource SurfaceLightBrush}" CornerRadius="6"
+                                Padding="12,6" Cursor="Hand" BorderThickness="0">
+                            <TextBlock Text="+ Verre OG" FontSize="12"/>
+                        </Button>
+                        <Button Command="{Binding AddAccessoryCommand}" Margin="0,0,8,8"
+                                Background="{DynamicResource SurfaceLightBrush}" CornerRadius="6"
+                                Padding="12,6" Cursor="Hand" BorderThickness="0">
+                            <TextBlock Text="+ Accessoire" FontSize="12"/>
+                        </Button>
+                    </WrapPanel>
+
+                    <!-- Item lines -->
+                    <ItemsControl ItemsSource="{Binding OrderItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="ItemCard">
+                                    <StackPanel Spacing="10">
+
+                                        <!-- Type + remove -->
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <TextBlock Grid.Column="0" Text="{Binding ItemTypeDisplay}"
+                                                       FontWeight="Bold" FontSize="13"/>
+                                            <Button Grid.Column="1" Content="✕" Background="Transparent"
+                                                    Foreground="{DynamicResource TextSecondaryBrush}"
+                                                    BorderThickness="0" Cursor="Hand" Padding="4,2"
+                                                    Command="{Binding $parent[ItemsControl].((vm:OrderFormViewModel)DataContext).RemoveItemCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                        </Grid>
+
+                                        <!-- Product search -->
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="Produit" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            <TextBox Text="{Binding ProductSearchText, Mode=TwoWay}"
+                                                     Watermark="Rechercher un produit..." Classes="Input"/>
+                                        </StackPanel>
+
+                                        <!-- Product autocomplete -->
+                                        <Border IsVisible="{Binding IsProductPopupOpen}"
+                                                Background="{DynamicResource SurfaceBrush}"
+                                                BorderBrush="{DynamicResource BorderBrush}"
+                                                BorderThickness="1" CornerRadius="4" MaxHeight="120" Padding="2">
+                                            <ScrollViewer>
+                                                <ItemsControl ItemsSource="{Binding FilteredProducts}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="entities:Product">
+                                                            <Button Background="Transparent" BorderThickness="0"
+                                                                    HorizontalContentAlignment="Stretch"
+                                                                    HorizontalAlignment="Stretch"
+                                                                    Padding="8,6" Cursor="Hand"
+                                                                    Command="{Binding $parent[ItemsControl].((vm:OrderItemLine)DataContext).SelectProductCommand}"
+                                                                    CommandParameter="{Binding}">
+                                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                    <TextBlock Text="{Binding Reference}" FontWeight="SemiBold" FontSize="12"/>
+                                                                    <TextBlock Text="{Binding Name}" FontSize="12" Opacity="0.7"/>
+                                                                    <TextBlock Text="{Binding SalePrice, StringFormat='{}{0:F2} €'}" FontSize="11" Opacity="0.5"/>
+                                                                </StackPanel>
+                                                            </Button>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+                                        </Border>
+
+                                        <!-- Quantity + Price -->
+                                        <Grid ColumnDefinitions="*, *, *">
+                                            <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                                                <TextBlock Text="Qté" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                <TextBox Text="{Binding Quantity}" Classes="Input"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,8,0">
+                                                <TextBlock Text="Prix unit." FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                <TextBox Text="{Binding UnitPrice}" Classes="Input"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Spacing="4">
+                                                <TextBlock Text="Total" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                <TextBlock Text="{Binding LineTotal, StringFormat='{}{0:F2} €'}"
+                                                           FontWeight="Bold" VerticalAlignment="Center" Margin="0,8,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Lens params (only for lenses) -->
+                                        <StackPanel IsVisible="{Binding IsLens}" Spacing="8" Margin="0,4,0,0">
+                                            <TextBlock Text="Paramètres optiques" FontSize="11"
+                                                       Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"/>
+                                            <Grid ColumnDefinitions="*, *, *, *">
+                                                <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,6,0">
+                                                    <TextBlock Text="Sph" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBox Text="{Binding Sphere}" Classes="Input" FontSize="12"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Spacing="2" Margin="0,0,6,0">
+                                                    <TextBlock Text="Cyl" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBox Text="{Binding Cylinder}" Classes="Input" FontSize="12"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" Spacing="2" Margin="0,0,6,0">
+                                                    <TextBlock Text="Axe" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBox Text="{Binding Axis}" Classes="Input" FontSize="12"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="3" Spacing="2">
+                                                    <TextBlock Text="Add" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBox Text="{Binding Addition}" Classes="Input" FontSize="12"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Empty state -->
+                    <TextBlock Text="Ajoutez des articles à la commande"
+                               IsVisible="{Binding OrderItems.Count, Converter={x:Static converters:IsZeroConverter.Instance}}"
+                               HorizontalAlignment="Center" Opacity="0.4" Margin="0,30"/>
+
+                    <!-- Total -->
+                    <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="8" Padding="16,12">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBlock Text="Total commande" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding TotalAmount, StringFormat='{}{0:F2} €'}"
+                                       FontSize="20" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Error message -->
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}"
+                               FontSize="12" TextWrapping="Wrap"
+                               IsVisible="{Binding ErrorMessage, Converter={StaticResource StringToBoolConverter}}"/>
+                </StackPanel>
+
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Loading overlay -->
+        <Grid Grid.Row="0" Grid.RowSpan="2" Background="#80000000" IsVisible="{Binding IsSaving}">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
+                <ProgressBar IsIndeterminate="True" Width="50" Height="50" Classes="Circular"/>
+                <TextBlock Text="Enregistrement..." Foreground="White"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

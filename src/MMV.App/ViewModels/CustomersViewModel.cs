@@ -21,6 +21,9 @@ public class CustomersViewModel : BaseViewModel
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOrderRepository _orderRepository;
     private readonly IPrescriptionRepository _prescriptionRepository;
+    private readonly IProductRepository _productRepository;
+    private readonly ISaleRepository _saleRepository;
+    private readonly IStockMovementRepository _stockMovementRepository;
     private ICommand? _viewDetailCommand;
 
     /// <summary>
@@ -97,13 +100,16 @@ public class CustomersViewModel : BaseViewModel
     /// <summary>
     /// Initialise le ViewModel avec injection de dépendances.
     /// </summary>
-    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository, IPrescriptionRepository prescriptionRepository)
+    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IStockMovementRepository stockMovementRepository)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersViewModel] Constructor called");
         _customerRepository = customerRepository;
         _unitOfWork = unitOfWork;
         _orderRepository = orderRepository;
         _prescriptionRepository = prescriptionRepository;
+        _productRepository = productRepository;
+        _saleRepository = saleRepository;
+        _stockMovementRepository = stockMovementRepository;
         
         Title = "Clients";
         
@@ -189,7 +195,7 @@ public class CustomersViewModel : BaseViewModel
         if (customer != null)
         {
             // Créer une nouvelle instance du CustomerDetailViewModel
-            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _orderRepository, _prescriptionRepository);
+            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _orderRepository, _prescriptionRepository, _productRepository, _saleRepository, _stockMovementRepository);
             
             // Initialiser avec le client sélectionné
             await CustomerDetailViewModel.InitializeAsync(customer);

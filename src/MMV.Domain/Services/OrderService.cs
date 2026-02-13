@@ -10,7 +10,6 @@ namespace MMV.Domain.Services;
 public interface IOrderService
 {
     Task<Order?> GetOrderAsync(long orderId, CancellationToken cancellationToken = default);
-    Task<IList<Order>> GetCustomerOrdersAsync(long customerId, CancellationToken cancellationToken = default);
     Task<IList<Order>> GetOrdersByStatusAsync(OrderStatus status, CancellationToken cancellationToken = default);
     Task<IList<Order>> GetOverdueOrdersAsync(CancellationToken cancellationToken = default);
     Task<Order> CreateOrderAsync(Order order, CancellationToken cancellationToken = default);
@@ -30,12 +29,6 @@ public class OrderService : IOrderService
     {
         if (orderId <= 0) throw new ArgumentException("ID commande invalide.", nameof(orderId));
         return await _unitOfWork.Orders.GetWithItemsAsync(orderId, cancellationToken);
-    }
-
-    public async Task<IList<Order>> GetCustomerOrdersAsync(long customerId, CancellationToken cancellationToken = default)
-    {
-        if (customerId <= 0) throw new ArgumentException("ID client invalide.", nameof(customerId));
-        return await _unitOfWork.Orders.GetByCustomerIdAsync(customerId, cancellationToken);
     }
 
     public async Task<IList<Order>> GetOrdersByStatusAsync(OrderStatus status, CancellationToken cancellationToken = default)
