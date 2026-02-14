@@ -8,8 +8,10 @@ using MMV.App.Services;
 using MMV.App.ViewModels;
 using MMV.App.Views;
 using MMV.Domain.Interfaces.Repositories;
+using MMV.Domain.Services;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 
 namespace MMV.App;
 
@@ -32,43 +34,66 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Créer la fenêtre de connexion
-            var loginViewModel = new LoginViewModel();
-            var loginWindow = new Window
-            {
-                Title = "Connexion - ManageMyVision",
-                Width = 1000,
-                Height = 700,
-                WindowStartupLocation = WindowStartupLocation.CenterScreen,
-                Content = new LoginView { DataContext = loginViewModel }
-            };
-
-            // Quand la connexion réussit, afficher la fenêtre principale
-            loginViewModel.LoginSuccessful += (s, e) =>
-            {
-                // Utiliser le service provider pour créer MainWindow et MainWindowViewModel avec DI
-                var navigationService = _serviceProvider!.GetRequiredService<INavigationService>();
-                var dialogService = _serviceProvider!.GetRequiredService<IDialogService>();
-                var notificationRepository = _serviceProvider!.GetRequiredService<INotificationRepository>();
-                var productRepository = _serviceProvider!.GetRequiredService<IProductRepository>();
-                var unitOfWork = _serviceProvider!.GetRequiredService<IUnitOfWork>();
-                var mainWindow = new MainWindow(navigationService, notificationRepository, productRepository, unitOfWork);
-                
-                // Configurer DialogService avec la MainWindow
-                if (dialogService is DialogService ds)
-                {
-                    ds.SetMainWindow(mainWindow);
-                }
-                
-                desktop.MainWindow = mainWindow;
-                mainWindow.Show();
-                loginWindow.Close();
-            };
-
-            desktop.MainWindow = loginWindow;
+            ShowLoginWindow(desktop);
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// Affiche la fenêtre de connexion.
+    /// </summary>
+    private void ShowLoginWindow(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        var authService = _serviceProvider!.GetRequiredService<IAuthenticationService>();
+        var sessionService = _serviceProvider!.GetRequiredService<ISessionService>();
+
+        var loginViewModel = new LoginViewModel(authService, sessionService);
+        var loginWindow = new Window
+        {
+            Title = "Connexion - ManageMyVision",
+            Width = 1000,
+            Height = 700,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            Content = new LoginView { DataContext = loginViewModel }
+        };
+
+        // Quand la connexion réussit, afficher la fenêtre principale
+        loginViewModel.LoginSuccessful += (s, e) =>
+        {
+            var navigationService = _serviceProvider!.GetRequiredService<INavigationService>();
+            var dialogService = _serviceProvider!.GetRequiredService<IDialogService>();
+            var permissionService = _serviceProvider!.GetRequiredService<IPermissionService>();
+            var notificationRepository = _serviceProvider!.GetRequiredService<INotificationRepository>();
+            var productRepository = _serviceProvider!.GetRequiredService<IProductRepository>();
+            var unitOfWork = _serviceProvider!.GetRequiredService<IUnitOfWork>();
+
+            var mainWindow = new MainWindow(navigationService, sessionService, permissionService,
+                notificationRepository, productRepository, unitOfWork);
+
+            // Configurer DialogService avec la MainWindow
+            if (dialogService is DialogService ds)
+            {
+                ds.SetMainWindow(mainWindow);
+            }
+
+            // Gérer la déconnexion
+            if (mainWindow.DataContext is MainWindowViewModel mainWindowVm)
+            {
+                mainWindowVm.LogoutRequested += (sender, args) =>
+                {
+                    sessionService.Logout();
+                    mainWindow.Close();
+                    ShowLoginWindow(desktop);
+                };
+            }
+
+            desktop.MainWindow = mainWindow;
+            mainWindow.Show();
+            loginWindow.Close();
+        };
+
+        desktop.MainWindow = loginWindow;
     }
 
     /// <summary>
@@ -93,6 +118,12 @@ public partial class App : Application
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<ISaleRepository, SaleRepository>();
         services.AddScoped<IStockMovementRepository, StockMovementRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+
+        // Enregistrer les services d'authentification et de session
+        services.AddScoped<IAuthenticationService, AuthenticationService>();
+        services.AddSingleton<ISessionService, SessionService>();
+        services.AddSingleton<IPermissionService, PermissionService>();
 
         // Enregistrer les services
         services.AddSingleton<INavigationService, NavigationService>();

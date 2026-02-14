@@ -736,42 +736,374 @@ Module complet et professionnel, intégration parfaite avec l'architecture exist
 
 ---
 
-## Sprint 10 : Gestion Utilisateurs & Authentification
+## Sprint 10 : Gestion Utilisateurs & Authentification ⏳ EN COURS
 
-### Objectifs
-- [ ] Écran de connexion sécurisé
-- [ ] Hachage mot de passe (BCrypt/Argon2)
-- [ ] Gestion des rôles (ADMIN, OPTICIAN, TECHNICIAN)
-- [ ] Permissions par module
-- [ ] CRUD utilisateurs (admin uniquement)
-- [ ] Historique des connexions
-- [ ] Changement de mot de passe
-- [ ] Session utilisateur (singleton)
+### 📊 État d'Avancement
 
-### Écrans
-1. **LoginView** : Écran de connexion
-2. **UsersManagementView** : Liste + CRUD utilisateurs
-3. **UserProfileView** : Profil + changement mot de passe
+**Déjà implémenté (Sprint 1-4)** :
+- ✅ Entité `User` complète (UserId, Username, PasswordHash, FirstName, LastName, Role, IsActive, LastLogin, CreatedAt)
+- ✅ Enum `UserRole` avec 3 rôles (Admin, Optician, Technician)
+- ✅ `IUserRepository` avec méthodes : GetByUsernameAsync, GetActiveUsersAsync, GetByRoleAsync
+- ✅ `UserRepository` implémenté dans Infrastructure
+- ✅ `LoginView` + `LoginViewModel` basiques (Sprint 4) - authentification en dur (admin/admin)
+- ✅ Configuration EF Core pour User avec conversions enum
+- ✅ Data seeder avec 4 utilisateurs de test (PasswordHash BCrypt déjà présents)
+- ✅ Tests unitaires UserRepository (3 tests passants)
 
-### Sécurité
-- **Hachage** : Utiliser BCrypt.Net ou Argon2
-- **Politique de mot de passe** :
-  - Minimum 8 caractères
-  - Majuscule + minuscule + chiffre
-- **Timeout session** : 30 minutes d'inactivité
-- **Audit trail** : Logger les actions sensibles
+**À implémenter (Sprint 10)** : 10 tâches principales
 
-### Permissions par Rôle
+---
+
+### 🎯 Objectifs du Sprint 10
+
+#### Phase 1 : Authentification Réelle (2-3 jours)
+- [ ] **1.1 Ajouter BCrypt.Net-Next** au projet MMV.Infrastructure
+  - Package NuGet : `BCrypt.Net-Next` version 4.0.3+
+  - Méthode : `dotnet add package BCrypt.Net-Next`
+
+- [ ] **1.2 Créer AuthenticationService** dans `MMV.Domain/Services/`
+  - Interface `IAuthenticationService` :
+    - `Task<User?> AuthenticateAsync(string username, string password)`
+    - `Task<bool> ValidatePasswordAsync(string password, string hash)`
+    - `string HashPassword(string password)`
+    - `Task UpdateLastLoginAsync(long userId)`
+  - Implémentation dans `MMV.Infrastructure/Services/AuthenticationService.cs`
+  - Utiliser `BCrypt.Verify(password, hash)` pour validation
+  - Mettre à jour `LastLogin` après connexion réussie
+
+- [ ] **1.3 Créer SessionService** (singleton) dans `MMV.App/Services/`
+  - Interface `ISessionService` :
+    - `User? CurrentUser { get; set; }`
+    - `bool IsAuthenticated { get; }`
+    - `bool HasRole(UserRole role)`
+    - `bool IsAdmin { get; }`
+    - `void Login(User user)`
+    - `void Logout()`
+    - `event EventHandler? SessionExpired`
+  - Implémentation avec gestion timeout (30 minutes d'inactivité)
+  - Timer pour détecter l'inactivité
+  - Observable pour notifier les changements
+
+- [ ] **1.4 Refactoriser LoginViewModel**
+  - Injecter `IAuthenticationService` et `ISessionService`
+  - Remplacer le code en dur par l'appel à `AuthenticateAsync`
+  - Gérer les erreurs : "Identifiants incorrects", "Compte désactivé"
+  - Ajouter indicateur de chargement (IsLoggingIn)
+  - Mettre à jour `SessionService.CurrentUser` après login
+  - Commande "Se souvenir de moi" (optionnel)
+
+- [ ] **1.5 Ajouter déconnexion globale**
+  - Bouton "Déconnexion" dans MainWindow (header ou menu utilisateur)
+  - Command `LogoutCommand` dans MainWindowViewModel
+  - Appeler `SessionService.Logout()`
+  - Rediriger vers LoginView
+  - Fermer la MainWindow et rouvrir LoginWindow
+
+#### Phase 2 : Module Gestion Utilisateurs (3-4 jours)
+- [ ] **2.1 Créer UsersViewModel** (coordinateur) dans `MMV.App/ViewModels/`
+  - Propriétés :
+    - `UsersListViewModel ListViewModel`
+    - `UserFormViewModel? FormViewModel`
+    - `bool IsInEditMode`
+    - `bool ShowList` (calculée)
+  - Navigation entre liste et formulaire
+  - Vérifier permissions : seuls les ADMIN peuvent accéder
+
+- [ ] **2.2 Créer UsersListViewModel**
+  - `ObservableCollection<User> Users`
+  - `ObservableCollection<User> FilteredUsers`
+  - `string SearchText` (recherche par username, nom, prénom)
+  - `string SelectedRole` (filtre par rôle : Tous, Admin, Optician, Technician)
+  - `bool ShowActiveOnly` (afficher uniquement les utilisateurs actifs)
+  - Pagination (20 utilisateurs par page)
+  - Commands :
+    - `CreateCommand` → Ouvre formulaire création
+    - `EditCommand<User>` → Ouvre formulaire édition
+    - `ToggleActiveCommand<User>` → Active/Désactive un utilisateur (pas de suppression)
+    - `RefreshCommand` → Recharge la liste
+  - Events :
+    - `CreateUserRequested`
+    - `EditUserRequested`
+
+- [ ] **2.3 Créer UserFormViewModel**
+  - Mode création/édition avec `IsEditMode`
+  - Propriétés :
+    - `string Username` (unique, validation)
+    - `string FirstName` (requis)
+    - `string LastName` (requis)
+    - `UserRole SelectedRole` (dropdown)
+    - `string Password` (requis en création, optionnel en édition)
+    - `string ConfirmPassword` (doit correspondre)
+    - `bool IsActive` (checkbox)
+  - Validation en temps réel :
+    - Username : minimum 3 caractères, pas d'espaces
+    - Password : 8+ caractères, 1 majuscule, 1 minuscule, 1 chiffre
+    - ConfirmPassword : identique à Password
+  - Commands :
+    - `SaveCommand` → Validation + hash password + sauvegarde
+    - `CancelCommand` → Retour à la liste
+    - `GeneratePasswordCommand` → Génère un mot de passe fort aléatoire
+  - Utiliser `AuthenticationService.HashPassword()` avant sauvegarde
+
+- [ ] **2.4 Créer UsersView.axaml** (vue conteneur)
+  - ContentControl avec binding sur ShowList
+  - Affiche UsersListView ou UserFormView
+
+- [ ] **2.5 Créer UsersListView.axaml**
+  - DataGrid avec colonnes :
+    - Username
+    - Nom complet (FirstName + LastName)
+    - Rôle (avec badge coloré)
+    - Actif (✅/❌)
+    - Dernière connexion
+    - Créé le
+  - Barre de recherche + filtres (rôle, actif)
+  - Boutons CRUD : Nouveau, Modifier, Activer/Désactiver, Actualiser
+  - Pagination
+  - Indicateur visuel : compte désactivé en gris
+
+- [ ] **2.6 Créer UserFormView.axaml**
+  - Section Identifiants :
+    - Username (TextBox, requis, unique)
+    - Password (TextBox, masqué, avec bouton "Afficher/Masquer")
+    - Confirm Password (TextBox, masqué)
+    - Bouton "Générer mot de passe" avec affichage temporaire
+  - Section Informations personnelles :
+    - FirstName (TextBox, requis)
+    - LastName (TextBox, requis)
+  - Section Rôle et statut :
+    - Role (ComboBox avec 3 options)
+    - IsActive (CheckBox "Compte actif")
+  - Footer : Boutons Enregistrer/Annuler
+  - Messages d'erreur de validation sous chaque champ
+
+#### Phase 3 : Profil Utilisateur & Changement de Mot de Passe (1-2 jours)
+- [ ] **3.1 Créer UserProfileViewModel**
+  - Affiche les informations de `SessionService.CurrentUser`
+  - Propriétés :
+    - `string Username` (lecture seule)
+    - `string FullName` (lecture seule)
+    - `string RoleDisplay` (lecture seule)
+    - `string LastLoginDisplay` (lecture seule)
+    - `string CurrentPassword` (pour changement)
+    - `string NewPassword`
+    - `string ConfirmNewPassword`
+  - Commands :
+    - `ChangePasswordCommand` → Validation + hash + sauvegarde
+    - `CancelCommand`
+  - Validation :
+    - CurrentPassword : vérifier avec BCrypt
+    - NewPassword : politique forte (8+ caractères)
+    - ConfirmNewPassword : identique à NewPassword
+
+- [ ] **3.2 Créer UserProfileView.axaml**
+  - Section Profil (lecture seule) :
+    - Avatar (initiales dans cercle coloré)
+    - Username
+    - Nom complet
+    - Rôle (badge)
+    - Dernière connexion
+  - Section Changement de mot de passe :
+    - Mot de passe actuel (masqué)
+    - Nouveau mot de passe (masqué, avec indicateur de force)
+    - Confirmation (masqué)
+    - Bouton "Changer le mot de passe"
+  - Indicateur de force du mot de passe :
+    - Faible (rouge) : < 8 caractères
+    - Moyen (orange) : 8+ caractères, 1 type
+    - Fort (vert) : 8+ caractères, majuscule + minuscule + chiffre
+
+- [ ] **3.3 Ajouter menu utilisateur dans MainWindow**
+  - Header : Afficher "👤 [Nom Utilisateur] ([Rôle])"
+  - Menu déroulant (clic) avec options :
+    - "👤 Mon Profil" → Ouvre UserProfileView
+    - "⚙️ Paramètres" → Ouvre SettingsView (si existant)
+    - "🚪 Déconnexion" → LogoutCommand
+
+#### Phase 4 : Système de Permissions (2 jours)
+- [ ] **4.1 Créer PermissionService** dans `MMV.App/Services/`
+  - Interface `IPermissionService` :
+    - `bool CanAccessModule(string moduleName)`
+    - `bool CanCreate(string entityType)`
+    - `bool CanEdit(string entityType)`
+    - `bool CanDelete(string entityType)`
+    - `bool CanViewReports()`
+  - Implémentation basée sur `SessionService.CurrentUser.Role`
+  - Matrice de permissions (selon tableau ci-dessous)
+
+- [ ] **4.2 Appliquer les permissions dans l'UI**
+  - MainWindowViewModel : masquer les modules selon permissions
+    - Exemple : Module "Utilisateurs" visible uniquement pour ADMIN
+  - Désactiver les boutons CRUD selon permissions :
+    - Clients : ADMIN et OPTICIAN peuvent créer/modifier, TECHNICIAN lecture seule
+    - Produits : idem
+    - Commandes : ADMIN et OPTICIAN peuvent créer, tous peuvent voir, TECHNICIAN peut changer statut
+  - Ajouter `IsVisible` ou `IsEnabled` basé sur `PermissionService`
+
+- [ ] **4.3 Sécuriser les ViewModels**
+  - Ajouter vérifications dans les Commands :
+    ```csharp
+    CreateCommand = new RelayCommand(
+        ExecuteCreate,
+        () => _permissionService.CanCreate("Customer")
+    );
+    ```
+  - Afficher message d'erreur si l'utilisateur n'a pas les permissions
+
+#### Phase 5 : Historique des Connexions (1 jour - Optionnel)
+- [ ] **5.1 Créer entité LoginHistory** (optionnel)
+  - LoginHistoryId (long, PK)
+  - UserId (long, FK vers User)
+  - LoginDate (DateTime)
+  - IpAddress (string, optionnel)
+  - Success (bool)
+  - FailureReason (string, optionnel)
+
+- [ ] **5.2 Ajouter LoginHistoryRepository**
+  - Méthodes : GetByUserIdAsync, GetRecentAsync
+
+- [ ] **5.3 Logger les connexions**
+  - Dans `AuthenticationService.AuthenticateAsync` :
+    - Enregistrer tentative réussie
+    - Enregistrer tentative échouée avec raison
+  - Limiter à 100 entrées par utilisateur (purge automatique)
+
+- [ ] **5.4 Afficher l'historique dans UserProfileView** (optionnel)
+  - Onglet "Historique de connexion"
+  - DataGrid avec 5 dernières connexions :
+    - Date
+    - Succès/Échec
+    - Raison échec (si applicable)
+
+---
+
+### 🛡️ Matrice de Permissions Détaillée
 
 | Module | ADMIN | OPTICIAN | TECHNICIAN |
 |--------|-------|----------|------------|
-| Clients | ✅ CRUD | ✅ CRUD | 🔍 Lecture |
-| Produits | ✅ CRUD | ✅ CRUD | 🔍 Lecture |
-| Ordonnances | ✅ CRUD | ✅ CRUD | 🔍 Lecture |
-| Commandes | ✅ CRUD | ✅ CRUD | ✅ Mise à jour statut |
-| Ventes | ✅ CRUD | ✅ CRUD | ❌ Aucun |
-| Utilisateurs | ✅ CRUD | ❌ Aucun | ❌ Aucun |
-| Rapports | ✅ Tous | 🔍 Lecture | ❌ Aucun |
+| **Dashboard** | ✅ Accès complet | ✅ Accès complet | 🔍 Lecture seule |
+| **Clients** | ✅ CRUD + Export | ✅ CRUD + Export | 🔍 Lecture seule |
+| **Produits** | ✅ CRUD + Import | ✅ CRUD + Import | 🔍 Lecture + Alerte stock |
+| **Ordonnances** | ✅ CRUD | ✅ CRUD | 🔍 Lecture seule |
+| **Commandes** | ✅ CRUD + Workflow | ✅ CRUD + Workflow | ✅ Changement statut uniquement |
+| **Ventes (POS)** | ✅ CRUD + Remboursements | ✅ CRUD (pas remboursements) | ❌ Aucun accès |
+| **Gestion Utilisateurs** | ✅ CRUD | ❌ Aucun | ❌ Aucun |
+| **Rapports** | ✅ Tous les rapports + Export | 🔍 Lecture rapports basiques | ❌ Aucun |
+| **Paramètres** | ✅ Configuration complète | 🔍 Lecture uniquement | ❌ Aucun |
+| **Notifications** | ✅ Toutes | ✅ Toutes | ✅ Commandes uniquement |
+
+---
+
+### 📦 Livrables Attendus
+
+#### Services (4 fichiers)
+- `MMV.Domain/Services/IAuthenticationService.cs` (interface)
+- `MMV.Infrastructure/Services/AuthenticationService.cs` (implémentation)
+- `MMV.App/Services/ISessionService.cs` (interface)
+- `MMV.App/Services/SessionService.cs` (implémentation singleton)
+- `MMV.App/Services/IPermissionService.cs` (interface)
+- `MMV.App/Services/PermissionService.cs` (implémentation)
+
+#### ViewModels (6 fichiers)
+- `MMV.App/ViewModels/UsersViewModel.cs` (coordinateur)
+- `MMV.App/ViewModels/UsersListViewModel.cs` (liste avec filtres)
+- `MMV.App/ViewModels/UserFormViewModel.cs` (création/édition)
+- `MMV.App/ViewModels/UserProfileViewModel.cs` (profil + changement mot de passe)
+- Refactorisation : `MMV.App/ViewModels/LoginViewModel.cs` (authentification réelle)
+- Refactorisation : `MMV.App/ViewModels/MainWindowViewModel.cs` (menu utilisateur + permissions)
+
+#### Views (4 fichiers XAML + code-behind)
+- `MMV.App/Views/Users/UsersView.axaml`
+- `MMV.App/Views/Users/UsersListView.axaml`
+- `MMV.App/Views/Users/UserFormView.axaml`
+- `MMV.App/Views/Users/UserProfileView.axaml`
+- Refactorisation : `MMV.App/Views/LoginView.axaml` (améliorations UI)
+- Refactorisation : `MMV.App/Views/MainWindow.axaml` (menu utilisateur)
+
+#### Validators (1 fichier)
+- `MMV.Domain/Validators/UserValidator.cs` (FluentValidation pour User)
+  - Username unique
+  - Password politique forte
+  - FirstName et LastName requis
+
+#### Entités Optionnelles
+- `MMV.Domain/Entities/LoginHistory.cs` (si Phase 5 implémentée)
+
+#### Tests Unitaires (3 fichiers minimum)
+- `tests/MMV.Domain.Tests/ServiceTests/AuthenticationServiceTests.cs`
+  - Test HashPassword
+  - Test ValidatePassword
+  - Test AuthenticateAsync (succès/échec)
+- `tests/MMV.App.Tests/Services/SessionServiceTests.cs`
+  - Test Login/Logout
+  - Test timeout session
+- `tests/MMV.App.Tests/ViewModels/UserFormViewModelTests.cs`
+  - Test validation
+  - Test SaveCommand
+
+---
+
+### 🔐 Sécurité - Bonnes Pratiques
+
+1. **Hachage BCrypt** :
+   ```csharp
+   // Génération du hash avec work factor 11
+   string hash = BCrypt.Net.BCrypt.HashPassword(password, 11);
+   
+   // Vérification
+   bool isValid = BCrypt.Net.BCrypt.Verify(password, hash);
+   ```
+
+2. **Politique de mot de passe forte** :
+   - Minimum 8 caractères
+   - Au moins 1 majuscule
+   - Au moins 1 minuscule
+   - Au moins 1 chiffre
+   - Caractères spéciaux recommandés (optionnel)
+
+3. **Timeout session** :
+   - 30 minutes d'inactivité par défaut
+   - Timer reset à chaque action utilisateur
+   - Event `SessionExpired` pour notification
+
+4. **Protection contre brute force** (optionnel, Sprint 12) :
+   - Bloquer compte après 5 tentatives échouées
+   - Déblocage manuel par admin ou automatique après 15 minutes
+
+5. **Audit trail** (Sprint 12) :
+   - Logger les actions sensibles (création utilisateur, changement de rôle, etc.)
+   - Utiliser Serilog pour les logs
+
+---
+
+### ✅ Critères de Validation
+
+Le Sprint 10 sera considéré comme terminé quand :
+
+1. ✅ Un utilisateur peut se connecter avec username/password réel (BCrypt)
+2. ✅ Le mot de passe incorrect affiche un message d'erreur
+3. ✅ La session utilisateur est stockée dans SessionService
+4. ✅ L'utilisateur connecté est affiché dans le header de MainWindow
+5. ✅ Un ADMIN peut créer/modifier/désactiver des utilisateurs
+6. ✅ Un utilisateur peut changer son propre mot de passe
+7. ✅ Les modules sont masqués selon les permissions du rôle
+8. ✅ Les boutons CRUD sont désactivés selon les permissions
+9. ✅ La déconnexion fonctionne et redirige vers LoginView
+10. ✅ Le timeout de session (30 min) fonctionne
+11. ✅ Les tests unitaires passent (AuthenticationService, SessionService, UserFormViewModel)
+12. ✅ Un OPTICIAN ne peut pas accéder au module Utilisateurs
+13. ✅ Un TECHNICIAN voit les commandes mais ne peut modifier que le statut
+
+---
+
+### 📝 Notes Importantes
+
+- **BCrypt est déjà utilisé** dans DbInitializer pour les mots de passe de test
+- **Pattern utilisé** : tous les hash commencent par `$2a$11$` (BCrypt work factor 11)
+- **Mot de passe de test actuel** : tous les utilisateurs ont le mot de passe "admin"
+- **Ne jamais supprimer un utilisateur** : utiliser `IsActive = false` pour désactivation
+- **SessionService doit être un singleton** pour persister durant toute la session
+- **Tester avec les 3 rôles** : admin, marie.optic (Optician), pierre.tech (Technician)
 
 ---
 

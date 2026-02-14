@@ -5,6 +5,7 @@ using MMV.Domain.Interfaces.Repositories;
 using MMV.Domain.Services;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 
 namespace MMV.Infrastructure;
 
@@ -44,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<IPrescriptionService, PrescriptionService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ISaleService, SaleService>();
+        services.AddScoped<IAuthenticationService, AuthenticationService>();
 
         return services;
     }

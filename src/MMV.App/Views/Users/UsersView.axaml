@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
+             x:Class="MMV.App.Views.Users.UsersView"
+             x:DataType="vm:UsersViewModel">
+
+    <Grid>
+        <!-- Liste des utilisateurs -->
+        <ContentControl Content="{Binding ListViewModel}"
+                        IsVisible="{Binding ShowList}"/>
+
+        <!-- Formulaire création/édition -->
+        <ContentControl Content="{Binding FormViewModel}"
+                        IsVisible="{Binding IsInEditMode}"/>
+    </Grid>
+</UserControl>

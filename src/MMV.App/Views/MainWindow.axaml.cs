@@ -24,11 +24,13 @@ public partial class MainWindow : Window
     /// Constructeur avec injection de dépendances.
     /// </summary>
     public MainWindow(INavigationService navigationService,
+                     ISessionService sessionService,
+                     IPermissionService permissionService,
                      INotificationRepository? notificationRepository = null,
                      IProductRepository? productRepository = null,
                      IUnitOfWork? unitOfWork = null)
     {
         InitializeComponent();
-        DataContext = new MainWindowViewModel(navigationService, notificationRepository, productRepository, unitOfWork);
+        DataContext = new MainWindowViewModel(navigationService, sessionService, permissionService, notificationRepository, productRepository, unitOfWork);
     }
 }
