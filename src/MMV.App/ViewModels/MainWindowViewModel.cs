@@ -306,8 +306,18 @@ public class MainWindowViewModel : BaseViewModel
         // Reset le timer d'inactivité de la session
         _sessionService.ResetInactivityTimer();
 
-        _navigationService.Navigate(viewName);
-        CurrentView = _navigationService.CurrentViewModel;
+        try
+        {
+            _navigationService.Navigate(viewName);
+            CurrentView = _navigationService.CurrentViewModel;
+            ErrorMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Impossible d'ouvrir le module '{viewName}' : {ex.InnerException?.Message ?? ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[Navigation] Erreur pour '{viewName}': {ex}");
+        }
+
         IsUserMenuOpen = false;
     }
 

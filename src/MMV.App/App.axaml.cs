@@ -137,8 +137,12 @@ public partial class App : Application
         services.AddTransient<PrescriptionsViewModel>();
         services.AddTransient<OrdersViewModel>();
         services.AddTransient<SalesViewModel>();
+        services.AddTransient<InventoryViewModel>();
+        services.AddTransient<NotificationsViewModel>();
         services.AddTransient<ReportsViewModel>();
         services.AddTransient<SettingsViewModel>();
+        services.AddTransient<UsersViewModel>();
+        services.AddTransient<UserProfileViewModel>();
 
         var serviceProvider = services.BuildServiceProvider();
         

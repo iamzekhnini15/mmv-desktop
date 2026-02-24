@@ -90,12 +90,15 @@ public static class DbInitializer
 
     private static List<User> CreateUsers()
     {
+        // Hash BCrypt (work factor 11) pour le mot de passe "admin"
+        const string adminHash = "$2a$11$QA85M79Q7bLajCAGRrVS1ONdstKLbV0S/vX6OKtN3CsCF3MWSNMoi";
+
         return new List<User>
         {
             new User
             {
                 Username = "admin",
-                PasswordHash = "$2a$11$dXJ3SW6G7P50eS6xFJwFHeJ/hbtjiZlyCloO/sURR8EZ4/nqXJcOy", // hash pour 'admin'
+                PasswordHash = adminHash,
                 FirstName = "Administrateur",
                 LastName = "Système",
                 Role = UserRole.Admin,
@@ -106,7 +109,7 @@ public static class DbInitializer
             new User
             {
                 Username = "marie.optic",
-                PasswordHash = "$2a$11$dXJ3SW6G7P50eS6xFJwFHeJ/hbtjiZlyCloO/sURR8EZ4/nqXJcOy",
+                PasswordHash = adminHash,
                 FirstName = "Marie",
                 LastName = "Durand",
                 Role = UserRole.Optician,
@@ -117,7 +120,7 @@ public static class DbInitializer
             new User
             {
                 Username = "pierre.tech",
-                PasswordHash = "$2a$11$dXJ3SW6G7P50eS6xFJwFHeJ/hbtjiZlyCloO/sURR8EZ4/nqXJcOy",
+                PasswordHash = adminHash,
                 FirstName = "Pierre",
                 LastName = "Moreau",
                 Role = UserRole.Technician,
@@ -128,7 +131,7 @@ public static class DbInitializer
             new User
             {
                 Username = "sophie.optic",
-                PasswordHash = "$2a$11$dXJ3SW6G7P50eS6xFJwFHeJ/hbtjiZlyCloO/sURR8EZ4/nqXJcOy",
+                PasswordHash = adminHash,
                 FirstName = "Sophie",
                 LastName = "Lambert",
                 Role = UserRole.Optician,
