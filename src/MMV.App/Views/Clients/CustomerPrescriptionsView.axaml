@@ -44,7 +44,7 @@
 
     <Grid RowDefinitions="Auto, *, Auto">
         
-        <Border Grid.Row="0" Padding="20,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" IsVisible="{Binding ShowList}">
+        <Border Grid.Row="0" Padding="16,12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" IsVisible="{Binding ShowList}">
             <Grid ColumnDefinitions="*, Auto">
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <TextBlock Text="Historique des Ordonnances" FontWeight="Bold" FontSize="18" VerticalAlignment="Center"/>
@@ -64,8 +64,8 @@
 
         <Grid Grid.Row="1" RowDefinitions="Auto, *" IsVisible="{Binding ShowList}">
             
-            <Border Grid.Row="0" Background="{DynamicResource BackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,10">
-                <Grid ColumnDefinitions="120, 2*, 3*, 3*, 40">
+            <Border Grid.Row="0" Background="{DynamicResource BackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="16,8">
+                <Grid ColumnDefinitions="100, 1.5*, 3*, 3*, 40">
                     <TextBlock Grid.Column="0" Text="DATE" Classes="ColHeader"/>
                     <TextBlock Grid.Column="1" Text="PRESCRIPTEUR" Classes="ColHeader"/>
                     <TextBlock Grid.Column="2" Text="ŒIL DROIT (OD)" Classes="ColHeader"/>
@@ -81,7 +81,7 @@
                             <DataTemplate>
                                 <Border Classes="PrescriptionRow" 
                                         PointerPressed="OnPrescriptionTapped" 
-                                        Tag="{Binding}"> <Grid ColumnDefinitions="120, 2*, 3*, 3*, 40">
+                                        Tag="{Binding}"> <Grid ColumnDefinitions="100, 1.5*, 3*, 3*, 40">
                                         
                                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding IssueDate, StringFormat='{}{0:dd/MM/yyyy}'}" FontWeight="SemiBold" FontSize="13"/>
@@ -140,15 +140,7 @@
             </ScrollViewer>
         </Grid>
 
-        <Panel Grid.Row="0" Grid.RowSpan="3" Background="#80000000" IsVisible="{Binding IsInEditMode}">
-            <ContentControl Content="{Binding FormViewModel}">
-                <ContentControl.DataTemplates>
-                    <DataTemplate DataType="vm:PrescriptionFormViewModel">
-                        <views:PrescriptionFormView/>
-                    </DataTemplate>
-                </ContentControl.DataTemplates>
-            </ContentControl>
-        </Panel>
+        <!-- PrescriptionForm is now displayed at CustomerDetailView level for full-page mode -->
 
         <Panel Grid.Row="0" Grid.RowSpan="3" Background="#80000000" IsVisible="{Binding IsShowingDetail}">
             <views:PrescriptionDetailView DataContext="{Binding DetailViewModel}"/>

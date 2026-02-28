@@ -44,10 +44,10 @@
 
     <Grid RowDefinitions="Auto, *, Auto">
 
-        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,15" IsVisible="{Binding !IsInEditMode}">
+        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="16,12" IsVisible="{Binding !IsInEditMode}">
             <Grid ColumnDefinitions="Auto, *, Auto">
 
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                     <TextBlock Text="Clients" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
 
                     <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="12" Padding="10,4">
@@ -80,8 +80,8 @@
 
         <Grid Grid.Row="1" RowDefinitions="Auto, *" IsVisible="{Binding ShowList}">
 
-            <Border Grid.Row="0" Background="{DynamicResource BackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,10">
-                <Grid ColumnDefinitions="60, 2*, 1.5*, 2*, 1.5*, 1.5*">
+            <Border Grid.Row="0" Background="{DynamicResource BackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="16,8">
+                <Grid ColumnDefinitions="50, 2*, 1.5*, 2*, 1.5*, 1.2*">
                     <TextBlock Grid.Column="1" Text="NOM COMPLET" Classes="ColHeader"/>
                     <TextBlock Grid.Column="2" Text="CONTACT" Classes="ColHeader"/>
                     <TextBlock Grid.Column="3" Text="ADRESSE" Classes="ColHeader"/>
@@ -96,7 +96,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Classes="DataRow" PointerPressed="Border_PointerPressed">
-                                    <Grid ColumnDefinitions="60, 2*, 1.5*, 2*, 1.5*, 1.5*">
+                                    <Grid ColumnDefinitions="50, 2*, 1.5*, 2*, 1.5*, 1.2*">
 
                                         <Border Grid.Column="0" Width="36" Height="36" CornerRadius="18" Background="{DynamicResource SurfaceLightBrush}" HorizontalAlignment="Left">
                                             <TextBlock Text="{Binding FirstName[0]}"
@@ -107,8 +107,8 @@
                                         </Border>
 
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="5">
-                                            <TextBlock Text="{Binding LastName}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                            <TextBlock Text="{Binding FirstName}" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            <TextBlock Text="{Binding LastName}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding FirstName}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal" Spacing="6" IsVisible="{Binding Phone, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
@@ -117,8 +117,8 @@
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="3" VerticalAlignment="Center" Orientation="Horizontal" Spacing="5">
-                                            <TextBlock Text="{Binding City}" FontWeight="Medium" FontSize="13"/>
-                                            <TextBlock Text="{Binding PostalCode}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13"/>
+                                            <TextBlock Text="{Binding City}" FontWeight="Medium" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding PostalCode}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="4" VerticalAlignment="Center" Spacing="2">

@@ -60,48 +60,49 @@
 
     <Grid RowDefinitions="Auto, *">
         
-        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="32,24">
+        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="16,12">
             <Grid ColumnDefinitions="Auto, *, Auto">
                 
                 <controls:BackButton Grid.Column="0"
                                      Command="{Binding BackCommand}"
                                      ButtonText="Retour"
-                                     VerticalAlignment="Top"
-                                     Margin="0,4,32,0"/>
+                                     VerticalAlignment="Center"
+                                     Margin="0,0,16,0"/>
 
                 <Grid Grid.Column="1" ColumnDefinitions="Auto, *">
                     
-                    <Border Grid.Column="0" Width="64" Height="64" CornerRadius="32" Background="{DynamicResource SurfaceLightBrush}" Margin="0,0,24,0">
-                         <PathIcon Data="{StaticResource IconUser}" Width="24" Height="24" Foreground="{DynamicResource AccentBrush}"/>
+                    <Border Grid.Column="0" Width="48" Height="48" CornerRadius="24" Background="{DynamicResource SurfaceLightBrush}" Margin="0,0,16,0">
+                         <PathIcon Data="{StaticResource IconUser}" Width="20" Height="20" Foreground="{DynamicResource AccentBrush}"/>
                     </Border>
 
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
                         <TextBlock Text="{Binding Title}" 
-                                   FontSize="24" 
+                                   FontSize="18" 
                                    FontWeight="Bold" 
                                    Foreground="{DynamicResource TextPrimaryBrush}"
-                                   LetterSpacing="-0.5"/>
+                                   LetterSpacing="-0.5"
+                                   TextTrimming="CharacterEllipsis"/>
                         
-                        <StackPanel Orientation="Horizontal" Spacing="20">
-                            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding Customer.Email, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <PathIcon Data="{StaticResource IconMail}" Width="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                                <TextBlock Text="{Binding Customer.Email}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Customer.Email, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <PathIcon Data="{StaticResource IconMail}" Width="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding Customer.Email}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
 
-                            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding Customer.Phone, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <PathIcon Data="{StaticResource IconPhone}" Width="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                                <TextBlock Text="{Binding Customer.Phone}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Customer.Phone, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <PathIcon Data="{StaticResource IconPhone}" Width="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding Customer.Phone}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Grid>
 
                 <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                    <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="20" Padding="16,8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconCalendar}" Width="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                            <TextBlock Text="{Binding Customer.CreatedAt, StringFormat='Client depuis {0:dd/MM/yyyy}'}" 
-                                       FontSize="12" 
+                    <Border Background="{DynamicResource SurfaceLightBrush}" CornerRadius="16" Padding="12,6" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource IconCalendar}" Width="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <TextBlock Text="{Binding Customer.CreatedAt, StringFormat='Depuis {0:dd/MM/yyyy}'}" 
+                                       FontSize="11" 
                                        FontWeight="Medium" 
                                        Foreground="{DynamicResource TextSecondaryBrush}"/>
                         </StackPanel>
@@ -155,6 +156,17 @@
             </TabItem>
 
         </TabControl>
+
+        <!-- Prescription Form Overlay (full page, covers header) -->
+        <Panel Grid.Row="0" Grid.RowSpan="2" Background="#80000000" IsVisible="{Binding PrescriptionsViewModel.IsInEditMode}">
+            <ContentControl Content="{Binding PrescriptionsViewModel.FormViewModel}">
+                <ContentControl.DataTemplates>
+                    <DataTemplate DataType="vm:PrescriptionFormViewModel">
+                        <views:PrescriptionFormView/>
+                    </DataTemplate>
+                </ContentControl.DataTemplates>
+            </ContentControl>
+        </Panel>
 
     </Grid>
 </UserControl>

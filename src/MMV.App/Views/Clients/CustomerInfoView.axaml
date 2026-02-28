@@ -30,9 +30,9 @@
     <ScrollViewer>
         <StackPanel Spacing="0">
             <!-- Section Informations Client -->
-            <Grid ColumnDefinitions="1*, 1, 1*" Margin="40,20">
+            <Grid ColumnDefinitions="1*, 1, 1*" Margin="24,16">
                 
-                <StackPanel Grid.Column="0" Margin="0,0,40,0">
+                <StackPanel Grid.Column="0" Margin="0,0,24,0">
                     <TextBlock Text="ÉTAT CIVIL &amp; ADRESSE" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,20"/>
                     
                     <Grid ColumnDefinitions="*,*">
@@ -72,7 +72,7 @@
 
                 <Rectangle Grid.Column="1" Fill="{DynamicResource BorderBrush}" Width="1" VerticalAlignment="Stretch"/>
 
-                <StackPanel Grid.Column="2" Margin="40,0,0,0">
+                <StackPanel Grid.Column="2" Margin="24,0,0,0">
                     <TextBlock Text="CONTACT &amp; ADMINISTRATIF" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,20"/>
 
                     <Grid ColumnDefinitions="*,*">
@@ -111,7 +111,7 @@
             </Grid>
 
             <!-- Section Historique des Achats -->
-            <Grid RowDefinitions="Auto, *" Margin="0,40,0,0">
+            <Grid RowDefinitions="Auto, *" Margin="0,20,0,0">
                 <Border Grid.Row="0" Padding="20,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,1">
                     <StackPanel>
                         <TextBlock Text="Historique des Achats" FontWeight="Bold" FontSize="16"/>
