@@ -7,11 +7,11 @@
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="MMV.App.Views.NotificationsView"
              x:DataType="vm:NotificationsViewModel"
-             Background="#1D1D1D">
+             Background="{DynamicResource BackgroundBrush}">
 
     <UserControl.Styles>
         <Style Selector="Border.ToolbarCard">
-            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="16,12"/>
             <Setter Property="Margin" Value="0,0,0,12"/>
@@ -19,7 +19,7 @@
         </Style>
 
         <Style Selector="Border.NotificationCard">
-            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Padding" Value="12,8"/>
             <Setter Property="Margin" Value="0,0,0,4"/>
@@ -28,11 +28,11 @@
         </Style>
 
         <Style Selector="Border.NotificationCard.Unread">
-            <Setter Property="BorderBrush" Value="#0071E3"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
         </Style>
 
         <Style Selector="Button.PrimaryButton">
-            <Setter Property="Background" Value="#0071E3"/>
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="CornerRadius" Value="6"/>
@@ -47,9 +47,9 @@
         <Border Grid.Row="0" Padding="32,20,32,8">
             <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Text="Notifications" FontSize="24" FontWeight="700" Foreground="#FFFFFF"/>
+                    <TextBlock Text="Notifications" FontSize="24" FontWeight="700"/>
                     <TextBlock Text="{Binding NotificationsListViewModel.Notifications.Count, StringFormat='{}{0} notification(s)'}"
-                               FontSize="12" Foreground="#858585"/>
+                               FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
@@ -81,7 +81,7 @@
                                             Width="40"
                                             Height="40"
                                             CornerRadius="20"
-                                            Background="#1F1F1F"
+                                            Background="{DynamicResource SurfaceLightBrush}"
                                             VerticalAlignment="Center"
                                             Margin="0,0,12,0">
                                         <TextBlock Text="⚠️"
@@ -93,15 +93,14 @@
                                     <!-- Contenu -->
                                     <StackPanel Grid.Column="1" Spacing="4">
                                         <TextBlock Text="{Binding Title}"
-                                                   Foreground="#FFFFFF"
                                                    FontWeight="600"
                                                    FontSize="14"/>
                                         <TextBlock Text="{Binding Message}"
-                                                   Foreground="#A0A0A0"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                                    FontSize="12"
                                                    TextWrapping="Wrap"/>
                                         <TextBlock Text="{Binding CreatedAt, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}"
-                                                   Foreground="#666666"
+                                                   Foreground="{DynamicResource TextDisabledBrush}"
                                                    FontSize="11"/>
                                     </StackPanel>
 
@@ -110,7 +109,7 @@
                                             Width="10"
                                             Height="10"
                                             CornerRadius="5"
-                                            Background="#FF453A"
+                                            Background="{DynamicResource ErrorBrush}"
                                             VerticalAlignment="Center"
                                             IsVisible="{Binding !IsRead}"/>
                                 </Grid>
@@ -121,13 +120,13 @@
 
                 <!-- Message si vide -->
                 <Border IsVisible="{Binding NotificationsListViewModel.Notifications.Count, Converter={x:Static converters:IsZeroConverter.Instance}}"
-                        Background="#252526"
+                        Background="{DynamicResource SurfaceBrush}"
                         CornerRadius="8"
                         Padding="40"
                         Margin="0,20,0,20">
                     <StackPanel HorizontalAlignment="Center" Spacing="8">
-                        <TextBlock Text="Aucune notification" FontSize="15" Foreground="#A0A0A0" FontWeight="600"/>
-                        <TextBlock Text="Vous êtes à jour !" FontSize="12" Foreground="#666"/>
+                        <TextBlock Text="Aucune notification" FontSize="15" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="600"/>
+                        <TextBlock Text="Vous êtes à jour !" FontSize="12" Foreground="{DynamicResource TextDisabledBrush}"/>
                     </StackPanel>
                 </Border>
 
@@ -136,16 +135,16 @@
         </ScrollViewer>
 
         <!-- FOOTER -->
-        <Border Grid.Row="2" Padding="32,12,32,12" BorderBrush="#333333" BorderThickness="0,1,0,0">
+        <Border Grid.Row="2" Padding="32,12,32,12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
             <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                     <ProgressBar IsIndeterminate="True"
                                  IsVisible="{Binding NotificationsListViewModel.IsLoading}"
                                  Width="80"
                                  Height="2"
-                                 Foreground="#0071E3"/>
+                                 Foreground="{DynamicResource AccentBrush}"/>
                     <TextBlock Text="{Binding NotificationsListViewModel.ErrorMessage}"
-                               Foreground="#FF453A"
+                               Foreground="{DynamicResource ErrorBrush}"
                                IsVisible="{Binding NotificationsListViewModel.ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                VerticalAlignment="Center"
                                FontSize="11"

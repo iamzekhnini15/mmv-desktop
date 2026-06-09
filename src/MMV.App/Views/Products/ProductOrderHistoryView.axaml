@@ -14,12 +14,12 @@
         <ItemsControl ItemsSource="{Binding OrderHistory}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <Border Padding="12" Margin="0,0,0,10" Background="#1F1F1F" BorderBrush="#2E2E2E" BorderThickness="1" CornerRadius="6">
+              <Border Padding="12" Margin="0,0,0,10" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                 <Grid ColumnDefinitions="*,Auto,Auto,Auto">
                   <StackPanel Grid.Column="0">
                     <TextBlock Text="{Binding Order.OrderNumber}" FontWeight="SemiBold" FontSize="14"/>
-                    <TextBlock Text="{Binding Order.OrderDate, StringFormat='Le {0:dd/MM/yyyy HH:mm}'}" FontSize="12" Foreground="#888"/>
-                    <TextBlock FontSize="12" Foreground="#888">
+                    <TextBlock Text="{Binding Order.OrderDate, StringFormat='Le {0:dd/MM/yyyy HH:mm}'}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}">
                       <Run Text="Client: "/>
                       <Run Text="{Binding Order.Sale.Customer.FirstName}"/>
                       <Run Text=" "/>
@@ -28,20 +28,20 @@
                   </StackPanel>
 
                   <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
-                    <TextBlock Text="Quantité" FontSize="11" Foreground="#AAA"/>
+                    <TextBlock Text="Quantité" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     <TextBlock Text="{Binding Quantity}" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                   </StackPanel>
 
                   <StackPanel Grid.Column="2" Margin="12,0" VerticalAlignment="Center">
-                    <TextBlock Text="Prix unitaire" FontSize="11" Foreground="#AAA"/>
+                    <TextBlock Text="Prix unitaire" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     <TextBlock FontSize="14" HorizontalAlignment="Center">
                       <Run Text="{Binding UnitPrice, StringFormat='{}{0:F2}'}"/>
                       <Run Text=" €"/>
                     </TextBlock>
                   </StackPanel>
 
-                  <Border Grid.Column="3" VerticalAlignment="Center" Padding="8,4" CornerRadius="4" Background="#2A3F5F">
-                    <TextBlock Text="{Binding Order.Status}" FontSize="12" FontWeight="SemiBold" Foreground="White"/>
+                  <Border Grid.Column="3" VerticalAlignment="Center" Padding="8,4" CornerRadius="4" Background="{DynamicResource AccentFadeBrush}">
+                    <TextBlock Text="{Binding Order.Status}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
                   </Border>
                 </Grid>
               </Border>
@@ -52,7 +52,7 @@
 
       <TextBlock Text="Aucune commande enregistrée pour ce produit"
                  IsVisible="{Binding OrderHistory.Count, Converter={StaticResource IsZeroConverter}}"
-                 HorizontalAlignment="Center" Foreground="#888" Margin="0,16,0,0"/>
+                 HorizontalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,16,0,0"/>
     </StackPanel>
   </Border>
 </UserControl>

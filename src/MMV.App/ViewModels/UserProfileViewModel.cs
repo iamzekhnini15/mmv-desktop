@@ -16,6 +16,7 @@ public class UserProfileViewModel : BaseViewModel
 {
     private readonly ISessionService _sessionService;
     private readonly IAuthenticationService _authenticationService;
+    private readonly IThemeService _themeService;
 
     private string _currentPassword = string.Empty;
     private string _newPassword = string.Empty;
@@ -25,6 +26,7 @@ public class UserProfileViewModel : BaseViewModel
     private string _confirmNewPasswordError = string.Empty;
     private string _successMessage = string.Empty;
     private int _newPasswordStrength;
+    private bool _isDarkMode;
 
     #region Read-only properties
 
@@ -151,6 +153,25 @@ public class UserProfileViewModel : BaseViewModel
 
     #endregion
 
+    #region Theme properties
+
+    public bool IsDarkMode
+    {
+        get => _isDarkMode;
+        set
+        {
+            if (SetProperty(ref _isDarkMode, value))
+            {
+                _themeService.SetTheme(value);
+                OnPropertyChanged(nameof(ThemeLabel));
+            }
+        }
+    }
+
+    public string ThemeLabel => IsDarkMode ? "Mode sombre activé" : "Mode clair activé";
+
+    #endregion
+
     #region Commands
 
     public ICommand ChangePasswordCommand { get; }
@@ -163,12 +184,15 @@ public class UserProfileViewModel : BaseViewModel
 
     public UserProfileViewModel(
         ISessionService sessionService,
-        IAuthenticationService authenticationService)
+        IAuthenticationService authenticationService,
+        IThemeService themeService)
     {
         _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
         _authenticationService = authenticationService ?? throw new ArgumentNullException(nameof(authenticationService));
+        _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
 
         Title = "Mon Profil";
+        _isDarkMode = _themeService.IsDarkMode;
         ChangePasswordCommand = new RelayCommand(async () => await ExecuteChangePasswordAsync(), CanChangePassword);
         CancelCommand = new RelayCommand(() => Cancelled?.Invoke(this, EventArgs.Empty));
     }

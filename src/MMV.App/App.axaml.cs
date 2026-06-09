@@ -124,6 +124,7 @@ public partial class App : Application
         services.AddScoped<IAuthenticationService, AuthenticationService>();
         services.AddSingleton<ISessionService, SessionService>();
         services.AddSingleton<IPermissionService, PermissionService>();
+        services.AddSingleton<IThemeService, ThemeService>();
 
         // Enregistrer les services
         services.AddSingleton<INavigationService, NavigationService>();

@@ -45,6 +45,29 @@
             <!-- Changement de mot de passe -->
             <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="24">
                 <StackPanel Spacing="16">
+                    <TextBlock Text="Apparence" FontSize="15" FontWeight="SemiBold"/>
+
+                    <Grid ColumnDefinitions="Auto, *, Auto">
+                        <Border Width="40" Height="40" CornerRadius="10"
+                                Background="{DynamicResource AccentFadeBrush}">
+                            <TextBlock Text="🌙" FontSize="18"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="Mode sombre" FontSize="14" FontWeight="Medium"/>
+                            <TextBlock Text="{Binding ThemeLabel}" FontSize="12"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsDarkMode}"
+                                      VerticalAlignment="Center"
+                                      OnContent="" OffContent=""/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Changement de mot de passe -->
+            <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="24">
+                <StackPanel Spacing="16">
                     <TextBlock Text="Changer le mot de passe" FontSize="15" FontWeight="SemiBold"/>
 
                     <StackPanel Spacing="6">

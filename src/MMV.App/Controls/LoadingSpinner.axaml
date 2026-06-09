@@ -11,8 +11,8 @@
         <ProgressBar IsIndeterminate="True" 
                     Width="150"
                     Height="3" 
-                    Foreground="#0071E3"
-                    Background="#E5E5E5"
+                    Foreground="{DynamicResource AccentBrush}"
+                    Background="{DynamicResource SurfaceLightBrush}"
                     CornerRadius="2"/>
         
         <TextBlock x:Name="MessageTextBlock"
