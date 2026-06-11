@@ -68,8 +68,8 @@ public class PrescriptionConfiguration : IEntityTypeConfiguration<Prescription>
         builder.Property(p => p.Notes)
             .HasMaxLength(2000);
 
-        builder.Property(p => p.CreatedAt)
-            .HasDefaultValue(DateTime.UtcNow);
+        // CreatedAt : horodatage géré par l'application (initialiseur d'entité, futur IClock).
+        // Pas de défaut SQL figé au build (R-19 / P2A-1R19).
 
         // Relations
         builder.HasOne(p => p.Customer)

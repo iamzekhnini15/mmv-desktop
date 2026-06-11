@@ -170,6 +170,30 @@ indique la **raison** précise. Le support peut restaurer la sauvegarde
 ([`SqliteDatabaseManager.Restore`](../../src/MMV.Infrastructure/Data/SqliteDatabaseManager.cs)) et la base
 incompatible sera traitée par l'outillage P2A-1B.
 
+## 5 ter. Vérification des DEFAULT `DateTime` hérités avant baseline (P2A-1R19-R2)
+
+**Limite du portail §5 bis.** Le portail de compatibilité compare la **structure**
+(tables/colonnes/types/nullabilité/PK/FK/index) mais **pas** les valeurs `DEFAULT`. Une base historique
+`EnsureCreated` créée **avant** le correctif R-19 ([P2A-1R19](../implementation/P2A-1R19-report.md)) est
+donc structurellement « compatible » tout en conservant **physiquement** les anciens `DEFAULT DateTime`
+figés sur 7 colonnes (`Users.CreatedAt`, `Customers.CreatedAt`/`UpdatedAt`, `Orders.OrderDate`,
+`Sales.SaleDate`, `Prescriptions.CreatedAt`, `StockMovements.CreatedAt`).
+
+**Risque.** Baseliner **toutes** les migrations marquerait `FixDateTimeDefaultValues` comme appliquée
+**sans l'exécuter** ⇒ `__EFMigrationsHistory` mentirait sur l'état réel (DEFAULT hérités conservés).
+
+**Règle (P2A-1R19-R2).** Après le portail §5 bis et **avant** d'achever l'adoption :
+1. [`SqliteDateTimeDefaultVerifier`](../../src/MMV.Infrastructure/Data/SqliteDateTimeDefaultVerifier.cs)
+   inspecte le schéma réel (`PRAGMA table_info`) pour détecter un `dflt_value` hérité sur ces 7 colonnes ;
+2. **si détecté** : la baseline est **limitée** aux migrations antérieures à `FixDateTimeDefaultValues`,
+   puis cette migration est **réellement exécutée** (réparation non destructive — reconstruction SQLite) ;
+3. **sinon** (base `EnsureCreated` actuelle) : baseline de **toutes** les migrations (comportement inchangé) ;
+4. **vérification physique post-adoption** : si un `DEFAULT` hérité subsiste ⇒ `DatabaseMigrationException`
+   (échec explicite, base + sauvegarde conservées, journal motivé) — **jamais** d'acceptation silencieuse.
+
+La même réparation s'applique à la reprise de l'ancien `mmv-optic.db` (la reprise délègue l'adoption au
+cycle de vie). Détails et preuves : [P2A-1R19-report §6 bis/§9](../implementation/P2A-1R19-report.md).
+
 ## 6. Conséquences & preuves attendues
 
 - **Preuve d'équivalence structurelle** (`Migrate()` ↔ `EnsureCreated()`) : un test compare les
@@ -186,8 +210,17 @@ incompatible sera traitée par l'outillage P2A-1B.
 
 ## 7. Risques résiduels (documentés, hors périmètre)
 
-1. **Dérive R-19** (`HasDefaultValue(DateTime.UtcNow)`) — cosmétique (valeur par défaut), structurellement
-   neutre ; correctif différé (Étape 1 / R-19).
+1. **R-19 — CORRIGÉ par [P2A-1R19](../implementation/P2A-1R19-report.md)** (n'est plus différé) :
+   suppression des `HasDefaultValue(DateTime.UtcNow)`, migration `FixDateTimeDefaultValues`,
+   `has-pending-model-changes` = **false** vérifié, et traitement des **bases historiques pré-R19** via
+   [`SqliteDateTimeDefaultVerifier`](../../src/MMV.Infrastructure/Data/SqliteDateTimeDefaultVerifier.cs)
+   + **baseline partiel** puis exécution réelle de la migration (cf. §5 ter). Risques résiduels associés :
+   - **`IClock` non encore introduit** : l'horodatage reste fixé par l'initialiseur d'entité
+     (`= DateTime.UtcNow`) ; l'horloge injectable est prévue à l'Étape 4 (hors périmètre R-19).
+   - **`Notification.CreatedAt` utilise encore `DateTime.Now`** : **hors périmètre R-19** car cette
+     colonne n'avait **aucun défaut SQL** (donc aucune dérive `has-pending`) ; harmonisation UTC ultérieure.
+   - **`FixDateTimeDefaultValues` reconstruit certaines tables SQLite** (AlterColumn) : **testée non
+     destructive** (données préservées) et protégée par la **sauvegarde** préalable du cycle de vie P2A-1A.
 2. **Bases à schéma antérieur/incompatible au modèle courant** — **refusées** par le portail de
    compatibilité (§5 bis), sans baseline, avec sauvegarde + journal. Leur **diagnostic, réparation et
    migration** relèvent de **P2A-1B** (non traités ici).

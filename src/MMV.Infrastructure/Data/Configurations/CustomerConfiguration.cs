@@ -45,11 +45,8 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(c => c.Notes)
             .HasMaxLength(2000);
 
-        builder.Property(c => c.CreatedAt)
-            .HasDefaultValue(DateTime.UtcNow);
-
-        builder.Property(c => c.UpdatedAt)
-            .HasDefaultValue(DateTime.UtcNow);
+        // CreatedAt / UpdatedAt : horodatages gérés par l'application (initialiseur d'entité, futur IClock).
+        // Pas de défaut SQL figé au build (R-19 / P2A-1R19).
 
         builder.HasIndex(c => c.LastName)
             .HasDatabaseName("idx_customers_lastname");

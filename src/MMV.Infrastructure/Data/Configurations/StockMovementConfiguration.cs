@@ -27,8 +27,8 @@ public class StockMovementConfiguration : IEntityTypeConfiguration<StockMovement
         builder.Property(sm => sm.Reason)
             .HasMaxLength(500);
 
-        builder.Property(sm => sm.CreatedAt)
-            .HasDefaultValue(DateTime.UtcNow);
+        // CreatedAt : horodatage géré par l'application (initialiseur d'entité, futur IClock).
+        // Pas de défaut SQL figé au build (R-19 / P2A-1R19).
 
         builder.HasIndex(sm => sm.ProductId)
             .HasDatabaseName("idx_stock_movements_product_id");

@@ -22,8 +22,8 @@ public class SaleConfiguration : IEntityTypeConfiguration<Sale>
             .IsUnique()
             .HasDatabaseName("idx_sales_sale_number_unique");
 
-        builder.Property(s => s.SaleDate)
-            .HasDefaultValue(DateTime.UtcNow);
+        // SaleDate : horodatage géré par l'application (initialiseur d'entité, futur IClock).
+        // Pas de défaut SQL figé au build (R-19 / P2A-1R19).
 
         builder.Property(s => s.TotalAmount)
             .HasColumnType("REAL")

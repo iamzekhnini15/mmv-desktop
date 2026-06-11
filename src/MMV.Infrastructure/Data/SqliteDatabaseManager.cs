@@ -287,11 +287,37 @@ public sealed class SqliteDatabaseManager
 
         _journal.Write("ADOPT: schema compatibility gate passed.");
 
-        // --- Baseline : inscription de l'historique (accès EF encapsulé) ---
-        WriteMigrationHistory(context, allMigrations);
-        _journal.Write($"ADOPT: baselined {allMigrations.Count} migration(s) into history.");
+        // --- P2A-1R19-R2 : détection des anciens DEFAULT DateTime figés (R-19) physiquement présents ---
+        // Le portail de compatibilité ci-dessus ne compare PAS les valeurs DEFAULT. Une base historique
+        // créée par EnsureCreated AVANT P2A-1R19 reste donc « compatible » tout en conservant les anciens
+        // DEFAULT figés sur les 7 colonnes corrigées. Baseliner TOUTES les migrations (dont
+        // FixDateTimeDefaultValues) marquerait à tort la correction comme appliquée alors que les DEFAULT
+        // hérités subsistent en base (baseline mensonger). On limite alors la baseline aux migrations
+        // réellement reflétées par le schéma physique et on EXÉCUTE réellement FixDateTimeDefaultValues
+        // pour supprimer les DEFAULT hérités (réparation contrôlée, non destructive — preuve P2A-1R19).
+        var legacyDefaultVerifier = new SqliteDateTimeDefaultVerifier();
+        var legacyDefaultColumns = legacyDefaultVerifier.GetColumnsWithLegacyDefaults(context);
 
-        // D'éventuelles migrations postérieures au schéma historique sont appliquées normalement.
+        List<string> migrationsToBaseline;
+        if (legacyDefaultColumns.Count > 0 && allMigrations.Any(IsFixDateTimeDefaultsMigration))
+        {
+            migrationsToBaseline = allMigrations.TakeWhile(m => !IsFixDateTimeDefaultsMigration(m)).ToList();
+            _journal.Write(
+                $"ADOPT: legacy DateTime DEFAULT detected on {legacyDefaultColumns.Count} column(s) " +
+                $"[{string.Join(", ", legacyDefaultColumns)}] — baseline limited to {migrationsToBaseline.Count} " +
+                "migration(s); FixDateTimeDefaultValues will be executed (R-19 repair).");
+        }
+        else
+        {
+            migrationsToBaseline = allMigrations;
+        }
+
+        // --- Baseline : inscription de l'historique (accès EF encapsulé) ---
+        WriteMigrationHistory(context, migrationsToBaseline);
+        _journal.Write($"ADOPT: baselined {migrationsToBaseline.Count} migration(s) into history.");
+
+        // Migrations non encore reflétées par le schéma physique (dont FixDateTimeDefaultValues) :
+        // appliquées réellement (et non baselinées).
         var pending = context.Database.GetPendingMigrations().ToList();
         if (pending.Count > 0)
         {
@@ -300,15 +326,37 @@ public sealed class SqliteDatabaseManager
         }
 
         VerifyAfterPreparation(context, requireHistory: true);
+
+        // --- P2A-1R19-R2 : vérification physique post-adoption — aucun ancien DEFAULT DateTime ne subsiste ---
+        // Garantit que __EFMigrationsHistory reflète réellement le schéma physique : pas d'acceptation
+        // silencieuse d'une base portant encore les DEFAULT hérités (échec explicite, base + sauvegarde conservées).
+        var remainingLegacyDefaults = legacyDefaultVerifier.GetColumnsWithLegacyDefaults(context);
+        if (remainingLegacyDefaults.Count > 0)
+        {
+            _journal.Write(
+                $"ADOPT INCONSISTENT: legacy DateTime DEFAULT still present after adoption " +
+                $"[{string.Join(", ", remainingLegacyDefaults)}].");
+            throw new DatabaseMigrationException(
+                "Incohérence après adoption : des valeurs par défaut DateTime héritées (R-19) subsistent " +
+                "physiquement sur " + string.Join(", ", remainingLegacyDefaults) + ". __EFMigrationsHistory " +
+                "ne reflète pas le schéma réel ; la base et sa sauvegarde sont conservées.");
+        }
+
         return new DatabasePreparationResult
         {
             DetectedState = DatabaseState.HistoricalWithoutMigrationsHistory,
             WasAdopted = true,
             BackupPath = backupPath,
-            BaselinedMigrations = allMigrations,
+            BaselinedMigrations = migrationsToBaseline,
             AppliedMigrations = pending
         };
     }
+
+    /// <summary>Suffixe de l'identifiant de la migration technique R-19 (P2A-1R19).</summary>
+    private const string FixDateTimeDefaultsMigrationSuffix = "_FixDateTimeDefaultValues";
+
+    private static bool IsFixDateTimeDefaultsMigration(string migrationId)
+        => migrationId.EndsWith(FixDateTimeDefaultsMigrationSuffix, StringComparison.Ordinal);
 
     /// <summary>
     /// Point UNIQUE d'écriture de <c>__EFMigrationsHistory</c> (encapsule l'accès à l'API
