@@ -103,9 +103,13 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
 
+        // Chemin de base unique (P2A-1A) : variable d'environnement MMV_DATABASE_PATH,
+        // sinon %LOCALAPPDATA%\ManageMyVision\mmv.db. Source unique partagée avec le design-time.
+        var databasePath = SqliteDatabasePathResolver.ResolveDatabasePath();
+
         // Enregistrer le DbContext
         services.AddDbContext<OpticDbContext>(options =>
-            options.UseSqlite("Data Source=mmv-optic.db"));
+            options.UseSqlite(SqliteDatabasePathResolver.GetConnectionString(databasePath)));
 
         // Enregistrer UnitOfWork et Repositories
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -146,18 +150,38 @@ public partial class App : Application
         services.AddTransient<UserProfileViewModel>();
 
         var serviceProvider = services.BuildServiceProvider();
-        
-        // Initialiser la base de données avec des données test
+
+        // Préparer la base : cycle de vie SQLite professionnel et sûr (P2A-1A).
         try
         {
-            System.Diagnostics.Debug.WriteLine("[App] Initializing database...");
+            var journalPath = Path.Combine(
+                Path.GetDirectoryName(databasePath) ?? ".", "migration-journal.log");
+            var databaseManager = new SqliteDatabaseManager(new MigrationJournal(journalPath));
+
+            System.Diagnostics.Debug.WriteLine($"[App] Database path: {databasePath}");
             using (var scope = serviceProvider.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<OpticDbContext>();
-                System.Diagnostics.Debug.WriteLine($"[App] Database path: {dbContext.Database.GetConnectionString()}");
+
+                // 1) Schéma : sauvegarde + détection + migrations/adoption + journal (P2A-1A).
+                var result = databaseManager.PrepareDatabase(dbContext);
+                System.Diagnostics.Debug.WriteLine(
+                    $"[App] Database prepared: state={result.DetectedState}, fresh={result.WasFreshInstall}, " +
+                    $"adopted={result.WasAdopted}, backup={result.BackupPath ?? "none"}");
+
+                // 2) Seed admin + jeu de démonstration existant — comportement INCHANGÉ
+                //    (suppression du seed démo = R-16/Étape 1F, hors périmètre P2A-1A).
+                //    EnsureCreated() y est désormais un no-op : la base existe déjà après migration.
                 DbInitializer.Initialize(dbContext);
                 System.Diagnostics.Debug.WriteLine($"[App] Database initialized with {dbContext.Customers.Count()} customers");
             }
+        }
+        catch (DatabaseMigrationException dbEx)
+        {
+            // Échec explicite et compréhensible : aucune donnée supprimée (base + sauvegarde conservées).
+            System.Diagnostics.Debug.WriteLine($"[App] DATABASE MIGRATION FAILURE: {dbEx.Message}");
+            System.Diagnostics.Debug.WriteLine($"[App] Cause: {dbEx.InnerException?.Message}");
+            throw;
         }
         catch (Exception ex)
         {

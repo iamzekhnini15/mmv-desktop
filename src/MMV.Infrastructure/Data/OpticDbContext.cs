@@ -118,21 +118,10 @@ public class OpticDbContext : DbContext
     {
         if (!optionsBuilder.IsConfigured)
         {
-            // Localisation par défaut : %LOCALAPPDATA%\ManageMyVision\mmv.db
-            var dbPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "ManageMyVision",
-                "mmv.db"
-            );
-
-            // Créer le dossier s'il n'existe pas
-            var directory = Path.GetDirectoryName(dbPath);
-            if (!Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory!);
-            }
-
-            optionsBuilder.UseSqlite($"Data Source={dbPath}");
+            // Chemin unique résolu par SqliteDatabasePathResolver (P2A-1A).
+            var dbPath = SqliteDatabasePathResolver.ResolveDatabasePath();
+            SqliteDatabasePathResolver.EnsureDirectoryExists(dbPath);
+            optionsBuilder.UseSqlite(SqliteDatabasePathResolver.GetConnectionString(dbPath));
         }
 
         base.OnConfiguring(optionsBuilder);

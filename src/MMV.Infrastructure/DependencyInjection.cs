@@ -57,24 +57,12 @@ public static class DependencyInjection
             return provided;
         }
 
-        var fromConfig = configuration?.GetConnectionString("OpticDatabase");
-        if (!string.IsNullOrWhiteSpace(fromConfig))
-        {
-            return fromConfig!;
-        }
+        // Chemin unique résolu par SqliteDatabasePathResolver (P2A-1A) :
+        // variable d'environnement MMV_DATABASE_PATH, sinon configuration, sinon défaut LOCALAPPDATA.
+        var fromConfig = configuration?.GetConnectionString(SqliteDatabasePathResolver.ConnectionStringName);
+        var dbPath = SqliteDatabasePathResolver.ResolveDatabasePath(configuredConnectionString: fromConfig);
+        SqliteDatabasePathResolver.EnsureDirectoryExists(dbPath);
 
-        // Fallback local SQLite path: %LOCALAPPDATA%\ManageMyVision\mmv.db
-        var dbPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ManageMyVision",
-            "mmv.db");
-
-        var directory = Path.GetDirectoryName(dbPath);
-        if (!Directory.Exists(directory))
-        {
-            Directory.CreateDirectory(directory!);
-        }
-
-        return $"Data Source={dbPath}";
+        return SqliteDatabasePathResolver.GetConnectionString(dbPath);
     }
 }

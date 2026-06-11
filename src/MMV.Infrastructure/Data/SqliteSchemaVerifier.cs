@@ -1,0 +1,353 @@
+using System.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
+
+namespace MMV.Infrastructure.Data;
+
+/// <summary>
+/// Résultat de la vérification de compatibilité de schéma (P2A-1A-R2).
+/// </summary>
+public sealed class SchemaCompatibilityResult
+{
+    /// <summary>Liste lisible des divergences bloquantes (vide si compatible).</summary>
+    public IReadOnlyList<string> Differences { get; init; } = Array.Empty<string>();
+
+    /// <summary>Vrai si aucune divergence significative n'est détectée.</summary>
+    public bool IsCompatible => Differences.Count == 0;
+}
+
+/// <summary>
+/// Portail de compatibilité de schéma (P2A-1A-R2) : compare le schéma SQLite RÉEL d'une base
+/// historique au schéma ATTENDU par le modèle EF courant, AVANT toute écriture de
+/// <c>__EFMigrationsHistory</c>. Empêche de transformer une base inconnue/ancienne en base
+/// « migrée » par simple inscription des migrations.
+///
+/// Comparaison pragmatique adaptée à SQLite : ne signale que les éléments ATTENDUS manquants ou
+/// incompatibles (les éléments supplémentaires de la base sont tolérés pour éviter les faux positifs).
+/// Vérifie : tables attendues, colonnes, types (affinité SQLite), nullabilité, clés primaires,
+/// clés étrangères essentielles, index uniques essentiels.
+/// </summary>
+public sealed class SqliteSchemaVerifier
+{
+    public SchemaCompatibilityResult Verify(OpticDbContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        var expectedTables = BuildExpectedSchema(context);
+        var actualTables = ReadActualSchema(context);
+        var differences = new List<string>();
+
+        foreach (var expected in expectedTables)
+        {
+            if (!actualTables.TryGetValue(expected.Name, out var actual))
+            {
+                differences.Add($"table manquante: {expected.Name}");
+                continue;
+            }
+
+            foreach (var column in expected.Columns)
+            {
+                if (!actual.Columns.TryGetValue(column.Name, out var actualColumn))
+                {
+                    differences.Add($"colonne manquante: {expected.Name}.{column.Name}");
+                    continue;
+                }
+
+                if (!TypesCompatible(column.StoreType, actualColumn.DeclaredType))
+                {
+                    differences.Add(
+                        $"type incompatible: {expected.Name}.{column.Name} " +
+                        $"(attendu '{column.StoreType}', réel '{actualColumn.DeclaredType}')");
+                }
+
+                if (!column.IsNullable && actualColumn.IsNullable)
+                {
+                    differences.Add($"nullabilité incompatible: {expected.Name}.{column.Name} (attendu NOT NULL, réel NULL)");
+                }
+            }
+
+            if (expected.PrimaryKeyColumns.Count > 0
+                && !SetEquals(expected.PrimaryKeyColumns, actual.PrimaryKeyColumns))
+            {
+                differences.Add(
+                    $"clé primaire incompatible: {expected.Name} " +
+                    $"(attendu [{string.Join(",", expected.PrimaryKeyColumns)}], réel [{string.Join(",", actual.PrimaryKeyColumns)}])");
+            }
+
+            foreach (var foreignKey in expected.ForeignKeys)
+            {
+                var matched = actual.ForeignKeys.Any(actualFk =>
+                    string.Equals(actualFk.PrincipalTable, foreignKey.PrincipalTable, StringComparison.OrdinalIgnoreCase)
+                    && SetEquals(actualFk.Columns, foreignKey.Columns));
+
+                if (!matched)
+                {
+                    differences.Add(
+                        $"clé étrangère manquante: {expected.Name}({string.Join(",", foreignKey.Columns)}) -> {foreignKey.PrincipalTable}");
+                }
+            }
+
+            foreach (var uniqueIndex in expected.UniqueIndexes)
+            {
+                var matched = actual.UniqueIndexes.Any(actualIndex => SetEquals(actualIndex, uniqueIndex));
+                if (!matched)
+                {
+                    differences.Add($"index unique manquant: {expected.Name}({string.Join(",", uniqueIndex)})");
+                }
+            }
+        }
+
+        return new SchemaCompatibilityResult { Differences = differences };
+    }
+
+    // ----------------- Schéma ATTENDU (modèle EF) -----------------
+
+    private static List<ExpectedTable> BuildExpectedSchema(OpticDbContext context)
+    {
+        var relationalModel = context.Model.GetRelationalModel();
+        var tables = new List<ExpectedTable>();
+
+        foreach (var table in relationalModel.Tables)
+        {
+            if (IsInternalTable(table.Name))
+            {
+                continue;
+            }
+
+            var columns = table.Columns
+                .Select(c => new ExpectedColumn(c.Name, c.StoreType, c.IsNullable))
+                .ToList();
+
+            var primaryKey = table.PrimaryKey?.Columns.Select(c => c.Name).ToList() ?? new List<string>();
+
+            var foreignKeys = table.ForeignKeyConstraints
+                .Select(fk => new ExpectedForeignKey(
+                    fk.Columns.Select(c => c.Name).ToList(),
+                    fk.PrincipalTable.Name))
+                .ToList();
+
+            var uniqueIndexes = table.Indexes
+                .Where(i => i.IsUnique)
+                .Select(i => i.Columns.Select(c => c.Name).ToList())
+                .ToList();
+
+            tables.Add(new ExpectedTable(table.Name, columns, primaryKey, foreignKeys, uniqueIndexes));
+        }
+
+        return tables;
+    }
+
+    // ----------------- Schéma RÉEL (PRAGMA SQLite) -----------------
+
+    private static Dictionary<string, ActualTable> ReadActualSchema(OpticDbContext context)
+    {
+        var connection = context.Database.GetDbConnection();
+        var mustClose = connection.State != ConnectionState.Open;
+        try
+        {
+            if (mustClose)
+            {
+                connection.Open();
+            }
+
+            var tables = new Dictionary<string, ActualTable>(StringComparer.OrdinalIgnoreCase);
+            foreach (var tableName in ReadTableNames(connection))
+            {
+                if (IsInternalTable(tableName))
+                {
+                    continue;
+                }
+
+                tables[tableName] = new ActualTable(
+                    ReadColumns(connection, tableName, out var primaryKey),
+                    primaryKey,
+                    ReadForeignKeys(connection, tableName),
+                    ReadUniqueIndexes(connection, tableName));
+            }
+
+            return tables;
+        }
+        finally
+        {
+            if (mustClose && connection.State == ConnectionState.Open)
+            {
+                connection.Close();
+            }
+        }
+    }
+
+    private static List<string> ReadTableNames(System.Data.Common.DbConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT name FROM sqlite_master WHERE type = 'table'";
+        using var reader = command.ExecuteReader();
+        var names = new List<string>();
+        while (reader.Read())
+        {
+            names.Add(reader.GetString(0));
+        }
+
+        return names;
+    }
+
+    private static Dictionary<string, ActualColumn> ReadColumns(
+        System.Data.Common.DbConnection connection, string tableName, out List<string> primaryKey)
+    {
+        var columns = new Dictionary<string, ActualColumn>(StringComparer.OrdinalIgnoreCase);
+        var pkOrder = new List<(int Position, string Name)>();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info(\"{tableName}\")";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var name = reader.GetString(1);          // name
+            var type = reader.GetString(2);          // type
+            var notNull = reader.GetInt32(3) != 0;   // notnull
+            var pkPosition = reader.GetInt32(5);     // pk (0 = non-PK, sinon position 1-based)
+
+            columns[name] = new ActualColumn(type, !notNull);
+            if (pkPosition > 0)
+            {
+                pkOrder.Add((pkPosition, name));
+            }
+        }
+
+        primaryKey = pkOrder.OrderBy(p => p.Position).Select(p => p.Name).ToList();
+        return columns;
+    }
+
+    private static List<ActualForeignKey> ReadForeignKeys(System.Data.Common.DbConnection connection, string tableName)
+    {
+        var byId = new Dictionary<long, (string PrincipalTable, List<(int Seq, string Column)> Columns)>();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA foreign_key_list(\"{tableName}\")";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var id = reader.GetInt64(0);            // id
+            var seq = reader.GetInt32(1);           // seq
+            var principalTable = reader.GetString(2); // table (principal)
+            var fromColumn = reader.GetString(3);   // from (colonne locale)
+
+            if (!byId.TryGetValue(id, out var entry))
+            {
+                entry = (principalTable, new List<(int, string)>());
+                byId[id] = entry;
+            }
+
+            entry.Columns.Add((seq, fromColumn));
+        }
+
+        return byId.Values
+            .Select(e => new ActualForeignKey(
+                e.Columns.OrderBy(c => c.Seq).Select(c => c.Column).ToList(),
+                e.PrincipalTable))
+            .ToList();
+    }
+
+    private static List<List<string>> ReadUniqueIndexes(System.Data.Common.DbConnection connection, string tableName)
+    {
+        var uniqueIndexNames = new List<string>();
+        using (var listCommand = connection.CreateCommand())
+        {
+            listCommand.CommandText = $"PRAGMA index_list(\"{tableName}\")";
+            using var reader = listCommand.ExecuteReader();
+            while (reader.Read())
+            {
+                var name = reader.GetString(1);     // name
+                var unique = reader.GetInt32(2) != 0; // unique
+                var origin = reader.GetString(3);   // origin: 'c', 'u', 'pk'
+                if (unique && !string.Equals(origin, "pk", StringComparison.OrdinalIgnoreCase))
+                {
+                    uniqueIndexNames.Add(name);
+                }
+            }
+        }
+
+        var result = new List<List<string>>();
+        foreach (var indexName in uniqueIndexNames)
+        {
+            using var infoCommand = connection.CreateCommand();
+            infoCommand.CommandText = $"PRAGMA index_info(\"{indexName}\")";
+            using var reader = infoCommand.ExecuteReader();
+            var columns = new List<(int Seq, string Name)>();
+            while (reader.Read())
+            {
+                var seq = reader.GetInt32(0);       // seqno
+                if (!reader.IsDBNull(2))
+                {
+                    columns.Add((seq, reader.GetString(2))); // name
+                }
+            }
+
+            result.Add(columns.OrderBy(c => c.Seq).Select(c => c.Name).ToList());
+        }
+
+        return result;
+    }
+
+    // ----------------- Comparaisons -----------------
+
+    private static bool TypesCompatible(string expectedStoreType, string actualDeclaredType)
+        => Affinity(expectedStoreType) == Affinity(actualDeclaredType);
+
+    /// <summary>Affinité de type SQLite (règles de détermination d'affinité de SQLite).</summary>
+    private static string Affinity(string? declaredType)
+    {
+        var type = (declaredType ?? string.Empty).ToUpperInvariant();
+        if (type.Contains("INT"))
+        {
+            return "INTEGER";
+        }
+
+        if (type.Contains("CHAR") || type.Contains("CLOB") || type.Contains("TEXT"))
+        {
+            return "TEXT";
+        }
+
+        if (type.Length == 0 || type.Contains("BLOB"))
+        {
+            return "BLOB";
+        }
+
+        if (type.Contains("REAL") || type.Contains("FLOA") || type.Contains("DOUB"))
+        {
+            return "REAL";
+        }
+
+        return "NUMERIC";
+    }
+
+    private static bool SetEquals(IEnumerable<string> a, IEnumerable<string> b)
+        => new HashSet<string>(a, StringComparer.OrdinalIgnoreCase)
+            .SetEquals(new HashSet<string>(b, StringComparer.OrdinalIgnoreCase));
+
+    private static bool IsInternalTable(string name)
+        => name.StartsWith("__", StringComparison.Ordinal)
+           || name.StartsWith("sqlite_", StringComparison.OrdinalIgnoreCase);
+
+    // ----------------- Structures internes -----------------
+
+    private sealed record ExpectedTable(
+        string Name,
+        IReadOnlyList<ExpectedColumn> Columns,
+        IReadOnlyList<string> PrimaryKeyColumns,
+        IReadOnlyList<ExpectedForeignKey> ForeignKeys,
+        IReadOnlyList<IReadOnlyList<string>> UniqueIndexes);
+
+    private sealed record ExpectedColumn(string Name, string StoreType, bool IsNullable);
+
+    private sealed record ExpectedForeignKey(IReadOnlyList<string> Columns, string PrincipalTable);
+
+    private sealed record ActualTable(
+        Dictionary<string, ActualColumn> Columns,
+        IReadOnlyList<string> PrimaryKeyColumns,
+        IReadOnlyList<ActualForeignKey> ForeignKeys,
+        IReadOnlyList<IReadOnlyList<string>> UniqueIndexes);
+
+    private sealed record ActualColumn(string DeclaredType, bool IsNullable);
+
+    private sealed record ActualForeignKey(IReadOnlyList<string> Columns, string PrincipalTable);
+}
