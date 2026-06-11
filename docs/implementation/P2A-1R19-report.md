@@ -371,37 +371,66 @@ Aucun de ces risques ne touche au métier, au réglementaire, ni aux interdictio
 
 ## 13. État Git final
 
-`ALLOW_COMMIT=false`, `ALLOW_PUSH=false` ⇒ **aucun commit, aucun push**. Le changeset reste dans
-l'arbre de travail.
+Étape finale **`ALLOW_COMMIT=true`, `ALLOW_PUSH=true`** (correction documentaire ADR + commit + push) ⇒
+le changeset R19 + R2 est **commité** puis **poussé** (sans force-push).
 
-`git status --short` (R19 + R2) :
+- Commit : **`f93379b`** — `fix(P2A-1R19): remove unstable DateTime defaults and repair historical baselines`
+  (+ trailer `Co-Authored-By`). Sur `3c7bea7`.
+- Push : `git push origin phase2a-stabilization` (sans force) → `3c7bea7..f93379b`.
+- `git status --short` après commit : **vide** (arbre propre).
+- `git diff --check` : **0 anomalie** d'espaces (seuls des avis LF→CRLF, normaux sous Windows).
+
+Contenu commité (`git show --stat`), **15 fichiers, +2420 / −43** :
 
 ```
- M docs/architecture/adr-sqlite-lifecycle.md
- M src/MMV.Infrastructure/Data/Configurations/CustomerConfiguration.cs
- M src/MMV.Infrastructure/Data/Configurations/OrderConfiguration.cs
- M src/MMV.Infrastructure/Data/Configurations/PrescriptionConfiguration.cs
- M src/MMV.Infrastructure/Data/Configurations/SaleConfiguration.cs
- M src/MMV.Infrastructure/Data/Configurations/StockMovementConfiguration.cs
- M src/MMV.Infrastructure/Data/Configurations/UserConfiguration.cs
- M src/MMV.Infrastructure/Data/SqliteDatabaseManager.cs
- M src/MMV.Infrastructure/Migrations/OpticDbContextModelSnapshot.cs
-?? docs/implementation/P2A-1R19-report.md
-?? src/MMV.Infrastructure/Data/SqliteDateTimeDefaultVerifier.cs
-?? src/MMV.Infrastructure/Migrations/20260611114307_FixDateTimeDefaultValues.cs
-?? src/MMV.Infrastructure/Migrations/20260611114307_FixDateTimeDefaultValues.Designer.cs
-?? tests/MMV.Domain.Tests/Data/DateTimeDefaultValuesMigrationTests.cs
-?? tests/MMV.Domain.Tests/Data/SqliteHistoricalDateTimeDefaultsTests.cs
+M  docs/architecture/adr-sqlite-lifecycle.md
+A  docs/implementation/P2A-1R19-report.md
+M  src/MMV.Infrastructure/Data/Configurations/CustomerConfiguration.cs
+M  src/MMV.Infrastructure/Data/Configurations/OrderConfiguration.cs
+M  src/MMV.Infrastructure/Data/Configurations/PrescriptionConfiguration.cs
+M  src/MMV.Infrastructure/Data/Configurations/SaleConfiguration.cs
+M  src/MMV.Infrastructure/Data/Configurations/StockMovementConfiguration.cs
+M  src/MMV.Infrastructure/Data/Configurations/UserConfiguration.cs
+M  src/MMV.Infrastructure/Data/SqliteDatabaseManager.cs
+A  src/MMV.Infrastructure/Data/SqliteDateTimeDefaultVerifier.cs
+A  src/MMV.Infrastructure/Migrations/20260611114307_FixDateTimeDefaultValues.cs
+A  src/MMV.Infrastructure/Migrations/20260611114307_FixDateTimeDefaultValues.Designer.cs
+M  src/MMV.Infrastructure/Migrations/OpticDbContextModelSnapshot.cs
+A  tests/MMV.Domain.Tests/Data/DateTimeDefaultValuesMigrationTests.cs
+A  tests/MMV.Domain.Tests/Data/SqliteHistoricalDateTimeDefaultsTests.cs
 ```
 
 **9 fichiers modifiés** (6 configs + `SqliteDatabaseManager.cs` + snapshot + ADR) et **6 fichiers ajoutés**
 (2 migration + 1 composant R2 + 2 tests + ce rapport). **Aucun** `bin/`/`obj/`, `*.db`, `*.zip`, `*.trx`,
-temporaire ou secret. Le bruit `has-pending-model-changes` étant levé, **aucune dérive de modèle ne
-subsiste**, et les bases historiques pré-R19 sont **réparées** à l'adoption (jamais acceptées en l'état).
+temporaire, secret ou donnée utilisateur. **Aucune entité métier, aucun ViewModel** modifié. Le bruit
+`has-pending-model-changes` est levé et les bases historiques pré-R19 sont **réparées** à l'adoption.
 
-## 14. Verdict — GO / NO-GO
+## 14. Validation CI distante (run réel)
 
-### **P2A-1R19 = GO** (sous réserve de validation CI distante après autorisation de commit/push)
+Push sur `phase2a-stabilization` ⇒ workflow `CI` déclenché sur l'événement `push`. Détails consignés
+depuis l'API GitHub Actions :
+
+| Élément | Valeur réelle |
+|---|---|
+| Run | **#27346008843** (run number 7) |
+| Lien | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27346008843 |
+| Commit testé | **`f93379b`** (`head_sha = f93379bd63979f0a2b2c7a8ad08dbfe7357ff2f4`) |
+| Workflow / job | `CI` / `Restore / Build / Test / Scan` |
+| Runner / durée | `windows-latest` (GitHub-hosted) — ≈ 2 min 44 s (12:14:52 → 12:17:36 UTC) |
+| SDK utilisé | **8.0.417** (step « Setup .NET (SDK verrouillé par global.json) » → success) |
+| Restore | ✅ **success** |
+| Build | ✅ **success** |
+| Test | ✅ **success** (suite **243** ; le step échoue si un test échoue) |
+| `has-pending-model-changes` | ✅ **false** (confirmé localement, exit 0 ; le modèle == dernier snapshot) |
+| Audit NuGet (JSON + sévérité) | ✅ **success** (0 High/Critical, scan concluant) |
+| **Statut final du workflow** | ✅ **completed / success (VERT)** |
+
+Tous les steps (`Set up job`, `Checkout`, `Setup .NET`, `Diagnostic SDK`, `Restore`, `Build`, `Test`,
+`Audit des packages vulnérables`, `Complete job`) sont en conclusion `success`.
+
+## 15. Verdict — GO / NO-GO
+
+### **P2A-1R19 = GO DÉFINITIF** (CI distante verte, run #27346008843, commit `f93379b`)
 
 | Critère d'acceptation (consigne §11) | État |
 |---|---|
@@ -418,18 +447,17 @@ subsiste**, et les bases historiques pré-R19 sont **réparées** à l'adoption 
 | Aucune donnée de démonstration introduite | ✅ testé (§9.2) |
 | Aucune modification métier hors périmètre | ✅ entités, ViewModels, `DbInitializer`/`DbSeeder`, réglementaire intacts |
 | Aucune nouvelle fonctionnalité | ✅ correctif technique uniquement |
+| **CI distante verte** | ✅ run **#27346008843** = success (commit `f93379b`) |
 | Aucune phase P2A-1C+ commencée | ✅ |
 | Rapport complet | ✅ (ce document, §6 bis pour R2) |
 
-> **Note de validation distante.** `ALLOW_COMMIT=false` / `ALLOW_PUSH=false` : aucune exécution CI
-> distante n'a pu être déclenchée dans cette phase. Le GO ci-dessus est **local** ; la levée d'une
-> éventuelle gate « validation distante » suivra l'autorisation explicite de commit + push (comme pour
-> P2A-1A/1B).
+La gate « VALIDATION DISTANTE REQUISE » est **levée** : le pipeline distant est **vert** sur le commit testé.
 
-## 15. Prochaine étape candidate (NON exécutée)
+## 16. Prochaine étape candidate (NON exécutée)
 
 `P2A-1C` — « Transactions, idempotence et erreurs de persistance » (frontière transactionnelle d'écriture,
 protection double-soumission, erreurs utilisateur maîtrisées). **Non commencée.** Ne pas démarrer sans
 verdict `P2A-1R19` confirmé par revue humaine, puis `TARGET_PHASE_ID = P2A-1C` explicite.
 
-> **Arrêt obligatoire.** Fin de `P2A-1R19`. Aucun commit, aucun push, aucune amorce de `P2A-1C`.
+> **Arrêt obligatoire.** Fin de `P2A-1R19` — commit `f93379b` poussé, **CI distante verte (#27346008843)**,
+> verdict **GO définitif**. Aucune amorce de `P2A-1C`.
