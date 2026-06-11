@@ -1,0 +1,101 @@
+name: CI
+
+# CI minimale de l'Étape 0 (Phase 2A) : restore / build / test / scan de vulnérabilités.
+# Aucun déploiement, aucun artefact commercial, aucun secret de production.
+
+on:
+  push:
+    branches: [ main, phase2a-stabilization ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-scan:
+    name: Restore / Build / Test / Scan
+    # MMV.App est une application desktop Windows (OutputType=WinExe + app.manifest) :
+    # le runner Windows est le plus représentatif de la cible.
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET (SDK verrouillé par global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Diagnostic SDK
+        run: dotnet --info
+
+      - name: Restore
+        run: dotnet restore MMV.sln
+
+      # Build sans -warnaserror : les avertissements restent VISIBLES dans le journal
+      # mais ne font pas échouer le pipeline (un CS1998 préexistant est hors périmètre Étape 0).
+      - name: Build
+        run: dotnet build MMV.sln --no-restore -c Debug
+
+      - name: Test
+        run: dotnet test MMV.sln --no-build -c Debug --logger "trx;LogFileName=test-results.trx"
+
+      # Audit des dépendances vulnérables (P2A-0B). Défense en profondeur :
+      #   1) La restauration a déjà appliqué l'audit NuGet (Directory.Build.props, NuGetAuditMode=all).
+      #      En CI, NU1903/NU1904 (High/Critical) et NU1900/NU1905 (échec de récupération de la base
+      #      d'avis) sont BLOQUANTS — un échec de récupération n'est jamais traité comme « 0 vuln ».
+      #   2) Ce step ajoute un rapport lisible (logs) + un contrôle MACHINE sur le JSON officiel :
+      #      échec si une vulnérabilité High/Critical est présente, ou si le scan est NON CONCLUANT
+      #      (commande en échec, sortie vide, ou JSON invalide). On ne se fie plus à un grep de texte.
+      - name: Audit des packages vulnérables (JSON + sévérité)
+        shell: pwsh
+        run: |
+          # (1) Rapport humainement lisible dans les logs.
+          dotnet list MMV.sln package --vulnerable --include-transitive
+          $textCode = $LASTEXITCODE
+
+          # (2) Rapport lisible par machine (format JSON officiel et versionné).
+          $raw = dotnet list MMV.sln package --vulnerable --include-transitive --format json --output-version 1 | Out-String
+          $jsonCode = $LASTEXITCODE
+
+          if ($textCode -ne 0 -or $jsonCode -ne 0) {
+            Write-Error "Echec de 'dotnet list package --vulnerable' (text=$textCode json=$jsonCode) : scan NON concluant."
+            exit 1
+          }
+          if ([string]::IsNullOrWhiteSpace($raw)) {
+            Write-Error "Sortie JSON vide : scan de vulnerabilites NON concluant."
+            exit 1
+          }
+          try {
+            $report = $raw | ConvertFrom-Json
+          } catch {
+            Write-Error "JSON d'audit invalide : $($_.Exception.Message)"
+            exit 1
+          }
+
+          $hits = New-Object System.Collections.Generic.List[string]
+          foreach ($project in $report.projects) {
+            foreach ($fw in $project.frameworks) {
+              $packages = @()
+              if ($fw.topLevelPackages)   { $packages += $fw.topLevelPackages }
+              if ($fw.transitivePackages) { $packages += $fw.transitivePackages }
+              foreach ($pkg in $packages) {
+                foreach ($vuln in $pkg.vulnerabilities) {
+                  if ($vuln.severity -imatch '^(High|Critical)$') {
+                    $hits.Add(("{0} :: {1} {2} [{3}] {4}" -f $project.path, $pkg.id, $pkg.resolvedVersion, $vuln.severity, $vuln.advisoryurl))
+                  }
+                }
+              }
+            }
+          }
+
+          if ($hits.Count -gt 0) {
+            Write-Host "Vulnerabilites High/Critical detectees :"
+            $hits | ForEach-Object { Write-Host "  - $_" }
+            Write-Error ("Echec : {0} vulnerabilite(s) High/Critical." -f $hits.Count)
+            exit 1
+          }
+          Write-Host "Aucune vulnerabilite High/Critical detectee."

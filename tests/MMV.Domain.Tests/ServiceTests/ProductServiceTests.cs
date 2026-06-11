@@ -21,11 +21,28 @@ public class ProductServiceTests
         return context;
     }
 
+    /// <summary>
+    /// Product.SupplierId est une FK obligatoire (OnDelete.Restrict, IsRequired). Chaque test qui
+    /// persiste un produit doit donc créer explicitement un fournisseur valide au préalable.
+    /// </summary>
+    private static async Task<long> SeedSupplierAsync(OpticDbContext context)
+    {
+        var supplier = new Supplier
+        {
+            Name = "Fournisseur Test",
+            ReferenceCode = "SUP-TEST"
+        };
+        context.Suppliers.Add(supplier);
+        await context.SaveChangesAsync();
+        return supplier.SupplierId;
+    }
+
     [Fact]
     public async Task CreateProductAsync_ShouldSucceed()
     {
         using var context = CreateContext(out var connection);
         await using var _ = connection;
+        var supplierId = await SeedSupplierAsync(context);
         var service = new ProductService(new UnitOfWork(context));
         var product = new Product
         {
@@ -33,9 +50,10 @@ public class ProductServiceTests
             Reference = "RB3025",
             SalePrice = 150m,
             PurchasePrice = 75m,
-            StockQuantity = 10
+            StockQuantity = 10,
+            SupplierId = supplierId
         };
-        
+
         var result = await service.CreateProductAsync(product);
         
         result.Should().NotBeNull();
@@ -60,6 +78,7 @@ public class ProductServiceTests
     {
         using var context = CreateContext(out var connection);
         await using var _ = connection;
+        var supplierId = await SeedSupplierAsync(context);
         var service = new ProductService(new UnitOfWork(context));
         var product = new Product
         {
@@ -67,7 +86,8 @@ public class ProductServiceTests
             Reference = "VP001",
             SalePrice = 200m,
             PurchasePrice = 100m,
-            StockQuantity = 5
+            StockQuantity = 5,
+            SupplierId = supplierId
         };
         await service.CreateProductAsync(product);
         
@@ -82,6 +102,7 @@ public class ProductServiceTests
     {
         using var context = CreateContext(out var connection);
         await using var _ = connection;
+        var supplierId = await SeedSupplierAsync(context);
         var service = new ProductService(new UnitOfWork(context));
         var product = new Product
         {
@@ -89,7 +110,8 @@ public class ProductServiceTests
             Reference = "AC001",
             SalePrice = 50m,
             PurchasePrice = 20m,
-            StockQuantity = 20
+            StockQuantity = 20,
+            SupplierId = supplierId
         };
         await service.CreateProductAsync(product);
         

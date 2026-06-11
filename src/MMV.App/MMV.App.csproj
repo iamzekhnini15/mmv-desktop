@@ -20,13 +20,19 @@
     <PackageReference Include="Avalonia.Diagnostics" Version="11.2.8" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="FluentAvaloniaUI" Version="2.1.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.27">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageReference Include="Projektanker.Icons.Avalonia" Version="9.6.2" />
+    <!-- Pins de sécurité (Étape 0), transitifs High remontés au-delà des avis :
+         - System.Text.Json (EF Core / Hosting) : GHSA-hh2w-p6rv-4g7w, GHSA-8g4q-xg66-9fp4 (corrigé 8.0.5).
+         - Tmds.DBus.Protocol (Avalonia.Desktop -> X11 -> FreeDesktop, code Linux/D-Bus uniquement,
+           jamais exécuté sur la cible Windows) : GHSA-xrw6-gwf8-vvr9 (corrigé 0.21.2). -->
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
   </ItemGroup>
 
   <ItemGroup>

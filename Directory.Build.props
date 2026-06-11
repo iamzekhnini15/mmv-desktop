@@ -1,0 +1,31 @@
+<Project>
+
+  <!--
+    Audit NuGet au niveau du dépôt (P2A-0B).
+
+    - NuGetAudit + NuGetAuditMode=all : audit des paquets DIRECTS et TRANSITIFS à la restauration.
+    - NuGetAuditLevel laissé par défaut (low) : NU1901/NU1902 restent émis (donc visibles).
+
+    Comportement conditionnel CI (GitHub Actions pose automatiquement la variable CI=true,
+    lue par MSBuild comme la propriété $(CI)) :
+      * NU1903 (High) et NU1904 (Critical)            -> ERREURS  (pipeline bloquant) ;
+      * NU1900 / NU1905 (échec de communication / base d'avis indisponible) -> ERREURS
+        (un échec de récupération de la base d'avis ne doit JAMAIS être interprété
+         comme « aucune vulnérabilité ») ;
+      * NU1901 (Low) et NU1902 (Moderate)             -> avertissements VISIBLES, non bloquants.
+
+    En local (CI non défini), tout reste en avertissement : aucune friction pour le développeur,
+    mais les avis sont visibles. Le durcissement bloquant est réservé à la CI.
+  -->
+
+  <PropertyGroup>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CI)' == 'true'">
+    <WarningsAsErrors>$(WarningsAsErrors);NU1900;NU1903;NU1904;NU1905</WarningsAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902</WarningsNotAsErrors>
+  </PropertyGroup>
+
+</Project>
