@@ -254,34 +254,48 @@ Aucune vulnérabilité High/Critical.
 3. **Comparaison de schéma pragmatique** (héritée de P2A-1A-R2) — ne signale que le **manquant/incompatible
    attendu** (affinité SQLite). Un schéma divergent **non couvert** par les contrôles resterait théoriquement
    classé compatible ; atténué par la preuve d'équivalence et l'anti-faux-positif. Analyse fine = au-delà de P2A-1B.
-4. **Chemin de l'ancien fichier** — résolu **relatif au dossier de travail courant** (comportement du runtime
-   historique `Data Source=mmv-optic.db`). Si l'ancien runtime était lancé depuis un autre dossier, l'ancien
-   fichier peut résider ailleurs : le diagnostic le signale alors comme **absent** (`NoDatabaseFound`) sans
-   risque ; une reprise dirigée reste possible via `Recover(legacyPath, …)` explicite (support).
-5. **Verrou mono-instance / WAL** — la reprise copie aussi `-wal`/`-shm` si présents, et `ClearAllPools` est
+4. **Ancien `mmv-optic.db` détectable seulement depuis le dossier de travail historique ou via chemin
+   explicite support** — le chemin de l'ancien fichier est résolu **relatif au dossier de travail courant**
+   (comportement du runtime historique `Data Source=mmv-optic.db`). Si l'ancien runtime était lancé depuis
+   un autre dossier, l'ancien fichier peut résider ailleurs : le diagnostic le signale alors comme **absent**
+   (`NoDatabaseFound`) sans risque ; une reprise dirigée reste possible via `Recover(legacyPath, …)`
+   **explicite** (support).
+5. **Chemins de fichiers locaux dans les rapports support** — les rapports/journal peuvent contenir des
+   **chemins de fichiers locaux** (ex. `%LOCALAPPDATA%\Users\…`), métadonnées techniques mais potentiellement
+   identifiantes. **L'anonymisation des chemins sera à traiter dans une future phase sécurité/support** (hors
+   périmètre P2A-1B ; aucune donnée métier/personnelle d'enregistrement n'est exposée).
+6. **Verrou mono-instance / WAL** — la reprise copie aussi `-wal`/`-shm` si présents, et `ClearAllPools` est
    appelé avant les opérations fichier ; un accès concurrent à l'ancien fichier pendant la reprise (très
    improbable au démarrage mono-poste) n'est pas verrouillé (R-25, hors périmètre).
-6. **`CS1998`** préexistant — inchangé, hors périmètre.
+7. **`CS1998`** préexistant — inchangé, hors périmètre.
 
 Aucun de ces risques ne touche au métier, au réglementaire, ni aux interdictions de la phase.
 
-## 17. État Git final (aucun commit, aucun push)
+## 17. État Git final (après autorisation commit + push)
 
-`ALLOW_COMMIT=false`, `ALLOW_PUSH=false` → le changeset reste **dans l'arbre de travail**, **non commité**.
-`HEAD` inchangé (`334b728`).
+`ALLOW_COMMIT=true`, `ALLOW_PUSH=true` → changeset **commité** puis **poussé** (sans force-push).
 
-`git status --short` :
+- Commit : **`a39c855`** — `feat(P2A-1B): add legacy SQLite database diagnostics and recovery`
+  (+ trailer `Co-Authored-By`). Sur `334b728`.
+- Push : `git push origin phase2a-stabilization` (sans force) → `334b728..a39c855`.
+- `git status --short` après commit : **vide** (arbre propre).
+- `git diff --check` : **0 anomalie** d'espaces (seul un avis LF→CRLF, normal sous Windows).
+
+Contenu commité (`git show --stat`), **8 fichiers, +1688** :
 
 ```
- M src/MMV.App/App.axaml.cs
- M src/MMV.Infrastructure/Data/SqliteDatabasePathResolver.cs
-?? src/MMV.Infrastructure/Data/HistoricalMigrationReport.cs
-?? src/MMV.Infrastructure/Data/LegacyDatabaseRecoveryService.cs
-?? src/MMV.Infrastructure/Data/SqliteHistoricalDatabaseDiagnostic.cs
-?? tests/MMV.Domain.Tests/Data/LegacyDatabaseRecoveryServiceTests.cs
-?? tests/MMV.Domain.Tests/Data/SqliteHistoricalDatabaseDiagnosticTests.cs
-?? docs/implementation/P2A-1B-report.md
+A  docs/implementation/P2A-1B-report.md
+M  src/MMV.App/App.axaml.cs
+A  src/MMV.Infrastructure/Data/HistoricalMigrationReport.cs
+A  src/MMV.Infrastructure/Data/LegacyDatabaseRecoveryService.cs
+M  src/MMV.Infrastructure/Data/SqliteDatabasePathResolver.cs
+A  src/MMV.Infrastructure/Data/SqliteHistoricalDatabaseDiagnostic.cs
+A  tests/MMV.Domain.Tests/Data/LegacyDatabaseRecoveryServiceTests.cs
+A  tests/MMV.Domain.Tests/Data/SqliteHistoricalDatabaseDiagnosticTests.cs
 ```
+
+**Aucun** fichier `bin/`/`obj/`, `*.db` (dont l'`mmv-optic.db` réel présent dans `src/MMV.App/`, **`!!`
+ignoré**), `*.zip`, `*.trx`, temporaire ou secret n'est inclus (vérifié `git add -A --dry-run` + `--ignored`).
 
 **Modifiés (2) :**
 - [`src/MMV.App/App.axaml.cs`](../../src/MMV.App/App.axaml.cs) — appel additif de la reprise contrôlée avant `PrepareDatabase` (+16 lignes).
@@ -298,9 +312,31 @@ Aucun de ces risques ne touche au métier, au réglementaire, ni aux interdictio
 **Aucune entité, aucun ViewModel, aucune configuration EF, aucun `DbInitializer`, aucune migration,
 aucune valeur réglementaire** modifiés. Aucun `bin/`/`obj/`/`*.db`/artefact temporaire dans le changeset.
 
-## 18. Verdict — GO / NO-GO
+## 18. Validation CI distante (run réel)
 
-### **P2A-1B = GO** (local)
+Push sur `phase2a-stabilization` ⇒ workflow `CI` déclenché sur l'événement `push`. Détails consignés
+depuis l'API GitHub Actions :
+
+| Élément | Valeur réelle |
+|---|---|
+| Run | **#27343372219** (run number 5) |
+| Lien | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27343372219 |
+| Commit testé | **`a39c855`** (`head_sha = a39c855ba94494d7a159fac14ed1762fc3d1e655`) |
+| Workflow / job | `CI` / `Restore / Build / Test / Scan` |
+| Runner / durée | `windows-latest` (GitHub-hosted) — ≈ 2 min 08 s (11:24:18 → 11:26:26 UTC) |
+| SDK utilisé | **8.0.417** (step « Setup .NET (SDK verrouillé par global.json) » → success) |
+| Restore | ✅ **success** |
+| Build | ✅ **success** |
+| Test | ✅ **success** (suite **233** ; le step échoue si un test échoue) |
+| Audit NuGet (JSON + sévérité) | ✅ **success** (0 High/Critical, scan concluant) |
+| **Statut final du workflow** | ✅ **completed / success (VERT)** |
+
+Tous les steps (`Set up job`, `Checkout`, `Setup .NET`, `Diagnostic SDK`, `Restore`, `Build`, `Test`,
+`Audit des packages vulnérables`, `Complete job`) sont en conclusion `success`.
+
+## 19. Verdict — GO / NO-GO
+
+### **P2A-1B = GO DÉFINITIF** (CI distante verte, run #27343372219)
 
 | Critère d'acceptation (consigne §13) | État |
 |---|---|
@@ -316,16 +352,15 @@ aucune valeur réglementaire** modifiés. Aucun `bin/`/`obj/`/`*.db`/artefact te
 | Aucune nouvelle migration destructive | ✅ **aucune migration créée** (7 inchangées) |
 | R-19 clairement documenté | ✅ §11 (origine, neutralité structurelle, recommandation) |
 | Aucun début de P2A-1C ou autre phase | ✅ |
+| **CI distante verte** | ✅ run **#27343372219** = success (commit `a39c855`) |
 
-> Le GO local est conditionné à la **validation CI distante** lors d'un futur push autorisé
-> (`ALLOW_PUSH=true`), conformément au schéma `P2A-0B`/`P2A-1A`. Tant que le push n'est pas autorisé :
-> **`VALIDATION DISTANTE REQUISE`**.
+La gate `VALIDATION DISTANTE REQUISE` est **levée** : le pipeline distant est **vert** sur le commit testé.
 
-## 19. Prochaine étape candidate (NON exécutée)
+## 20. Prochaine étape candidate (NON exécutée)
 
 `P2A-1C` — « Transactions, idempotence et erreurs de persistance » (frontière transactionnelle d'écriture,
 protection double-soumission, erreurs utilisateur maîtrisées). **Non commencée.** Ne pas démarrer sans
-verdict `P2A-1B` confirmé par revue humaine (et CI distante verte après push autorisé), puis
-`TARGET_PHASE_ID = P2A-1C` explicite.
+verdict `P2A-1B` confirmé par revue humaine, puis `TARGET_PHASE_ID = P2A-1C` explicite.
 
-> **Arrêt obligatoire.** Fin de `P2A-1B`. Aucun commit, aucun push, aucune amorce de `P2A-1C`.
+> **Arrêt obligatoire.** Fin de `P2A-1B` — commit `a39c855` poussé, **CI distante verte (#27343372219)**,
+> verdict **GO définitif**. Aucune amorce de `P2A-1C`.
