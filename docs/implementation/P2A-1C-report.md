@@ -258,32 +258,63 @@ Aucun de ces risques ne touche au métier, au réglementaire, ni aux interdictio
 
 ## 15. État Git final
 
-`git status --short` (changeset dans l'arbre de travail, **non commité**, conformément à `ALLOW_COMMIT=false`) :
+Étape finale **`ALLOW_COMMIT=true`, `ALLOW_PUSH=true`** ⇒ le changeset P2A-1C (R2 inclus) est **commité**
+puis **poussé** (sans force-push).
+
+- Commit : **`186d995`** — `feat(P2A-1C): protect sale persistence with transaction runner`
+  (+ trailer `Co-Authored-By`). Sur `1d8c44f`.
+- Push : `git push origin phase2a-stabilization` (sans force) → `1d8c44f..186d995`.
+- `git status --short` après commit : **vide** (arbre propre).
+- `git diff --check` : **0 anomalie** d'espaces (seuls des avis LF→CRLF, normaux sous Windows).
+
+Contenu commité (`git show --stat`), **13 fichiers** (5 modifiés + 8 ajoutés) :
 
 ```
- M src/MMV.App/App.axaml.cs
- M src/MMV.App/ViewModels/CustomerDetailViewModel.cs
- M src/MMV.App/ViewModels/CustomersViewModel.cs
- M src/MMV.App/ViewModels/SaleFormViewModel.cs
- M src/MMV.Infrastructure/DependencyInjection.cs
-?? docs/architecture/adr-transaction-idempotency.md
-?? docs/implementation/P2A-1C-report.md
-?? src/MMV.Domain/Exceptions/PersistenceException.cs
-?? src/MMV.Domain/Interfaces/Persistence/ITransactionRunner.cs
-?? src/MMV.Infrastructure/Persistence/EfTransactionRunner.cs
-?? src/MMV.Infrastructure/Persistence/PersistenceErrorMapper.cs
-?? tests/MMV.App.Tests/ViewModels/SaleFormViewModelTransactionTests.cs
-?? tests/MMV.Domain.Tests/Persistence/EfTransactionRunnerTests.cs
+A  docs/architecture/adr-transaction-idempotency.md
+A  docs/implementation/P2A-1C-report.md
+M  src/MMV.App/App.axaml.cs
+M  src/MMV.App/ViewModels/CustomerDetailViewModel.cs
+M  src/MMV.App/ViewModels/CustomersViewModel.cs
+M  src/MMV.App/ViewModels/SaleFormViewModel.cs
+A  src/MMV.Domain/Exceptions/PersistenceException.cs
+A  src/MMV.Domain/Interfaces/Persistence/ITransactionRunner.cs
+M  src/MMV.Infrastructure/DependencyInjection.cs
+A  src/MMV.Infrastructure/Persistence/EfTransactionRunner.cs
+A  src/MMV.Infrastructure/Persistence/PersistenceErrorMapper.cs
+A  tests/MMV.App.Tests/ViewModels/SaleFormViewModelTransactionTests.cs
+A  tests/MMV.Domain.Tests/Persistence/EfTransactionRunnerTests.cs
 ```
 
-`git diff --stat` (fichiers suivis modifiés, **R2 inclus**) : **5 fichiers, +202 / −141** (l'essentiel =
-réorganisation de `SaleFormViewModel.ExecuteSave` en `ExecuteSave` + `PersistSaleAsync`, et runner rendu
-obligatoire dans les 3 ViewModels). **Aucun** `bin/`/`obj/`, `*.db`, `*.trx`, temporaire, secret ou donnée
-utilisateur. **Aucun commit, aucun push.**
+**Aucun** `bin/`/`obj/`, `*.db`, `*.trx`, `*.zip`, temporaire, secret ou donnée utilisateur. **Aucune entité
+métier, aucune configuration EF, aucune migration** modifiées. Les fichiers commités correspondent
+exactement à la liste autorisée.
+
+## 15 bis. Validation CI distante (run réel)
+
+Push sur `phase2a-stabilization` ⇒ workflow `CI` déclenché sur l'événement `push`. Détails consignés depuis
+l'API GitHub Actions :
+
+| Élément | Valeur réelle |
+|---|---|
+| Run | **#27367443700** (run number 9) |
+| Lien | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27367443700 |
+| Commit testé | **`186d995`** (`head_sha = 186d99571d4e86bbc13d0ab6d5d17449d6b7477e`) |
+| Workflow / job | `CI` / `Restore / Build / Test / Scan` |
+| Runner / durée | `windows` (GitHub-hosted) — ≈ 2 min 24 s (18:06:20 → 18:08:44 UTC) |
+| SDK utilisé | **8.0.417** (step « Setup .NET (SDK verrouillé par global.json) » → success) |
+| Restore | ✅ **success** |
+| Build | ✅ **success** |
+| Test | ✅ **success** (suite **257** ; le step échoue si un test échoue) |
+| `has-pending-model-changes` | ✅ **false** (confirmé localement, exit 0 ; modèle == dernier snapshot) |
+| Audit NuGet (JSON + sévérité) | ✅ **success** (0 High/Critical, scan concluant) |
+| **Statut final du workflow** | ✅ **completed / success (VERT)** |
+
+Tous les steps (`Set up job`, `Checkout`, `Setup .NET`, `Diagnostic SDK`, `Restore`, `Build`, `Test`,
+`Audit des packages vulnérables`, `Complete job`) sont en conclusion `success`.
 
 ## 16. Verdict — GO / NO-GO
 
-### **P2A-1C = GO** (local vert ; validation CI distante à confirmer avant tout commit/push)
+### **P2A-1C = GO DÉFINITIF** (CI distante verte, run #27367443700, commit `186d995`)
 
 | Critère d'acceptation (consigne §12) | État |
 |---|---|
@@ -297,13 +328,12 @@ utilisateur. **Aucun commit, aucun push.**
 | Rollback testé | ✅ tests 2, 3 (vrai SQLite, 0 écriture partielle) |
 | Double soumission traitée (flux prioritaire) | ✅ garde `IsSaving` + test 11 |
 | Erreurs de persistance transformées ou documentées | ✅ `PersistenceException`/mapper + tests 3, 6-8, 12 |
+| **CI distante verte** | ✅ run **#27367443700** = success (commit `186d995`) |
 | Aucun début de P2A-1D / autre phase | ✅ (ni concurrency token, ni numérotation, ni Money, ni Application layer) |
-| Rapport complet | ✅ (ce document, §6 bis pour R2) |
+| Rapport complet | ✅ (ce document, §6 bis pour R2, §15 bis pour la CI) |
 
-> **Note de gate** : `ALLOW_COMMIT=false`/`ALLOW_PUSH=false` ⇒ le changeset n'est **pas** commité. La
-> « validation distante CI verte » (gate des phases précédentes) sera produite **après** décision humaine
-> d'autoriser commit + push, sur le commit réel. Le verdict local est **GO** ; le GO **définitif** suivra
-> le run CI vert, comme pour P2A-1A/1B/1R19.
+La gate « VALIDATION DISTANTE REQUISE » est **levée** : le pipeline distant est **vert** sur le commit testé
+`186d995` (run #27367443700). Verdict **GO DÉFINITIF**.
 
 ## 17. Prochaine étape candidate (NON exécutée)
 
