@@ -248,11 +248,14 @@ git status --short ; git diff --stat
 
 ## 16. Risques résiduels
 
-1. **Dérive R-19** (`HasDefaultValue(DateTime.UtcNow)`) — `has-pending-model-changes` reste *true* ;
-   cosmétique (valeur par défaut), **structurellement neutre** (prouvé) ; correctif différé (Étape 1 / R-19).
-2. **Bascule du chemin runtime** `mmv-optic.db` → `%LOCALAPPDATA%\ManageMyVision\mmv.db` : un éventuel
-   fichier `mmv-optic.db` préexistant (données de démo de dev) n'est **pas** supprimé et **pas** repris
-   automatiquement ; sa reprise éventuelle relève de **P2A-1B**. Aucune perte (fichier conservé).
+1. **R-19 / `has-pending-model-changes` = true** (`HasDefaultValue(DateTime.UtcNow)`) — `dotnet ef
+   migrations has-pending-model-changes` reste *true* ; cosmétique (valeur par défaut),
+   **structurellement neutre** (prouvé §13). **À TRAITER avant les prochaines migrations structurelles
+   importantes** (correctif R-19, Étape 1) afin d'éviter qu'une future migration ne capte ce bruit.
+2. **`mmv-optic.db` historique non repris automatiquement** — la bascule du chemin runtime
+   `mmv-optic.db` → `%LOCALAPPDATA%\ManageMyVision\mmv.db` laisse un éventuel fichier `mmv-optic.db`
+   préexistant **intact mais non repris** (il existe d'ailleurs dans `src/MMV.App/`, ignoré par Git).
+   **Sa reprise est un sujet explicite de P2A-1B.** Aucune perte (fichier conservé).
 3. **Bases à schéma antérieur/incompatible au modèle courant** — **refusées** par le portail de
    compatibilité (R2), sans baseline ni perte (sauvegarde + journal). Leur **diagnostic, réparation et
    migration** relèvent de **P2A-1B** (non traités ici). La comparaison est **pragmatique** (affinité
@@ -270,33 +273,62 @@ git status --short ; git diff --stat
 
 Aucun de ces risques ne touche au métier, au réglementaire, ni aux interdictions de la phase.
 
-## 17. État Git final
+## 17. État Git final (après autorisation commit + push)
 
-`git status --short` :
+Changeset **commité** puis **poussé** (autorisation `ALLOW_COMMIT=true`, `ALLOW_PUSH=true`).
+
+- Commit : **`a85bc51`** — `feat(P2A-1A): unify SQLite lifecycle and protect historical database adoption`
+  (+ trailer `Co-Authored-By`). Sur `03bfe65`.
+- Push : `git push origin phase2a-stabilization` (sans force) → `03bfe65..a85bc51`.
+- `git status --short` après commit : **vide** (arbre propre).
+- `git diff --check` : **0 anomalie** d'espaces.
+
+Contenu commité (`git diff --cached --name-status`), **13 fichiers** :
 
 ```
- M src/MMV.App/App.axaml.cs
- M src/MMV.Infrastructure/Data/OpticDbContext.cs
- M src/MMV.Infrastructure/Data/OpticDbContextFactory.cs
- M src/MMV.Infrastructure/DependencyInjection.cs
-?? docs/architecture/adr-sqlite-lifecycle.md
-?? docs/implementation/P2A-1A-report.md
-?? src/MMV.Infrastructure/Data/DatabaseMigrationException.cs
-?? src/MMV.Infrastructure/Data/MigrationJournal.cs
-?? src/MMV.Infrastructure/Data/SqliteDatabaseManager.cs
-?? src/MMV.Infrastructure/Data/SqliteDatabasePathResolver.cs
-?? src/MMV.Infrastructure/Data/SqliteSchemaVerifier.cs
-?? tests/MMV.Domain.Tests/Data/SqliteDatabaseManagerTests.cs
-?? tests/MMV.Domain.Tests/Data/SqliteDatabasePathResolverTests.cs
+A  docs/architecture/adr-sqlite-lifecycle.md
+A  docs/implementation/P2A-1A-report.md
+M  src/MMV.App/App.axaml.cs
+A  src/MMV.Infrastructure/Data/DatabaseMigrationException.cs
+A  src/MMV.Infrastructure/Data/MigrationJournal.cs
+M  src/MMV.Infrastructure/Data/OpticDbContext.cs
+M  src/MMV.Infrastructure/Data/OpticDbContextFactory.cs
+A  src/MMV.Infrastructure/Data/SqliteDatabaseManager.cs
+A  src/MMV.Infrastructure/Data/SqliteDatabasePathResolver.cs
+A  src/MMV.Infrastructure/Data/SqliteSchemaVerifier.cs
+M  src/MMV.Infrastructure/DependencyInjection.cs
+A  tests/MMV.Domain.Tests/Data/SqliteDatabaseManagerTests.cs
+A  tests/MMV.Domain.Tests/Data/SqliteDatabasePathResolverTests.cs
 ```
 
-**4 fichiers modifiés** (unification du chemin + portail/encapsulation dans le manager) + **8 fichiers
-ajoutés** (1 ADR, 5 sources, 2 tests — le rapport étant le 9ᵉ). **Aucun commit, aucun push** (conforme à
-`ALLOW_COMMIT=false`, `ALLOW_PUSH=false`).
+**Aucun** fichier `bin/`/`obj/`, `*.db` (dont `mmv-optic.db`), `*.zip`, `*.trx`, temporaire ou secret
+n'est inclus (vérifié : ces éléments sont `!!` ignorés par `.gitignore`).
 
-## 18. Verdict — GO / NO-GO
+## 18. Validation CI distante (run réel)
 
-### **P2A-1A = GO**
+Push sur `phase2a-stabilization` ⇒ workflow `CI` déclenché sur l'événement `push`. Détails consignés
+depuis l'API GitHub Actions :
+
+| Élément | Valeur réelle |
+|---|---|
+| Run | **#27332553670** (run number 3) |
+| Lien | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27332553670 |
+| Commit testé | **`a85bc51`** (`head_sha = a85bc519890eeb9a4b3ff86c79d4d9338b120c1f`) |
+| Workflow / job | `CI` / `Restore / Build / Test / Scan` |
+| Runner / durée | `windows-latest` — ≈ 2 min 40 s (07:58:25 → 08:01:05 UTC) |
+| SDK utilisé | **8.0.417** (step « Setup .NET (SDK verrouillé par global.json) » → success) |
+| Restore | ✅ **success** |
+| Build | ✅ **success** |
+| Test | ✅ **success** (suite **218** ; le step échoue si un test échoue) |
+| Audit NuGet (JSON + sévérité) | ✅ **success** (0 High/Critical, scan concluant) |
+| **Statut final du workflow** | ✅ **completed / success (VERT)** |
+
+Tous les steps (`Set up job`, `Checkout`, `Setup .NET`, `Diagnostic SDK`, `Restore`, `Build`, `Test`,
+`Audit des packages vulnérables`, `Complete job`) sont en conclusion `success`.
+
+## 19. Verdict — GO / NO-GO
+
+### **P2A-1A = GO DÉFINITIF** (CI distante verte, run #27332553670)
 
 | Critère d'acceptation (consigne §11) | État |
 |---|---|
@@ -312,9 +344,10 @@ ajoutés** (1 ADR, 5 sources, 2 tests — le rapport étant le 9ᵉ). **Aucun co
 | Restauration / reprise testée | ✅ |
 | Aucun code métier hors périmètre modifié | ✅ (entités, ViewModels, Money, Application, DbInitializer, migrations intacts ; version EF Core inchangée) |
 | Aucun début de P2A-1B ou autre phase | ✅ |
+| **CI distante verte** | ✅ run **#27332553670** = success (commit `a85bc51`) |
 | Rapport complet | ✅ (ce document) |
 
-## 19. Prochaine étape candidate (NON exécutée)
+## 20. Prochaine étape candidate (NON exécutée)
 
 `P2A-1B` — « Migration des données historiques » : outil de diagnostic de schéma, traitement des bases à
 schéma antérieur, contrôle avant/après, procédure de reprise. **Non commencée.** Ne pas démarrer sans
