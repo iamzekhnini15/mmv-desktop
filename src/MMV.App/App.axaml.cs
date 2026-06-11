@@ -7,9 +7,11 @@ using Microsoft.Extensions.DependencyInjection;
 using MMV.App.Services;
 using MMV.App.ViewModels;
 using MMV.App.Views;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 using MMV.Domain.Services;
 using MMV.Infrastructure.Data;
+using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
 using MMV.Infrastructure.Services;
 
@@ -123,6 +125,9 @@ public partial class App : Application
         services.AddScoped<ISaleRepository, SaleRepository>();
         services.AddScoped<IStockMovementRepository, StockMovementRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+
+        // Frontière transactionnelle réutilisable (P2A-1C, R-23) : partage le DbContext de la portée.
+        services.AddScoped<ITransactionRunner, EfTransactionRunner>();
 
         // Enregistrer les services d'authentification et de session
         services.AddScoped<IAuthenticationService, AuthenticationService>();

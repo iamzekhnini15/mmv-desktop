@@ -2,11 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Exceptions;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -24,6 +27,13 @@ public class SaleFormViewModel : BaseViewModel
     private readonly IPrescriptionRepository? _prescriptionRepository;
     private readonly IStockMovementRepository? _stockMovementRepository;
     private readonly IUnitOfWork? _unitOfWork;
+
+    /// <summary>
+    /// Frontière transactionnelle (P2A-1C, R-23) : <b>obligatoire</b>. Le flux multi-écriture
+    /// <see cref="ExecuteSave"/> ne possède plus de repli non transactionnel ; l'absence de runner
+    /// est une erreur de configuration (le constructeur la rejette).
+    /// </summary>
+    private readonly ITransactionRunner _transactionRunner;
 
     private long _customerId;
     private decimal _totalAmount;
@@ -373,7 +383,8 @@ public class SaleFormViewModel : BaseViewModel
         IProductRepository? productRepository,
         IPrescriptionRepository? prescriptionRepository,
         IStockMovementRepository? stockMovementRepository,
-        IUnitOfWork? unitOfWork)
+        IUnitOfWork? unitOfWork,
+        ITransactionRunner transactionRunner)
     {
         _saleRepository = saleRepository;
         _orderRepository = orderRepository;
@@ -381,6 +392,8 @@ public class SaleFormViewModel : BaseViewModel
         _prescriptionRepository = prescriptionRepository;
         _stockMovementRepository = stockMovementRepository;
         _unitOfWork = unitOfWork;
+        // Frontière transactionnelle obligatoire : pas d'exécution multi-écriture sans transaction.
+        _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
 
         SaveCommand = new RelayCommand(ExecuteSave);
         CancelCommand = new RelayCommand(ExecuteCancel);
@@ -808,6 +821,12 @@ public class SaleFormViewModel : BaseViewModel
 
     private async void ExecuteSave()
     {
+        // Garde anti double-soumission (P2A-1C) : une sauvegarde déjà en cours bloque toute ré-entrée.
+        // ExecuteSave est invoqué sur le thread UI ; IsSaving est positionné avant le premier await,
+        // si bien qu'un second clic pendant la sauvegarde est rejeté immédiatement.
+        if (IsSaving)
+            return;
+
         if (_orderRepository == null || _unitOfWork == null || _productRepository == null || _stockMovementRepository == null)
         {
             ErrorMessage = "Repository non initialisé";
@@ -827,147 +846,23 @@ public class SaleFormViewModel : BaseViewModel
         {
             CalculateFinalAmount();
 
-            // Créer la vente complète
-            var sale = new Sale
-            {
-                CustomerId = CustomerId,
-                SaleDate = DateTime.Now,
-                SaleNumber = $"VTE-{DateTime.Now:yyyy}-{new Random().Next(10000):D4}",
-                TotalAmount = TotalAmount,
-                DiscountAmount = DiscountAmount,
-                FinalAmount = FinalAmount,
-                DepositAmount = DepositAmount,
-                RemainingAmount = RemainingAmount,
-                PaymentMethod = ConvertPaymentMethodFromString(SelectedPaymentMethod),
-                Notes = Notes
-            };
-
-            // Configuration selon le type de vente
-            if (IsCounterSale)
-            {
-                // Vente comptoir immédiate : livrée directement
-                sale.Status = SaleStatus.Delivered;
-                sale.EstimatedDelivery = DateTime.Now;
-            }
-            else
-            {
-                // Vente avec fabrication : attente verres
-                sale.Status = SaleStatus.AwaitingLenses;
-                sale.EstimatedDelivery = DateTime.Now.AddDays(14);
-            }
-
-            // Ajouter les articles avec tous leurs paramètres
-            foreach (var item in OrderItems)
-            {
-                sale.SaleItems.Add(new SaleItem
-                {
-                    ProductId = item.ProductId,
-                    ItemType = item.ItemType == OrderItemType.Frame ? OrderItemType.Frame :
-                              item.ItemType == OrderItemType.LensOd ? OrderItemType.LensOd :
-                              item.ItemType == OrderItemType.LensOg ? OrderItemType.LensOg :
-                              OrderItemType.Accessory,
-                    Quantity = item.Quantity,
-                    UnitPrice = item.UnitPrice,
-                    // Paramètres de correction (pour verres)
-                    UsageType = item.UsageType,
-                    Sphere = item.Sphere,
-                    Cylinder = item.Cylinder,
-                    Axis = item.Axis,
-                    Addition = item.Addition,
-                    PrismValue = item.PrismValue,
-                    PrismBase = item.PrismBase,
-                    VisualAcuity = item.VisualAcuity
-                });
-            }
-
-            // Sauvegarder la vente
-            if (_saleRepository != null)
-            {
-                await _saleRepository.CreateAsync(sale);
-                await _unitOfWork!.SaveChangesAsync(); // Sauvegarder pour obtenir SaleId
-
-                // Si la vente contient des verres, créer automatiquement une commande fournisseur
-                var hasLenses = OrderItems.Any(i => i.ItemType == OrderItemType.LensOd || i.ItemType == OrderItemType.LensOg);
-                if (hasLenses && _orderRepository != null)
-                {
-                    var order = new Order
-                    {
-                        SaleId = sale.SaleId,
-                        OrderNumber = $"CMD-{DateTime.Now:yyyy}-{new Random().Next(10000):D4}",
-                        OrderDate = DateTime.Now,
-                        EstimatedDelivery = DateTime.Now.AddDays(14),
-                        Status = OrderStatus.New,
-                        Notes = $"Commande verres pour vente {sale.SaleNumber}"
-                    };
-
-                    // Ajouter uniquement les verres à la commande fournisseur
-                    foreach (var item in OrderItems.Where(i => i.ItemType == OrderItemType.LensOd || i.ItemType == OrderItemType.LensOg))
-                    {
-                        order.OrderItems.Add(new OrderItem
-                        {
-                            ProductId = item.ProductId,
-                            ItemType = item.ItemType,
-                            Quantity = item.Quantity,
-                            UnitPrice = item.UnitPrice,
-                            UsageType = item.UsageType,
-                            Sphere = item.Sphere,
-                            Cylinder = item.Cylinder,
-                            Axis = item.Axis,
-                            Addition = item.Addition,
-                            PrismValue = item.PrismValue,
-                            PrismBase = item.PrismBase,
-                            VisualAcuity = item.VisualAcuity
-                        });
-                    }
-
-                    await _orderRepository.CreateAsync(order);
-                }
-            }
-
-            // Si vente comptoir : créer les mouvements de stock et décrémenter le stock
-            // SAUF pour les verres (ils sont commandés aux fournisseurs)
-            if (IsCounterSale)
-            {
-                foreach (var item in OrderItems)
-                {
-                    // Vérifier que le ProductId existe
-                    if (!item.ProductId.HasValue)
-                        continue;
-                    
-                    // Charger le produit avec détails
-                    var product = await _productRepository.GetByIdAsync(item.ProductId.Value);
-                    if (product != null)
-                    {
-                        // Exclure les verres de la décrémentation du stock
-                        bool isLens = product.Category == ProductCategoryEnum.VERRE || product.Category == ProductCategoryEnum.LENTILLE;
-                        if (isLens)
-                            continue; // Les verres sont commandés aux fournisseurs, pas en stock
-
-                        // Décrémenter le stock (montures et accessoires uniquement)
-                        product.StockQuantity -= item.Quantity;
-                        await _productRepository.UpdateAsync(product);
-
-                        // Créer le mouvement de stock (sortie)
-                        var stockMovement = new StockMovement
-                        {
-                            ProductId = item.ProductId.Value,
-                            MovementType = StockMovementType.Out,
-                            Quantity = -item.Quantity, // Négatif pour sortie
-                            Reason = $"Vente comptoir {sale.SaleNumber} - Client #{CustomerId}",
-                            CreatedAt = DateTime.Now
-                        };
-                        await _stockMovementRepository.CreateAsync(stockMovement);
-                    }
-                }
-            }
-
-            // Sauvegarder toutes les modifications
-            await _unitOfWork.SaveChangesAsync();
+            // Frontière transactionnelle OBLIGATOIRE (P2A-1C, R-23) : la création de la vente,
+            // l'éventuelle commande fournisseur et les mouvements de stock sont persistés de façon
+            // atomique. En cas d'erreur au milieu de l'opération, le runner annule TOUT (aucune
+            // écriture partielle). Il n'existe plus de repli non transactionnel : `_transactionRunner`
+            // est garanti non nul par le constructeur.
+            Sale savedSale = await _transactionRunner.RunAsync(PersistSaleAsync);
 
             // Notifier que la vente a été sauvegardée
-            OrderSaved?.Invoke(this, sale);
-            
+            OrderSaved?.Invoke(this, savedSale);
+
             ClearForm();
+        }
+        catch (PersistenceException pex)
+        {
+            // Erreur de persistance contrôlée : message utilisateur déjà assaini (pas de fuite
+            // technique), transaction annulée → aucune donnée partiellement enregistrée.
+            ErrorMessage = pex.Message;
         }
         catch (Exception ex)
         {
@@ -977,6 +872,153 @@ public class SaleFormViewModel : BaseViewModel
         {
             IsSaving = false;
         }
+    }
+
+    /// <summary>
+    /// Construit la vente puis la persiste (vente → éventuelle commande fournisseur → mouvements de
+    /// stock). Conçue pour s'exécuter dans la frontière transactionnelle (<see cref="ITransactionRunner"/>) :
+    /// toute exception levée ici provoque l'annulation complète de l'écriture.
+    /// </summary>
+    private async Task<Sale> PersistSaleAsync(CancellationToken cancellationToken)
+    {
+        // Créer la vente complète
+        var sale = new Sale
+        {
+            CustomerId = CustomerId,
+            SaleDate = DateTime.Now,
+            SaleNumber = $"VTE-{DateTime.Now:yyyy}-{new Random().Next(10000):D4}",
+            TotalAmount = TotalAmount,
+            DiscountAmount = DiscountAmount,
+            FinalAmount = FinalAmount,
+            DepositAmount = DepositAmount,
+            RemainingAmount = RemainingAmount,
+            PaymentMethod = ConvertPaymentMethodFromString(SelectedPaymentMethod),
+            Notes = Notes
+        };
+
+        // Configuration selon le type de vente
+        if (IsCounterSale)
+        {
+            // Vente comptoir immédiate : livrée directement
+            sale.Status = SaleStatus.Delivered;
+            sale.EstimatedDelivery = DateTime.Now;
+        }
+        else
+        {
+            // Vente avec fabrication : attente verres
+            sale.Status = SaleStatus.AwaitingLenses;
+            sale.EstimatedDelivery = DateTime.Now.AddDays(14);
+        }
+
+        // Ajouter les articles avec tous leurs paramètres
+        foreach (var item in OrderItems)
+        {
+            sale.SaleItems.Add(new SaleItem
+            {
+                ProductId = item.ProductId,
+                ItemType = item.ItemType == OrderItemType.Frame ? OrderItemType.Frame :
+                          item.ItemType == OrderItemType.LensOd ? OrderItemType.LensOd :
+                          item.ItemType == OrderItemType.LensOg ? OrderItemType.LensOg :
+                          OrderItemType.Accessory,
+                Quantity = item.Quantity,
+                UnitPrice = item.UnitPrice,
+                // Paramètres de correction (pour verres)
+                UsageType = item.UsageType,
+                Sphere = item.Sphere,
+                Cylinder = item.Cylinder,
+                Axis = item.Axis,
+                Addition = item.Addition,
+                PrismValue = item.PrismValue,
+                PrismBase = item.PrismBase,
+                VisualAcuity = item.VisualAcuity
+            });
+        }
+
+        // Sauvegarder la vente
+        if (_saleRepository != null)
+        {
+            await _saleRepository.CreateAsync(sale, cancellationToken);
+            await _unitOfWork!.SaveChangesAsync(cancellationToken); // Sauvegarder pour obtenir SaleId
+
+            // Si la vente contient des verres, créer automatiquement une commande fournisseur
+            var hasLenses = OrderItems.Any(i => i.ItemType == OrderItemType.LensOd || i.ItemType == OrderItemType.LensOg);
+            if (hasLenses && _orderRepository != null)
+            {
+                var order = new Order
+                {
+                    SaleId = sale.SaleId,
+                    OrderNumber = $"CMD-{DateTime.Now:yyyy}-{new Random().Next(10000):D4}",
+                    OrderDate = DateTime.Now,
+                    EstimatedDelivery = DateTime.Now.AddDays(14),
+                    Status = OrderStatus.New,
+                    Notes = $"Commande verres pour vente {sale.SaleNumber}"
+                };
+
+                // Ajouter uniquement les verres à la commande fournisseur
+                foreach (var item in OrderItems.Where(i => i.ItemType == OrderItemType.LensOd || i.ItemType == OrderItemType.LensOg))
+                {
+                    order.OrderItems.Add(new OrderItem
+                    {
+                        ProductId = item.ProductId,
+                        ItemType = item.ItemType,
+                        Quantity = item.Quantity,
+                        UnitPrice = item.UnitPrice,
+                        UsageType = item.UsageType,
+                        Sphere = item.Sphere,
+                        Cylinder = item.Cylinder,
+                        Axis = item.Axis,
+                        Addition = item.Addition,
+                        PrismValue = item.PrismValue,
+                        PrismBase = item.PrismBase,
+                        VisualAcuity = item.VisualAcuity
+                    });
+                }
+
+                await _orderRepository.CreateAsync(order, cancellationToken);
+            }
+        }
+
+        // Si vente comptoir : créer les mouvements de stock et décrémenter le stock
+        // SAUF pour les verres (ils sont commandés aux fournisseurs)
+        if (IsCounterSale)
+        {
+            foreach (var item in OrderItems)
+            {
+                // Vérifier que le ProductId existe
+                if (!item.ProductId.HasValue)
+                    continue;
+
+                // Charger le produit avec détails
+                var product = await _productRepository!.GetByIdAsync(item.ProductId.Value, cancellationToken);
+                if (product != null)
+                {
+                    // Exclure les verres de la décrémentation du stock
+                    bool isLens = product.Category == ProductCategoryEnum.VERRE || product.Category == ProductCategoryEnum.LENTILLE;
+                    if (isLens)
+                        continue; // Les verres sont commandés aux fournisseurs, pas en stock
+
+                    // Décrémenter le stock (montures et accessoires uniquement)
+                    product.StockQuantity -= item.Quantity;
+                    await _productRepository.UpdateAsync(product, cancellationToken);
+
+                    // Créer le mouvement de stock (sortie)
+                    var stockMovement = new StockMovement
+                    {
+                        ProductId = item.ProductId.Value,
+                        MovementType = StockMovementType.Out,
+                        Quantity = -item.Quantity, // Négatif pour sortie
+                        Reason = $"Vente comptoir {sale.SaleNumber} - Client #{CustomerId}",
+                        CreatedAt = DateTime.Now
+                    };
+                    await _stockMovementRepository!.CreateAsync(stockMovement, cancellationToken);
+                }
+            }
+        }
+
+        // Sauvegarder toutes les modifications (commande + mouvements de stock)
+        await _unitOfWork!.SaveChangesAsync(cancellationToken);
+
+        return sale;
     }
 
     private void ExecuteCancel()

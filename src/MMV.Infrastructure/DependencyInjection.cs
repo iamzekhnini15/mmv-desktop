@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 using MMV.Domain.Services;
 using MMV.Infrastructure.Data;
+using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
 using MMV.Infrastructure.Services;
 
@@ -38,6 +40,9 @@ public static class DependencyInjection
         services.AddScoped<IStockMovementRepository, StockMovementRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Frontière transactionnelle réutilisable (P2A-1C, R-23) : partage le DbContext de la portée.
+        services.AddScoped<ITransactionRunner, EfTransactionRunner>();
 
         // Services métier
         services.AddScoped<ICustomerService, CustomerService>();
