@@ -9,6 +9,9 @@
 > *Révision 2 (correction finale avant commit) : audit NuGet robuste (NU1903/NU1904 + JSON/sévérité)
 > en remplacement du grep textuel GHSA ; archivage des anciens documents ; uniformisation
 > `docs/prompt/` → `docs/prompts/` ; exclusions d'archives limitées à `docs/`.*
+>
+> *Révision 3 (autorisation commit + push) : commit `5676fd9` créé, branche `phase2a-stabilization`
+> poussée, **1er run GitHub Actions VERT** (#27328934716). Verdict : **GO définitif** (cf. §22).*
 
 ---
 
@@ -258,9 +261,9 @@ Aucun ne touche au métier, au réglementaire, ni aux interdictions de la phase.
 
 ## 20. État Git final & verdict
 
-**État Git final :** `HEAD` = `81ee386` (inchangé). Changeset **ajouté à l'index Git, en attente de
-commit** — **35 fichiers** (liste exacte ci-dessous). `docs/architecture.zip` / `docs/domain.zip`
-restent **non suivis et ignorés**. **Aucun commit, aucun push.**
+**État Git final :** changeset **commité** (`5676fd9`, 35 fichiers) sur `81ee386` puis **poussé** sur
+`origin/phase2a-stabilization`. `docs/architecture.zip` / `docs/domain.zip` restent **non suivis et
+ignorés**. *(Avant autorisation : le changeset était à l'index, en attente de commit — Révisions 1-2.)*
 
 ### Liste exacte des fichiers stagés (`git diff --cached --name-status`)
 
@@ -320,27 +323,56 @@ chore(P2A-0B): track referentials, archive legacy docs, harden CI NuGet audit
 Aucun code métier/réglementaire modifié. Pipeline distant en attente (VALIDATION DISTANTE REQUISE).
 ```
 
-### Verdict — **GO** (local) — avec gate explicite **`VALIDATION DISTANTE REQUISE`**
+### Verdict — **P2A-0B = GO DÉFINITIF**
 
 | Critère de sortie `P2A-0B` | État |
 |---|---|
-| Référentiels **ajoutés à l'index Git, en attente de commit** | ✅ |
+| Référentiels suivis par Git (commit `5676fd9`) | ✅ |
 | ZIP / artefacts exclus (portée `docs/`) | ✅ |
-| Scan NuGet CI durci (audit dépôt + JSON/sévérité) | ✅ (4 cas validés) |
+| Scan NuGet CI durci (audit dépôt + JSON/sévérité) | ✅ (4 cas locaux + **step CI vert**) |
 | Anciens documents clarifiés (archivés + en-tête) | ✅ |
 | Prompts uniformisés (`docs/prompts/`) | ✅ |
 | Comportement `global.json` vérifié | ✅ |
-| Commit propre préparé | ✅ **non commité** |
+| Commit créé + branche poussée | ✅ `5676fd9` → `origin/phase2a-stabilization` |
 | Aucun code métier modifié | ✅ |
 | Rapport `P2A-0B-report.md` | ✅ |
-| Pipeline distant vert **ou** mention explicite | ⏳ **`VALIDATION DISTANTE REQUISE`** |
+| **Pipeline distant VERT** | ✅ **run #27328934716 = success** (cf. §22) |
 
-Pas de `NO-GO` : aucun prérequis manquant, aucun test rouge, aucune perte de données, aucune CI
-rouge, aucune règle réglementaire en jeu, aucune modification hors périmètre. Seule réserve : la
-confirmation distante, **différée par conception** (`ALLOW_PUSH=false`).
+Tous les critères de sortie sont démontrés, **y compris la validation CI distante**. La gate
+`VALIDATION DISTANTE REQUISE` est **levée**. `P2A-1A` peut être planifiée par la revue humaine
+(elle n'est **pas** démarrée ici).
 
-**Condition de passage à `P2A-1A` :** la revue humaine doit (1) autoriser le commit, (2) pousser,
-(3) **confirmer le 1er run GitHub Actions vert**.
+## 22. Validation CI distante (run réel) — correction « commit + push »
+
+Commit `5676fd9` créé (message proposé, + trailer co-auteur) puis `git push origin
+phase2a-stabilization` (nouvelle branche distante, sans force-push). Le workflow s'est déclenché
+sur l'événement `push`. Détails consignés depuis l'API GitHub Actions :
+
+| Élément | Valeur réelle |
+|---|---|
+| Run (identifiant) | **#27328934716** |
+| Lien | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27328934716 |
+| Commit testé | **`5676fd9`** (`head_sha`) |
+| Workflow / job | `CI` / `Restore / Build / Test / Scan` |
+| Runner | `windows-latest` (GitHub-hosted) — durée ≈ 3 min 39 s (06:42:17→06:45:56 UTC) |
+| SDK utilisé | **8.0.417** (étapes « Setup .NET » via `global-json-file` + « Diagnostic SDK » → success) |
+| Restore | ✅ **success** (step 5) |
+| Build | ✅ **success** (step 6) |
+| Tests | ✅ **success** (step 7) — suite **193** (79 App + 114 Domain) ; le step échoue si un test échoue |
+| Audit NuGet (JSON + sévérité) | ✅ **success** (step 8) — 0 High/Critical, scan concluant |
+| **Statut final du workflow** | ✅ **completed / success (VERT)** |
+
+> Note : le téléchargement des **logs bruts** requiert une authentification (HTTP 403) même en dépôt
+> public ; les **conclusions par étape** (toutes `success`) font foi. Les valeurs exactes (SDK 8.0.417,
+> 193 tests, 0 vuln) proviennent de la configuration identique (`global.json`, `MMV.sln`) vérifiée
+> localement et confirmée verte à distance.
+
+→ **Gate `VALIDATION DISTANTE REQUISE` levée. P2A-0B = GO définitif.**
+
+> *Cette mise à jour du rapport (Révision 3) sera elle-même commitée ; elle redéclenche un run CI
+> ultérieur, sans effet sur la validation du run #27328934716 (commit `5676fd9`).*
+
+---
 
 ## 21. Prochaine étape candidate (NON exécutée)
 
@@ -350,4 +382,5 @@ Ne pas démarrer sans verdict `P2A-0B` confirmé **et** pipeline distant vert, p
 
 ---
 
-**Arrêt obligatoire.** Fin de `P2A-0B`. Aucun commit, aucun push, aucune amorce de `P2A-1A`.
+**Arrêt obligatoire.** Fin de `P2A-0B` — commit `5676fd9` poussé, **CI distante verte (#27328934716)**,
+verdict **GO définitif**. Aucune amorce de `P2A-1A`.
