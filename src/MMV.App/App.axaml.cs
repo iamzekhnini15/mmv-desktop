@@ -159,6 +159,22 @@ public partial class App : Application
             var databaseManager = new SqliteDatabaseManager(new MigrationJournal(journalPath));
 
             System.Diagnostics.Debug.WriteLine($"[App] Database path: {databasePath}");
+
+            // 0) Reprise contrôlée de l'ancien fichier mmv-optic.db (P2A-1B) — sûre et sans perte :
+            //    diagnostiquée, copiée vers le chemin courant UNIQUEMENT si valide/compatible et que
+            //    le chemin courant est vide ; jamais de suppression/écrasement de l'ancien fichier ;
+            //    conflit (les deux présents) = ancien conservé, courant utilisé. Toujours journalisée.
+            var legacyPath = SqliteDatabasePathResolver.ResolveLegacyDatabasePath();
+            var recovery = new LegacyDatabaseRecoveryService(databaseManager.Journal);
+            var recoveryResult = recovery.Recover(
+                legacyPath,
+                databasePath,
+                path => new OpticDbContext(new DbContextOptionsBuilder<OpticDbContext>()
+                    .UseSqlite(SqliteDatabasePathResolver.GetConnectionString(path)).Options));
+            System.Diagnostics.Debug.WriteLine(
+                $"[App] Legacy recovery: decision={recoveryResult.Decision}, copied={recoveryResult.CopyPerformed}, " +
+                $"conflict={recoveryResult.ConflictDetected}");
+
             using (var scope = serviceProvider.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<OpticDbContext>();

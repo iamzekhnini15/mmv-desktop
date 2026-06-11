@@ -26,6 +26,26 @@ public static class SqliteDatabasePathResolver
     public const string DefaultFileName = "mmv.db";
 
     /// <summary>
+    /// Ancien nom de fichier relatif utilisé par le runtime historique (<c>Data Source=mmv-optic.db</c>,
+    /// relatif au dossier de travail) avant l'unification du chemin (P2A-1A). Sert au diagnostic et à la
+    /// reprise contrôlée de P2A-1B. Le runtime courant n'utilise plus ce chemin.
+    /// </summary>
+    public const string LegacyRelativeFileName = "mmv-optic.db";
+
+    /// <summary>
+    /// Résout le chemin absolu de l'ancien fichier de base <c>mmv-optic.db</c> (P2A-1B), relatif au
+    /// dossier de base fourni (par défaut, le dossier de travail courant — comportement du runtime
+    /// historique). Ne crée ni ne modifie aucun fichier.
+    /// </summary>
+    /// <param name="baseDirectory">
+    /// Dossier de référence (par défaut <see cref="Directory.GetCurrentDirectory"/>).
+    /// </param>
+    public static string ResolveLegacyDatabasePath(string? baseDirectory = null)
+        => Path.GetFullPath(Path.Combine(
+            string.IsNullOrWhiteSpace(baseDirectory) ? Directory.GetCurrentDirectory() : baseDirectory,
+            LegacyRelativeFileName));
+
+    /// <summary>
     /// Résout le chemin absolu du fichier de base SQLite.
     /// </summary>
     /// <param name="explicitPath">Chemin explicite prioritaire (peut être null).</param>
