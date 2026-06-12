@@ -2,6 +2,7 @@ using System;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -16,6 +17,8 @@ public class StockMovementsViewModel : BaseViewModel
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDialogService _dialogService;
+    private readonly ITransactionRunner _transactionRunner;
+    private readonly IStockMutationService _stockMutationService;
 
     private StockMovementsListViewModel? _listViewModel;
     private StockMovementFormViewModel? _formViewModel;
@@ -45,12 +48,17 @@ public class StockMovementsViewModel : BaseViewModel
         IStockMovementRepository stockMovementRepository,
         IProductRepository productRepository,
         IUnitOfWork unitOfWork,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        ITransactionRunner transactionRunner,
+        IStockMutationService stockMutationService)
     {
         _stockMovementRepository = stockMovementRepository;
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
         _dialogService = dialogService;
+        // P2A-1D-R2 : transmis au formulaire pour sécuriser les sorties manuelles de stock.
+        _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
+        _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
 
         BackToProductsCommand = new RelayCommand(ExecuteBackToProducts);
 
@@ -71,7 +79,9 @@ public class StockMovementsViewModel : BaseViewModel
             _stockMovementRepository,
             _productRepository,
             _unitOfWork,
-            _dialogService);
+            _dialogService,
+            _transactionRunner,
+            _stockMutationService);
 
         FormViewModel.InitializeForCreate();
         FormViewModel.MovementSaved += OnMovementSaved;

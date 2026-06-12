@@ -22,6 +22,7 @@ public class CustomerDetailViewModel : BaseViewModel
     private readonly ISaleRepository _saleRepository; // Pour historique uniquement
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly ITransactionRunner _transactionRunner;
+    private readonly IStockMutationService _stockMutationService;
 
     private Customer? _customer;
     private int _selectedTabIndex = 0;
@@ -102,7 +103,8 @@ public class CustomerDetailViewModel : BaseViewModel
         IProductRepository productRepository,
         ISaleRepository saleRepository,
         IStockMovementRepository stockMovementRepository,
-        ITransactionRunner transactionRunner)
+        ITransactionRunner transactionRunner,
+        IStockMutationService stockMutationService)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
@@ -113,6 +115,8 @@ public class CustomerDetailViewModel : BaseViewModel
         _stockMovementRepository = stockMovementRepository ?? throw new ArgumentNullException(nameof(stockMovementRepository));
         // Frontière transactionnelle obligatoire, transmise à SaleFormViewModel (P2A-1C).
         _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
+        // Décrément de stock sûr obligatoire, transmis à SaleFormViewModel (P2A-1D).
+        _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
 
         BackCommand = new RelayCommand(ExecuteBack);
         
@@ -128,7 +132,7 @@ public class CustomerDetailViewModel : BaseViewModel
         Title = $"Fiche - {customer.FirstName} {customer.LastName}";
 
         // Initialiser le ViewModel de commande/vente avec les repositories nécessaires
-        SaleFormViewModel = new SaleFormViewModel(_saleRepository, _orderRepository, _productRepository, _prescriptionRepository, _stockMovementRepository, _unitOfWork, _transactionRunner)
+        SaleFormViewModel = new SaleFormViewModel(_saleRepository, _orderRepository, _productRepository, _prescriptionRepository, _stockMovementRepository, _unitOfWork, _transactionRunner, _stockMutationService)
         {
             Title = "Nouvelle Vente"
         };

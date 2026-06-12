@@ -26,6 +26,7 @@ public class CustomersViewModel : BaseViewModel
     private readonly ISaleRepository _saleRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly ITransactionRunner _transactionRunner;
+    private readonly IStockMutationService _stockMutationService;
     private ICommand? _viewDetailCommand;
 
     /// <summary>
@@ -102,7 +103,7 @@ public class CustomersViewModel : BaseViewModel
     /// <summary>
     /// Initialise le ViewModel avec injection de dépendances.
     /// </summary>
-    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IStockMovementRepository stockMovementRepository, ITransactionRunner transactionRunner)
+    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IStockMovementRepository stockMovementRepository, ITransactionRunner transactionRunner, IStockMutationService stockMutationService)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersViewModel] Constructor called");
         _customerRepository = customerRepository;
@@ -114,6 +115,8 @@ public class CustomersViewModel : BaseViewModel
         _stockMovementRepository = stockMovementRepository;
         // Frontière transactionnelle obligatoire (P2A-1C) : injectée par DI, transmise jusqu'à SaleFormViewModel.
         _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
+        // Décrément de stock sûr obligatoire (P2A-1D) : injecté par DI, transmis jusqu'à SaleFormViewModel.
+        _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
         
         Title = "Clients";
         
@@ -199,7 +202,7 @@ public class CustomersViewModel : BaseViewModel
         if (customer != null)
         {
             // Créer une nouvelle instance du CustomerDetailViewModel
-            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _orderRepository, _prescriptionRepository, _productRepository, _saleRepository, _stockMovementRepository, _transactionRunner);
+            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _orderRepository, _prescriptionRepository, _productRepository, _saleRepository, _stockMovementRepository, _transactionRunner, _stockMutationService);
             
             // Initialiser avec le client sélectionné
             await CustomerDetailViewModel.InitializeAsync(customer);

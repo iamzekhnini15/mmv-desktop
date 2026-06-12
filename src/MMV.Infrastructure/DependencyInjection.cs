@@ -44,6 +44,10 @@ public static class DependencyInjection
         // Frontière transactionnelle réutilisable (P2A-1C, R-23) : partage le DbContext de la portée.
         services.AddScoped<ITransactionRunner, EfTransactionRunner>();
 
+        // Décrément de stock atomique conditionnel (P2A-1D, R-09) : partage le DbContext de la portée,
+        // s'exécute donc dans la transaction ouverte par le runner.
+        services.AddScoped<IStockMutationService, EfStockMutationService>();
+
         // Services métier
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IProductService, ProductService>();

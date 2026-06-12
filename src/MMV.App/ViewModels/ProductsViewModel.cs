@@ -2,6 +2,7 @@ using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
 using MMV.Domain.Entities;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -27,6 +28,8 @@ public class ProductsViewModel : BaseViewModel
     private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDialogService _dialogService;
+    private readonly ITransactionRunner _transactionRunner;
+    private readonly IStockMutationService _stockMutationService;
 
     /// <summary>
     /// ViewModel pour la liste des produits.
@@ -175,12 +178,17 @@ public class ProductsViewModel : BaseViewModel
         IProductRepository productRepository,
         ISupplierRepository supplierRepository,
         IUnitOfWork unitOfWork,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        ITransactionRunner transactionRunner,
+        IStockMutationService stockMutationService)
     {
         _productRepository = productRepository;
         _supplierRepository = supplierRepository;
         _unitOfWork = unitOfWork;
         _dialogService = dialogService;
+        // P2A-1D-R2 : transmis à StockMovementsViewModel → formulaire (sorties manuelles sûres).
+        _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
+        _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
 
         // Initialiser le ViewModel de la liste
         _productsListViewModel = new ProductsListViewModel(productRepository, unitOfWork);
@@ -297,7 +305,9 @@ public class ProductsViewModel : BaseViewModel
                 _unitOfWork.StockMovements,
                 _productRepository,
                 _unitOfWork,
-                _dialogService);
+                _dialogService,
+                _transactionRunner,
+                _stockMutationService);
 
             StockMovementsViewModel.BackToProductsRequested += OnStockMovementsBackRequested;
         }

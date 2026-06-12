@@ -73,9 +73,11 @@ public class SaleFormViewModelTransactionTests
         public Mock<IPrescriptionRepository> Prescription { get; } = new();
         public Mock<IStockMovementRepository> Stock { get; } = new();
         public Mock<IUnitOfWork> UnitOfWork { get; } = new();
+        public Mock<IStockMutationService> StockMutation { get; } = new();
 
         public SaleFormViewModel Build(ITransactionRunner runner) => new(
-            Sale.Object, Order.Object, Product.Object, Prescription.Object, Stock.Object, UnitOfWork.Object, runner);
+            Sale.Object, Order.Object, Product.Object, Prescription.Object, Stock.Object, UnitOfWork.Object,
+            runner, StockMutation.Object);
     }
 
     private static OrderItem FrameItem() => new()
@@ -109,11 +111,26 @@ public class SaleFormViewModelTransactionTests
         // L'absence de runner est une erreur de configuration : le ViewModel ne peut pas être construit.
         Assert.Throws<ArgumentNullException>(() => new SaleFormViewModel(
             mocks.Sale.Object, mocks.Order.Object, mocks.Product.Object, mocks.Prescription.Object,
-            mocks.Stock.Object, mocks.UnitOfWork.Object, null!));
+            mocks.Stock.Object, mocks.UnitOfWork.Object, null!, mocks.StockMutation.Object));
 
         // Donc : aucune vente créée, aucun SaveChanges appelé — pas de chemin non transactionnel.
         mocks.Sale.Verify(r => r.CreateAsync(It.IsAny<Sale>(), It.IsAny<CancellationToken>()), Times.Never);
         mocks.UnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ------------------------------------------------------------------
+    // (R2-bis / P2A-1D) Aucune sortie de stock possible sans décrément sûr
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Constructor_WithoutStockMutationService_Throws_NoUnsafeStockDecrement()
+    {
+        var mocks = new Mocks();
+
+        // L'absence du service de décrément sûr est une erreur de configuration : construction rejetée.
+        Assert.Throws<ArgumentNullException>(() => new SaleFormViewModel(
+            mocks.Sale.Object, mocks.Order.Object, mocks.Product.Object, mocks.Prescription.Object,
+            mocks.Stock.Object, mocks.UnitOfWork.Object, new PassThroughTransactionRunner(), null!));
     }
 
     // ------------------------------------------------------------------
@@ -246,12 +263,13 @@ public class SaleFormViewModelTransactionTests
         unitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         var spyRunner = new PassThroughTransactionRunner();
+        var stockMutation = new Mock<IStockMutationService>();
 
-        // Reproduit la construction de production : CustomerDetailViewModel reçoit le runner par DI
-        // (via CustomersViewModel) et DOIT le transmettre à SaleFormViewModel.
+        // Reproduit la construction de production : CustomerDetailViewModel reçoit le runner et le service
+        // de décrément par DI (via CustomersViewModel) et DOIT les transmettre à SaleFormViewModel.
         var detail = new CustomerDetailViewModel(
             customerRepo.Object, unitOfWork.Object, orderRepo.Object, prescriptionRepo.Object,
-            productRepo.Object, saleRepo.Object, stockRepo.Object, spyRunner);
+            productRepo.Object, saleRepo.Object, stockRepo.Object, spyRunner, stockMutation.Object);
 
         await detail.InitializeAsync(new Customer { CustomerId = 7, FirstName = "Prod", LastName = "Chain" });
 
@@ -264,5 +282,71 @@ public class SaleFormViewModelTransactionTests
         // Le runner injecté au CustomerDetailViewModel a bien été transmis au SaleFormViewModel et utilisé.
         Assert.Equal(1, spyRunner.RunCount);
         saleRepo.Verify(r => r.CreateAsync(It.IsAny<Sale>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // ------------------------------------------------------------------
+    // (P2A-1D / 6) Vente comptoir : la sortie de stock passe par le décrément atomique
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteSave_CounterSale_RoutesStockOutThroughMutationService()
+    {
+        var mocks = new Mocks();
+        mocks.Sale.Setup(r => r.CreateAsync(It.IsAny<Sale>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Sale s, CancellationToken _) => s);
+        mocks.UnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        // Le produit vendu est une monture (en stock, non commandée au fournisseur).
+        mocks.Product.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Product { ProductId = 1, Category = ProductCategoryEnum.MONTURE, StockQuantity = 10 });
+        mocks.StockMutation.Setup(s => s.DecrementStockAsync(It.IsAny<long>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var viewModel = mocks.Build(new PassThroughTransactionRunner());
+        viewModel.IsCounterSale = true; // vente comptoir immédiate → décrément de stock
+        viewModel.AddOrderItem(FrameItem());
+
+        Sale? saved = null;
+        viewModel.OrderSaved += (_, s) => saved = s;
+
+        viewModel.SaveCommand.Execute(null);
+        await WaitUntilAsync(() => !viewModel.IsSaving);
+
+        // Le décrément atomique conditionnel est utilisé (et NON l'ancien read-modify-write via UpdateAsync).
+        mocks.StockMutation.Verify(s => s.DecrementStockAsync(1, 1, It.IsAny<CancellationToken>()), Times.Once);
+        mocks.Product.Verify(r => r.UpdateAsync(It.IsAny<Product>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.NotNull(saved);
+        Assert.Null(viewModel.ErrorMessage);
+    }
+
+    // ------------------------------------------------------------------
+    // (P2A-1D / 7) Stock insuffisant → message contrôlé, vente non notifiée
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteSave_CounterSale_InsufficientStock_ShowsControlledMessage_AndDoesNotNotifySaved()
+    {
+        var mocks = new Mocks();
+        mocks.Sale.Setup(r => r.CreateAsync(It.IsAny<Sale>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Sale s, CancellationToken _) => s);
+        mocks.UnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        mocks.Product.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Product { ProductId = 1, Category = ProductCategoryEnum.MONTURE, StockQuantity = 0 });
+
+        var insufficient = new InsufficientStockException(productId: 1, requestedQuantity: 1, availableQuantity: 0);
+        mocks.StockMutation.Setup(s => s.DecrementStockAsync(It.IsAny<long>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(insufficient);
+
+        var viewModel = mocks.Build(new PassThroughTransactionRunner());
+        viewModel.IsCounterSale = true;
+        viewModel.AddOrderItem(FrameItem());
+
+        var saved = false;
+        viewModel.OrderSaved += (_, _) => saved = true;
+
+        viewModel.SaveCommand.Execute(null);
+        await WaitUntilAsync(() => !viewModel.IsSaving);
+
+        Assert.Equal(insufficient.Message, viewModel.ErrorMessage);
+        Assert.False(saved, "aucune notification de succès quand le stock est insuffisant");
     }
 }

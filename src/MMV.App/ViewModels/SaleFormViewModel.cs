@@ -35,6 +35,13 @@ public class SaleFormViewModel : BaseViewModel
     /// </summary>
     private readonly ITransactionRunner _transactionRunner;
 
+    /// <summary>
+    /// Décrément de stock atomique conditionnel (P2A-1D, R-09) : <b>obligatoire</b>. Remplace le motif
+    /// lecture-modification-écriture (stock négatif + mise à jour perdue) pour les sorties de stock de la
+    /// vente comptoir. S'exécute dans la transaction du <see cref="_transactionRunner"/>.
+    /// </summary>
+    private readonly IStockMutationService _stockMutationService;
+
     private long _customerId;
     private decimal _totalAmount;
     private decimal _discountAmount = 0;
@@ -384,7 +391,8 @@ public class SaleFormViewModel : BaseViewModel
         IPrescriptionRepository? prescriptionRepository,
         IStockMovementRepository? stockMovementRepository,
         IUnitOfWork? unitOfWork,
-        ITransactionRunner transactionRunner)
+        ITransactionRunner transactionRunner,
+        IStockMutationService stockMutationService)
     {
         _saleRepository = saleRepository;
         _orderRepository = orderRepository;
@@ -394,6 +402,8 @@ public class SaleFormViewModel : BaseViewModel
         _unitOfWork = unitOfWork;
         // Frontière transactionnelle obligatoire : pas d'exécution multi-écriture sans transaction.
         _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
+        // Décrément de stock sûr obligatoire (P2A-1D) : pas de sortie de stock par lecture-modif-écriture.
+        _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
 
         SaveCommand = new RelayCommand(ExecuteSave);
         CancelCommand = new RelayCommand(ExecuteCancel);
@@ -858,6 +868,12 @@ public class SaleFormViewModel : BaseViewModel
 
             ClearForm();
         }
+        catch (InsufficientStockException isex)
+        {
+            // Erreur métier contrôlée (P2A-1D) : stock insuffisant ou modifié entre-temps. Le décrément
+            // atomique a refusé l'opération et le runner a annulé la vente → rien n'a été persisté.
+            ErrorMessage = isex.Message;
+        }
         catch (PersistenceException pex)
         {
             // Erreur de persistance contrôlée : message utilisateur déjà assaini (pas de fuite
@@ -997,9 +1013,10 @@ public class SaleFormViewModel : BaseViewModel
                     if (isLens)
                         continue; // Les verres sont commandés aux fournisseurs, pas en stock
 
-                    // Décrémenter le stock (montures et accessoires uniquement)
-                    product.StockQuantity -= item.Quantity;
-                    await _productRepository.UpdateAsync(product, cancellationToken);
+                    // Décrément atomique conditionnel (P2A-1D, R-09) : ne rend jamais le stock négatif et
+                    // élimine la mise à jour perdue. En cas de stock insuffisant (ou modifié entre-temps),
+                    // une InsufficientStockException est levée → le runner annule TOUTE la vente.
+                    await _stockMutationService.DecrementStockAsync(item.ProductId.Value, item.Quantity, cancellationToken);
 
                     // Créer le mouvement de stock (sortie)
                     var stockMovement = new StockMovement

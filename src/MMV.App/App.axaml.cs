@@ -129,6 +129,10 @@ public partial class App : Application
         // Frontière transactionnelle réutilisable (P2A-1C, R-23) : partage le DbContext de la portée.
         services.AddScoped<ITransactionRunner, EfTransactionRunner>();
 
+        // Décrément de stock atomique conditionnel (P2A-1D, R-09) : partage le DbContext de la portée,
+        // s'exécute donc dans la transaction ouverte par le runner.
+        services.AddScoped<IStockMutationService, EfStockMutationService>();
+
         // Enregistrer les services d'authentification et de session
         services.AddScoped<IAuthenticationService, AuthenticationService>();
         services.AddSingleton<ISessionService, SessionService>();

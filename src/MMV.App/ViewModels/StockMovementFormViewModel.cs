@@ -7,6 +7,8 @@ using MMV.App.Commands;
 using MMV.App.Services;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Exceptions;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -143,6 +145,18 @@ public class StockMovementFormViewModel : BaseViewModel
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDialogService _dialogService;
 
+    /// <summary>
+    /// Frontière transactionnelle (P2A-1C) : rend atomiques le décrément de stock et la création du
+    /// mouvement d'une sortie manuelle (décrément + mouvement, ou rien). <b>Obligatoire</b> (P2A-1D-R2).
+    /// </summary>
+    private readonly ITransactionRunner _transactionRunner;
+
+    /// <summary>
+    /// Décrément de stock atomique conditionnel (P2A-1D, R-09) : une sortie manuelle standard ne peut
+    /// plus rendre le stock négatif. <b>Obligatoire</b> (P2A-1D-R2).
+    /// </summary>
+    private readonly IStockMutationService _stockMutationService;
+
     private ObservableCollection<Product> _products = new();
     private ObservableCollection<ProductMovementLine> _movementLines = new();
     private bool _isSaving;
@@ -184,12 +198,17 @@ public class StockMovementFormViewModel : BaseViewModel
         IStockMovementRepository stockMovementRepository,
         IProductRepository productRepository,
         IUnitOfWork unitOfWork,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        ITransactionRunner transactionRunner,
+        IStockMutationService stockMutationService)
     {
         _stockMovementRepository = stockMovementRepository;
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
         _dialogService = dialogService;
+        // P2A-1D-R2 : frontière transactionnelle + décrément sûr obligatoires (pas de sortie négative).
+        _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
+        _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
 
         AddLineCommand = new RelayCommand(ExecuteAddLine);
         RemoveLineCommand = new RelayCommand<ProductMovementLine>(ExecuteRemoveLine);
@@ -255,6 +274,7 @@ public class StockMovementFormViewModel : BaseViewModel
 
             int successCount = 0;
             int errorCount = 0;
+            string? controlledError = null;
 
             foreach (var line in validLines)
             {
@@ -268,51 +288,60 @@ public class StockMovementFormViewModel : BaseViewModel
                         continue;
                     }
 
-                    // Validation: OUT ne peut pas créer un stock négatif (sauf si confirmé)
-                    if (line.MovementType == "Out")
-                    {
-                        var newStock = product.StockQuantity - line.Quantity;
-                        if (newStock < 0)
-                        {
-                            var confirm = await _dialogService.ShowConfirmationAsync(
-                                "Stock négatif",
-                                $"La sortie pour '{product.Name}' créera un stock négatif ({newStock}). Continuer ?");
-
-                            if (!confirm)
-                            {
-                                errorCount++;
-                                continue;
-                            }
-                        }
-                    }
-
-                    // Créer le mouvement de stock
+                    var movementType = Enum.Parse<StockMovementType>(line.MovementType);
                     var movement = new StockMovement
                     {
                         ProductId = product.ProductId,
-                        MovementType = Enum.Parse<StockMovementType>(line.MovementType),
+                        MovementType = movementType,
                         Quantity = line.Quantity,
                         Reason = string.IsNullOrWhiteSpace(line.Notes) ? $"Mouvement {line.MovementType}" : line.Notes
                     };
 
-                    await _stockMovementRepository.CreateAsync(movement);
+                    // P2A-1D-R2 : décrément (ou mise à jour) du stock ET création du mouvement de façon
+                    // ATOMIQUE (frontière transactionnelle) — tout ou rien. Pour une sortie standard, le
+                    // décrément atomique conditionnel garantit qu'un stock négatif est IMPOSSIBLE : si le
+                    // stock est insuffisant, InsufficientStockException est levée et rien n'est persisté
+                    // (ni décrément, ni mouvement). Plus aucune confirmation n'autorise un stock négatif.
+                    await _transactionRunner.RunAsync(async ct =>
+                    {
+                        switch (movementType)
+                        {
+                            case StockMovementType.Out:
+                                // Sortie standard : décrément atomique conditionnel (jamais négatif).
+                                await _stockMutationService.DecrementStockAsync(product.ProductId, line.Quantity, ct);
+                                break;
 
-                    // Mettre à jour le stock du produit
-                    if (line.MovementType == "Adjustment")
-                    {
-                        product.StockQuantity = line.Quantity; // Ajustement absolu
-                    }
-                    else if (line.MovementType == "In")
-                    {
-                        product.StockQuantity += line.Quantity;
-                    }
-                    else if (line.MovementType == "Out")
-                    {
-                        product.StockQuantity -= line.Quantity;
-                    }
+                            case StockMovementType.In:
+                                // Entrée : incrément (aucun risque de négatif).
+                                product.StockQuantity += line.Quantity;
+                                await _productRepository.UpdateAsync(product, ct);
+                                break;
 
-                    await _productRepository.UpdateAsync(product);
+                            default: // StockMovementType.Adjustment
+                                // Ajustement d'inventaire : correction CONTRÔLÉE en valeur absolue
+                                // (quantité saisie ≥ 1, jamais négative) — distincte d'une sortie standard.
+                                product.StockQuantity = line.Quantity;
+                                await _productRepository.UpdateAsync(product, ct);
+                                break;
+                        }
+
+                        await _stockMovementRepository.CreateAsync(movement, ct);
+                        await _unitOfWork.SaveChangesAsync(ct);
+                    });
+
                     successCount++;
+                }
+                catch (InsufficientStockException isex)
+                {
+                    // Sortie refusée : stock insuffisant. Message utilisateur contrôlé, aucune écriture.
+                    errorCount++;
+                    controlledError = isex.Message;
+                }
+                catch (PersistenceException pex)
+                {
+                    // Erreur de persistance contrôlée : message assaini, transaction annulée.
+                    errorCount++;
+                    controlledError = pex.Message;
                 }
                 catch (Exception ex)
                 {
@@ -321,19 +350,23 @@ public class StockMovementFormViewModel : BaseViewModel
                 }
             }
 
-            await _unitOfWork.SaveChangesAsync();
-
-            var message = successCount > 0 
-                ? $"{successCount} mouvement(s) enregistré(s) avec succès." 
+            var message = successCount > 0
+                ? $"{successCount} mouvement(s) enregistré(s) avec succès."
                 : "Aucun mouvement enregistré.";
 
             if (errorCount > 0)
             {
                 message += $"\n{errorCount} erreur(s) détectée(s).";
+                if (controlledError != null)
+                {
+                    message += $"\n{controlledError}";
+                    // Surface le message contrôlé (stock insuffisant) au formulaire.
+                    ErrorMessage = controlledError;
+                }
             }
 
             await _dialogService.ShowInformationAsync("Résultat", message);
-            
+
             if (successCount > 0)
             {
                 MovementSaved?.Invoke(this, EventArgs.Empty);
