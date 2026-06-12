@@ -258,14 +258,22 @@ maintenu à **6.12.0** (6.x).
 ?? tests/MMV.Domain.Tests/Configuration/
 ```
 
-`git diff --stat` (suivis) : `App.axaml.cs` (+/-), `DbInitializer.cs` (+/-), `DocumentSequencesAdoptionTests.cs` (4 lignes).
-**Aucun commit, aucun push** (conforme `ALLOW_COMMIT=false`, `ALLOW_PUSH=false`).
+**Clôture Git (autorisation `ALLOW_COMMIT=true`, `ALLOW_PUSH=true`)** : changeset committé tel quel
+(13 fichiers, +1315/-15), puis branche poussée.
+
+```
+commit  29a80a6  feat(P2A-1F): gate demo seeds by environment
+push    c3f1f55..29a80a6  phase2a-stabilization -> phase2a-stabilization
+```
+
+Le commit ne contient **que** les fichiers P2A-1F (3 modifiés + 10 créés) ; aucun artefact `bin/`/`obj/`/
+`*.db`/`*.trx`/`*.zip`/secret. Aucun force-push.
 
 ---
 
 ## 17. Verdict
 
-### ✅ **P2A-1F = GO** (validation locale)
+### Critères d'acceptation (validation locale)
 
 | Critère d'acceptation | Statut |
 |---|---|
@@ -282,8 +290,22 @@ maintenu à **6.12.0** (6.x).
 | `xUnit1031` corrigé | ✅ |
 | Rapport complet | ✅ |
 
-> **Validation distante (CI GitHub Actions) requise** avant verdict *définitif* — non exécutée ici
-> (`ALLOW_PUSH=false`).
+### Validation CI distante (GitHub Actions)
+
+| Élément | Résultat |
+|---|---|
+| Run | [#27431491510](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27431491510) (workflow `CI`, run **#15**, event `push`) |
+| Commit testé | `29a80a6217e307f8d5d84940404bc04f03f32143` |
+| Runner | `windows-latest` (SDK verrouillé par `global.json`, **8.0.x**) |
+| Setup .NET | ✅ success |
+| Restore | ✅ success |
+| Build (`-c Debug`) | ✅ success |
+| Test (`dotnet test --no-build`, **320** tests) | ✅ success |
+| Audit NuGet (vulnérables, JSON + sévérité) | ✅ success — **0 vulnérabilité** |
+| `has-pending-model-changes` | **non exécuté en CI** (hors workflow) — **confirmé localement = false** |
+| **Statut final du workflow** | ✅ **success** (tous les steps verts) |
+
+### ✅ **P2A-1F = GO définitif** — workflow distant vert sur le commit `29a80a6`.
 
 ---
 
