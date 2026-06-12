@@ -156,11 +156,40 @@ placé après *Build*, donc le binaire Debug existe : `--no-build` est valide.
 
 ---
 
+## 7 bis. Validation CI distante (run réel)
+
+Commit `32bed23` poussé sur `p2b-architecture` (sans force) → run GitHub Actions déclenché par le motif `p2*`.
+
+| Élément | Valeur réelle |
+|---|---|
+| **Run** | **#21** — id **`27447845006`** |
+| **Lien** | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27447845006 |
+| **Commit testé** | **`32bed23`** (`head_sha = 32bed23ba12e9a4a5a3221eb4c2e5e93b358ce5d`) |
+| **Branche testée** | **`p2b-architecture`** (déclenchée par le motif `p2*`) |
+| Événement | `push` |
+| Workflow / job | `CI` / `Restore / Build / Test / Scan` |
+| Runner | `windows-latest` (GitHub-hosted) |
+| Durée | ≈ 3 min 05 s (22:57:45 → 23:00:50 UTC) |
+| Setup .NET (SDK `global.json`) | ✅ success |
+| **Restore** | ✅ **success** |
+| **Build** | ✅ **success** (`-c Debug`, `CS1998` préexistant non bloquant) |
+| **Test** | ✅ **success** (suite **320** confirmée localement) |
+| **Audit NuGet** (High/Critical, JSON + sévérité) | ✅ **success** — **0 vulnérabilité** |
+| **Restore .NET tools** (step #9) | ✅ **success** (`dotnet-ef` 8.0.27 restauré) |
+| **Check EF Core pending model changes** (step #10) | ✅ **success** — `has-pending-model-changes` = **false** |
+| **Statut final du workflow** | ✅ **completed / success (VERT)** |
+
+Tous les steps sont en conclusion `success` : *Set up job, Checkout, Setup .NET, Diagnostic SDK, Restore,
+Build, Test, Audit des packages vulnérables, **Restore .NET tools**, **Check EF Core pending model changes**,
+Post-steps, Complete job*. **Le nouveau contrôle EF s'exécute bien dans la CI distante et passe au vert.**
+
+---
+
 ## 8. Risques résiduels
 
 | Risque | Évaluation | Mitigation |
 |---|---|---|
-| **Validation distante non encore réalisée** | Le step est validé **localement** ; le run GitHub Actions ne tournera qu'après commit/push (non autorisés ici, `ALLOW_COMMIT=false`/`ALLOW_PUSH=false`). | GO **local** uniquement ; la levée de la gate « CI distante » se fera lors d'une phase ultérieure autorisant le push. |
+| ~~Validation distante non encore réalisée~~ | **LEVÉ** : run distant **#21** (`27447845006`) **vert**, commit `32bed23`, branche `p2b-architecture`. Le step `Check EF Core pending model changes` s'est exécuté et a réussi (cf. §7 bis). | Gate « CI distante » **levée**. |
 | `dotnet ef --no-build` sans build préalable | Sur le runner, le step est placé **après** *Build* (`-c Debug`) : le binaire Debug existe. `dotnet ef` cible Debug par défaut → cohérent. | Ordre des steps explicite (cf. §4). |
 | Coût/latence du `dotnet tool restore` distant | Marginal (1 outil, `dotnet-ef` 8.0.27 figé par manifeste). | Acceptable. |
 | Faux négatif possible si la config EF runtime diffère du modèle | Identique au contrôle local déjà éprouvé depuis P2A-1R19. | Aucun changement de comportement : la CI reproduit le contrôle local. |
@@ -172,20 +201,22 @@ Aucun risque introduit dans le code applicatif : le changement est **strictement
 
 ## 9. État Git final
 
-```
-$ git status --short
- M .github/workflows/ci.yml
-?? docs/implementation/P2B-2A-CI-R2-report.md
+**Autorisation `ALLOW_COMMIT=true`, `ALLOW_PUSH=true`.** Le changeset (workflow + ce rapport) a été committé
+puis poussé (sans force-push) :
 
-$ git diff --stat
- .github/workflows/ci.yml | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+```
+git add .github/workflows/ci.yml docs/implementation/P2B-2A-CI-R2-report.md
+git commit -m "ci(P2B-2A): check EF pending model changes"
+  → 32bed23  2 files changed, 231 insertions(+)
+git push origin p2b-architecture
+  → 0815bcf..32bed23  p2b-architecture -> p2b-architecture (sans force)
 ```
 
-- **1 fichier suivi modifié** : `.github/workflows/ci.yml` (+12).
-- **1 fichier nouveau** : ce rapport.
-- **Aucun commit, aucun push** (conformément à `ALLOW_COMMIT=false` / `ALLOW_PUSH=false`).
-- `git diff --check` : propre.
+Le commit `32bed23` ne contient **que** `.github/workflows/ci.yml` (+12) et ce rapport. Un second commit
+**documentaire** consigne le résultat réel du run CI (cf. §7 bis) — il ne touche que ce rapport.
+
+> ⚠️ Subtilité GitHub Actions : le workflow exécuté est **celui présent sur le commit poussé**. Le commit
+> `32bed23` contenant lui-même les nouveaux steps, son push a **bien déclenché** le pipeline avec le contrôle EF.
 
 ---
 
@@ -205,8 +236,12 @@ $ git diff --stat
 | Aucun `*.csproj`/`*.sln` modifié | ✅ |
 | Aucun projet `MMV.Application` créé | ✅ |
 | Rapport complet (11 sections) | ✅ |
+| Commit CI poussé (`32bed23`, sans force) | ✅ |
+| CI déclenchée sur `p2b-architecture` (`p2*`) | ✅ run **#21** |
+| Step `Check EF Core pending model changes` exécuté en CI | ✅ step #10 success |
+| Workflow distant vert | ✅ success (run `27447845006`, commit `32bed23`) |
 
-### ✅ **P2B-2A-CI-R2 = GO LOCAL** — la CI intègre désormais `restore → build → test → audit NuGet → has-pending-model-changes`. La validation **distante** (run GitHub Actions vert) reste à confirmer lors d'une phase autorisant commit/push.
+### ✅ **P2B-2A-CI-R2 = GO DÉFINITIF** — workflow distant **vert** (run #21, `27447845006`, commit `32bed23`, branche `p2b-architecture`). La CI exécute désormais `restore → build → test → audit NuGet → **restore .NET tools** → **has-pending-model-changes**`, et le nouveau contrôle EF passe au vert à distance.
 
 ---
 
