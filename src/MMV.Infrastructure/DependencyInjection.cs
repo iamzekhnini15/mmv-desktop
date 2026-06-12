@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 using MMV.Domain.Services;
 using MMV.Infrastructure.Data;
+using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 
 namespace MMV.Infrastructure;
 
@@ -38,12 +41,24 @@ public static class DependencyInjection
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+        // Frontière transactionnelle réutilisable (P2A-1C, R-23) : partage le DbContext de la portée.
+        services.AddScoped<ITransactionRunner, EfTransactionRunner>();
+
+        // Décrément de stock atomique conditionnel (P2A-1D, R-09) : partage le DbContext de la portée,
+        // s'exécute donc dans la transaction ouverte par le runner.
+        services.AddScoped<IStockMutationService, EfStockMutationService>();
+
+        // Numérotation fiable des documents (P2A-1E, R-03) : incrément atomique conditionnel d'un compteur
+        // persistant ; partage le DbContext de la portée → participe à la transaction de la vente.
+        services.AddScoped<INumberSequenceService, EfNumberSequenceService>();
+
         // Services métier
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IPrescriptionService, PrescriptionService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ISaleService, SaleService>();
+        services.AddScoped<IAuthenticationService, AuthenticationService>();
 
         return services;
     }
@@ -55,24 +70,12 @@ public static class DependencyInjection
             return provided;
         }
 
-        var fromConfig = configuration?.GetConnectionString("OpticDatabase");
-        if (!string.IsNullOrWhiteSpace(fromConfig))
-        {
-            return fromConfig!;
-        }
+        // Chemin unique résolu par SqliteDatabasePathResolver (P2A-1A) :
+        // variable d'environnement MMV_DATABASE_PATH, sinon configuration, sinon défaut LOCALAPPDATA.
+        var fromConfig = configuration?.GetConnectionString(SqliteDatabasePathResolver.ConnectionStringName);
+        var dbPath = SqliteDatabasePathResolver.ResolveDatabasePath(configuredConnectionString: fromConfig);
+        SqliteDatabasePathResolver.EnsureDirectoryExists(dbPath);
 
-        // Fallback local SQLite path: %LOCALAPPDATA%\ManageMyVision\mmv.db
-        var dbPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ManageMyVision",
-            "mmv.db");
-
-        var directory = Path.GetDirectoryName(dbPath);
-        if (!Directory.Exists(directory))
-        {
-            Directory.CreateDirectory(directory!);
-        }
-
-        return $"Data Source={dbPath}";
+        return SqliteDatabasePathResolver.GetConnectionString(dbPath);
     }
 }

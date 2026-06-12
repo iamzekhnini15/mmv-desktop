@@ -11,10 +11,13 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
-    <PackageReference Include="xunit" Version="2.5.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+    <!-- xunit 2.5.3 tirait NETStandard.Library 1.6.1 -> System.Net.Http 4.3.0 /
+         System.Text.RegularExpressions 4.3.0 (avis High GHSA-7jgj-8wvc-jh57, GHSA-cmhx-cq75-c4mj).
+         xunit >= 2.6 ne dépend plus de cette chaîne .NET Standard 1.x. Versions alignées sur MMV.Domain.Tests. -->
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
   </ItemGroup>
 
   <ItemGroup>

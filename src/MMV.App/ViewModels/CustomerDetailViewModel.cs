@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Domain.Entities;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -20,7 +21,10 @@ public class CustomerDetailViewModel : BaseViewModel
     private readonly IProductRepository _productRepository;
     private readonly ISaleRepository _saleRepository; // Pour historique uniquement
     private readonly IStockMovementRepository _stockMovementRepository;
-    
+    private readonly ITransactionRunner _transactionRunner;
+    private readonly IStockMutationService _stockMutationService;
+    private readonly INumberSequenceService _numberSequenceService;
+
     private Customer? _customer;
     private int _selectedTabIndex = 0;
     private SaleFormViewModel? _saleFormViewModel;
@@ -93,13 +97,16 @@ public class CustomerDetailViewModel : BaseViewModel
     public event EventHandler? BackRequested;
 
     public CustomerDetailViewModel(
-        ICustomerRepository customerRepository, 
-        IUnitOfWork unitOfWork, 
-        IOrderRepository orderRepository, 
+        ICustomerRepository customerRepository,
+        IUnitOfWork unitOfWork,
+        IOrderRepository orderRepository,
         IPrescriptionRepository prescriptionRepository,
         IProductRepository productRepository,
         ISaleRepository saleRepository,
-        IStockMovementRepository stockMovementRepository)
+        IStockMovementRepository stockMovementRepository,
+        ITransactionRunner transactionRunner,
+        IStockMutationService stockMutationService,
+        INumberSequenceService numberSequenceService)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
@@ -108,6 +115,12 @@ public class CustomerDetailViewModel : BaseViewModel
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
         _stockMovementRepository = stockMovementRepository ?? throw new ArgumentNullException(nameof(stockMovementRepository));
+        // Frontière transactionnelle obligatoire, transmise à SaleFormViewModel (P2A-1C).
+        _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
+        // Décrément de stock sûr obligatoire, transmis à SaleFormViewModel (P2A-1D).
+        _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
+        // Numérotation fiable obligatoire, transmise à SaleFormViewModel (P2A-1E).
+        _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
 
         BackCommand = new RelayCommand(ExecuteBack);
         
@@ -123,7 +136,7 @@ public class CustomerDetailViewModel : BaseViewModel
         Title = $"Fiche - {customer.FirstName} {customer.LastName}";
 
         // Initialiser le ViewModel de commande/vente avec les repositories nécessaires
-        SaleFormViewModel = new SaleFormViewModel(_saleRepository, _orderRepository, _productRepository, _prescriptionRepository, _stockMovementRepository, _unitOfWork)
+        SaleFormViewModel = new SaleFormViewModel(_saleRepository, _orderRepository, _productRepository, _prescriptionRepository, _stockMovementRepository, _unitOfWork, _transactionRunner, _stockMutationService, _numberSequenceService)
         {
             Title = "Nouvelle Vente"
         };

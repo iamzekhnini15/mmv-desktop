@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using MMV.App.Services;
 using MMV.App.ViewModels;
+using MMV.Domain.Entities;
+using MMV.Domain.Enums;
 using Xunit;
 
 namespace MMV.App.Tests.Navigation;
@@ -12,6 +15,32 @@ namespace MMV.App.Tests.Navigation;
 /// </summary>
 public class NavigationTests
 {
+    private static Mock<ISessionService> CreateAdminSessionMock()
+    {
+        var mock = new Mock<ISessionService>();
+        mock.Setup(s => s.CurrentUser).Returns(new User
+        {
+            UserId = 1, Username = "admin", FirstName = "Admin", LastName = "User",
+            Role = UserRole.Admin, IsActive = true, PasswordHash = "hash"
+        });
+        mock.Setup(s => s.IsAuthenticated).Returns(true);
+        mock.Setup(s => s.IsAdmin).Returns(true);
+        return mock;
+    }
+
+    private static Mock<IPermissionService> CreateFullPermissionMock()
+    {
+        var mock = new Mock<IPermissionService>();
+        mock.Setup(p => p.CanAccessModule(It.IsAny<string>())).Returns(true);
+        mock.Setup(p => p.CanCreate(It.IsAny<string>())).Returns(true);
+        mock.Setup(p => p.CanEdit(It.IsAny<string>())).Returns(true);
+        mock.Setup(p => p.CanDelete(It.IsAny<string>())).Returns(true);
+        mock.Setup(p => p.CanViewReports()).Returns(true);
+        mock.Setup(p => p.CanChangeOrderStatus()).Returns(true);
+        mock.Setup(p => p.CanRefund()).Returns(true);
+        return mock;
+    }
+
     [Fact]
     public void NavigationService_Navigate_CreatesViewModelInstance()
     {
@@ -86,7 +115,10 @@ public class NavigationTests
         var serviceProvider = services.BuildServiceProvider();
         var navigationService = serviceProvider.GetRequiredService<INavigationService>();
 
-        var mainViewModel = new MainWindowViewModel(navigationService);
+        var mockSession = CreateAdminSessionMock();
+        var mockPerm = CreateFullPermissionMock();
+
+        var mainViewModel = new MainWindowViewModel(navigationService, mockSession.Object, mockPerm.Object);
 
         // Act - Naviguer vers Dashboard
         mainViewModel.NavigateCommand.Execute("Dashboard");
@@ -105,7 +137,10 @@ public class NavigationTests
         var serviceProvider = services.BuildServiceProvider();
         var navigationService = serviceProvider.GetRequiredService<INavigationService>();
 
-        var mainViewModel = new MainWindowViewModel(navigationService);
+        var mockSession = CreateAdminSessionMock();
+        var mockPerm = CreateFullPermissionMock();
+
+        var mainViewModel = new MainWindowViewModel(navigationService, mockSession.Object, mockPerm.Object);
 
         // Act - En production, la DI container fournirait les dépendances manquantes
         // Ce test vérifie que la commande elle-même fonctionne correctement
@@ -136,8 +171,11 @@ public class NavigationTests
         var serviceProvider = services.BuildServiceProvider();
         var navigationService = serviceProvider.GetRequiredService<INavigationService>();
 
+        var mockSession = CreateAdminSessionMock();
+        var mockPerm = CreateFullPermissionMock();
+
         // Act
-        var mainViewModel = new MainWindowViewModel(navigationService);
+        var mainViewModel = new MainWindowViewModel(navigationService, mockSession.Object, mockPerm.Object);
 
         // Assert
         Assert.NotEmpty(mainViewModel.NavigationItems);
@@ -155,7 +193,10 @@ public class NavigationTests
         var serviceProvider = services.BuildServiceProvider();
         var navigationService = serviceProvider.GetRequiredService<INavigationService>();
 
-        var mainViewModel = new MainWindowViewModel(navigationService);
+        var mockSession = CreateAdminSessionMock();
+        var mockPerm = CreateFullPermissionMock();
+
+        var mainViewModel = new MainWindowViewModel(navigationService, mockSession.Object, mockPerm.Object);
 
         // Act - Vérifier l'état initial (Dashboard is loaded par défaut)
         var currentView = mainViewModel.CurrentView;
@@ -166,5 +207,54 @@ public class NavigationTests
         
         // Verify the binding property exists and is accessible
         Assert.NotEmpty(mainViewModel.NavigationItems);
+    }
+
+    [Fact]
+    public void MainWindowViewModel_UserProperties_CorrectForAdmin()
+    {
+        // Arrange
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddSingleton<INavigationService, NavigationService>(sp => new NavigationService(sp));
+        var serviceProvider = services.BuildServiceProvider();
+        var navigationService = serviceProvider.GetRequiredService<INavigationService>();
+
+        var mockSession = CreateAdminSessionMock();
+        var mockPerm = CreateFullPermissionMock();
+
+        // Act
+        var mainViewModel = new MainWindowViewModel(navigationService, mockSession.Object, mockPerm.Object);
+
+        // Assert
+        Assert.Equal("Admin User", mainViewModel.CurrentUserDisplayName);
+        Assert.Equal("A", mainViewModel.CurrentUserInitial);
+        Assert.Equal("Administrateur", mainViewModel.CurrentUserRole);
+        Assert.True(mainViewModel.CanSeeUsersModule);
+        Assert.True(mainViewModel.CanSeeSalesModule);
+        Assert.True(mainViewModel.CanSeeReportsModule);
+        Assert.True(mainViewModel.CanSeeSettingsModule);
+    }
+
+    [Fact]
+    public void MainWindowViewModel_LogoutCommand_RaisesLogoutRequested()
+    {
+        // Arrange
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddSingleton<INavigationService, NavigationService>(sp => new NavigationService(sp));
+        var serviceProvider = services.BuildServiceProvider();
+        var navigationService = serviceProvider.GetRequiredService<INavigationService>();
+
+        var mockSession = CreateAdminSessionMock();
+        var mockPerm = CreateFullPermissionMock();
+
+        var mainViewModel = new MainWindowViewModel(navigationService, mockSession.Object, mockPerm.Object);
+
+        var logoutRequested = false;
+        mainViewModel.LogoutRequested += (s, e) => logoutRequested = true;
+
+        // Act
+        mainViewModel.LogoutCommand.Execute(null);
+
+        // Assert
+        Assert.True(logoutRequested);
     }
 }

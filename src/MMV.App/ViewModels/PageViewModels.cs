@@ -30,8 +30,28 @@ public class ReportsViewModel : BaseViewModel
 /// <summary>ViewModel pour les paramètres de l'application.</summary>
 public class SettingsViewModel : BaseViewModel
 {
-    public SettingsViewModel()
+    private readonly Services.IThemeService _themeService;
+    private bool _isDarkMode;
+
+    public bool IsDarkMode
     {
+        get => _isDarkMode;
+        set
+        {
+            if (SetProperty(ref _isDarkMode, value))
+            {
+                _themeService.SetTheme(value);
+                OnPropertyChanged(nameof(ThemeLabel));
+            }
+        }
+    }
+
+    public string ThemeLabel => IsDarkMode ? "Mode sombre activé" : "Mode clair activé";
+
+    public SettingsViewModel(Services.IThemeService themeService)
+    {
+        _themeService = themeService;
         Title = "Paramètres";
+        _isDarkMode = _themeService.IsDarkMode;
     }
 }

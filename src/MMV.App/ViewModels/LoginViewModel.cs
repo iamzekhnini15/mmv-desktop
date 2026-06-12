@@ -1,13 +1,18 @@
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.App.Services;
+using MMV.Domain.Services;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour l'écran de connexion.
+/// Utilise AuthenticationService (BCrypt) pour valider les identifiants.
 /// </summary>
 public class LoginViewModel : BaseViewModel
 {
+    private readonly IAuthenticationService _authenticationService;
+    private readonly ISessionService _sessionService;
     private string _username = string.Empty;
     private string _password = string.Empty;
     private string _loginError = string.Empty;
@@ -71,14 +76,16 @@ public class LoginViewModel : BaseViewModel
     /// </summary>
     public event EventHandler? LoginSuccessful;
 
-    public LoginViewModel()
+    public LoginViewModel(IAuthenticationService authenticationService, ISessionService sessionService)
     {
+        _authenticationService = authenticationService ?? throw new ArgumentNullException(nameof(authenticationService));
+        _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
         Title = "Connexion - ManageMyVision";
         LoginCommand = new RelayCommand(ExecuteLogin, CanLogin);
     }
 
     /// <summary>
-    /// Exécute la connexion.
+    /// Exécute la connexion avec authentification BCrypt réelle.
     /// </summary>
     private async void ExecuteLogin()
     {
@@ -88,23 +95,24 @@ public class LoginViewModel : BaseViewModel
 
         try
         {
-            // Simulation d'authentification (à remplacer par le vrai service)
-            await Task.Delay(500); // Simule un appel réseau
+            var user = await _authenticationService.AuthenticateAsync(Username.Trim(), Password);
 
-            // Validation basique pour demo
-            if (Username == "admin" && Password == "admin")
+            if (user != null)
             {
-                // Connexion réussie
+                // Stocker l'utilisateur dans la session
+                _sessionService.Login(user);
                 LoginSuccessful?.Invoke(this, EventArgs.Empty);
             }
             else
             {
-                LoginError = "Nom d'utilisateur ou mot de passe incorrect.";
+                // Vérifier si c'est un compte désactivé
+                LoginError = "Nom d'utilisateur ou mot de passe incorrect, ou compte désactivé.";
             }
         }
         catch (Exception ex)
         {
             LoginError = $"Erreur de connexion : {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[Login] Erreur : {ex}");
         }
         finally
         {

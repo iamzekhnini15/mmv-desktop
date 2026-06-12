@@ -1,0 +1,149 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+             x:Class="MMV.App.Views.Users.UserProfileView"
+             x:DataType="vm:UserProfileViewModel">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="24" MaxWidth="600" HorizontalAlignment="Left">
+            
+            <!-- HEADER -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Mon Profil" Classes="h1"/>
+                <TextBlock Text="Consultez vos informations et changez votre mot de passe."
+                           Classes="caption"/>
+            </StackPanel>
+
+            <!-- Section : Informations du profil -->
+            <Border Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="{DynamicResource MediumCornerRadius}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    Padding="24">
+                <StackPanel Spacing="16">
+                    <!-- Avatar + Nom -->
+                    <StackPanel Orientation="Horizontal" Spacing="16">
+                        <Border Width="64" Height="64" CornerRadius="32"
+                                Background="{DynamicResource AccentFadeBrush}">
+                            <TextBlock Text="{Binding Initials}" 
+                                       FontSize="24" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource AccentBrush}"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center" Spacing="4">
+                            <TextBlock Text="{Binding FullName}" FontSize="20" FontWeight="Bold"/>
+                            <Border CornerRadius="4" Padding="8,3" HorizontalAlignment="Left"
+                                    Background="{DynamicResource AccentFadeBrush}">
+                                <TextBlock Text="{Binding RoleDisplay}" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentBrush}"/>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Separator Background="{DynamicResource BorderBrush}" Opacity="0.5"/>
+
+                    <!-- Détails -->
+                    <Grid ColumnDefinitions="Auto, 16, *" RowDefinitions="Auto, 8, Auto, 8, Auto, 8, Auto">
+                        <TextBlock Text="Identifiant :" Classes="label" Grid.Row="0"/>
+                        <TextBlock Text="{Binding Username}" Grid.Row="0" Grid.Column="2" FontWeight="Medium"/>
+                        
+                        <TextBlock Text="Nom complet :" Classes="label" Grid.Row="2"/>
+                        <TextBlock Text="{Binding FullName}" Grid.Row="2" Grid.Column="2"/>
+                        
+                        <TextBlock Text="Dernière connexion :" Classes="label" Grid.Row="4"/>
+                        <TextBlock Text="{Binding LastLoginDisplay}" Grid.Row="4" Grid.Column="2"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        
+                        <TextBlock Text="Compte créé le :" Classes="label" Grid.Row="6"/>
+                        <TextBlock Text="{Binding CreatedAtDisplay}" Grid.Row="6" Grid.Column="2"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Section : Changement de mot de passe -->
+            <Border Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="{DynamicResource MediumCornerRadius}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Changer le mot de passe" FontWeight="Bold" FontSize="15"/>
+                    
+                    <!-- Mot de passe actuel -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Mot de passe actuel *" Classes="label"/>
+                        <TextBox Text="{Binding CurrentPassword}" PasswordChar="•" Classes="Input"
+                                 Watermark="Entrez votre mot de passe actuel"/>
+                        <TextBlock Text="{Binding CurrentPasswordError}" FontSize="12"
+                                   Foreground="{DynamicResource ErrorBrush}"
+                                   IsVisible="{Binding CurrentPasswordError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+
+                    <!-- Nouveau mot de passe -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Nouveau mot de passe *" Classes="label"/>
+                        <TextBox Text="{Binding NewPassword}" PasswordChar="•" Classes="Input"
+                                 Watermark="Minimum 8 caractères, 1 majuscule, 1 minuscule, 1 chiffre"/>
+                        
+                        <!-- Password strength indicator -->
+                        <Grid ColumnDefinitions="*, Auto" IsVisible="{Binding NewPassword, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                              Margin="0,2,0,0">
+                            <ProgressBar Value="{Binding NewPasswordStrength}" Maximum="4" Height="4"
+                                         CornerRadius="2">
+                                <ProgressBar.Foreground>
+                                    <SolidColorBrush Color="{Binding PasswordStrengthColor}"/>
+                                </ProgressBar.Foreground>
+                            </ProgressBar>
+                            <TextBlock Grid.Column="1" Text="{Binding PasswordStrengthText}" FontSize="11"
+                                       Margin="8,0,0,0">
+                                <TextBlock.Foreground>
+                                    <SolidColorBrush Color="{Binding PasswordStrengthColor}"/>
+                                </TextBlock.Foreground>
+                            </TextBlock>
+                        </Grid>
+
+                        <TextBlock Text="{Binding NewPasswordError}" FontSize="12"
+                                   Foreground="{DynamicResource ErrorBrush}"
+                                   IsVisible="{Binding NewPasswordError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+
+                    <!-- Confirmation -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Confirmer le nouveau mot de passe *" Classes="label"/>
+                        <TextBox Text="{Binding ConfirmNewPassword}" PasswordChar="•" Classes="Input"
+                                 Watermark="Retapez le nouveau mot de passe"/>
+                        <TextBlock Text="{Binding ConfirmNewPasswordError}" FontSize="12"
+                                   Foreground="{DynamicResource ErrorBrush}"
+                                   IsVisible="{Binding ConfirmNewPasswordError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+
+                    <!-- Success message -->
+                    <Border Background="#2630D158" Padding="12" CornerRadius="6"
+                            IsVisible="{Binding SuccessMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <TextBlock Text="{Binding SuccessMessage}" Foreground="{DynamicResource SuccessBrush}"
+                                   FontWeight="Medium"/>
+                    </Border>
+
+                    <!-- Error message -->
+                    <Border Background="#33FF453A" Padding="12" CornerRadius="6"
+                            IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}"
+                                   TextWrapping="Wrap"/>
+                    </Border>
+
+                    <!-- Bouton changer -->
+                    <Button Classes="Primary" Command="{Binding ChangePasswordCommand}"
+                            IsEnabled="{Binding !IsLoading}" Padding="20,10"
+                            HorizontalAlignment="Left">
+                        <TextBlock Text="Changer le mot de passe"/>
+                    </Button>
+
+                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Height="2"
+                                 Foreground="{DynamicResource AccentBrush}" Background="Transparent"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

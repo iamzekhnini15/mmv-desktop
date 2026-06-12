@@ -6,7 +6,7 @@
              xmlns:clients="using:MMV.App.Views.Clients"
              xmlns:converters="using:MMV.App.Converters"
              x:Class="MMV.App.App"
-             RequestedThemeVariant="Dark">
+             RequestedThemeVariant="Light">
     <Application.Resources>
         <local:ViewLocator x:Key="ViewLocator"/>
         <converters:IsZeroConverter x:Key="IsZeroConverter"/>

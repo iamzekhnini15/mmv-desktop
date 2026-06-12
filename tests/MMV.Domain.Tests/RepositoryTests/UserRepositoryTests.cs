@@ -84,7 +84,9 @@ public class UserRepositoryTests
 
         var result = await repository.GetActiveUsersAsync();
 
-        Assert.Equal(2, result.Count); // admin seed + active user
+        // CreateContext n'effectue qu'EnsureCreated (aucun seed) : seul l'utilisateur actif
+        // créé explicitement par ce test doit être retourné.
+        Assert.Single(result);
         Assert.All(result, u => Assert.True(u.IsActive));
         Assert.DoesNotContain(result, u => u.Username == "inactive");
     }

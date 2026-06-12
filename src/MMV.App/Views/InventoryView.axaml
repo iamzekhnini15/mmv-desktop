@@ -41,7 +41,7 @@
         </Style>
         <Style Selector="TextBox.CountInput:focus">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-            <Setter Property="Background" Value="#2D2D2D"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
         </Style>
     </UserControl.Styles>
 

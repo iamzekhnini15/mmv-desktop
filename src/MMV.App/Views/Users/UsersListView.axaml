@@ -1,0 +1,195 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
+             x:Class="MMV.App.Views.Users.UsersListView"
+             x:DataType="vm:UsersListViewModel">
+
+    <Grid RowDefinitions="Auto, Auto, *, Auto">
+        
+        <!-- HEADER -->
+        <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,20">
+            <StackPanel Spacing="4">
+                <TextBlock Text="Gestion des Utilisateurs" Classes="h1"/>
+                <TextBlock Text="Gérez les comptes utilisateurs de l'application."
+                           Classes="caption"/>
+            </StackPanel>
+            <Button Grid.Column="1" Classes="Primary" Command="{Binding CreateCommand}"
+                    VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="{StaticResource IconPlus}" Width="14"/>
+                    <TextBlock Text="Nouvel utilisateur"/>
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- FILTERS -->
+        <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}"
+                CornerRadius="{DynamicResource MediumCornerRadius}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                Padding="16" Margin="0,0,0,16">
+            <Grid ColumnDefinitions="*, Auto, Auto, Auto">
+                <!-- Recherche -->
+                <TextBox Grid.Column="0" Text="{Binding SearchText}"
+                         Watermark="Rechercher par nom, prénom ou identifiant..."
+                         Classes="Input" Margin="0,0,12,0"/>
+
+                <!-- Filtre rôle -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock Text="Rôle :" VerticalAlignment="Center" Classes="label"/>
+                    <ComboBox ItemsSource="{Binding RoleFilters}"
+                              SelectedItem="{Binding SelectedRoleFilter}"
+                              MinWidth="120"/>
+                </StackPanel>
+
+                <!-- Filtre actifs -->
+                <CheckBox Grid.Column="2" Content="Actifs uniquement"
+                          IsChecked="{Binding ShowActiveOnly}"
+                          VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                <!-- Actualiser -->
+                <Button Grid.Column="3" Command="{Binding RefreshCommand}"
+                        VerticalAlignment="Center" Padding="8"
+                        Background="Transparent" BorderThickness="0">
+                    <TextBlock Text="🔄" FontSize="16"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- DATAGRID -->
+        <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}"
+                CornerRadius="{DynamicResource MediumCornerRadius}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                ClipToBounds="True">
+            <Grid RowDefinitions="*, Auto">
+                <DataGrid Grid.Row="0"
+                          ItemsSource="{Binding FilteredUsers}"
+                          AutoGenerateColumns="False"
+                          CanUserReorderColumns="False"
+                          CanUserResizeColumns="True"
+                          CanUserSortColumns="True"
+                          IsReadOnly="True"
+                          GridLinesVisibility="Horizontal"
+                          BorderThickness="0"
+                          RowHeight="48"
+                          HeadersVisibility="Column">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Identifiant" Binding="{Binding Username}" Width="150"/>
+                        <DataGridTemplateColumn Header="Nom complet" Width="200">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:UsersListViewModel">
+                                    <TextBlock VerticalAlignment="Center" Margin="8,0">
+                                        <Run Text="{Binding $parent[DataGridRow].DataContext.(local:User).FirstName, FallbackValue=''}" x:CompileBindings="False"/>
+                                        <Run Text=" "/>
+                                        <Run Text="{Binding $parent[DataGridRow].DataContext.(local:User).LastName, FallbackValue=''}" x:CompileBindings="False"/>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Rôle" Width="130">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="4" Padding="8,3" HorizontalAlignment="Left"
+                                            VerticalAlignment="Center" Margin="8,0"
+                                            Background="{DynamicResource AccentFadeBrush}">
+                                        <TextBlock Text="{Binding Role}" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource AccentBrush}"/>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Actif" Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="16">
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="{}{0}">
+                                                <Binding Path="IsActive"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Dernière connexion" Width="160">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding LastLogin, StringFormat='{}{0:dd/MM/yyyy HH:mm}', TargetNullValue='Jamais'}"
+                                               VerticalAlignment="Center" Margin="8,0"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Créé le" Width="120">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding CreatedAt, StringFormat='{}{0:dd/MM/yyyy}'}"
+                                               VerticalAlignment="Center" Margin="8,0"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Actions" Width="180">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="4,0">
+                                        <Button Content="Modifier" FontSize="11" Padding="8,4"
+                                                Command="{Binding $parent[DataGrid].((vm:UsersListViewModel)DataContext).EditCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="{DynamicResource AccentFadeBrush}"
+                                                Foreground="{DynamicResource AccentBrush}"
+                                                BorderThickness="0" CornerRadius="4"/>
+                                        <Button FontSize="11" Padding="8,4"
+                                                Command="{Binding $parent[DataGrid].((vm:UsersListViewModel)DataContext).ToggleActiveCommand}"
+                                                CommandParameter="{Binding}"
+                                                BorderThickness="0" CornerRadius="4">
+                                            <Button.Content>
+                                                <MultiBinding StringFormat="{}{0}">
+                                                    <Binding Path="IsActive"/>
+                                                </MultiBinding>
+                                            </Button.Content>
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Loading overlay -->
+                <Border Grid.Row="0" Background="#80000000" IsVisible="{Binding IsLoading}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                        <ProgressBar IsIndeterminate="True" Width="200"
+                                     Foreground="{DynamicResource AccentBrush}"/>
+                        <TextBlock Text="Chargement..." HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- PAGINATION -->
+        <Border Grid.Row="3" Margin="0,12,0,0">
+            <Grid ColumnDefinitions="*, Auto">
+                <TextBlock Text="{Binding PageInfo}" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Content="◀ Précédent" Command="{Binding PreviousPageCommand}"
+                            FontSize="12" Padding="12,6"/>
+                    <Button Content="Suivant ▶" Command="{Binding NextPageCommand}"
+                            FontSize="12" Padding="12,6"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ERROR -->
+        <Border Grid.Row="2" Background="#33FF453A" Padding="12" CornerRadius="8"
+                IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                VerticalAlignment="Top" Margin="0,10">
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}"
+                       TextWrapping="Wrap"/>
+        </Border>
+    </Grid>
+</UserControl>

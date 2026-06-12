@@ -17,7 +17,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid ColumnDefinitions="*, 400" MaxHeight="800">
+    <Grid ColumnDefinitions="*, 400" MaxHeight="800" VerticalAlignment="Stretch">
 
         <!-- ============ COLONNE GAUCHE : Produits + Recherche ============ -->
         <Grid Grid.Column="0" RowDefinitions="Auto, Auto, Auto, *" Margin="0,0,1,0">
@@ -151,7 +151,7 @@
 
         <!-- ============ COLONNE DROITE : Panier + Règlement ============ -->
         <Border Grid.Column="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,0">
-            <Grid RowDefinitions="Auto, 200, Auto, Auto, *">
+            <Grid RowDefinitions="Auto, *, Auto, Auto">
 
                 <!-- En-tête panier -->
                 <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="16,12">
@@ -334,9 +334,6 @@
                         </Button>
                     </StackPanel>
                 </Border>
-                
-                <!-- Spacer pour pousser le contenu vers le haut -->
-                <Border Grid.Row="4"/>
             </Grid>
         </Border>
     </Grid>

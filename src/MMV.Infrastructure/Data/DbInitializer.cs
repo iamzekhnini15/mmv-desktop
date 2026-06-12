@@ -21,10 +21,22 @@ public static class DbInitializer
             return;
         }
 
-        // 1. Créer les utilisateurs (Staff)
-        var users = CreateUsers();
-        context.Users.AddRange(users);
-        context.SaveChanges();
+        // 1. Créer les utilisateurs (Staff). Idempotent sur le nom d'utilisateur : si la base a déjà été
+        //    migrée, un compte « admin » existe (InsertData de la migration InitialCreate). On n'ajoute
+        //    alors que les utilisateurs de démonstration absents, pour éviter une collision sur l'index
+        //    unique Username (P2A-1F).
+        var existingUsernames = context.Users.Select(u => u.Username).ToHashSet();
+        var users = CreateUsers().Where(u => !existingUsernames.Contains(u.Username)).ToList();
+        if (users.Count > 0)
+        {
+            context.Users.AddRange(users);
+            context.SaveChanges();
+        }
+
+        // Utilisateurs réellement présents (seedés ici + éventuel admin de migration) : sert aux références
+        // FK (mouvements de stock, ventes). L'utilisateur « exécutant » par défaut est le premier (admin).
+        var staffUsers = context.Users.OrderBy(u => u.UserId).ToList();
+        var performingUser = staffUsers[0];
 
         // 2. Créer les catégories de produits
         var categories = CreateProductCategories();
@@ -61,22 +73,22 @@ public static class DbInitializer
         context.SaveChanges();
 
         // 9. Créer les mouvements de stock initiaux
-        var stockMovements = CreateInitialStockMovements(products, users[0]);
+        var stockMovements = CreateInitialStockMovements(products, performingUser);
         context.StockMovements.AddRange(stockMovements);
         context.SaveChanges();
 
         // 10. Créer les commandes (Orders)
-        var orders = CreateOrders(customers, users, products);
+        var orders = CreateOrders(customers, staffUsers, products);
         context.Orders.AddRange(orders);
         context.SaveChanges();
 
         // 11. Créer les ventes (Sales)
-        var sales = CreateSales(customers, users, products);
+        var sales = CreateSales(customers, staffUsers, products);
         context.Sales.AddRange(sales);
         context.SaveChanges();
 
         // 12. Créer les mouvements de stock pour ventes
-        var salesStockMovements = CreateSalesStockMovements(sales, users[0]);
+        var salesStockMovements = CreateSalesStockMovements(sales, performingUser);
         context.StockMovements.AddRange(salesStockMovements);
         context.SaveChanges();
 
@@ -90,12 +102,15 @@ public static class DbInitializer
 
     private static List<User> CreateUsers()
     {
+        // Hash BCrypt (work factor 11) pour le mot de passe "admin"
+        const string adminHash = "$2a$11$QA85M79Q7bLajCAGRrVS1ONdstKLbV0S/vX6OKtN3CsCF3MWSNMoi";
+
         return new List<User>
         {
             new User
             {
                 Username = "admin",
-                PasswordHash = "$2a$11$dXJ3SW6G7P50eS6xFJwFHeJ/hbtjiZlyCloO/sURR8EZ4/nqXJcOy", // hash pour 'admin'
+                PasswordHash = adminHash,
                 FirstName = "Administrateur",
                 LastName = "Système",
                 Role = UserRole.Admin,
@@ -106,7 +121,7 @@ public static class DbInitializer
             new User
             {
                 Username = "marie.optic",
-                PasswordHash = "$2a$11$dXJ3SW6G7P50eS6xFJwFHeJ/hbtjiZlyCloO/sURR8EZ4/nqXJcOy",
+                PasswordHash = adminHash,
                 FirstName = "Marie",
                 LastName = "Durand",
                 Role = UserRole.Optician,
@@ -117,7 +132,7 @@ public static class DbInitializer
             new User
             {
                 Username = "pierre.tech",
-                PasswordHash = "$2a$11$dXJ3SW6G7P50eS6xFJwFHeJ/hbtjiZlyCloO/sURR8EZ4/nqXJcOy",
+                PasswordHash = adminHash,
                 FirstName = "Pierre",
                 LastName = "Moreau",
                 Role = UserRole.Technician,
@@ -128,7 +143,7 @@ public static class DbInitializer
             new User
             {
                 Username = "sophie.optic",
-                PasswordHash = "$2a$11$dXJ3SW6G7P50eS6xFJwFHeJ/hbtjiZlyCloO/sURR8EZ4/nqXJcOy",
+                PasswordHash = adminHash,
                 FirstName = "Sophie",
                 LastName = "Lambert",
                 Role = UserRole.Optician,

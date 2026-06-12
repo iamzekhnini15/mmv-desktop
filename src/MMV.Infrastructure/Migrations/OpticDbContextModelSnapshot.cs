@@ -15,7 +15,7 @@ namespace MMV.Infrastructure.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
+            modelBuilder.HasAnnotation("ProductVersion", "8.0.27");
 
             modelBuilder.Entity("MMV.Domain.Entities.AccessoryDetail", b =>
                 {
@@ -57,9 +57,7 @@ namespace MMV.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 282, DateTimeKind.Utc).AddTicks(4997));
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Email")
                         .HasMaxLength(254)
@@ -96,9 +94,7 @@ namespace MMV.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 282, DateTimeKind.Utc).AddTicks(5262));
+                        .HasColumnType("TEXT");
 
                     b.HasKey("CustomerId");
 
@@ -109,6 +105,44 @@ namespace MMV.Infrastructure.Migrations
                         .HasDatabaseName("idx_customers_phone");
 
                     b.ToTable("Customers");
+                });
+
+            modelBuilder.Entity("MMV.Domain.Entities.DocumentSequence", b =>
+                {
+                    b.Property<string>("SequenceName")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("CurrentValue")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("SequenceName");
+
+                    b.ToTable("DocumentSequences", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            SequenceName = "SALE",
+                            CurrentValue = 0L,
+                            Prefix = "VTE",
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            SequenceName = "ORDER",
+                            CurrentValue = 0L,
+                            Prefix = "CMD",
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        });
                 });
 
             modelBuilder.Entity("MMV.Domain.Entities.GlassDetail", b =>
@@ -286,9 +320,7 @@ namespace MMV.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("OrderDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 282, DateTimeKind.Utc).AddTicks(9524));
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("OrderNumber")
                         .IsRequired()
@@ -390,9 +422,7 @@ namespace MMV.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 282, DateTimeKind.Utc).AddTicks(8445));
+                        .HasColumnType("TEXT");
 
                     b.Property<long>("CustomerId")
                         .HasColumnType("INTEGER");
@@ -598,9 +628,7 @@ namespace MMV.Infrastructure.Migrations
                         .HasColumnType("REAL");
 
                     b.Property<DateTime>("SaleDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 283, DateTimeKind.Utc).AddTicks(4405));
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("SaleNumber")
                         .IsRequired()
@@ -703,9 +731,7 @@ namespace MMV.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 284, DateTimeKind.Utc).AddTicks(119));
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("MovementType")
                         .IsRequired()
@@ -792,9 +818,7 @@ namespace MMV.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue(new DateTime(2026, 2, 12, 22, 9, 2, 279, DateTimeKind.Utc).AddTicks(2902));
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("FirstName")
                         .IsRequired()

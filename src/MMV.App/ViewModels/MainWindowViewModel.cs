@@ -3,22 +3,26 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel de la fenêtre principale.
-/// Gère la navigation et l'état global de l'application.
+/// Gère la navigation, l'état global, l'affichage utilisateur et les permissions.
 /// </summary>
 public class MainWindowViewModel : BaseViewModel
 {
     private BaseViewModel? _currentView;
     private readonly INavigationService _navigationService;
+    private readonly ISessionService _sessionService;
+    private readonly IPermissionService _permissionService;
     private readonly INotificationRepository? _notificationRepository;
     private readonly IProductRepository? _productRepository;
     private readonly IUnitOfWork? _unitOfWork;
     private int _unreadNotificationsCount;
+    private bool _isUserMenuOpen;
 
     /// <summary>
     /// Collection des éléments du menu de navigation.
@@ -44,24 +48,112 @@ public class MainWindowViewModel : BaseViewModel
     }
 
     /// <summary>
+    /// Indique si le menu utilisateur est ouvert.
+    /// </summary>
+    public bool IsUserMenuOpen
+    {
+        get => _isUserMenuOpen;
+        set => SetProperty(ref _isUserMenuOpen, value);
+    }
+
+    #region User display properties
+
+    /// <summary>
+    /// Nom complet de l'utilisateur connecté.
+    /// </summary>
+    public string CurrentUserDisplayName => _sessionService.CurrentUser != null
+        ? $"{_sessionService.CurrentUser.FirstName} {_sessionService.CurrentUser.LastName}"
+        : "Non connecté";
+
+    /// <summary>
+    /// Initiale de l'utilisateur pour l'avatar.
+    /// </summary>
+    public string CurrentUserInitial => _sessionService.CurrentUser?.FirstName?.Length > 0
+        ? _sessionService.CurrentUser.FirstName[0].ToString().ToUpper()
+        : "?";
+
+    /// <summary>
+    /// Rôle affiché de l'utilisateur connecté.
+    /// </summary>
+    public string CurrentUserRole => _sessionService.CurrentUser?.Role switch
+    {
+        UserRole.Admin => "Administrateur",
+        UserRole.Optician => "Opticien",
+        UserRole.Technician => "Technicien",
+        _ => "Inconnu"
+    };
+
+    /// <summary>
+    /// Indique si le module Utilisateurs est visible (ADMIN uniquement).
+    /// </summary>
+    public bool CanSeeUsersModule => _permissionService.CanAccessModule("Users");
+
+    /// <summary>
+    /// Indique si le module Ventes est visible.
+    /// </summary>
+    public bool CanSeeSalesModule => _permissionService.CanAccessModule("Sales");
+
+    /// <summary>
+    /// Indique si le module Rapports est visible.
+    /// </summary>
+    public bool CanSeeReportsModule => _permissionService.CanAccessModule("Reports");
+
+    /// <summary>
+    /// Indique si le module Paramètres est visible.
+    /// </summary>
+    public bool CanSeeSettingsModule => _permissionService.CanAccessModule("Settings");
+
+    #endregion
+
+    /// <summary>
     /// Commande pour naviguer vers une vue.
     /// </summary>
     public ICommand NavigateCommand { get; }
 
+    /// <summary>
+    /// Commande pour se déconnecter.
+    /// </summary>
+    public ICommand LogoutCommand { get; }
+
+    /// <summary>
+    /// Commande pour ouvrir le profil utilisateur.
+    /// </summary>
+    public ICommand OpenProfileCommand { get; }
+
+    /// <summary>
+    /// Commande pour basculer le menu utilisateur.
+    /// </summary>
+    public ICommand ToggleUserMenuCommand { get; }
+
+    /// <summary>
+    /// Événement déclenché lors de la déconnexion.
+    /// </summary>
+    public event EventHandler? LogoutRequested;
+
     public MainWindowViewModel(
         INavigationService navigationService,
+        ISessionService sessionService,
+        IPermissionService permissionService,
         INotificationRepository? notificationRepository = null,
         IProductRepository? productRepository = null,
         IUnitOfWork? unitOfWork = null)
     {
         _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+        _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
+        _permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
         _notificationRepository = notificationRepository;
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
         Title = "ManageMyVision";
         
         NavigateCommand = new RelayCommand<string>(ExecuteNavigate, CanNavigate);
+        LogoutCommand = new RelayCommand(ExecuteLogout);
+        OpenProfileCommand = new RelayCommand(() => ExecuteNavigate("UserProfile"));
+        ToggleUserMenuCommand = new RelayCommand(() => IsUserMenuOpen = !IsUserMenuOpen);
         
+        // Écouter l'expiration de la session
+        _sessionService.SessionExpired += OnSessionExpired;
+
         InitializeNavigation();
         RegisterViewModels();
         LoadDashboard();
@@ -71,7 +163,7 @@ public class MainWindowViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Initialise les éléments du menu de navigation.
+    /// Initialise les éléments du menu de navigation selon les permissions.
     /// </summary>
     private void InitializeNavigation()
     {
@@ -105,12 +197,17 @@ public class MainWindowViewModel : BaseViewModel
             Label = "Commandes", 
             ViewName = "Orders" 
         });
-        NavigationItems.Add(new NavigationItem 
-        { 
-            Icon = "💰", 
-            Label = "Ventes", 
-            ViewName = "Sales" 
-        });
+
+        if (_permissionService.CanAccessModule("Sales"))
+        {
+            NavigationItems.Add(new NavigationItem 
+            { 
+                Icon = "💰", 
+                Label = "Ventes", 
+                ViewName = "Sales" 
+            });
+        }
+
         NavigationItems.Add(new NavigationItem 
         { 
             Icon = "📦", 
@@ -124,18 +221,36 @@ public class MainWindowViewModel : BaseViewModel
             ViewName = "Notifications",
             HasBadge = true
         });
-        NavigationItems.Add(new NavigationItem 
-        { 
-            Icon = "�📈", 
-            Label = "Rapports", 
-            ViewName = "Reports" 
-        });
-        NavigationItems.Add(new NavigationItem 
-        { 
-            Icon = "⚙️", 
-            Label = "Paramètres", 
-            ViewName = "Settings" 
-        });
+
+        if (_permissionService.CanAccessModule("Reports"))
+        {
+            NavigationItems.Add(new NavigationItem 
+            { 
+                Icon = "📈", 
+                Label = "Rapports", 
+                ViewName = "Reports" 
+            });
+        }
+
+        if (_permissionService.CanAccessModule("Settings"))
+        {
+            NavigationItems.Add(new NavigationItem 
+            { 
+                Icon = "⚙️", 
+                Label = "Paramètres", 
+                ViewName = "Settings" 
+            });
+        }
+
+        if (_permissionService.CanAccessModule("Users"))
+        {
+            NavigationItems.Add(new NavigationItem 
+            { 
+                Icon = "🔐", 
+                Label = "Utilisateurs", 
+                ViewName = "Users" 
+            });
+        }
     }
 
     /// <summary>
@@ -153,6 +268,8 @@ public class MainWindowViewModel : BaseViewModel
         _navigationService.RegisterViewModel("Notifications", typeof(NotificationsViewModel));
         _navigationService.RegisterViewModel("Reports", typeof(ReportsViewModel));
         _navigationService.RegisterViewModel("Settings", typeof(SettingsViewModel));
+        _navigationService.RegisterViewModel("Users", typeof(UsersViewModel));
+        _navigationService.RegisterViewModel("UserProfile", typeof(UserProfileViewModel));
     }
 
     /// <summary>
@@ -179,8 +296,29 @@ public class MainWindowViewModel : BaseViewModel
     {
         if (string.IsNullOrEmpty(viewName)) return;
         
-        _navigationService.Navigate(viewName);
-        CurrentView = _navigationService.CurrentViewModel;
+        // Vérifier les permissions d'accès au module
+        if (!_permissionService.CanAccessModule(viewName) && viewName != "UserProfile")
+        {
+            ErrorMessage = "Vous n'avez pas les permissions pour accéder à ce module.";
+            return;
+        }
+
+        // Reset le timer d'inactivité de la session
+        _sessionService.ResetInactivityTimer();
+
+        try
+        {
+            _navigationService.Navigate(viewName);
+            CurrentView = _navigationService.CurrentViewModel;
+            ErrorMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Impossible d'ouvrir le module '{viewName}' : {ex.InnerException?.Message ?? ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[Navigation] Erreur pour '{viewName}': {ex}");
+        }
+
+        IsUserMenuOpen = false;
     }
 
     /// <summary>
@@ -189,6 +327,27 @@ public class MainWindowViewModel : BaseViewModel
     private bool CanNavigate(string? viewName)
     {
         return !string.IsNullOrEmpty(viewName);
+    }
+
+    /// <summary>
+    /// Exécute la déconnexion.
+    /// </summary>
+    private void ExecuteLogout()
+    {
+        _sessionService.Logout();
+        LogoutRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Gestionnaire d'expiration de session.
+    /// </summary>
+    private void OnSessionExpired(object? sender, EventArgs e)
+    {
+        // Notifier l'UI que la session a expiré (thread-safe via Dispatcher)
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            LogoutRequested?.Invoke(this, EventArgs.Empty);
+        });
     }
 
     /// <summary>

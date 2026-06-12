@@ -22,8 +22,8 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             .IsUnique()
             .HasDatabaseName("idx_orders_order_number_unique");
 
-        builder.Property(o => o.OrderDate)
-            .HasDefaultValue(DateTime.UtcNow);
+        // OrderDate : horodatage géré par l'application (initialiseur d'entité, futur IClock).
+        // Pas de défaut SQL figé au build (R-19 / P2A-1R19).
 
         builder.Property(o => o.Status)
             .IsRequired()

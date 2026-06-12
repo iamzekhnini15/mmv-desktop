@@ -114,25 +114,20 @@ public class OpticDbContext : DbContext
     /// </summary>
     public DbSet<Notification> Notifications { get; set; } = null!;
 
+    // ========== NUMÉROTATION ==========
+    /// <summary>
+    /// Compteurs de séquences de numérotation des documents (ventes, commandes…). P2A-1E, R-03 / ADR-006.
+    /// </summary>
+    public DbSet<DocumentSequence> DocumentSequences { get; set; } = null!;
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
         {
-            // Localisation par défaut : %LOCALAPPDATA%\ManageMyVision\mmv.db
-            var dbPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "ManageMyVision",
-                "mmv.db"
-            );
-
-            // Créer le dossier s'il n'existe pas
-            var directory = Path.GetDirectoryName(dbPath);
-            if (!Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory!);
-            }
-
-            optionsBuilder.UseSqlite($"Data Source={dbPath}");
+            // Chemin unique résolu par SqliteDatabasePathResolver (P2A-1A).
+            var dbPath = SqliteDatabasePathResolver.ResolveDatabasePath();
+            SqliteDatabasePathResolver.EnsureDirectoryExists(dbPath);
+            optionsBuilder.UseSqlite(SqliteDatabasePathResolver.GetConnectionString(dbPath));
         }
 
         base.OnConfiguring(optionsBuilder);
@@ -161,6 +156,7 @@ public class OpticDbContext : DbContext
         modelBuilder.ApplyConfiguration(new SaleItemConfiguration());
         modelBuilder.ApplyConfiguration(new StockMovementConfiguration());
         modelBuilder.ApplyConfiguration(new NotificationConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentSequenceConfiguration());
         // Les données initiales (admin, etc.) sont gérées dans DbInitializer.cs
     }
 

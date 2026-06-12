@@ -1,0 +1,195 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MMV.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+             x:Class="MMV.App.Views.Users.UserFormView"
+             x:DataType="vm:UserFormViewModel">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="24" MaxWidth="600" HorizontalAlignment="Left">
+            
+            <!-- HEADER -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="{Binding FormTitle}" Classes="h1"/>
+                <TextBlock Text="Remplissez les informations de l'utilisateur."
+                           Classes="caption"/>
+            </StackPanel>
+
+            <!-- Section : Identifiants -->
+            <Border Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="{DynamicResource MediumCornerRadius}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Identifiants" FontWeight="Bold" FontSize="15"/>
+                    
+                    <!-- Username -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Nom d'utilisateur *" Classes="label"/>
+                        <TextBox Text="{Binding Username}" Watermark="ex: jean.dupont" Classes="Input"/>
+                        <TextBlock Text="{Binding UsernameError}" FontSize="12"
+                                   Foreground="{DynamicResource ErrorBrush}"
+                                   IsVisible="{Binding UsernameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+
+                    <!-- Password -->
+                    <StackPanel Spacing="6">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Mot de passe" Classes="label"/>
+                                <TextBlock Text=" *" Classes="label"
+                                           IsVisible="{Binding IsPasswordRequired}"/>
+                                <TextBlock Text=" (laisser vide pour ne pas changer)" FontStyle="Italic"
+                                           IsVisible="{Binding IsEditMode}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           VerticalAlignment="Center" FontSize="12" Margin="4,0,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Générer" FontSize="11" Padding="8,3"
+                                    Command="{Binding GeneratePasswordCommand}"
+                                    Background="{DynamicResource AccentFadeBrush}"
+                                    Foreground="{DynamicResource AccentBrush}"
+                                    BorderThickness="0" CornerRadius="4"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBox Text="{Binding Password}" Classes="Input"
+                                     PasswordChar="•"
+                                     RevealPassword="{Binding ShowPassword}"
+                                     Watermark="Minimum 8 caractères"/>
+                            <Button Grid.Column="1" Padding="8" Margin="4,0,0,0"
+                                    Command="{Binding ToggleShowPasswordCommand}"
+                                    Background="Transparent" BorderThickness="0">
+                                <TextBlock Text="👁" FontSize="16"/>
+                            </Button>
+                        </Grid>
+
+                        <!-- Password strength indicator -->
+                        <Grid ColumnDefinitions="*, Auto" IsVisible="{Binding Password, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                              Margin="0,2,0,0">
+                            <ProgressBar Value="{Binding PasswordStrength}" Maximum="4" Height="4"
+                                         CornerRadius="2">
+                                <ProgressBar.Foreground>
+                                    <SolidColorBrush Color="{Binding PasswordStrengthColor}"/>
+                                </ProgressBar.Foreground>
+                            </ProgressBar>
+                            <TextBlock Grid.Column="1" Text="{Binding PasswordStrengthText}" FontSize="11"
+                                       Margin="8,0,0,0">
+                                <TextBlock.Foreground>
+                                    <SolidColorBrush Color="{Binding PasswordStrengthColor}"/>
+                                </TextBlock.Foreground>
+                            </TextBlock>
+                        </Grid>
+
+                        <TextBlock Text="{Binding PasswordError}" FontSize="12"
+                                   Foreground="{DynamicResource ErrorBrush}"
+                                   IsVisible="{Binding PasswordError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+
+                    <!-- Confirm Password -->
+                    <StackPanel Spacing="6"
+                                IsVisible="{Binding Password, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <TextBlock Text="Confirmer le mot de passe *" Classes="label"/>
+                        <TextBox Text="{Binding ConfirmPassword}" PasswordChar="•" Classes="Input"
+                                 Watermark="Retapez le mot de passe"/>
+                        <TextBlock Text="{Binding ConfirmPasswordError}" FontSize="12"
+                                   Foreground="{DynamicResource ErrorBrush}"
+                                   IsVisible="{Binding ConfirmPasswordError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+
+                    <!-- Generated password display -->
+                    <Border Background="{DynamicResource AccentFadeBrush}" CornerRadius="6" Padding="12"
+                            IsVisible="{Binding GeneratedPassword, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Mot de passe généré :" FontSize="11" FontWeight="Bold"
+                                       Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="{Binding GeneratedPassword}" FontFamily="Consolas, Monospace"
+                                       FontSize="14" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="⚠ Notez ce mot de passe, il ne sera plus visible après la sauvegarde."
+                                       FontSize="11" Foreground="{DynamicResource WarningBrush}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- Section : Informations personnelles -->
+            <Border Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="{DynamicResource MediumCornerRadius}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Informations personnelles" FontWeight="Bold" FontSize="15"/>
+
+                    <Grid ColumnDefinitions="*, 16, *">
+                        <!-- FirstName -->
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Prénom *" Classes="label"/>
+                            <TextBox Text="{Binding FirstName}" Watermark="Prénom" Classes="Input"/>
+                            <TextBlock Text="{Binding FirstNameError}" FontSize="12"
+                                       Foreground="{DynamicResource ErrorBrush}"
+                                       IsVisible="{Binding FirstNameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        </StackPanel>
+
+                        <!-- LastName -->
+                        <StackPanel Grid.Column="2" Spacing="6">
+                            <TextBlock Text="Nom *" Classes="label"/>
+                            <TextBox Text="{Binding LastName}" Watermark="Nom" Classes="Input"/>
+                            <TextBlock Text="{Binding LastNameError}" FontSize="12"
+                                       Foreground="{DynamicResource ErrorBrush}"
+                                       IsVisible="{Binding LastNameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Section : Rôle et statut -->
+            <Border Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="{DynamicResource MediumCornerRadius}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Rôle et statut" FontWeight="Bold" FontSize="15"/>
+
+                    <Grid ColumnDefinitions="*, 16, *">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Rôle *" Classes="label"/>
+                            <ComboBox ItemsSource="{Binding AvailableRoles}"
+                                      SelectedItem="{Binding SelectedRole}"
+                                      MinWidth="200"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Spacing="6" VerticalAlignment="Bottom">
+                            <CheckBox Content="Compte actif" IsChecked="{Binding IsActive}"
+                                      FontSize="14"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Error message -->
+            <Border Background="#33FF453A" Padding="12" CornerRadius="8"
+                    IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}"
+                           TextWrapping="Wrap"/>
+            </Border>
+
+            <!-- Actions -->
+            <Grid ColumnDefinitions="Auto, *, Auto" Margin="0,8,0,30">
+                <Button Content="Annuler" Command="{Binding CancelCommand}"
+                        Padding="20,10"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
+                    <Button Classes="Primary" Command="{Binding SaveCommand}"
+                            IsEnabled="{Binding !IsLoading}" Padding="24,10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Enregistrer"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- Loading -->
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Height="2"
+                         Foreground="{DynamicResource AccentBrush}" Background="Transparent"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

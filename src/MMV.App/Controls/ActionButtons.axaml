@@ -16,7 +16,7 @@
         
         <!-- Bouton Modifier -->
         <Button x:Name="EditButton"
-               Background="#F39C12"
+               Background="{DynamicResource WarningBrush}"
                Foreground="White"
                Content="✏️ Modifier"
                Padding="16,10"
@@ -27,7 +27,7 @@
         
         <!-- Bouton Supprimer -->
         <Button x:Name="DeleteButton"
-               Background="#E74C3C"
+               Background="{DynamicResource ErrorBrush}"
                Foreground="White"
                Content="🗑️ Supprimer"
                Padding="16,10"
@@ -38,13 +38,13 @@
         
         <!-- Bouton Actualiser -->
         <Button x:Name="RefreshButton"
-               Background="#F5F5F7"
-               Foreground="#1D1D1F"
+               Background="{DynamicResource SurfaceLightBrush}"
+               Foreground="{DynamicResource TextPrimaryBrush}"
                Content="🔄 Actualiser"
                Padding="16,10"
                FontSize="14"
                BorderThickness="1"
-               BorderBrush="#D5D5D7"
+               BorderBrush="{DynamicResource BorderBrush}"
                CornerRadius="6"
                Cursor="Hand"/>
     </StackPanel>
