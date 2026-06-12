@@ -277,18 +277,34 @@ Aucun ne touche au réglementaire ni aux interdictions de la phase. **Aucune val
 
 ## 16. État Git final
 
-```
-git status --short
-?? docs/architecture/adr-application-boundaries.md
-?? docs/architecture/application-layer-migration-plan.md
-?? docs/implementation/P2B-2A-report.md
+**Clôture Git (autorisation explicite `ALLOW_COMMIT=true`, `ALLOW_PUSH=true`)** : les **3 fichiers Markdown**
+P2B-2A ont été committés tels quels puis la branche poussée (sans force-push).
 
-git diff --stat → (vide, aucun fichier suivi modifié)
-git branch --show-current → p2b-architecture
+```
+git add docs/architecture/adr-application-boundaries.md \
+        docs/architecture/application-layer-migration-plan.md \
+        docs/implementation/P2B-2A-report.md
+git commit -m "docs(P2B-2A): define application layer boundaries"
+  → 19ace13  3 files changed, 911 insertions(+)
+git push origin p2b-architecture
+  → [new branch] p2b-architecture -> p2b-architecture (sans force)
 ```
 
-**Aucun commit, aucun push.** Trois fichiers Markdown ajoutés (non suivis) ; **aucun** fichier de code,
-`bin/`/`obj/`, `*.db`, secret ou artefact. Le changeset reste dans l'arbre de travail.
+`git show --stat 19ace13` (3 fichiers, +911) :
+
+```
+docs/architecture/adr-application-boundaries.md          | 359 +++
+docs/architecture/application-layer-migration-plan.md    | 214 +++
+docs/implementation/P2B-2A-report.md                     | 338 +++
+```
+
+`git status --short` après commit : **propre**. `git diff --check` : **0 anomalie** (seuls des avis
+LF→CRLF normaux sous Windows). Le commit ne contient **que** les 3 documents P2B-2A ; **aucun** fichier
+`src/`/`tests/`, `bin/`/`obj/`, `*.db`/`*.trx`/`*.zip`, secret ou temporaire. **Aucun projet
+`MMV.Application`, aucun vertical slice, aucune migration.**
+
+> Une mise à jour documentaire ultérieure (cette section 16/17 + §17 bis) a été committée séparément pour
+> consigner le résultat réel de la vérification CI distante.
 
 ---
 
@@ -309,13 +325,50 @@ git branch --show-current → p2b-architecture
 | Plan de migration application créé | ✅ [application-layer-migration-plan.md](../architecture/application-layer-migration-plan.md) |
 | Rapport complet | ✅ (ce document) |
 | Aucune règle métier modifiée | ✅ |
-| Aucun commit / push | ✅ (`ALLOW_COMMIT/PUSH=false`) |
+| Commit & push (sur autorisation explicite) | ✅ (`19ace13`, branche `p2b-architecture`) |
 
-### ✅ **P2B-2A = GO** (validation locale ; phase documentaire, aucune CI fonctionnelle supplémentaire requise ; la CI de branche sera néanmoins vérifiée après push — aucun code modifié)
+### ✅ **P2B-2A = GO (validation locale)** — phase documentaire, aucune CI fonctionnelle supplémentaire requise ; la CI de branche a néanmoins été vérifiée après push (cf. §17 bis)
 
 La phase a produit la décision d'architecture (frontières + style applicatif + règles de dépendances), le
 plan de migration progressif et le rapport, **sans** implémenter la couche Application ni commencer de
 vertical slice, **sans** migration, **sans** modification de code ni de règle métier.
+
+> **Nuance CI** : le verdict **n'est pas encore « GO définitif »**. Le pipeline distant **ne s'est pas
+> déclenché** sur le push de `p2b-architecture` (la branche n'est pas dans les déclencheurs du workflow,
+> cf. §17 bis). Conformément à la roadmap (« pipeline distant vert **ou** mention explicite
+> **VALIDATION DISTANTE REQUISE** »), l'état réel est : **GO local confirmé + VALIDATION DISTANTE REQUISE**.
+
+### 17 bis. Validation CI distante (run réel)
+
+| Élément | Valeur réelle |
+|---|---|
+| Commit poussé | **`19ace13`** (`19ace13cd04eac2afe3a2e55ac8ab34cd87285d5`) |
+| Branche | `p2b-architecture` (nouvelle branche distante, push sans force) |
+| Workflow présent | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) — `CI` (Restore / Build / Test / Scan) |
+| **Déclencheurs du workflow** | `push` → **`main`, `phase2a-stabilization`** ; `pull_request` → **`main`** ; `workflow_dispatch` |
+| **Run déclenché par le push ?** | ❌ **NON** — `p2b-architecture` **n'est pas** une branche de déclenchement `push`, et le push n'est pas une PR vers `main`. Vérifié via l'API GitHub Actions : **aucun** run pour `head_sha = 19ace13` ni pour `head_branch = p2b-architecture` (dernier run distant = #18, `0ad514a` sur `main`). |
+| SDK / restore / build / test / audit | **non exécutés à distance** (aucun run) — **confirmés en local** : SDK **8.0.417**, restore ✅, build ✅, test **320** ✅, audit NuGet **0 vuln** ✅ |
+| `has-pending-model-changes` | **false** (confirmé localement) |
+| **Statut workflow distant** | **AUCUN RUN** (non déclenché) ⇒ **VALIDATION DISTANTE REQUISE** |
+
+**Cause (factuelle, non un échec de pipeline).** Le workflow CI est volontairement restreint aux branches
+`main`/`phase2a-stabilization` (et aux PR vers `main`). Les phases P2A ont validé leur CI parce qu'elles
+étaient sur `phase2a-stabilization`. La branche d'architecture `p2b-architecture` n'étant pas listée, **un
+push direct ne lance pas le pipeline** ; ce n'est **pas** un échec rouge — aucun run n'existe.
+
+**Le pipeline n'est donc ni vert ni rouge : il n'a pas tourné.** Aucun run n'est inventé.
+
+**Pour obtenir un run distant vert (au choix, hors P2B-2A stricte, à décider en revue humaine) :**
+1. **Ouvrir une PR `p2b-architecture → main`** ⇒ déclenche le job `pull_request` du workflow (voie utilisée
+   par la PR #11 pour `phase2a-stabilization`). **Recommandé.**
+2. **`workflow_dispatch`** manuel sur la branche (nécessite un accès authentifié `gh`/API — indisponible
+   dans cet environnement : `gh` absent, aucun token en variable d'environnement).
+3. Ajouter `p2b-architecture` aux déclencheurs `push` de `ci.yml` (modifie un fichier hors périmètre docs ;
+   **non retenu** ici).
+
+Comme la phase est **purement documentaire** (aucun fichier `src/`/`tests/` touché, build/test/scan/`has-pending`
+**verts en local**), aucune régression fonctionnelle n'est possible ; la vérification distante reste
+**souhaitable** (gate roadmap) et **en attente** d'une PR.
 
 ---
 
