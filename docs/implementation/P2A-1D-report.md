@@ -290,6 +290,29 @@ projets. Aucune dépendance ajoutée (le décrément utilise `ExecuteUpdateAsync
 - ✅ **rollback vente + stock** testé (0 vente, stock inchangé) ;
 - ✅ aucune phase P2A-1E+ commencée ; ✅ rapport complet.
 
+### 16.1 Commit & push
+
+- **Commit** : `94ff998` (`94ff99844685330c65bfae279a2595efbdc9ede7`) — `feat(P2A-1D): protect stock
+  decrements with atomic conditional updates` — **16 fichiers** (10 modifiés, 6 créés).
+- **Branche** : `phase2a-stabilization` poussée vers `origin` (`6f1a030..94ff998`, **aucun force-push**).
+
+### 16.2 Validation CI distante (GitHub Actions)
+
+| Élément | Résultat |
+|---|---|
+| Run | [#27399900384](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27399900384) (workflow `CI`, event `push`) |
+| Commit testé | `94ff99844685330c65bfae279a2595efbdc9ede7` |
+| Runner | `windows-latest` |
+| SDK | piloté par `global.json` (**8.0.417**, `rollForward: latestFeature`) — step *Setup .NET* ✅ |
+| Restore | ✅ success |
+| Build | ✅ success (`-c Debug`, sans `-warnaserror` ; `CS1998` préexistant visible, non bloquant) |
+| Test | ✅ success (`dotnet test --no-build`, **276** tests — App 93 / Domain 183 ; `.trx` produit) |
+| Audit NuGet (High/Critical, JSON + sévérité) | ✅ success — **0 vulnérabilité** |
+| `has-pending-model-changes` | **non exécuté en CI** (hors workflow) — **confirmé localement = false** |
+| **Statut final du workflow** | ✅ **success** (tous les steps verts) |
+
+**`P2A-1D = GO définitif`** — workflow distant vert sur le commit `94ff998`.
+
 ## 17. Prochaine étape candidate (NON exécutée)
 
 **P2A-1E — Numérotation fiable** (R-03 / ADR-006) : remplacer la génération `Random` des `SaleNumber` /
