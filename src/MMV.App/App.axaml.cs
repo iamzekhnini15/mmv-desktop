@@ -10,6 +10,7 @@ using MMV.App.Views;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 using MMV.Domain.Services;
+using MMV.Infrastructure.Configuration;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
@@ -164,6 +165,11 @@ public partial class App : Application
 
         var serviceProvider = services.BuildServiceProvider();
 
+        // Validation de configuration AVANT toute préparation de base (P2A-1F) : une configuration de
+        // seeding explicitement invalide (ex. mot de passe bootstrap trop faible) lève ici et bloque le
+        // démarrage. Une configuration absente/ambiguë retombe sur le défaut sûr (Production, sans seed).
+        var seedOptions = SeedOptionsResolver.Resolve();
+
         // Préparer la base : cycle de vie SQLite professionnel et sûr (P2A-1A).
         try
         {
@@ -198,11 +204,15 @@ public partial class App : Application
                     $"[App] Database prepared: state={result.DetectedState}, fresh={result.WasFreshInstall}, " +
                     $"adopted={result.WasAdopted}, backup={result.BackupPath ?? "none"}");
 
-                // 2) Seed admin + jeu de démonstration existant — comportement INCHANGÉ
-                //    (suppression du seed démo = R-16/Étape 1F, hors périmètre P2A-1A).
-                //    EnsureCreated() y est désormais un no-op : la base existe déjà après migration.
-                DbInitializer.Initialize(dbContext);
-                System.Diagnostics.Debug.WriteLine($"[App] Database initialized with {dbContext.Customers.Count()} customers");
+                // 2) Seeding gouverné par l'environnement (P2A-1F, R-16/R-17) : en production, aucune donnée
+                //    de démonstration et aucun compte admin/admin actif (sécurisé via secret bootstrap ou
+                //    neutralisé) ; jeu de démonstration uniquement si explicitement activé en
+                //    Development/Demonstration. Aucun secret n'est journalisé (logs de démarrage non sensibles).
+                var seedResult = new DatabaseSeeder().Seed(dbContext, seedOptions);
+                System.Diagnostics.Debug.WriteLine(
+                    $"[App] Seed: env={seedResult.Environment}, demo={seedResult.DemoSeedApplied}, " +
+                    $"bootstrapAdmin={seedResult.BootstrapAdminConfigured}, " +
+                    $"weakAdminNeutralized={seedResult.WeakDefaultAdminNeutralized}");
             }
         }
         catch (DatabaseMigrationException dbEx)

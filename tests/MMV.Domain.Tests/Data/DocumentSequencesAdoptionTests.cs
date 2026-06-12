@@ -106,7 +106,7 @@ public sealed class DocumentSequencesAdoptionTests : IDisposable
     }
 
     [Fact]
-    public void Adopt_PreNumberingHistoricalDatabase_CreatesDocumentSequencesTable_AndAllocatesNumber()
+    public async Task Adopt_PreNumberingHistoricalDatabase_CreatesDocumentSequencesTable_AndAllocatesNumber()
     {
         var dbPath = PathFor("historical-pre-p2a1e.db");
         BuildPreNumberingHistoricalDatabase(dbPath, "Avant", "Numerotation");
@@ -151,7 +151,7 @@ public sealed class DocumentSequencesAdoptionTests : IDisposable
         using (var context = CreateContext(dbPath))
         {
             var service = new EfNumberSequenceService(context);
-            service.NextNumberAsync(DocumentSequenceNames.Sale).GetAwaiter().GetResult().Should().Be("VTE-000001");
+            (await service.NextNumberAsync(DocumentSequenceNames.Sale)).Should().Be("VTE-000001");
         }
     }
 }
