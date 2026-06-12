@@ -327,48 +327,39 @@ LF→CRLF normaux sous Windows). Le commit ne contient **que** les 3 documents P
 | Aucune règle métier modifiée | ✅ |
 | Commit & push (sur autorisation explicite) | ✅ (`19ace13`, branche `p2b-architecture`) |
 
-### ✅ **P2B-2A = GO (validation locale)** — phase documentaire, aucune CI fonctionnelle supplémentaire requise ; la CI de branche a néanmoins été vérifiée après push (cf. §17 bis)
+### ✅ **P2B-2A = GO DÉFINITIF** — **validation distante obtenue** via le run déclenché après extension des triggers CI (run #19, `27441381061`, commit `3042e52`, branche `p2b-architecture`).
 
 La phase a produit la décision d'architecture (frontières + style applicatif + règles de dépendances), le
 plan de migration progressif et le rapport, **sans** implémenter la couche Application ni commencer de
-vertical slice, **sans** migration, **sans** modification de code ni de règle métier.
-
-> **Nuance CI** : le verdict **n'est pas encore « GO définitif »**. Le pipeline distant **ne s'est pas
-> déclenché** sur le push de `p2b-architecture` (la branche n'est pas dans les déclencheurs du workflow,
-> cf. §17 bis). Conformément à la roadmap (« pipeline distant vert **ou** mention explicite
-> **VALIDATION DISTANTE REQUISE** »), l'état réel est : **GO local confirmé + VALIDATION DISTANTE REQUISE**.
+vertical slice, **sans** migration, **sans** modification de code ni de règle métier. La gate « pipeline
+distant vert » est **levée** (cf. §17 bis).
 
 ### 17 bis. Validation CI distante (run réel)
 
+**Mise à jour** : initialement, le push de `p2b-architecture` n'avait **pas** déclenché la CI (la branche
+n'était pas dans les déclencheurs du workflow). La micro-phase **P2B-2A-CI** a **étendu les triggers** à
+`main`/`phase*`/`p2*` (commit `3042e52`, cf. [P2B-2A-CI-report](P2B-2A-CI-report.md)). Le push de ce commit
+a **déclenché** le pipeline, qui est **vert** et **couvre** les documents P2B-2A (ancêtres `19ace13` /
+`ea382c5` sur la même branche).
+
 | Élément | Valeur réelle |
 |---|---|
-| Commit poussé | **`19ace13`** (`19ace13cd04eac2afe3a2e55ac8ab34cd87285d5`) |
-| Branche | `p2b-architecture` (nouvelle branche distante, push sans force) |
-| Workflow présent | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) — `CI` (Restore / Build / Test / Scan) |
-| **Déclencheurs du workflow** | `push` → **`main`, `phase2a-stabilization`** ; `pull_request` → **`main`** ; `workflow_dispatch` |
-| **Run déclenché par le push ?** | ❌ **NON** — `p2b-architecture` **n'est pas** une branche de déclenchement `push`, et le push n'est pas une PR vers `main`. Vérifié via l'API GitHub Actions : **aucun** run pour `head_sha = 19ace13` ni pour `head_branch = p2b-architecture` (dernier run distant = #18, `0ad514a` sur `main`). |
-| SDK / restore / build / test / audit | **non exécutés à distance** (aucun run) — **confirmés en local** : SDK **8.0.417**, restore ✅, build ✅, test **320** ✅, audit NuGet **0 vuln** ✅ |
-| `has-pending-model-changes` | **false** (confirmé localement) |
-| **Statut workflow distant** | **AUCUN RUN** (non déclenché) ⇒ **VALIDATION DISTANTE REQUISE** |
+| **Run** | **#19** — id **`27441381061`** |
+| **Lien** | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27441381061 |
+| **Commit testé** | **`3042e52`** (tip de `p2b-architecture` ; ancêtres = `19ace13` ADR/plan/rapport P2B-2A, `ea382c5`) |
+| **Branche testée** | **`p2b-architecture`** (déclenchée par le motif `p2*`) |
+| Événement / workflow | `push` / `CI` — `Restore / Build / Test / Scan` |
+| Runner | `windows-latest` |
+| SDK | verrouillé par `global.json` (8.0.x) — *Setup .NET* ✅ |
+| Restore | ✅ **success** |
+| Build | ✅ **success** (`-c Debug` ; `CS1998` préexistant visible, non bloquant) |
+| Test | ✅ **success** (suite **320**) |
+| Audit NuGet (High/Critical) | ✅ **success** — **0 vulnérabilité** |
+| `has-pending-model-changes` | **non exécuté en CI** — **confirmé localement = false** |
+| **Statut final du workflow** | ✅ **completed / success (VERT)** |
 
-**Cause (factuelle, non un échec de pipeline).** Le workflow CI est volontairement restreint aux branches
-`main`/`phase2a-stabilization` (et aux PR vers `main`). Les phases P2A ont validé leur CI parce qu'elles
-étaient sur `phase2a-stabilization`. La branche d'architecture `p2b-architecture` n'étant pas listée, **un
-push direct ne lance pas le pipeline** ; ce n'est **pas** un échec rouge — aucun run n'existe.
-
-**Le pipeline n'est donc ni vert ni rouge : il n'a pas tourné.** Aucun run n'est inventé.
-
-**Pour obtenir un run distant vert (au choix, hors P2B-2A stricte, à décider en revue humaine) :**
-1. **Ouvrir une PR `p2b-architecture → main`** ⇒ déclenche le job `pull_request` du workflow (voie utilisée
-   par la PR #11 pour `phase2a-stabilization`). **Recommandé.**
-2. **`workflow_dispatch`** manuel sur la branche (nécessite un accès authentifié `gh`/API — indisponible
-   dans cet environnement : `gh` absent, aucun token en variable d'environnement).
-3. Ajouter `p2b-architecture` aux déclencheurs `push` de `ci.yml` (modifie un fichier hors périmètre docs ;
-   **non retenu** ici).
-
-Comme la phase est **purement documentaire** (aucun fichier `src/`/`tests/` touché, build/test/scan/`has-pending`
-**verts en local**), aucune régression fonctionnelle n'est possible ; la vérification distante reste
-**souhaitable** (gate roadmap) et **en attente** d'une PR.
+Tous les steps en conclusion `success`. **VALIDATION DISTANTE OBTENUE** : la gate roadmap « pipeline distant
+vert » est levée pour P2B-2A.
 
 ---
 

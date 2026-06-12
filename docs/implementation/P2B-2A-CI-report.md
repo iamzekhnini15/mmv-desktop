@@ -102,19 +102,55 @@ désormais sur des branches de phase (`p2b-architecture`, `p2b-application`, `p2
 
 ---
 
-## 6. Commit / push
+## 6. Commit / push (réalisés sur autorisation explicite)
 
-**Non réalisés** (`ALLOW_COMMIT=false`, `ALLOW_PUSH=false`). Le changeset reste dans l'arbre de travail :
-- `.github/workflows/ci.yml` (modifié) ;
-- `docs/implementation/P2B-2A-CI-report.md` (ajouté).
+**Autorisation `ALLOW_COMMIT=true`, `ALLOW_PUSH=true`.** Le changeset (workflow + ce rapport) a été committé
+puis poussé (sans force-push) :
 
-**Effet attendu après autorisation de push** : un push de `p2b-architecture` (ou de toute branche `phase*`/`p2*`)
-déclenchera désormais le workflow `CI`, ce qui permettra d'obtenir la **validation distante** de P2B-2A
-(actuellement `VALIDATION DISTANTE REQUISE`, cf. [P2B-2A-report §17 bis](P2B-2A-report.md)).
+```
+git add .github/workflows/ci.yml docs/implementation/P2B-2A-CI-report.md
+git commit -m "ci(P2B-2A): run workflow on phase branches"
+  → 3042e52  2 files changed, 147 insertions(+), 1 deletion(-)
+git push origin p2b-architecture
+  → ea382c5..3042e52  p2b-architecture -> p2b-architecture (sans force)
+```
 
-> ⚠️ Subtilité GitHub Actions : le workflow exécuté est **celui présent sur le commit poussé**. Le trigger
-> élargi prendra effet pour les **pushs effectués après** que ce `ci.yml` est sur la branche. Le premier push
-> contenant cette modification déclenchera donc le pipeline.
+Le commit ne contient **que** `.github/workflows/ci.yml` (bloc `on:`) et ce rapport. Working tree propre
+après commit. Un second commit documentaire consigne la validation CR (cf. §6 bis / §7).
+
+> ⚠️ Subtilité GitHub Actions confirmée : le workflow exécuté est **celui présent sur le commit poussé**.
+> Le commit `3042e52` contenant lui-même le trigger élargi (`p2*`), son push a **bien déclenché** le pipeline
+> (cf. §6 bis).
+
+---
+
+## 6 bis. Validation CI distante (run réel)
+
+| Élément | Valeur réelle |
+|---|---|
+| **Run** | **#19** — id **`27441381061`** |
+| **Lien** | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27441381061 |
+| **Commit testé** | **`3042e52`** (`head_sha = 3042e52…`) |
+| **Branche testée** | **`p2b-architecture`** (déclenchée par le motif `p2*` — **le trigger élargi fonctionne**) |
+| Événement | `push` |
+| Workflow / job | `CI` / `Restore / Build / Test / Scan` |
+| Runner | `windows-latest` (GitHub-hosted) |
+| Durée | ≈ 2 min 56 s (20:32:16 → 20:35:12 UTC) |
+| SDK | **verrouillé par `global.json`** (8.0.x) — step *Setup .NET* ✅ |
+| Restore | ✅ **success** |
+| Build | ✅ **success** (`-c Debug`, sans `-warnaserror` ; `CS1998` préexistant visible, non bloquant) |
+| Test | ✅ **success** (`dotnet test --no-build`, suite **320** confirmée localement ; `.trx` produit) |
+| Audit NuGet (High/Critical, JSON + sévérité) | ✅ **success** — **0 vulnérabilité** |
+| `has-pending-model-changes` | **non exécuté en CI** (hors workflow) — **confirmé localement = false** |
+| **Statut final du workflow** | ✅ **completed / success (VERT)** |
+
+Tous les steps sont en conclusion `success` : *Set up job, Checkout, Setup .NET, Diagnostic SDK, Restore,
+Build, Test, Audit des packages vulnérables, Post-steps, Complete job*.
+
+**Couverture P2B-2A.** Le commit testé `3042e52` est le **tip** de `p2b-architecture` et a pour ancêtres
+`19ace13` (ADR frontières + plan + rapport P2B-2A) et `ea382c5` (mise à jour CI du rapport P2B-2A). Le run
+vert **couvre donc** l'ensemble des documents P2B-2A présents sur la branche ⇒ la gate « pipeline distant
+vert » de P2B-2A est **levée** (cf. mise à jour de [P2B-2A-report §17 / §17 bis](P2B-2A-report.md)).
 
 ---
 
@@ -132,12 +168,15 @@ déclenchera désormais le workflow `CI`, ce qui permettra d'obtenir la **valida
 | `has-pending-model-changes = false` | ✅ |
 | Bloc `on:` modifié comme spécifié | ✅ (`main`, `phase*`, `p2*`) |
 | Aucun autre job/commande/script touché | ✅ |
+| CI déclenchée sur `p2b-architecture` (`p2*`) | ✅ run **#19** |
+| Workflow distant vert | ✅ success (run `27441381061`, commit `3042e52`) |
 
-### ✅ **P2B-2A-CI = GO (validation locale)** — prêt à commit/push sur autorisation explicite.
+### ✅ **P2B-2A-CI = GO DÉFINITIF** — workflow distant **vert** (run #19, `27441381061`, commit `3042e52`, branche `p2b-architecture`). Le trigger élargi (`p2*`) déclenche désormais la CI sur les branches de phase.
 
 ---
 
 ## 8. Arrêt obligatoire
 
-Aucun commit, aucun push. **P2B-2B non commencé. `MMV.Application` non créé. `EnregistrerVente` non
-commencé.** Le changeset (workflow + ce rapport) attend l'autorisation `ALLOW_COMMIT/PUSH`.
+Commit `3042e52` (workflow + ce rapport) + commit documentaire de consignation CI, poussés sur
+`p2b-architecture` (sans force). **P2B-2B non commencé. `MMV.Application` non créé. `EnregistrerVente` non
+commencé.**
