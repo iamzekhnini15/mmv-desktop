@@ -327,23 +327,55 @@ magasin / `Money` / SaaS **non touché**. Flux stock / vente / commande / client
 
 ## 16. État Git final
 
-**Aucun commit, aucun push** (`ALLOW_COMMIT=false`, `ALLOW_PUSH=false`).
+> Le travail P2B-2B a d'abord été produit **sans commit** (`ALLOW_COMMIT=false`). Sur **autorisation
+> explicite ultérieure** (`ALLOW_COMMIT=true`, `ALLOW_PUSH=true`), le changeset **strictement limité au
+> périmètre P2B-2B** a été committé puis poussé (sans force-push).
 
 ```
-git status --short
- M MMV.sln
- M src/MMV.App/App.axaml.cs
- M src/MMV.App/MMV.App.csproj
- M src/MMV.App/Services/ThemeService.cs
-?? src/MMV.Application/        (5 fichiers : .csproj, DependencyInjection.cs, Abstractions/IApplicationMarker.cs,
-                                UseCases/README.md, Common/README.md)
-?? docs/architecture/application-layer-structure.md
-?? docs/implementation/P2B-2B-report.md
+git add MMV.sln src/MMV.Application src/MMV.App/MMV.App.csproj src/MMV.App/App.axaml.cs \
+        src/MMV.App/Services/ThemeService.cs \
+        docs/architecture/application-layer-structure.md docs/implementation/P2B-2B-report.md
+git commit -m "feat(P2B-2B): add application layer shell"
+  → 7c3324c  11 files changed, 572 insertions(+), 3 deletions(-)
+git push origin p2b-architecture
+  → 0fca9ae..7c3324c  p2b-architecture -> p2b-architecture (sans force)
 ```
 
-`git diff --stat` (fichiers suivis) : `MMV.sln (+7)`, `App.axaml.cs (+10/−1)`, `MMV.App.csproj (+2)`,
-`ThemeService.cs (+2/−2)`. `git diff --check` : **0 anomalie**. Aucun `bin/`/`obj/`, aucun `*.db`/`*.trx`,
-aucun secret. Working tree prêt pour revue ; **non committé**.
+**Commit `7c3324c`** — 11 fichiers exactement (les 5 fichiers `src/MMV.Application/`, `MMV.sln`,
+3 fichiers `src/MMV.App/` [`MMV.App.csproj`, `App.axaml.cs`, `Services/ThemeService.cs`], les 2 docs).
+`git diff --check` : **0 anomalie**. Working tree **propre** après commit. **Aucun** `bin/`/`obj/`,
+`*.db`/`*.trx`/`*.zip`, secret ou temporaire. **Aucun** `SaleFormViewModel`, `OrderFormViewModel`,
+`StockMovementFormViewModel`, repository, `DbContext`, migration, entité Domain, règle métier ou test
+métier touché. **Aucun** `RegisterSaleUseCase`/`EnregistrerVente`/`RegisterSaleCommand`/`RegisterSaleResult`.
+
+---
+
+## 16 bis. Validation CI distante (run réel)
+
+Le push du commit `7c3324c` a **déclenché** le pipeline GitHub Actions via le motif `p2*`.
+
+| Élément | Valeur réelle |
+|---|---|
+| **Run** | **#23** — id **`27449157508`** |
+| **Lien** | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27449157508 |
+| **Commit testé** | **`7c3324c`** (`head_sha = 7c3324c46d3b7875e0dc0656eec8e81d44a2a9ee`) |
+| **Branche testée** | **`p2b-architecture`** (déclenchée par le motif `p2*`) |
+| Événement / workflow | `push` / `CI` — `Restore / Build / Test / Scan` |
+| Runner | `windows-latest` (GitHub-hosted) |
+| Durée | ≈ 2 min 21 s (23:34:26 → 23:36:47 UTC) |
+| Setup .NET (SDK `global.json`) | ✅ success |
+| **Restore** (step #5) | ✅ **success** |
+| **Build** (step #6) | ✅ **success** |
+| **Test** (step #7) | ✅ **success** (suite **320** confirmée localement) |
+| **Audit NuGet** (step #8, High/Critical, JSON + sévérité) | ✅ **success** — **0 vulnérabilité** |
+| **Restore .NET tools** (step #9) | ✅ **success** (`dotnet-ef` 8.0.27 restauré) |
+| **Check EF Core pending model changes** (step #10) | ✅ **success** — `has-pending-model-changes` = **false** |
+| **Statut final du workflow** | ✅ **completed / success (VERT)** |
+
+Tous les steps en conclusion `success` : *Set up job, Checkout, Setup .NET, Diagnostic SDK, Restore, Build,
+Test, Audit des packages vulnérables, Restore .NET tools, Check EF Core pending model changes, Post-steps,
+Complete job*. **VALIDATION DISTANTE OBTENUE** : la gate roadmap « pipeline distant vert » est **levée**
+pour P2B-2B.
 
 ---
 
@@ -365,16 +397,18 @@ aucun secret. Working tree prêt pour revue ; **non committé**.
 | Audit NuGet = 0 vulnérabilité | ✅ |
 | Rapport complet (18 sections) | ✅ |
 | Aucune règle métier modifiée | ✅ |
-| Aucun commit / push | ✅ |
+| Commit & push (sur autorisation explicite) | ✅ (`7c3324c`, branche `p2b-architecture`, sans force) |
+| CI distante verte (restore/build/test/audit/tools/EF) | ✅ run **#23** (`27449157508`, commit `7c3324c`) |
 
-### ✅ **P2B-2B = GO (local)**
+### ✅ **P2B-2B = GO DÉFINITIF**
 
 La couche `MMV.Application` est créée **minimale, propre et contrôlée** : projet `net8.0` → `MMV.Domain`
 seul, arborescence (`UseCases/`, `Common/`, `Abstractions/`), `AddApplication` (squelette neutre) appelée
 par le composition root, `MMV.App → MMV.Application` branché. **Aucun** use case réel, **aucune** migration
 de `SaleFormViewModel`, **aucune** migration EF, **aucune** règle métier modifiée. DI : unification
 additive ; nettoyage `AddInfrastructure` **différé documenté** (non comportemental). Build/tests/audit/EF
-**verts**. **Validation distante (CI)** restant requise par la gate roadmap (push non autorisé ici).
+**verts** en local **et en CI distante** (run #23 `27449157508`, commit `7c3324c`, branche
+`p2b-architecture`) ⇒ la gate « pipeline distant vert » est **levée** (cf. §16 bis).
 
 ---
 
