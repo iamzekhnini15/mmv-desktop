@@ -5,7 +5,10 @@ name: CI
 
 on:
   push:
-    branches: [ main, phase2a-stabilization ]
+    branches:
+      - main
+      - 'phase*'
+      - 'p2*'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
