@@ -74,10 +74,20 @@ public class SaleFormViewModelTransactionTests
         public Mock<IStockMovementRepository> Stock { get; } = new();
         public Mock<IUnitOfWork> UnitOfWork { get; } = new();
         public Mock<IStockMutationService> StockMutation { get; } = new();
+        public Mock<INumberSequenceService> NumberSequence { get; } = new();
+
+        public Mocks()
+        {
+            // Par défaut, la séquence renvoie un numéro déterministe selon la séquence demandée.
+            NumberSequence
+                .Setup(s => s.NextNumberAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string seq, CancellationToken _) =>
+                    seq == DocumentSequenceNames.Order ? "CMD-000001" : "VTE-000001");
+        }
 
         public SaleFormViewModel Build(ITransactionRunner runner) => new(
             Sale.Object, Order.Object, Product.Object, Prescription.Object, Stock.Object, UnitOfWork.Object,
-            runner, StockMutation.Object);
+            runner, StockMutation.Object, NumberSequence.Object);
     }
 
     private static OrderItem FrameItem() => new()
@@ -111,7 +121,7 @@ public class SaleFormViewModelTransactionTests
         // L'absence de runner est une erreur de configuration : le ViewModel ne peut pas être construit.
         Assert.Throws<ArgumentNullException>(() => new SaleFormViewModel(
             mocks.Sale.Object, mocks.Order.Object, mocks.Product.Object, mocks.Prescription.Object,
-            mocks.Stock.Object, mocks.UnitOfWork.Object, null!, mocks.StockMutation.Object));
+            mocks.Stock.Object, mocks.UnitOfWork.Object, null!, mocks.StockMutation.Object, mocks.NumberSequence.Object));
 
         // Donc : aucune vente créée, aucun SaveChanges appelé — pas de chemin non transactionnel.
         mocks.Sale.Verify(r => r.CreateAsync(It.IsAny<Sale>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -130,7 +140,23 @@ public class SaleFormViewModelTransactionTests
         // L'absence du service de décrément sûr est une erreur de configuration : construction rejetée.
         Assert.Throws<ArgumentNullException>(() => new SaleFormViewModel(
             mocks.Sale.Object, mocks.Order.Object, mocks.Product.Object, mocks.Prescription.Object,
-            mocks.Stock.Object, mocks.UnitOfWork.Object, new PassThroughTransactionRunner(), null!));
+            mocks.Stock.Object, mocks.UnitOfWork.Object, new PassThroughTransactionRunner(), null!, mocks.NumberSequence.Object));
+    }
+
+    // ------------------------------------------------------------------
+    // (P2A-1E) Aucune vente possible sans numérotation fiable
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Constructor_WithoutNumberSequenceService_Throws_NoRandomNumbering()
+    {
+        var mocks = new Mocks();
+
+        // L'absence du service de numérotation est une erreur de configuration : construction rejetée
+        // (plus aucun repli sur `new Random()` pour SaleNumber/OrderNumber).
+        Assert.Throws<ArgumentNullException>(() => new SaleFormViewModel(
+            mocks.Sale.Object, mocks.Order.Object, mocks.Product.Object, mocks.Prescription.Object,
+            mocks.Stock.Object, mocks.UnitOfWork.Object, new PassThroughTransactionRunner(), mocks.StockMutation.Object, null!));
     }
 
     // ------------------------------------------------------------------
@@ -264,12 +290,16 @@ public class SaleFormViewModelTransactionTests
 
         var spyRunner = new PassThroughTransactionRunner();
         var stockMutation = new Mock<IStockMutationService>();
+        var numberSequence = new Mock<INumberSequenceService>();
+        numberSequence.Setup(s => s.NextNumberAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("VTE-000001");
 
-        // Reproduit la construction de production : CustomerDetailViewModel reçoit le runner et le service
-        // de décrément par DI (via CustomersViewModel) et DOIT les transmettre à SaleFormViewModel.
+        // Reproduit la construction de production : CustomerDetailViewModel reçoit le runner, le service de
+        // décrément et le service de numérotation par DI (via CustomersViewModel) et DOIT les transmettre à
+        // SaleFormViewModel.
         var detail = new CustomerDetailViewModel(
             customerRepo.Object, unitOfWork.Object, orderRepo.Object, prescriptionRepo.Object,
-            productRepo.Object, saleRepo.Object, stockRepo.Object, spyRunner, stockMutation.Object);
+            productRepo.Object, saleRepo.Object, stockRepo.Object, spyRunner, stockMutation.Object, numberSequence.Object);
 
         await detail.InitializeAsync(new Customer { CustomerId = 7, FirstName = "Prod", LastName = "Chain" });
 
@@ -348,5 +378,33 @@ public class SaleFormViewModelTransactionTests
 
         Assert.Equal(insufficient.Message, viewModel.ErrorMessage);
         Assert.False(saved, "aucune notification de succès quand le stock est insuffisant");
+    }
+
+    // ------------------------------------------------------------------
+    // (P2A-1E / 8) Le SaleNumber provient du service de numérotation (plus de Random)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteSave_AssignsSaleNumberFromSequenceService_NotRandom()
+    {
+        var mocks = new Mocks();
+        mocks.NumberSequence.Setup(s => s.NextNumberAsync(DocumentSequenceNames.Sale, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("VTE-000042");
+
+        Sale? created = null;
+        mocks.Sale.Setup(r => r.CreateAsync(It.IsAny<Sale>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Sale s, CancellationToken _) => { created = s; return s; });
+        mocks.UnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        var viewModel = mocks.Build(new PassThroughTransactionRunner());
+        viewModel.AddOrderItem(FrameItem()); // monture seule : aucune commande verres → 1 seul numéro (SALE)
+
+        viewModel.SaveCommand.Execute(null);
+        await WaitUntilAsync(() => !viewModel.IsSaving);
+
+        // Le numéro est attribué par la séquence (déterministe), jamais par new Random().
+        mocks.NumberSequence.Verify(s => s.NextNumberAsync(DocumentSequenceNames.Sale, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.NotNull(created);
+        Assert.Equal("VTE-000042", created!.SaleNumber);
     }
 }

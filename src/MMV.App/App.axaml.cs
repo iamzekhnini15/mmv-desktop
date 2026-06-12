@@ -133,6 +133,10 @@ public partial class App : Application
         // s'exécute donc dans la transaction ouverte par le runner.
         services.AddScoped<IStockMutationService, EfStockMutationService>();
 
+        // Numérotation fiable des documents (P2A-1E, R-03) : incrément atomique conditionnel d'un compteur
+        // persistant ; partage le DbContext de la portée → participe à la transaction de la vente.
+        services.AddScoped<INumberSequenceService, EfNumberSequenceService>();
+
         // Enregistrer les services d'authentification et de session
         services.AddScoped<IAuthenticationService, AuthenticationService>();
         services.AddSingleton<ISessionService, SessionService>();

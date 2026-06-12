@@ -27,6 +27,7 @@ public class CustomersViewModel : BaseViewModel
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly ITransactionRunner _transactionRunner;
     private readonly IStockMutationService _stockMutationService;
+    private readonly INumberSequenceService _numberSequenceService;
     private ICommand? _viewDetailCommand;
 
     /// <summary>
@@ -103,7 +104,7 @@ public class CustomersViewModel : BaseViewModel
     /// <summary>
     /// Initialise le ViewModel avec injection de dépendances.
     /// </summary>
-    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IStockMovementRepository stockMovementRepository, ITransactionRunner transactionRunner, IStockMutationService stockMutationService)
+    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IStockMovementRepository stockMovementRepository, ITransactionRunner transactionRunner, IStockMutationService stockMutationService, INumberSequenceService numberSequenceService)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersViewModel] Constructor called");
         _customerRepository = customerRepository;
@@ -117,7 +118,9 @@ public class CustomersViewModel : BaseViewModel
         _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
         // Décrément de stock sûr obligatoire (P2A-1D) : injecté par DI, transmis jusqu'à SaleFormViewModel.
         _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
-        
+        // Numérotation fiable obligatoire (P2A-1E) : injectée par DI, transmise jusqu'à SaleFormViewModel.
+        _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
+
         Title = "Clients";
         
         // Initialiser le ViewModel de la liste avec les bonnes dépendances
@@ -202,7 +205,7 @@ public class CustomersViewModel : BaseViewModel
         if (customer != null)
         {
             // Créer une nouvelle instance du CustomerDetailViewModel
-            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _orderRepository, _prescriptionRepository, _productRepository, _saleRepository, _stockMovementRepository, _transactionRunner, _stockMutationService);
+            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _orderRepository, _prescriptionRepository, _productRepository, _saleRepository, _stockMovementRepository, _transactionRunner, _stockMutationService, _numberSequenceService);
             
             // Initialiser avec le client sélectionné
             await CustomerDetailViewModel.InitializeAsync(customer);

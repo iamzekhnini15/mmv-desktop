@@ -70,3 +70,26 @@ public class InsufficientStockException : DomainException
         AvailableQuantity = availableQuantity;
     }
 }
+
+/// <summary>
+/// Erreur <b>métier contrôlée</b> (P2A-1E, R-03) liée à la <b>numérotation fiable</b> des documents : la
+/// séquence demandée est introuvable (compteur non initialisé) ou aucun numéro n'a pu être attribué malgré
+/// les tentatives (contention persistante). Aucun numéro n'est consommé.
+///
+/// <para>
+/// Définie dans le domaine (sans dépendance EF/SQLite) afin que les ViewModels actuels — et la future
+/// couche Application — puissent l'attraper de façon uniforme. Ce n'est <b>pas</b> une erreur de
+/// persistance technique : elle est propagée <b>inchangée</b> par <c>ITransactionRunner</c>, ce qui annule
+/// la vente/commande englobante (cf. <see cref="PersistenceException"/> pour les erreurs techniques).
+/// </para>
+/// </summary>
+public class NumberSequenceException : DomainException
+{
+    /// <summary>Nom logique de la séquence concernée (ex. <c>SALE</c>, <c>ORDER</c>).</summary>
+    public string SequenceName { get; }
+
+    public NumberSequenceException(string sequenceName, string message) : base(message)
+    {
+        SequenceName = sequenceName;
+    }
+}

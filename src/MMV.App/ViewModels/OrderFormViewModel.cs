@@ -7,6 +7,7 @@ using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -227,6 +228,7 @@ public class OrderFormViewModel : BaseViewModel
     private readonly IProductRepository _productRepository;
     private readonly IPrescriptionRepository _prescriptionRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly INumberSequenceService _numberSequenceService;
 
     // Client
     private ObservableCollection<Customer> _allCustomers = new();
@@ -384,6 +386,7 @@ public class OrderFormViewModel : BaseViewModel
         IProductRepository productRepository,
         IPrescriptionRepository prescriptionRepository,
         IUnitOfWork unitOfWork,
+        INumberSequenceService numberSequenceService,
         Order? existingOrder = null)
     {
         _orderRepository = orderRepository;
@@ -391,6 +394,8 @@ public class OrderFormViewModel : BaseViewModel
         _productRepository = productRepository;
         _prescriptionRepository = prescriptionRepository;
         _unitOfWork = unitOfWork;
+        // Numérotation fiable obligatoire (P2A-1E) : remplace le comptage count+1 sujet aux collisions.
+        _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
         _existingOrder = existingOrder;
         _isEditMode = existingOrder != null;
 
@@ -485,19 +490,16 @@ public class OrderFormViewModel : BaseViewModel
         OnPropertyChanged(nameof(TotalAmount));
     }
 
+    /// <summary>
+    /// Attribue un numéro de commande fiable (P2A-1E, R-03) via la séquence transactionnelle déterministe,
+    /// en remplacement de l'ancien comptage <c>count + 1</c> (sujet aux collisions : deux formulaires ouverts
+    /// simultanément obtenaient le même numéro face à l'index UNIQUE). Le numéro est attribué à l'ouverture
+    /// du formulaire ; un abandon (annulation) laisse un trou de numérotation, ce qui est acceptable pour une
+    /// numérotation non fiscale (cf. ADR-numbering).
+    /// </summary>
     private async Task<string> GenerateOrderNumberAsync()
     {
-        try
-        {
-            var orders = await _orderRepository.GetAllAsync();
-            var year = DateTime.Now.Year;
-            var count = orders.Count(o => o.OrderDate.Year == year) + 1;
-            return $"CMD-{year}-{count:D4}";
-        }
-        catch
-        {
-            return $"CMD-{DateTime.Now.Year}-0001";
-        }
+        return await _numberSequenceService.NextNumberAsync(DocumentSequenceNames.Order);
     }
 
     private void FilterCustomers()

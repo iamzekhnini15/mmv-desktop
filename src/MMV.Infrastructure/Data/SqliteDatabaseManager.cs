@@ -298,19 +298,41 @@ public sealed class SqliteDatabaseManager
         var legacyDefaultVerifier = new SqliteDateTimeDefaultVerifier();
         var legacyDefaultColumns = legacyDefaultVerifier.GetColumnsWithLegacyDefaults(context);
 
-        List<string> migrationsToBaseline;
-        if (legacyDefaultColumns.Count > 0 && allMigrations.Any(IsFixDateTimeDefaultsMigration))
+        // Certaines migrations doivent être EXÉCUTÉES (et non baselinées) parce que leur effet physique est
+        // ABSENT du schéma historique. On baseline tout ce qui précède la PREMIÈRE de ces migrations, puis on
+        // applique réellement le reste (la migration concernée et les suivantes).
+        // (a) R-19 : FixDateTimeDefaultValues si les anciens DEFAULT DateTime figés sont physiquement présents.
+        // (b) P2A-1E : AddDocumentSequences si la table DocumentSequences est physiquement absente (base
+        //     antérieure à P2A-1E). Sans cela, baseliner cette migration marquerait à tort la table comme créée.
+        var documentSequencesMissing = !GetTableNames(context)
+            .Contains(DocumentSequencesTableName, StringComparer.OrdinalIgnoreCase);
+        var firstIndexToExecute = allMigrations.Count;
+
+        if (legacyDefaultColumns.Count > 0)
         {
-            migrationsToBaseline = allMigrations.TakeWhile(m => !IsFixDateTimeDefaultsMigration(m)).ToList();
-            _journal.Write(
-                $"ADOPT: legacy DateTime DEFAULT detected on {legacyDefaultColumns.Count} column(s) " +
-                $"[{string.Join(", ", legacyDefaultColumns)}] — baseline limited to {migrationsToBaseline.Count} " +
-                "migration(s); FixDateTimeDefaultValues will be executed (R-19 repair).");
+            var fixIndex = allMigrations.FindIndex(IsFixDateTimeDefaultsMigration);
+            if (fixIndex >= 0)
+            {
+                firstIndexToExecute = Math.Min(firstIndexToExecute, fixIndex);
+                _journal.Write(
+                    $"ADOPT: legacy DateTime DEFAULT detected on {legacyDefaultColumns.Count} column(s) " +
+                    $"[{string.Join(", ", legacyDefaultColumns)}] — FixDateTimeDefaultValues will be executed (R-19 repair).");
+            }
         }
-        else
+
+        if (documentSequencesMissing)
         {
-            migrationsToBaseline = allMigrations;
+            var sequencesIndex = allMigrations.FindIndex(IsAddDocumentSequencesMigration);
+            if (sequencesIndex >= 0)
+            {
+                firstIndexToExecute = Math.Min(firstIndexToExecute, sequencesIndex);
+                _journal.Write(
+                    "ADOPT: DocumentSequences table absent (base antérieure à P2A-1E) — " +
+                    "AddDocumentSequences will be executed (numbering table created).");
+            }
         }
+
+        var migrationsToBaseline = allMigrations.Take(firstIndexToExecute).ToList();
 
         // --- Baseline : inscription de l'historique (accès EF encapsulé) ---
         WriteMigrationHistory(context, migrationsToBaseline);
@@ -342,6 +364,18 @@ public sealed class SqliteDatabaseManager
                 "ne reflète pas le schéma réel ; la base et sa sauvegarde sont conservées.");
         }
 
+        // --- P2A-1E : vérification physique post-adoption — la table de numérotation existe réellement ---
+        // Garantit qu'aucune base n'est marquée « AddDocumentSequences appliquée » sans la table physique
+        // (pas de baseline mensonger sur la numérotation : échec explicite, base + sauvegarde conservées).
+        if (!GetTableNames(context).Contains(DocumentSequencesTableName, StringComparer.OrdinalIgnoreCase))
+        {
+            _journal.Write("ADOPT INCONSISTENT: DocumentSequences table absent after adoption.");
+            throw new DatabaseMigrationException(
+                "Incohérence après adoption : la table de numérotation DocumentSequences est absente alors " +
+                "que la migration AddDocumentSequences est inscrite. __EFMigrationsHistory ne reflète pas le " +
+                "schéma réel ; la base et sa sauvegarde sont conservées.");
+        }
+
         return new DatabasePreparationResult
         {
             DetectedState = DatabaseState.HistoricalWithoutMigrationsHistory,
@@ -357,6 +391,15 @@ public sealed class SqliteDatabaseManager
 
     private static bool IsFixDateTimeDefaultsMigration(string migrationId)
         => migrationId.EndsWith(FixDateTimeDefaultsMigrationSuffix, StringComparison.Ordinal);
+
+    /// <summary>Nom de la table de numérotation des documents (P2A-1E, R-03).</summary>
+    private const string DocumentSequencesTableName = "DocumentSequences";
+
+    /// <summary>Suffixe de l'identifiant de la migration additive P2A-1E (table DocumentSequences).</summary>
+    private const string AddDocumentSequencesMigrationSuffix = "_AddDocumentSequences";
+
+    private static bool IsAddDocumentSequencesMigration(string migrationId)
+        => migrationId.EndsWith(AddDocumentSequencesMigrationSuffix, StringComparison.Ordinal);
 
     /// <summary>
     /// Point UNIQUE d'écriture de <c>__EFMigrationsHistory</c> (encapsule l'accès à l'API

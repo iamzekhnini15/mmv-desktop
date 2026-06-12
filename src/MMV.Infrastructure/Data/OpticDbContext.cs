@@ -114,6 +114,12 @@ public class OpticDbContext : DbContext
     /// </summary>
     public DbSet<Notification> Notifications { get; set; } = null!;
 
+    // ========== NUMÉROTATION ==========
+    /// <summary>
+    /// Compteurs de séquences de numérotation des documents (ventes, commandes…). P2A-1E, R-03 / ADR-006.
+    /// </summary>
+    public DbSet<DocumentSequence> DocumentSequences { get; set; } = null!;
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
@@ -150,6 +156,7 @@ public class OpticDbContext : DbContext
         modelBuilder.ApplyConfiguration(new SaleItemConfiguration());
         modelBuilder.ApplyConfiguration(new StockMovementConfiguration());
         modelBuilder.ApplyConfiguration(new NotificationConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentSequenceConfiguration());
         // Les données initiales (admin, etc.) sont gérées dans DbInitializer.cs
     }
 

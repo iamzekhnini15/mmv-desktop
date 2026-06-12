@@ -4,6 +4,7 @@ using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
 using MMV.Domain.Entities;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -22,6 +23,7 @@ public class OrdersViewModel : BaseViewModel
     private readonly INotificationRepository _notificationRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDialogService _dialogService;
+    private readonly INumberSequenceService _numberSequenceService;
 
     private OrdersListViewModel _listViewModel;
     private OrderFormViewModel? _formViewModel;
@@ -121,7 +123,8 @@ public class OrdersViewModel : BaseViewModel
         IStockMovementRepository stockMovementRepository,
         INotificationRepository notificationRepository,
         IUnitOfWork unitOfWork,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        INumberSequenceService numberSequenceService)
     {
         _orderRepository = orderRepository;
         _customerRepository = customerRepository;
@@ -131,6 +134,8 @@ public class OrdersViewModel : BaseViewModel
         _notificationRepository = notificationRepository;
         _unitOfWork = unitOfWork;
         _dialogService = dialogService;
+        // Numérotation fiable obligatoire (P2A-1E) : injectée par DI, transmise jusqu'à OrderFormViewModel.
+        _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
 
         // Initialiser la liste
         _listViewModel = new OrdersListViewModel(orderRepository);
@@ -153,7 +158,7 @@ public class OrdersViewModel : BaseViewModel
             ErrorMessage = null;
             FormViewModel = new OrderFormViewModel(
                 _orderRepository, _customerRepository, _productRepository,
-                _prescriptionRepository, _unitOfWork);
+                _prescriptionRepository, _unitOfWork, _numberSequenceService);
             FormViewModel.OrderSaved += OnOrderSaved;
             FormViewModel.CancelRequested += OnFormCancelled;
 
@@ -180,7 +185,7 @@ public class OrdersViewModel : BaseViewModel
 
             FormViewModel = new OrderFormViewModel(
                 _orderRepository, _customerRepository, _productRepository,
-                _prescriptionRepository, _unitOfWork, order);
+                _prescriptionRepository, _unitOfWork, _numberSequenceService, order);
             FormViewModel.OrderSaved += OnOrderSaved;
             FormViewModel.CancelRequested += OnFormCancelled;
 

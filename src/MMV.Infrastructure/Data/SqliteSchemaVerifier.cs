@@ -29,6 +29,18 @@ public sealed class SchemaCompatibilityResult
 /// </summary>
 public sealed class SqliteSchemaVerifier
 {
+    /// <summary>
+    /// Tables <b>purement additives</b> introduites par une migration récente et qu'aucune base historique
+    /// antérieure ne peut contenir. Leur absence n'est <b>pas</b> une incompatibilité : la migration qui les
+    /// crée est <b>exécutée</b> pendant l'adoption (cf. <see cref="SqliteDatabaseManager"/>), elles sont donc
+    /// physiquement créées sans risque. Toute autre table manquante reste bloquante (corruption/schéma ancien).
+    /// <list type="bullet">
+    ///   <item><c>DocumentSequences</c> — P2A-1E (R-03), créée par <c>AddDocumentSequences</c>.</item>
+    /// </list>
+    /// </summary>
+    private static readonly HashSet<string> AdditiveTablesToleratedWhenAbsent =
+        new(StringComparer.OrdinalIgnoreCase) { "DocumentSequences" };
+
     public SchemaCompatibilityResult Verify(OpticDbContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -41,7 +53,14 @@ public sealed class SqliteSchemaVerifier
         {
             if (!actualTables.TryGetValue(expected.Name, out var actual))
             {
-                differences.Add($"table manquante: {expected.Name}");
+                // Une table additive récente (créée par une migration en attente) n'est pas une divergence
+                // bloquante : l'adoption exécutera la migration qui la crée. Les autres tables manquantes
+                // (cœur du modèle) restent bloquantes.
+                if (!AdditiveTablesToleratedWhenAbsent.Contains(expected.Name))
+                {
+                    differences.Add($"table manquante: {expected.Name}");
+                }
+
                 continue;
             }
 

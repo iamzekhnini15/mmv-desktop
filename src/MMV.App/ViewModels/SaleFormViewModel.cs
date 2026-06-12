@@ -42,6 +42,14 @@ public class SaleFormViewModel : BaseViewModel
     /// </summary>
     private readonly IStockMutationService _stockMutationService;
 
+    /// <summary>
+    /// Numérotation fiable des documents (P2A-1E, R-03) : <b>obligatoire</b>. Remplace la génération
+    /// aléatoire (<c>new Random().Next(10000)</c>) des <c>SaleNumber</c>/<c>OrderNumber</c> par une séquence
+    /// déterministe unique. Génère dans la transaction du <see cref="_transactionRunner"/> : un numéro
+    /// attribué pour une vente annulée n'est pas consommé.
+    /// </summary>
+    private readonly INumberSequenceService _numberSequenceService;
+
     private long _customerId;
     private decimal _totalAmount;
     private decimal _discountAmount = 0;
@@ -392,7 +400,8 @@ public class SaleFormViewModel : BaseViewModel
         IStockMovementRepository? stockMovementRepository,
         IUnitOfWork? unitOfWork,
         ITransactionRunner transactionRunner,
-        IStockMutationService stockMutationService)
+        IStockMutationService stockMutationService,
+        INumberSequenceService numberSequenceService)
     {
         _saleRepository = saleRepository;
         _orderRepository = orderRepository;
@@ -404,6 +413,8 @@ public class SaleFormViewModel : BaseViewModel
         _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
         // Décrément de stock sûr obligatoire (P2A-1D) : pas de sortie de stock par lecture-modif-écriture.
         _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
+        // Numérotation fiable obligatoire (P2A-1E) : pas de numéro de vente/commande aléatoire.
+        _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
 
         SaveCommand = new RelayCommand(ExecuteSave);
         CancelCommand = new RelayCommand(ExecuteCancel);
@@ -897,12 +908,16 @@ public class SaleFormViewModel : BaseViewModel
     /// </summary>
     private async Task<Sale> PersistSaleAsync(CancellationToken cancellationToken)
     {
+        // Numéro de vente fiable (P2A-1E, R-03) : séquence déterministe unique attribuée DANS la
+        // transaction du runner ; un numéro attribué pour une vente annulée n'est pas consommé.
+        var saleNumber = await _numberSequenceService.NextNumberAsync(DocumentSequenceNames.Sale, cancellationToken);
+
         // Créer la vente complète
         var sale = new Sale
         {
             CustomerId = CustomerId,
             SaleDate = DateTime.Now,
-            SaleNumber = $"VTE-{DateTime.Now:yyyy}-{new Random().Next(10000):D4}",
+            SaleNumber = saleNumber,
             TotalAmount = TotalAmount,
             DiscountAmount = DiscountAmount,
             FinalAmount = FinalAmount,
@@ -960,10 +975,13 @@ public class SaleFormViewModel : BaseViewModel
             var hasLenses = OrderItems.Any(i => i.ItemType == OrderItemType.LensOd || i.ItemType == OrderItemType.LensOg);
             if (hasLenses && _orderRepository != null)
             {
+                // Numéro de commande fournisseur fiable (P2A-1E, R-03), même transaction que la vente.
+                var orderNumber = await _numberSequenceService.NextNumberAsync(DocumentSequenceNames.Order, cancellationToken);
+
                 var order = new Order
                 {
                     SaleId = sale.SaleId,
-                    OrderNumber = $"CMD-{DateTime.Now:yyyy}-{new Random().Next(10000):D4}",
+                    OrderNumber = orderNumber,
                     OrderDate = DateTime.Now,
                     EstimatedDelivery = DateTime.Now.AddDays(14),
                     Status = OrderStatus.New,
