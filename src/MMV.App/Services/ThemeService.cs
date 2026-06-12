@@ -23,9 +23,9 @@ public class ThemeService : IThemeService
 
         _isDarkMode = isDark;
 
-        if (Application.Current != null)
+        if (Avalonia.Application.Current != null)
         {
-            Application.Current.RequestedThemeVariant = isDark
+            Avalonia.Application.Current.RequestedThemeVariant = isDark
                 ? ThemeVariant.Dark
                 : ThemeVariant.Light;
         }

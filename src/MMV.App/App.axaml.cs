@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using MMV.Application;
 using MMV.App.Services;
 using MMV.App.ViewModels;
 using MMV.App.Views;
@@ -21,7 +22,9 @@ namespace MMV.App;
 /// <summary>
 /// Classe principale de l'application Avalonia.
 /// </summary>
-public partial class App : Application
+// Base qualifiée explicitement : le namespace MMV.Application (membre du namespace parent MMV)
+// masque par résolution de nom simple le type Avalonia.Application (P2B-2B, changement neutre).
+public partial class App : Avalonia.Application
 {
     private IServiceProvider? _serviceProvider;
 
@@ -137,6 +140,11 @@ public partial class App : Application
         // Numérotation fiable des documents (P2A-1E, R-03) : incrément atomique conditionnel d'un compteur
         // persistant ; partage le DbContext de la portée → participe à la transaction de la vente.
         services.AddScoped<INumberSequenceService, EfNumberSequenceService>();
+
+        // Couche Application (P2B-2B) : squelette créé à vide. AddApplication n'enregistre aucun use case
+        // métier réel pour l'instant (aucun changement de comportement). Les use cases (premier cible :
+        // EnregistrerVente, P2B-2C) y seront ajoutés en portée Scoped, partageant la transaction.
+        services.AddApplication();
 
         // Enregistrer les services d'authentification et de session
         services.AddScoped<IAuthenticationService, AuthenticationService>();
