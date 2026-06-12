@@ -260,7 +260,8 @@ Pins de sécurité P2A-0 (`System.Text.Json` 8.0.6) intacts.
 ?? tests/MMV.Domain.Tests/Persistence/EfNumberSequenceServiceTests.cs
 ```
 
-`git diff --stat` (fichiers suivis) : **13 fichiers modifiés, +266 / −38**. **Aucun commit, aucun push.**
+`git diff --stat` (fichiers suivis) : **13 fichiers modifiés, +266 / −38**. Le changeset a ensuite été
+**commité et poussé** (cf. §16.1) après autorisation explicite (`ALLOW_COMMIT = true`, `ALLOW_PUSH = true`).
 
 ## 16. Verdict
 
@@ -275,6 +276,32 @@ Pins de sécurité P2A-0 (`System.Text.Json` 8.0.6) intacts.
 - ✅ `SaleFormViewModel` **et** `OrderFormViewModel` utilisent le service ;
 - ✅ bases clientes existantes **adoptées sans perte** (table créée par exécution, pas de baseline mensonger) ;
 - ✅ aucune phase P2A-1F+ commencée ; ✅ rapport complet.
+
+### 16.1 Commit & push
+
+- **Commit** : `813d115` (`813d115b60e7a6b47eee9275951f48d2d17811b9`) — `feat(P2A-1E): replace random
+  document numbers with transactional sequences` — **26 fichiers** (13 modifiés, 13 créés ; +2801 / −38).
+- **Branche** : `phase2a-stabilization` poussée vers `origin` (`bf690d2..813d115`, **aucun force-push**).
+- **Vérification spéciale R-19** : `HasData` de `DocumentSequenceConfiguration` utilise une constante fixe
+  `new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)` (jamais `DateTime.UtcNow`/`Now` dynamique) — la
+  migration `InsertData` reproduit la même constante. `git diff --check` : **aucune erreur d'espaces**.
+
+### 16.2 Validation CI distante (GitHub Actions)
+
+| Élément | Résultat |
+|---|---|
+| Run | [#27402041800](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27402041800) (workflow `CI`, run **#13**, event `push`) |
+| Commit testé | `813d115b60e7a6b47eee9275951f48d2d17811b9` |
+| Runner | `GitHub Actions` (SDK verrouillé par `global.json`) |
+| Setup .NET (`global.json`, **8.0.x**) | ✅ success |
+| Restore | ✅ success |
+| Build (`-c Debug`) | ✅ success |
+| Test (`dotnet test --no-build`, **293** tests) | ✅ success |
+| Audit NuGet (vulnérables, JSON + sévérité) | ✅ success — **0 vulnérabilité** |
+| `has-pending-model-changes` | **non exécuté en CI** (hors workflow) — **confirmé localement = false** |
+| **Statut final du workflow** | ✅ **success** (tous les steps verts) |
+
+**`P2A-1E = GO définitif`** — workflow distant vert sur le commit `813d115`.
 
 ## 17. Prochaine étape candidate (NON exécutée)
 
