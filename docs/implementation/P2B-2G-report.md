@@ -206,14 +206,34 @@ Aucun commit, aucun push (conforme `ALLOW_COMMIT=false`, `ALLOW_PUSH=false`).
 ?? docs/implementation/P2B-2G-report.md
 ```
 
-## 19. Verdict
+## 19. Validation CI distante
 
-**GO local.** Tous les critères d'acceptation sont satisfaits : use case + interface + Command + Result créés ;
-`AddApplication` enregistre le use case ; `OrderDetailViewModel` délègue le flux ciblé ; transaction dans le use
-case (flux multi-écritures) ; calcul du solde et champs `Sale` préservés ; notification préservée ; comportement
-utilisateur identique ; tests Application et ViewModel ajoutés ; build vert ; 373 tests verts ; 0 vulnérabilité ;
-`has-pending-model-changes` = false ; aucune migration ; aucun modèle EF modifié ; aucune règle
-Belgique/Maroc/fiscalité/devis/facture/Money ; `MMV.Application` ne référence que `MMV.Domain`.
+| Propriété | Valeur |
+|---|---|
+| Run ID | 27469802432 |
+| Lien | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27469802432 |
+| Commit testé | `e683bc3` |
+| Branche testée | `p2b-architecture` |
+| Restore | success |
+| Build | success |
+| Test | success |
+| Nombre de tests CI | 373 (113 App / 37 Application / 223 Domain) |
+| Audit NuGet | success |
+| Restore .NET tools | success |
+| Check EF Core pending model changes | success |
+| Statut final du workflow | **success** |
+
+## Verdict
+
+**P2B-2G = GO DÉFINITIF**
+
+GO local et GO distant. Tous les critères d'acceptation sont satisfaits : use case + interface + Command + Result
+créés ; `AddApplication` enregistre le use case ; `OrderDetailViewModel` délègue le flux ciblé ; transaction dans
+le use case (flux multi-écritures) ; calcul du solde et champs `Sale` préservés ; notification préservée ;
+comportement utilisateur identique ; tests Application et ViewModel ajoutés ; build vert ; 373 tests verts ; 0
+vulnérabilité ; `has-pending-model-changes` = false ; aucune migration ; aucun modèle EF modifié ; aucune règle
+Belgique/Maroc/fiscalité/devis/facture/Money ; `MMV.Application` ne référence que `MMV.Domain` ; CI distante
+success sur tous les steps.
 
 ## 20. Prochaine étape candidate
 
