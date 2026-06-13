@@ -1,8 +1,8 @@
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Stock.CreateStockMovement;
 using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -28,8 +28,7 @@ public class ProductsViewModel : BaseViewModel
     private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDialogService _dialogService;
-    private readonly ITransactionRunner _transactionRunner;
-    private readonly IStockMutationService _stockMutationService;
+    private readonly ICreateStockMovementUseCase _createStockMovementUseCase;
 
     /// <summary>
     /// ViewModel pour la liste des produits.
@@ -179,16 +178,14 @@ public class ProductsViewModel : BaseViewModel
         ISupplierRepository supplierRepository,
         IUnitOfWork unitOfWork,
         IDialogService dialogService,
-        ITransactionRunner transactionRunner,
-        IStockMutationService stockMutationService)
+        ICreateStockMovementUseCase createStockMovementUseCase)
     {
         _productRepository = productRepository;
         _supplierRepository = supplierRepository;
         _unitOfWork = unitOfWork;
         _dialogService = dialogService;
-        // P2A-1D-R2 : transmis à StockMovementsViewModel → formulaire (sorties manuelles sûres).
-        _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
-        _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
+        // P2B-2F : transmis à StockMovementsViewModel → formulaire pour déléguer la création de mouvement manuel.
+        _createStockMovementUseCase = createStockMovementUseCase ?? throw new ArgumentNullException(nameof(createStockMovementUseCase));
 
         // Initialiser le ViewModel de la liste
         _productsListViewModel = new ProductsListViewModel(productRepository, unitOfWork);
@@ -304,10 +301,8 @@ public class ProductsViewModel : BaseViewModel
             StockMovementsViewModel = new StockMovementsViewModel(
                 _unitOfWork.StockMovements,
                 _productRepository,
-                _unitOfWork,
                 _dialogService,
-                _transactionRunner,
-                _stockMutationService);
+                _createStockMovementUseCase);
 
             StockMovementsViewModel.BackToProductsRequested += OnStockMovementsBackRequested;
         }

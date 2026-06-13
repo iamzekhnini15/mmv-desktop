@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Sales.RegisterSale;
+using MMV.Application.UseCases.Stock.CreateStockMovement;
 
 namespace MMV.Application;
 
@@ -45,6 +46,12 @@ public static class DependencyInjection
         // Scoped : même portée que OpticDbContext, les repositories et IUnitOfWork — donc même DbContext, donc le
         // SaveChangesAsync unique reste atomique (cohérent avec le flux d'origine).
         services.AddScoped<IAdvanceOrderStatusUseCase, AdvanceOrderStatusUseCase>();
+
+        // Quatrième vertical slice (P2B-2F) — « Créer un mouvement manuel de stock ». Portée Scoped : même portée
+        // que OpticDbContext, les repositories, IUnitOfWork, ITransactionRunner et IStockMutationService — donc
+        // même DbContext, donc la frontière transactionnelle (décrément/incrément + mouvement) reste atomique
+        // (cohérent avec le flux d'origine P2A-1D-R2).
+        services.AddScoped<ICreateStockMovementUseCase, CreateStockMovementUseCase>();
         return services;
     }
 }
