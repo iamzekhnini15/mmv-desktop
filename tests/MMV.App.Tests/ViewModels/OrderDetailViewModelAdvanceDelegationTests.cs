@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
+using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
@@ -65,8 +66,10 @@ public class OrderDetailViewModelAdvanceDelegationTests
         var unitOfWork = new Mock<IUnitOfWork>();
         var notificationRepo = new Mock<INotificationRepository>();
 
+        var settleUseCase = new Mock<ISettleOrderBalanceUseCase>();
+
         var viewModel = new OrderDetailViewModel(
-            orderRepo.Object, unitOfWork.Object, useCase, notificationRepo.Object);
+            orderRepo.Object, unitOfWork.Object, useCase, settleUseCase.Object, notificationRepo.Object);
 
         var order = new Order
         {
@@ -168,9 +171,10 @@ public class OrderDetailViewModelAdvanceDelegationTests
     {
         var orderRepo = new Mock<IOrderRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
+        var settleUseCase = new Mock<ISettleOrderBalanceUseCase>();
 
         Assert.Throws<ArgumentNullException>(() => new OrderDetailViewModel(
-            orderRepo.Object, unitOfWork.Object, advanceOrderStatusUseCase: null!));
+            orderRepo.Object, unitOfWork.Object, advanceOrderStatusUseCase: null!, settleUseCase.Object));
     }
 
     // ------------------------------------------------------------------

@@ -5,6 +5,7 @@ using MMV.App.Commands;
 using MMV.App.Services;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
+using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
@@ -27,6 +28,7 @@ public class OrdersViewModel : BaseViewModel
     private readonly INumberSequenceService _numberSequenceService;
     private readonly ICreateOrderUseCase _createOrderUseCase;
     private readonly IAdvanceOrderStatusUseCase _advanceOrderStatusUseCase;
+    private readonly ISettleOrderBalanceUseCase _settleOrderBalanceUseCase;
 
     private OrdersListViewModel _listViewModel;
     private OrderFormViewModel? _formViewModel;
@@ -128,7 +130,8 @@ public class OrdersViewModel : BaseViewModel
         IDialogService dialogService,
         INumberSequenceService numberSequenceService,
         ICreateOrderUseCase createOrderUseCase,
-        IAdvanceOrderStatusUseCase advanceOrderStatusUseCase)
+        IAdvanceOrderStatusUseCase advanceOrderStatusUseCase,
+        ISettleOrderBalanceUseCase settleOrderBalanceUseCase)
     {
         _orderRepository = orderRepository;
         _customerRepository = customerRepository;
@@ -143,6 +146,8 @@ public class OrdersViewModel : BaseViewModel
         _createOrderUseCase = createOrderUseCase ?? throw new ArgumentNullException(nameof(createOrderUseCase));
         // Use case d'avancement de statut (P2B-2E) obligatoire : transmis jusqu'à OrderDetailViewModel.
         _advanceOrderStatusUseCase = advanceOrderStatusUseCase ?? throw new ArgumentNullException(nameof(advanceOrderStatusUseCase));
+        // Use case d'encaissement du solde (P2B-2G) obligatoire : transmis jusqu'à OrderDetailViewModel.
+        _settleOrderBalanceUseCase = settleOrderBalanceUseCase ?? throw new ArgumentNullException(nameof(settleOrderBalanceUseCase));
 
         // Initialiser la liste
         _listViewModel = new OrdersListViewModel(orderRepository);
@@ -223,7 +228,7 @@ public class OrdersViewModel : BaseViewModel
             }
 
             DetailViewModel = new OrderDetailViewModel(
-                _orderRepository, _unitOfWork, _advanceOrderStatusUseCase, _notificationRepository);
+                _orderRepository, _unitOfWork, _advanceOrderStatusUseCase, _settleOrderBalanceUseCase, _notificationRepository);
             DetailViewModel.Initialize(fullOrder);
             DetailViewModel.BackRequested += OnDetailBackRequested;
             DetailViewModel.EditRequested += OnEditOrderRequested;

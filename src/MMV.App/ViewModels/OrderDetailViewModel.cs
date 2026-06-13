@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
+using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Repositories;
@@ -20,6 +21,7 @@ public class OrderDetailViewModel : BaseViewModel
     private readonly IUnitOfWork _unitOfWork;
     private readonly INotificationRepository? _notificationRepository;
     private readonly IAdvanceOrderStatusUseCase _advanceOrderStatusUseCase;
+    private readonly ISettleOrderBalanceUseCase _settleOrderBalanceUseCase;
 
     private Order? _order;
     private ObservableCollection<OrderItem> _items = new();
@@ -233,6 +235,7 @@ public class OrderDetailViewModel : BaseViewModel
         IOrderRepository orderRepository,
         IUnitOfWork unitOfWork,
         IAdvanceOrderStatusUseCase advanceOrderStatusUseCase,
+        ISettleOrderBalanceUseCase settleOrderBalanceUseCase,
         INotificationRepository? notificationRepository = null)
     {
         _orderRepository = orderRepository;
@@ -240,6 +243,9 @@ public class OrderDetailViewModel : BaseViewModel
         // Use case d'avancement de statut (P2B-2E) obligatoire : le flux d'avancement est délégué à la couche
         // Application (plus de mise à jour de statut / mouvements de stock / notification directs dans la VM).
         _advanceOrderStatusUseCase = advanceOrderStatusUseCase ?? throw new ArgumentNullException(nameof(advanceOrderStatusUseCase));
+        // Use case d'encaissement du solde (P2B-2G) obligatoire : le flux d'encaissement est délégué à la couche
+        // Application (plus de mise à jour du paiement / notification / SaveChanges directs dans la VM).
+        _settleOrderBalanceUseCase = settleOrderBalanceUseCase ?? throw new ArgumentNullException(nameof(settleOrderBalanceUseCase));
         _notificationRepository = notificationRepository;
 
         AdvanceStatusCommand = new RelayCommand(async () => await AdvanceStatusAsync(), () => CanAdvanceStatus);
@@ -368,7 +374,11 @@ public class OrderDetailViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Encaisse le montant restant d'une commande.
+    /// Encaisse le montant restant d'une commande en <b>déléguant</b> l'orchestration (rechargement de la
+    /// commande, mise à jour du paiement de la vente liée, notification, enregistrement transactionnel) au use
+    /// case Application <see cref="ISettleOrderBalanceUseCase"/> (P2B-2G). La ViewModel conserve la validation/garde
+    /// d'affichage (<see cref="HasRemainingBalance"/>), construit la commande à partir de son état (identifiant de
+    /// la commande) et mappe le résultat vers son état local / ses événements.
     /// </summary>
     private async Task ExecuteEncashBalanceAsync()
     {
@@ -379,50 +389,24 @@ public class OrderDetailViewModel : BaseViewModel
 
         try
         {
-            // Recharger la commande fraîche avec sa vente
-            var fresh = await _orderRepository.GetWithItemsAsync(Order.OrderId);
-            if (fresh == null || fresh.Sale == null)
+            var command = new SettleOrderBalanceCommand { OrderId = Order.OrderId };
+
+            var result = await _settleOrderBalanceUseCase.ExecuteAsync(command);
+            if (!result.OrderFound || result.Order == null)
             {
                 ErrorMessage = "Commande introuvable.";
                 return;
             }
 
-            // Sauvegarder le montant restant avant modification pour la notification
-            var amountToEncash = fresh.Sale.RemainingAmount ?? 0;
-
-            // Mettre à jour le paiement sur la vente : acompte devient le montant total, restant devient 0
-            fresh.Sale.DepositAmount = fresh.Sale.FinalAmount;
-            fresh.Sale.RemainingAmount = 0;
-
-            await _orderRepository.UpdateAsync(fresh);
-            await _unitOfWork.SaveChangesAsync();
-
             // Mettre à jour l'état local
-            Order = fresh;
+            Order = result.Order;
             OnPropertyChanged(nameof(DepositAmount));
             OnPropertyChanged(nameof(RemainingAmount));
             OnPropertyChanged(nameof(HasRemainingBalance));
             (EncashBalanceCommand as RelayCommand)?.RaiseCanExecuteChanged();
 
-            // Créer une notification
-            if (_notificationRepository != null)
-            {
-                var notification = new Notification
-                {
-                    Type = "PaymentReceived",
-                    Title = $"Paiement encaissé - {fresh.OrderNumber}",
-                    Message = $"Le solde de {amountToEncash:F2} € a été encaissé pour la commande {fresh.OrderNumber}.",
-                    EntityId = fresh.OrderId,
-                    EntityType = "Order",
-                    IsRead = false,
-                    CreatedAt = DateTime.Now
-                };
-                await _notificationRepository.CreateAsync(notification);
-                await _unitOfWork.SaveChangesAsync();
-            }
-
             // Signaler que la commande a été mise à jour pour rafraîchir la liste/Kanban
-            OrderUpdated?.Invoke(this, fresh);
+            OrderUpdated?.Invoke(this, result.Order);
         }
         catch (Exception ex)
         {

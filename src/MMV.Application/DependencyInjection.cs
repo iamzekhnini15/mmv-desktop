@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
+using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
 
@@ -52,6 +53,12 @@ public static class DependencyInjection
         // même DbContext, donc la frontière transactionnelle (décrément/incrément + mouvement) reste atomique
         // (cohérent avec le flux d'origine P2A-1D-R2).
         services.AddScoped<ICreateStockMovementUseCase, CreateStockMovementUseCase>();
+
+        // Cinquième vertical slice (P2B-2G) — « Encaisser le solde restant d'une commande ». Portée Scoped : même
+        // portée que OpticDbContext, les repositories, IUnitOfWork et ITransactionRunner — donc même DbContext,
+        // donc la frontière transactionnelle (mise à jour du paiement + notification) reste atomique (cohérent
+        // avec le flux d'origine OrderDetailViewModel.ExecuteEncashBalanceAsync).
+        services.AddScoped<ISettleOrderBalanceUseCase, SettleOrderBalanceUseCase>();
         return services;
     }
 }
