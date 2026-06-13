@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using MMV.Application.UseCases.Sales.RegisterSale;
 
 namespace MMV.Application;
 
@@ -29,8 +30,10 @@ public static class DependencyInjection
     /// <returns>La même collection, pour chaînage.</returns>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        // Aucun enregistrement métier en P2B-2B (couche Application créée à vide).
-        // Les use cases seront ajoutés ici en P2B-2C, sans modifier cette signature.
+        // Premier vertical slice (P2B-2C) — « Enregistrer une vente en magasin ». Portée Scoped : la même que
+        // OpticDbContext, les repositories, ITransactionRunner, INumberSequenceService et IStockMutationService
+        // — afin de partager le même DbContext, donc la même transaction (cf. plan de migration §4).
+        services.AddScoped<IRegisterSaleUseCase, RegisterSaleUseCase>();
         return services;
     }
 }

@@ -1,7 +1,7 @@
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -20,14 +20,10 @@ public class CustomersViewModel : BaseViewModel
     private bool _isShowingDetail;
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IOrderRepository _orderRepository;
     private readonly IPrescriptionRepository _prescriptionRepository;
     private readonly IProductRepository _productRepository;
     private readonly ISaleRepository _saleRepository;
-    private readonly IStockMovementRepository _stockMovementRepository;
-    private readonly ITransactionRunner _transactionRunner;
-    private readonly IStockMutationService _stockMutationService;
-    private readonly INumberSequenceService _numberSequenceService;
+    private readonly IRegisterSaleUseCase _registerSaleUseCase;
     private ICommand? _viewDetailCommand;
 
     /// <summary>
@@ -104,22 +100,16 @@ public class CustomersViewModel : BaseViewModel
     /// <summary>
     /// Initialise le ViewModel avec injection de dépendances.
     /// </summary>
-    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IOrderRepository orderRepository, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IStockMovementRepository stockMovementRepository, ITransactionRunner transactionRunner, IStockMutationService stockMutationService, INumberSequenceService numberSequenceService)
+    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IRegisterSaleUseCase registerSaleUseCase)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersViewModel] Constructor called");
         _customerRepository = customerRepository;
         _unitOfWork = unitOfWork;
-        _orderRepository = orderRepository;
         _prescriptionRepository = prescriptionRepository;
         _productRepository = productRepository;
         _saleRepository = saleRepository;
-        _stockMovementRepository = stockMovementRepository;
-        // Frontière transactionnelle obligatoire (P2A-1C) : injectée par DI, transmise jusqu'à SaleFormViewModel.
-        _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
-        // Décrément de stock sûr obligatoire (P2A-1D) : injecté par DI, transmis jusqu'à SaleFormViewModel.
-        _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
-        // Numérotation fiable obligatoire (P2A-1E) : injectée par DI, transmise jusqu'à SaleFormViewModel.
-        _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
+        // Use case de sauvegarde de vente obligatoire (P2B-2C) : injecté par DI, transmis jusqu'à SaleFormViewModel.
+        _registerSaleUseCase = registerSaleUseCase ?? throw new ArgumentNullException(nameof(registerSaleUseCase));
 
         Title = "Clients";
         
@@ -205,7 +195,7 @@ public class CustomersViewModel : BaseViewModel
         if (customer != null)
         {
             // Créer une nouvelle instance du CustomerDetailViewModel
-            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _orderRepository, _prescriptionRepository, _productRepository, _saleRepository, _stockMovementRepository, _transactionRunner, _stockMutationService, _numberSequenceService);
+            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _prescriptionRepository, _productRepository, _saleRepository, _registerSaleUseCase);
             
             // Initialiser avec le client sélectionné
             await CustomerDetailViewModel.InitializeAsync(customer);

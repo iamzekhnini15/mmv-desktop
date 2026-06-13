@@ -3,8 +3,8 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -16,14 +16,10 @@ public class CustomerDetailViewModel : BaseViewModel
 {
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IOrderRepository _orderRepository;
     private readonly IPrescriptionRepository _prescriptionRepository;
     private readonly IProductRepository _productRepository;
     private readonly ISaleRepository _saleRepository; // Pour historique uniquement
-    private readonly IStockMovementRepository _stockMovementRepository;
-    private readonly ITransactionRunner _transactionRunner;
-    private readonly IStockMutationService _stockMutationService;
-    private readonly INumberSequenceService _numberSequenceService;
+    private readonly IRegisterSaleUseCase _registerSaleUseCase;
 
     private Customer? _customer;
     private int _selectedTabIndex = 0;
@@ -99,31 +95,21 @@ public class CustomerDetailViewModel : BaseViewModel
     public CustomerDetailViewModel(
         ICustomerRepository customerRepository,
         IUnitOfWork unitOfWork,
-        IOrderRepository orderRepository,
         IPrescriptionRepository prescriptionRepository,
         IProductRepository productRepository,
         ISaleRepository saleRepository,
-        IStockMovementRepository stockMovementRepository,
-        ITransactionRunner transactionRunner,
-        IStockMutationService stockMutationService,
-        INumberSequenceService numberSequenceService)
+        IRegisterSaleUseCase registerSaleUseCase)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-        _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _prescriptionRepository = prescriptionRepository ?? throw new ArgumentNullException(nameof(prescriptionRepository));
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
-        _stockMovementRepository = stockMovementRepository ?? throw new ArgumentNullException(nameof(stockMovementRepository));
-        // Frontière transactionnelle obligatoire, transmise à SaleFormViewModel (P2A-1C).
-        _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
-        // Décrément de stock sûr obligatoire, transmis à SaleFormViewModel (P2A-1D).
-        _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
-        // Numérotation fiable obligatoire, transmise à SaleFormViewModel (P2A-1E).
-        _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
+        // Use case de sauvegarde de vente obligatoire (P2B-2C), transmis à SaleFormViewModel.
+        _registerSaleUseCase = registerSaleUseCase ?? throw new ArgumentNullException(nameof(registerSaleUseCase));
 
         BackCommand = new RelayCommand(ExecuteBack);
-        
+
         Title = "Fiche Client";
     }
 
@@ -135,8 +121,10 @@ public class CustomerDetailViewModel : BaseViewModel
         Customer = customer;
         Title = $"Fiche - {customer.FirstName} {customer.LastName}";
 
-        // Initialiser le ViewModel de commande/vente avec les repositories nécessaires
-        SaleFormViewModel = new SaleFormViewModel(_saleRepository, _orderRepository, _productRepository, _prescriptionRepository, _stockMovementRepository, _unitOfWork, _transactionRunner, _stockMutationService, _numberSequenceService)
+        // Initialiser le ViewModel de vente : repositories nécessaires au chargement d'écran (produits +
+        // ordonnance) et use case applicatif pour la sauvegarde (P2B-2C). Plus aucune primitive de
+        // transaction / numérotation / stock transmise à la ViewModel.
+        SaleFormViewModel = new SaleFormViewModel(_productRepository, _prescriptionRepository, _registerSaleUseCase)
         {
             Title = "Nouvelle Vente"
         };
