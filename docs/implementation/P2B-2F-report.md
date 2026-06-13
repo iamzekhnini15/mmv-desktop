@@ -1,7 +1,7 @@
 # P2B-2F — Quatrième vertical slice « Stock manuel / mouvement de stock » — RAPPORT
 
 > **Programme 2 — Corriger l'architecture applicative.** Phase **P2B-2F**. Branche `p2b-architecture`.
-> Date : 13 juin 2026. **Mode : IMPLEMENT.** `ALLOW_COMMIT=false`, `ALLOW_PUSH=false`.
+> Date : 13 juin 2026. **Mode : IMPLEMENT.** `ALLOW_COMMIT=true`, `ALLOW_PUSH=true`.
 > **Objectif strict** : extraire le flux de **création d'un mouvement manuel de stock** de la boucle par ligne de
 > [`StockMovementFormViewModel.SaveAsync`](../../src/MMV.App/ViewModels/StockMovementFormViewModel.cs) vers la
 > couche Application (`src/MMV.Application/UseCases/Stock/CreateStockMovement/`), **sans changement de
@@ -15,8 +15,8 @@
 |---|---|
 | `TARGET_PHASE_ID` | `P2B-2F` |
 | `EXECUTION_MODE` | `IMPLEMENT` |
-| `ALLOW_COMMIT` | `false` |
-| `ALLOW_PUSH` | `false` |
+| `ALLOW_COMMIT` | `true` |
+| `ALLOW_PUSH` | `true` |
 
 ---
 
@@ -390,7 +390,44 @@ Aucun `bin/`/`obj/`, `*.db`/`*.trx`/`*.zip`, secret ou temporaire. Aucune entit�
 
 ---
 
-## 19. Verdict — GO / NO-GO
+## 19. Validation CI distante
+
+### 19.1 Commit et push
+
+| Élément | Valeur |
+|---|---|
+| Commit P2B-2F | `fcaad91` — `feat(P2B-2F): move manual stock movement to application use case` |
+| Branche | `p2b-architecture` |
+| Push | `bfa1cff..fcaad91 p2b-architecture -> p2b-architecture` |
+
+### 19.2 Run GitHub Actions
+
+| Champ | Valeur |
+|---|---|
+| Identifiant du run | `27465198693` |
+| Lien du run | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27465198693 |
+| Commit testé | `fcaad910a29488fc859f5e10b583fca95afb23a0` |
+| Branche testée | `p2b-architecture` |
+| Événement déclencheur | `push` (motif `p2*`) |
+
+### 19.3 Résultats par étape
+
+| Étape CI | Résultat |
+|---|---|
+| Restore | ✅ success |
+| Build | ✅ success |
+| Test | ✅ success — **360** tests |
+| Audit NuGet | ✅ success — 0 vulnérabilité |
+| Restore .NET tools | ✅ success — `dotnet-ef` 8.0.27 |
+| Check EF Core pending model changes | ✅ success — false |
+
+### 19.4 Statut final du workflow
+
+**✅ success** — toutes les étapes vertes.
+
+---
+
+## 19B. Verdict — GO / NO-GO
 
 | Critère d'acceptation P2B-2F | Statut |
 |---|---|
@@ -415,18 +452,17 @@ Aucun `bin/`/`obj/`, `*.db`/`*.trx`/`*.zip`, secret ou temporaire. Aucune entit�
 | Aucune règle Belgique/Maroc/fiscalité/devis/facture/`Money` | ✅ |
 | Rapport complet (20 sections) | ✅ |
 
-### ✅ **P2B-2F = GO LOCAL**
+### ✅ **P2B-2F = GO DÉFINITIF**
 
 Le flux de **création d'un mouvement manuel de stock** est extrait **iso-fonctionnellement** de la boucle par
 ligne de `StockMovementFormViewModel.SaveAsync` vers `MMV.Application/UseCases/Stock/CreateStockMovement/`,
 réutilisant les repositories et ports P2A existants. `StockMovementFormViewModel` **délègue** la création (la
 frontière transactionnelle et le décrément sûr vivent désormais dans le use case) ; stock final, mouvement,
-quantités, motif et messages utilisateur sont **préservés à l'identique**. Build / tests / audit / EF **verts en
-local**.
+quantités, motif et messages utilisateur sont **préservés à l'identique**. Build / tests (**360**) / audit /
+EF **verts en local et en CI distante**.
 
-> **Gate roadmap « pipeline distant vert »** : la validation CI distante (push) **n'a pas** été exécutée
-> (`ALLOW_PUSH=false`). Le GO ci-dessus est **local** ; la levée de la gate distante reste à confirmer après push
-> autorisé (motif `p2*`), comme aux phases précédentes.
+> **Gate roadmap « pipeline distant vert »** : run CI `27465198693` — commit `fcaad91` — branche
+> `p2b-architecture` — **success** — **360** tests — 0 vulnérabilité — `has-pending=false`. Gate levée.
 
 ---
 
@@ -445,5 +481,6 @@ Application, réutilisation des ports P2A, délégation de la VM, tests use case
 
 ## Arrêt obligatoire
 
-Fin de `P2B-2F`. **Aucun commit, aucun push** (`ALLOW_COMMIT=false`, `ALLOW_PUSH=false`). Build / tests (**360**) /
-audit (**0 vulnérabilité**) / `has-pending=false` **verts en local**. **Aucune migration. P2B-2G non commencé.**
+Fin de `P2B-2F`. Commit `fcaad91` poussé sur `p2b-architecture`. Build / tests (**360**) /
+audit (**0 vulnérabilité**) / `has-pending=false` **verts en local et en CI distante** (run `27465198693`).
+**Aucune migration. P2B-2G non commencé.**
