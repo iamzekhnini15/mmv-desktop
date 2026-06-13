@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Persistence;
@@ -20,12 +21,12 @@ public class OrdersViewModel : BaseViewModel
     private readonly ICustomerRepository _customerRepository;
     private readonly IProductRepository _productRepository;
     private readonly IPrescriptionRepository _prescriptionRepository;
-    private readonly IStockMovementRepository _stockMovementRepository;
     private readonly INotificationRepository _notificationRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDialogService _dialogService;
     private readonly INumberSequenceService _numberSequenceService;
     private readonly ICreateOrderUseCase _createOrderUseCase;
+    private readonly IAdvanceOrderStatusUseCase _advanceOrderStatusUseCase;
 
     private OrdersListViewModel _listViewModel;
     private OrderFormViewModel? _formViewModel;
@@ -122,18 +123,17 @@ public class OrdersViewModel : BaseViewModel
         ICustomerRepository customerRepository,
         IProductRepository productRepository,
         IPrescriptionRepository prescriptionRepository,
-        IStockMovementRepository stockMovementRepository,
         INotificationRepository notificationRepository,
         IUnitOfWork unitOfWork,
         IDialogService dialogService,
         INumberSequenceService numberSequenceService,
-        ICreateOrderUseCase createOrderUseCase)
+        ICreateOrderUseCase createOrderUseCase,
+        IAdvanceOrderStatusUseCase advanceOrderStatusUseCase)
     {
         _orderRepository = orderRepository;
         _customerRepository = customerRepository;
         _productRepository = productRepository;
         _prescriptionRepository = prescriptionRepository;
-        _stockMovementRepository = stockMovementRepository;
         _notificationRepository = notificationRepository;
         _unitOfWork = unitOfWork;
         _dialogService = dialogService;
@@ -141,6 +141,8 @@ public class OrdersViewModel : BaseViewModel
         _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
         // Use case de création (P2B-2D) obligatoire : transmis jusqu'à OrderFormViewModel pour la délégation.
         _createOrderUseCase = createOrderUseCase ?? throw new ArgumentNullException(nameof(createOrderUseCase));
+        // Use case d'avancement de statut (P2B-2E) obligatoire : transmis jusqu'à OrderDetailViewModel.
+        _advanceOrderStatusUseCase = advanceOrderStatusUseCase ?? throw new ArgumentNullException(nameof(advanceOrderStatusUseCase));
 
         // Initialiser la liste
         _listViewModel = new OrdersListViewModel(orderRepository);
@@ -221,7 +223,7 @@ public class OrdersViewModel : BaseViewModel
             }
 
             DetailViewModel = new OrderDetailViewModel(
-                _orderRepository, _unitOfWork, _stockMovementRepository, _notificationRepository);
+                _orderRepository, _unitOfWork, _advanceOrderStatusUseCase, _notificationRepository);
             DetailViewModel.Initialize(fullOrder);
             DetailViewModel.BackRequested += OnDetailBackRequested;
             DetailViewModel.EditRequested += OnEditOrderRequested;

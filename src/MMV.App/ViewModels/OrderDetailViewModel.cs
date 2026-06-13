@@ -1,9 +1,9 @@
 using System;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Repositories;
@@ -18,8 +18,8 @@ public class OrderDetailViewModel : BaseViewModel
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IStockMovementRepository _stockMovementRepository;
     private readonly INotificationRepository? _notificationRepository;
+    private readonly IAdvanceOrderStatusUseCase _advanceOrderStatusUseCase;
 
     private Order? _order;
     private ObservableCollection<OrderItem> _items = new();
@@ -232,12 +232,14 @@ public class OrderDetailViewModel : BaseViewModel
     public OrderDetailViewModel(
         IOrderRepository orderRepository,
         IUnitOfWork unitOfWork,
-        IStockMovementRepository stockMovementRepository,
+        IAdvanceOrderStatusUseCase advanceOrderStatusUseCase,
         INotificationRepository? notificationRepository = null)
     {
         _orderRepository = orderRepository;
         _unitOfWork = unitOfWork;
-        _stockMovementRepository = stockMovementRepository;
+        // Use case d'avancement de statut (P2B-2E) obligatoire : le flux d'avancement est délégué à la couche
+        // Application (plus de mise à jour de statut / mouvements de stock / notification directs dans la VM).
+        _advanceOrderStatusUseCase = advanceOrderStatusUseCase ?? throw new ArgumentNullException(nameof(advanceOrderStatusUseCase));
         _notificationRepository = notificationRepository;
 
         AdvanceStatusCommand = new RelayCommand(async () => await AdvanceStatusAsync(), () => CanAdvanceStatus);
@@ -314,9 +316,11 @@ public class OrderDetailViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Fait avancer le statut de la commande vers l'étape suivante.
-    /// Gère la mise à jour du stock lors du passage en fabrication.
-    /// Crée une notification de changement de statut.
+    /// Fait avancer le statut de la commande vers l'étape suivante en <b>déléguant</b> l'orchestration métier
+    /// (mise à jour du statut, mouvements de stock de fabrication, notification, enregistrement) au use case
+    /// Application <see cref="IAdvanceOrderStatusUseCase"/> (P2B-2E). La ViewModel conserve la validation/garde
+    /// d'affichage (<see cref="CanAdvanceStatus"/>), construit la commande à partir de son état (statut courant,
+    /// transition résolue, libellés d'affichage) et mappe le résultat vers son état local / ses événements.
     /// </summary>
     private async Task AdvanceStatusAsync()
     {
@@ -328,51 +332,29 @@ public class OrderDetailViewModel : BaseViewModel
 
         try
         {
-            var previousStatus = Order.Status;
+            var command = new AdvanceOrderStatusCommand
+            {
+                OrderId = Order.OrderId,
+                CurrentStatus = Order.Status,
+                NextStatus = nextStatus.Value,
+                CustomerDisplayName = CustomerName,
+                CurrentStatusDisplay = OrdersListViewModel.StatusEnumToDisplay(Order.Status),
+                NextStatusDisplay = OrdersListViewModel.StatusEnumToDisplay(nextStatus.Value)
+            };
 
-            // Recharger la commande fraîche pour éviter les conflits EF
-            var fresh = await _orderRepository.GetWithItemsAsync(Order.OrderId);
-            if (fresh == null)
+            var result = await _advanceOrderStatusUseCase.ExecuteAsync(command);
+            if (!result.OrderFound || result.Order == null)
             {
                 ErrorMessage = "Commande introuvable.";
                 return;
             }
 
-            fresh.Status = nextStatus.Value;
-            await _orderRepository.UpdateAsync(fresh);
-
-            // Sortie de stock lors du passage en fabrication
-            if (previousStatus == OrderStatus.ToFabricate && nextStatus.Value == OrderStatus.InProgress)
-            {
-                await CreateStockMovementsForFabrication(fresh);
-            }
-
-            // Créer une notification
-            if (_notificationRepository != null)
-            {
-                var notification = new Notification
-                {
-                    Type = "OrderStatusChanged",
-                    Title = $"Commande {fresh.OrderNumber} : {OrdersListViewModel.StatusEnumToDisplay(nextStatus.Value)}",
-                    Message = $"La commande {fresh.OrderNumber} ({CustomerName}) est passée de " +
-                              $"'{OrdersListViewModel.StatusEnumToDisplay(previousStatus)}' à " +
-                              $"'{OrdersListViewModel.StatusEnumToDisplay(nextStatus.Value)}'.",
-                    EntityId = fresh.OrderId,
-                    EntityType = "Order",
-                    IsRead = false,
-                    CreatedAt = DateTime.Now
-                };
-                await _notificationRepository.CreateAsync(notification);
-            }
-
-            await _unitOfWork.SaveChangesAsync();
-
             // Mettre à jour l'état local
-            Order = fresh;
-            Items = new ObservableCollection<OrderItem>(fresh.OrderItems);
+            Order = result.Order;
+            Items = new ObservableCollection<OrderItem>(result.Order.OrderItems);
 
             // Signaler que la commande a été mise à jour pour rafraîchir la liste/Kanban
-            OrderUpdated?.Invoke(this, fresh);
+            OrderUpdated?.Invoke(this, result.Order);
         }
         catch (Exception ex)
         {
@@ -382,33 +364,6 @@ public class OrderDetailViewModel : BaseViewModel
         finally
         {
             IsLoading = false;
-        }
-    }
-
-    /// <summary>
-    /// Crée des mouvements de stock de type OUT pour chaque article de la commande.
-    /// </summary>
-    private async Task CreateStockMovementsForFabrication(Order order)
-    {
-        foreach (var item in order.OrderItems.Where(i => i.ProductId.HasValue))
-        {
-            var movement = new StockMovement
-            {
-                ProductId = item.ProductId!.Value,
-                MovementType = StockMovementType.Out,
-                Quantity = item.Quantity,
-                Reason = $"Fabrication commande {order.OrderNumber}",
-                CreatedAt = DateTime.UtcNow,
-            };
-
-            await _stockMovementRepository.CreateAsync(movement);
-
-            // Mettre à jour le stock du produit
-            if (item.Product != null)
-            {
-                item.Product.StockQuantity -= item.Quantity;
-                // Note: le SaveChanges est fait au niveau appelant
-            }
         }
     }
 

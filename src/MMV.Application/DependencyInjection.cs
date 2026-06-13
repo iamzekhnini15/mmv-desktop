@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Sales.RegisterSale;
 
@@ -39,6 +40,11 @@ public static class DependencyInjection
         // Deuxième vertical slice (P2B-2D) — « Créer une commande fournisseur ». Portée Scoped : même portée que
         // OpticDbContext, les repositories et IUnitOfWork — donc même DbContext (cohérent avec le flux d'origine).
         services.AddScoped<ICreateOrderUseCase, CreateOrderUseCase>();
+
+        // Troisième vertical slice (P2B-2E) — « Faire avancer le statut / réception d'une commande ». Portée
+        // Scoped : même portée que OpticDbContext, les repositories et IUnitOfWork — donc même DbContext, donc le
+        // SaveChangesAsync unique reste atomique (cohérent avec le flux d'origine).
+        services.AddScoped<IAdvanceOrderStatusUseCase, AdvanceOrderStatusUseCase>();
         return services;
     }
 }
