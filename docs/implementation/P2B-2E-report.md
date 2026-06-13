@@ -388,17 +388,41 @@ repository, `DbContext` ou service Infrastructure modifié.
 | Aucune règle Belgique/Maroc/fiscalité/devis/facture/`Money` | ✅ |
 | Rapport complet (20 sections) | ✅ |
 
-### ✅ **P2B-2E = GO LOCAL**
+### ✅ **P2B-2E = GO DÉFINITIF**
 
 Le flux d'**avancement de statut / réception** d'une commande est extrait **iso-fonctionnellement** de
 `OrderDetailViewModel.AdvanceStatusAsync` vers `MMV.Application/UseCases/Orders/AdvanceOrderStatus/`,
 réutilisant les repositories existants. `OrderDetailViewModel` **délègue** l'avancement ; statuts, mouvements
 de stock de fabrication et notification sont **préservés à l'identique**. Build/tests/audit/EF **verts en
-local**. **Aucune** migration, **aucune** règle réglementaire modifiée.
+local et en CI distante** (run **#29** `27464267299`, commit `0a76bb9`, branche `p2b-architecture`) ⇒ la gate
+« pipeline distant vert » est **levée** (cf. §19 bis). **Aucune** migration, **aucune** règle réglementaire
+modifiée.
 
-> **Gate « pipeline distant vert » non encore levée** : `ALLOW_PUSH=false`, aucune validation CI distante dans
-> cette phase. La levée de cette gate (run GitHub Actions sur la branche `p2b-architecture`) interviendra
-> après autorisation explicite de commit/push, comme en P2B-2D §19 bis.
+---
+
+## 19 bis. Validation CI distante (run réel)
+
+Le push du commit `0a76bb9` a **déclenché** le pipeline GitHub Actions via le motif `p2*`.
+
+| Élément | Valeur réelle |
+|---|---|
+| **Run** | **#29** — id **`27464267299`** |
+| **Lien** | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27464267299 |
+| **Commit testé** | **`0a76bb9`** (`head_sha = 0a76bb992782b0cf2e41f0c44ba28a9e82cec36e`) |
+| **Branche testée** | **`p2b-architecture`** (déclenchée par le motif `p2*`) |
+| Événement / workflow | `push` / `CI` — `Restore / Build / Test / Scan` |
+| **Restore** | ✅ **success** |
+| **Build** | ✅ **success** |
+| **Test** | ✅ **success** (suite **351** confirmée localement) |
+| **Audit NuGet** (JSON + sévérité) | ✅ **success** — **0 vulnérabilité** |
+| **Restore .NET tools** | ✅ **success** (`dotnet-ef` 8.0.27) |
+| **Check EF Core pending model changes** | ✅ **success** — `has-pending-model-changes` = **false** |
+| **Statut final du workflow** | ✅ **completed / success (VERT)** |
+
+Tous les steps en conclusion `success` : *Set up job, Checkout, Setup .NET, Diagnostic SDK, Restore, Build,
+Test, Audit des packages vulnérables, Restore .NET tools, Check EF Core pending model changes, Post-steps,
+Complete job*. **VALIDATION DISTANTE OBTENUE** : la gate roadmap « pipeline distant vert » est **levée** pour
+P2B-2E.
 
 ---
 
@@ -418,5 +442,6 @@ local**. **Aucune** migration, **aucune** règle réglementaire modifiée.
 
 ## Arrêt obligatoire
 
-Fin de `P2B-2E`. **Aucun commit, aucun push.** Build/tests/audit/EF **verts en local** (351 tests, 0
-vulnérabilité, `has-pending=false`). **Aucune migration. P2B-2F non commencé.**
+Fin de `P2B-2E`. Commit `0a76bb9` (feat) + commit documentaire (validation CI) **poussés sur autorisation
+explicite** (branche `p2b-architecture`, sans force). CI distante **#29** (`27464267299`) **verte** (351
+tests, 0 vulnérabilité, `has-pending=false`). **Aucune migration. P2B-2F non commencé.**
