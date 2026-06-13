@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Orders.CreateOrder;
+using MMV.Application.UseCases.Orders.UpdateOrder;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
@@ -79,12 +80,11 @@ public class OrderFormViewModelCreateDelegationTests
     /// </summary>
     private static async Task<OrderFormViewModel> BuildReadyToSaveViewModelAsync(ICreateOrderUseCase useCase)
     {
-        var orderRepo = new Mock<IOrderRepository>();
         var customerRepo = new Mock<ICustomerRepository>();
         var productRepo = new Mock<IProductRepository>();
         var prescriptionRepo = new Mock<IPrescriptionRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
         var numberSequence = new Mock<INumberSequenceService>();
+        var updateOrderUseCase = new Mock<IUpdateOrderUseCase>();
 
         customerRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Customer> { new() { CustomerId = 7, FirstName = "Cli", LastName = "Ent" } });
@@ -96,8 +96,8 @@ public class OrderFormViewModelCreateDelegationTests
             .ReturnsAsync("CMD-000001");
 
         var viewModel = new OrderFormViewModel(
-            orderRepo.Object, customerRepo.Object, productRepo.Object,
-            prescriptionRepo.Object, unitOfWork.Object, numberSequence.Object, useCase);
+            customerRepo.Object, productRepo.Object, prescriptionRepo.Object,
+            numberSequence.Object, useCase, updateOrderUseCase.Object);
 
         await viewModel.InitializeAsync();
 
@@ -209,20 +209,19 @@ public class OrderFormViewModelCreateDelegationTests
     {
         var spy = new SpyCreateOrderUseCase();
 
-        var orderRepo = new Mock<IOrderRepository>();
         var customerRepo = new Mock<ICustomerRepository>();
         var productRepo = new Mock<IProductRepository>();
         var prescriptionRepo = new Mock<IPrescriptionRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
         var numberSequence = new Mock<INumberSequenceService>();
+        var updateOrderUseCase = new Mock<IUpdateOrderUseCase>();
         customerRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<Customer>());
         productRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<Product>());
         numberSequence.Setup(s => s.NextNumberAsync(DocumentSequenceNames.Order, It.IsAny<CancellationToken>()))
             .ReturnsAsync("CMD-000001");
 
         var viewModel = new OrderFormViewModel(
-            orderRepo.Object, customerRepo.Object, productRepo.Object,
-            prescriptionRepo.Object, unitOfWork.Object, numberSequence.Object, spy);
+            customerRepo.Object, productRepo.Object, prescriptionRepo.Object,
+            numberSequence.Object, spy, updateOrderUseCase.Object);
         await viewModel.InitializeAsync();
 
         viewModel.SaveCommand.Execute(null);
@@ -238,16 +237,15 @@ public class OrderFormViewModelCreateDelegationTests
     [Fact]
     public void Constructor_WithoutCreateOrderUseCase_Throws()
     {
-        var orderRepo = new Mock<IOrderRepository>();
         var customerRepo = new Mock<ICustomerRepository>();
         var productRepo = new Mock<IProductRepository>();
         var prescriptionRepo = new Mock<IPrescriptionRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
         var numberSequence = new Mock<INumberSequenceService>();
+        var updateOrderUseCase = new Mock<IUpdateOrderUseCase>();
 
         Assert.Throws<ArgumentNullException>(() => new OrderFormViewModel(
-            orderRepo.Object, customerRepo.Object, productRepo.Object,
-            prescriptionRepo.Object, unitOfWork.Object, numberSequence.Object, createOrderUseCase: null!));
+            customerRepo.Object, productRepo.Object, prescriptionRepo.Object,
+            numberSequence.Object, createOrderUseCase: null!, updateOrderUseCase.Object));
     }
 
     // ------------------------------------------------------------------

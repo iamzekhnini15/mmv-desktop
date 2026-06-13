@@ -9,6 +9,7 @@ using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Orders.DeleteOrder;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
+using MMV.Application.UseCases.Orders.UpdateOrder;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Persistence;
@@ -90,6 +91,7 @@ public class OrdersViewModelDeleteDelegationTests
         var notificationRepo = new Mock<INotificationRepository>();
         var numberSequenceService = new Mock<INumberSequenceService>();
         var createOrderUseCase = new Mock<ICreateOrderUseCase>();
+        var updateOrderUseCase = new Mock<IUpdateOrderUseCase>();
         var advanceOrderStatusUseCase = new Mock<IAdvanceOrderStatusUseCase>();
         var settleOrderBalanceUseCase = new Mock<ISettleOrderBalanceUseCase>();
 
@@ -109,6 +111,7 @@ public class OrdersViewModelDeleteDelegationTests
             dialogService.Object,
             numberSequenceService.Object,
             createOrderUseCase.Object,
+            updateOrderUseCase.Object,
             advanceOrderStatusUseCase.Object,
             settleOrderBalanceUseCase.Object,
             spy);
@@ -230,6 +233,7 @@ public class OrdersViewModelDeleteDelegationTests
         var notificationRepo = new Mock<INotificationRepository>();
         var numberSequenceService = new Mock<INumberSequenceService>();
         var createOrderUseCase = new Mock<ICreateOrderUseCase>();
+        var updateOrderUseCase = new Mock<IUpdateOrderUseCase>();
         var advanceOrderStatusUseCase = new Mock<IAdvanceOrderStatusUseCase>();
         var settleOrderBalanceUseCase = new Mock<ISettleOrderBalanceUseCase>();
         var dialogService = new Mock<IDialogService>();
@@ -244,6 +248,7 @@ public class OrdersViewModelDeleteDelegationTests
             dialogService.Object,
             numberSequenceService.Object,
             createOrderUseCase.Object,
+            updateOrderUseCase.Object,
             advanceOrderStatusUseCase.Object,
             settleOrderBalanceUseCase.Object,
             deleteOrderUseCase: null!));

@@ -3,6 +3,7 @@ using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Orders.DeleteOrder;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
+using MMV.Application.UseCases.Orders.UpdateOrder;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
 
@@ -65,6 +66,12 @@ public static class DependencyInjection
         // OpticDbContext, les repositories et IUnitOfWork — donc même DbContext. Mono-écriture (DeleteAsync +
         // SaveChangesAsync), ITransactionRunner non requis.
         services.AddScoped<IDeleteOrderUseCase, DeleteOrderUseCase>();
+
+        // Septième vertical slice (P2B-2I) — « Modifier une commande existante ». Portée Scoped : même portée que
+        // OpticDbContext, les repositories et IUnitOfWork — donc même DbContext (cohérent avec le flux d'origine).
+        // Mono-écriture (UpdateAsync + SaveChangesAsync unique, reconstruction des lignes incluse via cascades EF),
+        // ITransactionRunner non requis.
+        services.AddScoped<IUpdateOrderUseCase, UpdateOrderUseCase>();
         return services;
     }
 }
