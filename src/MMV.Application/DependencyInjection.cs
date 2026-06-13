@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
+using MMV.Application.UseCases.Orders.DeleteOrder;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
@@ -59,6 +60,11 @@ public static class DependencyInjection
         // donc la frontière transactionnelle (mise à jour du paiement + notification) reste atomique (cohérent
         // avec le flux d'origine OrderDetailViewModel.ExecuteEncashBalanceAsync).
         services.AddScoped<ISettleOrderBalanceUseCase, SettleOrderBalanceUseCase>();
+
+        // Sixième vertical slice (P2B-2H) — « Supprimer une commande ». Portée Scoped : même portée que
+        // OpticDbContext, les repositories et IUnitOfWork — donc même DbContext. Mono-écriture (DeleteAsync +
+        // SaveChangesAsync), ITransactionRunner non requis.
+        services.AddScoped<IDeleteOrderUseCase, DeleteOrderUseCase>();
         return services;
     }
 }

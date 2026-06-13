@@ -5,6 +5,7 @@ using MMV.App.Commands;
 using MMV.App.Services;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
+using MMV.Application.UseCases.Orders.DeleteOrder;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Persistence;
@@ -29,6 +30,7 @@ public class OrdersViewModel : BaseViewModel
     private readonly ICreateOrderUseCase _createOrderUseCase;
     private readonly IAdvanceOrderStatusUseCase _advanceOrderStatusUseCase;
     private readonly ISettleOrderBalanceUseCase _settleOrderBalanceUseCase;
+    private readonly IDeleteOrderUseCase _deleteOrderUseCase;
 
     private OrdersListViewModel _listViewModel;
     private OrderFormViewModel? _formViewModel;
@@ -131,7 +133,8 @@ public class OrdersViewModel : BaseViewModel
         INumberSequenceService numberSequenceService,
         ICreateOrderUseCase createOrderUseCase,
         IAdvanceOrderStatusUseCase advanceOrderStatusUseCase,
-        ISettleOrderBalanceUseCase settleOrderBalanceUseCase)
+        ISettleOrderBalanceUseCase settleOrderBalanceUseCase,
+        IDeleteOrderUseCase deleteOrderUseCase)
     {
         _orderRepository = orderRepository;
         _customerRepository = customerRepository;
@@ -148,6 +151,9 @@ public class OrdersViewModel : BaseViewModel
         _advanceOrderStatusUseCase = advanceOrderStatusUseCase ?? throw new ArgumentNullException(nameof(advanceOrderStatusUseCase));
         // Use case d'encaissement du solde (P2B-2G) obligatoire : transmis jusqu'à OrderDetailViewModel.
         _settleOrderBalanceUseCase = settleOrderBalanceUseCase ?? throw new ArgumentNullException(nameof(settleOrderBalanceUseCase));
+        // Use case de suppression de commande (P2B-2H) obligatoire : le flux de suppression est délégué à la
+        // couche Application (plus de DeleteAsync/SaveChangesAsync directs dans la VM).
+        _deleteOrderUseCase = deleteOrderUseCase ?? throw new ArgumentNullException(nameof(deleteOrderUseCase));
 
         // Initialiser la liste
         _listViewModel = new OrdersListViewModel(orderRepository);
@@ -315,8 +321,8 @@ public class OrdersViewModel : BaseViewModel
         {
             try
             {
-                await _orderRepository.DeleteAsync(order.OrderId);
-                await _unitOfWork.SaveChangesAsync();
+                var command = new DeleteOrderCommand { OrderId = order.OrderId };
+                await _deleteOrderUseCase.ExecuteAsync(command);
                 CloseDetail();
                 await ListViewModel.LoadOrdersAsync();
             }
