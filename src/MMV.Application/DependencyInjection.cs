@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Sales.RegisterSale;
 
 namespace MMV.Application;
@@ -34,6 +35,10 @@ public static class DependencyInjection
         // OpticDbContext, les repositories, ITransactionRunner, INumberSequenceService et IStockMutationService
         // — afin de partager le même DbContext, donc la même transaction (cf. plan de migration §4).
         services.AddScoped<IRegisterSaleUseCase, RegisterSaleUseCase>();
+
+        // Deuxième vertical slice (P2B-2D) — « Créer une commande fournisseur ». Portée Scoped : même portée que
+        // OpticDbContext, les repositories et IUnitOfWork — donc même DbContext (cohérent avec le flux d'origine).
+        services.AddScoped<ICreateOrderUseCase, CreateOrderUseCase>();
         return services;
     }
 }

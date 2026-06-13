@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
+using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
@@ -49,9 +50,11 @@ public class OrderFormViewModelNumberingTests
         numberSequence.Setup(s => s.NextNumberAsync(DocumentSequenceNames.Order, It.IsAny<CancellationToken>()))
             .ReturnsAsync("CMD-000007");
 
+        var createOrderUseCase = new Mock<ICreateOrderUseCase>();
+
         var viewModel = new OrderFormViewModel(
             orderRepo.Object, customerRepo.Object, productRepo.Object,
-            prescriptionRepo.Object, unitOfWork.Object, numberSequence.Object);
+            prescriptionRepo.Object, unitOfWork.Object, numberSequence.Object, createOrderUseCase.Object);
 
         await viewModel.InitializeAsync();
 
@@ -70,8 +73,10 @@ public class OrderFormViewModelNumberingTests
         var prescriptionRepo = new Mock<IPrescriptionRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
 
+        var createOrderUseCase = new Mock<ICreateOrderUseCase>();
+
         Assert.Throws<ArgumentNullException>(() => new OrderFormViewModel(
             orderRepo.Object, customerRepo.Object, productRepo.Object,
-            prescriptionRepo.Object, unitOfWork.Object, null!));
+            prescriptionRepo.Object, unitOfWork.Object, null!, createOrderUseCase.Object));
     }
 }

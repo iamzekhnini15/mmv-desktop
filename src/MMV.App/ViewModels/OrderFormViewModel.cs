@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Persistence;
@@ -229,6 +230,7 @@ public class OrderFormViewModel : BaseViewModel
     private readonly IPrescriptionRepository _prescriptionRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly INumberSequenceService _numberSequenceService;
+    private readonly ICreateOrderUseCase _createOrderUseCase;
 
     // Client
     private ObservableCollection<Customer> _allCustomers = new();
@@ -387,6 +389,7 @@ public class OrderFormViewModel : BaseViewModel
         IPrescriptionRepository prescriptionRepository,
         IUnitOfWork unitOfWork,
         INumberSequenceService numberSequenceService,
+        ICreateOrderUseCase createOrderUseCase,
         Order? existingOrder = null)
     {
         _orderRepository = orderRepository;
@@ -396,6 +399,9 @@ public class OrderFormViewModel : BaseViewModel
         _unitOfWork = unitOfWork;
         // Numérotation fiable obligatoire (P2A-1E) : remplace le comptage count+1 sujet aux collisions.
         _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
+        // Use case de création (P2B-2D) obligatoire : la persistance de la création est déléguée à la couche
+        // Application ; la ViewModel ne crée/sauvegarde plus directement la commande pour ce flux.
+        _createOrderUseCase = createOrderUseCase ?? throw new ArgumentNullException(nameof(createOrderUseCase));
         _existingOrder = existingOrder;
         _isEditMode = existingOrder != null;
 
@@ -605,45 +611,21 @@ public class OrderFormViewModel : BaseViewModel
 
         try
         {
-            var order = _existingOrder ?? new Order();
-            order.OrderNumber = OrderNumber;
-            order.EstimatedDelivery = EstimatedDelivery;
-            order.Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes;
-            // Note: Order n'a plus CustomerId/TotalAmount - ces propriétés sont sur Sale
-
-            if (!_isEditMode)
-            {
-                order.OrderDate = DateTime.UtcNow;
-                order.Status = OrderStatus.New;
-            }
-
-            // Construire les articles
-            order.OrderItems.Clear();
-            foreach (var line in OrderItems.Where(i => i.IsValid))
-            {
-                order.OrderItems.Add(new OrderItem
-                {
-                    ProductId = line.SelectedProduct!.ProductId,
-                    ItemType = line.ItemType,
-                    Quantity = line.Quantity,
-                    UnitPrice = line.UnitPrice,
-                    Sphere = line.IsLens ? line.Sphere : null,
-                    Cylinder = line.IsLens ? line.Cylinder : null,
-                    Axis = line.IsLens ? line.Axis : null,
-                    Addition = line.IsLens ? line.Addition : null,
-                });
-            }
-
             if (_isEditMode)
             {
-                await _orderRepository.UpdateAsync(order);
+                // Édition d'une commande existante : flux NON migré en P2B-2D (reporté). Reste dans la ViewModel,
+                // inchangé, en attendant un use case de modification ultérieur (strangler).
+                await UpdateExistingOrderAsync();
             }
             else
             {
-                await _orderRepository.CreateAsync(order);
+                // Création : déléguée au use case Application (P2B-2D). La ViewModel ne construit/sauvegarde plus
+                // directement la commande ; elle se contente de mapper son état vers la Command et d'appeler le
+                // use case (la numérotation ORDER reste attribuée à l'ouverture du formulaire, affichée en lecture
+                // seule, et transmise telle quelle).
+                await _createOrderUseCase.ExecuteAsync(BuildCreateOrderCommand());
             }
 
-            await _unitOfWork.SaveChangesAsync();
             OrderSaved?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
@@ -655,5 +637,67 @@ public class OrderFormViewModel : BaseViewModel
         {
             IsSaving = false;
         }
+    }
+
+    /// <summary>
+    /// Construit la <see cref="CreateOrderCommand"/> à partir de l'état du formulaire (mapping de présentation).
+    /// Ne porte que les lignes valides ; les paramètres optiques bruts sont transmis tels quels (le use case
+    /// applique la même règle « verres uniquement » que le flux d'origine).
+    /// </summary>
+    private CreateOrderCommand BuildCreateOrderCommand()
+    {
+        return new CreateOrderCommand
+        {
+            OrderNumber = OrderNumber,
+            EstimatedDelivery = EstimatedDelivery,
+            Notes = Notes,
+            Lines = OrderItems
+                .Where(i => i.IsValid)
+                .Select(line => new CreateOrderLineCommand
+                {
+                    ProductId = line.SelectedProduct!.ProductId,
+                    ItemType = line.ItemType,
+                    Quantity = line.Quantity,
+                    UnitPrice = line.UnitPrice,
+                    Sphere = line.Sphere,
+                    Cylinder = line.Cylinder,
+                    Axis = line.Axis,
+                    Addition = line.Addition,
+                })
+                .ToList()
+        };
+    }
+
+    /// <summary>
+    /// Met à jour une commande existante (mode édition). Flux <b>non migré</b> en P2B-2D : conservé à
+    /// l'identique dans la ViewModel (repositories + SaveChanges directs) jusqu'à sa migration ultérieure.
+    /// </summary>
+    private async Task UpdateExistingOrderAsync()
+    {
+        var order = _existingOrder ?? new Order();
+        order.OrderNumber = OrderNumber;
+        order.EstimatedDelivery = EstimatedDelivery;
+        order.Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes;
+        // Note: Order n'a plus CustomerId/TotalAmount - ces propriétés sont sur Sale
+
+        // Construire les articles
+        order.OrderItems.Clear();
+        foreach (var line in OrderItems.Where(i => i.IsValid))
+        {
+            order.OrderItems.Add(new OrderItem
+            {
+                ProductId = line.SelectedProduct!.ProductId,
+                ItemType = line.ItemType,
+                Quantity = line.Quantity,
+                UnitPrice = line.UnitPrice,
+                Sphere = line.IsLens ? line.Sphere : null,
+                Cylinder = line.IsLens ? line.Cylinder : null,
+                Axis = line.IsLens ? line.Axis : null,
+                Addition = line.IsLens ? line.Addition : null,
+            });
+        }
+
+        await _orderRepository.UpdateAsync(order);
+        await _unitOfWork.SaveChangesAsync();
     }
 }

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
@@ -24,6 +25,7 @@ public class OrdersViewModel : BaseViewModel
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDialogService _dialogService;
     private readonly INumberSequenceService _numberSequenceService;
+    private readonly ICreateOrderUseCase _createOrderUseCase;
 
     private OrdersListViewModel _listViewModel;
     private OrderFormViewModel? _formViewModel;
@@ -124,7 +126,8 @@ public class OrdersViewModel : BaseViewModel
         INotificationRepository notificationRepository,
         IUnitOfWork unitOfWork,
         IDialogService dialogService,
-        INumberSequenceService numberSequenceService)
+        INumberSequenceService numberSequenceService,
+        ICreateOrderUseCase createOrderUseCase)
     {
         _orderRepository = orderRepository;
         _customerRepository = customerRepository;
@@ -136,6 +139,8 @@ public class OrdersViewModel : BaseViewModel
         _dialogService = dialogService;
         // Numérotation fiable obligatoire (P2A-1E) : injectée par DI, transmise jusqu'à OrderFormViewModel.
         _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
+        // Use case de création (P2B-2D) obligatoire : transmis jusqu'à OrderFormViewModel pour la délégation.
+        _createOrderUseCase = createOrderUseCase ?? throw new ArgumentNullException(nameof(createOrderUseCase));
 
         // Initialiser la liste
         _listViewModel = new OrdersListViewModel(orderRepository);
@@ -158,7 +163,7 @@ public class OrdersViewModel : BaseViewModel
             ErrorMessage = null;
             FormViewModel = new OrderFormViewModel(
                 _orderRepository, _customerRepository, _productRepository,
-                _prescriptionRepository, _unitOfWork, _numberSequenceService);
+                _prescriptionRepository, _unitOfWork, _numberSequenceService, _createOrderUseCase);
             FormViewModel.OrderSaved += OnOrderSaved;
             FormViewModel.CancelRequested += OnFormCancelled;
 
@@ -185,7 +190,7 @@ public class OrdersViewModel : BaseViewModel
 
             FormViewModel = new OrderFormViewModel(
                 _orderRepository, _customerRepository, _productRepository,
-                _prescriptionRepository, _unitOfWork, _numberSequenceService, order);
+                _prescriptionRepository, _unitOfWork, _numberSequenceService, _createOrderUseCase, order);
             FormViewModel.OrderSaved += OnOrderSaved;
             FormViewModel.CancelRequested += OnFormCancelled;
 
