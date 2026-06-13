@@ -6,8 +6,8 @@
 |---|---|
 | `TARGET_PHASE_ID` | P2B-2I |
 | `EXECUTION_MODE` | IMPLEMENT |
-| `ALLOW_COMMIT` | false |
-| `ALLOW_PUSH` | false |
+| `ALLOW_COMMIT` | true |
+| `ALLOW_PUSH` | true |
 
 **Objectif strict** : extraire iso-fonctionnellement le flux d'**édition d'une commande existante** depuis
 `OrderFormViewModel.SaveAsync` (branche `UpdateExistingOrderAsync`, isolée en P2B-2D) vers la couche Application
@@ -248,14 +248,12 @@ avertissement introduit (le retrait des dépendances mortes évite notamment un 
 
 ## 18. État Git final
 
-- Branche : `p2b-architecture` (inchangée)
-- **Aucun commit, aucun push** (`ALLOW_COMMIT=false`, `ALLOW_PUSH=false`).
-- Modifiés : `OrderFormViewModel.cs`, `OrdersViewModel.cs`, `DependencyInjection.cs`,
-  `OrderFormViewModelCreateDelegationTests.cs`, `OrderFormViewModelNumberingTests.cs`,
-  `OrdersViewModelDeleteDelegationTests.cs`.
-- Non suivis : `UseCases/Orders/UpdateOrder/`, `UpdateOrderUseCaseTests.cs`, `OrderFormViewModelUpdateDelegationTests.cs`.
+- Branche : `p2b-architecture`
+- Commit : `3d784e4` — `feat(P2B-2I): move order update to application use case`
+- Push : effectué vers `origin/p2b-architecture` (`a471bab..3d784e4`)
+- 14 fichiers, 1248 insertions, 62 suppressions
 
-## 19. Verdict
+## 19. Verdict local
 
 **GO local.** Tous les critères d'acceptation sont satisfaits :
 
@@ -279,11 +277,35 @@ avertissement introduit (le retrait des dépendances mortes évite notamment un 
 | Aucune migration / aucun modèle EF modifié | ✅ |
 | Aucune règle Belgique/Maroc/fiscalité/devis/facture/Money | ✅ |
 
-## 20. Prochaine étape candidate
+## 20. Validation CI distante
+
+| Champ | Valeur |
+|---|---|
+| Lien du run CI | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27471914579 |
+| Identifiant du run | `27471914579` |
+| Commit testé | `3d784e40a1b895c28c7c653df447b284f1e98555` |
+| Branche testée | `p2b-architecture` |
+| Événement déclencheur | `push` |
+
+| Étape CI | Résultat | Heure (UTC) |
+|---|---|---|
+| Restore | ✅ success | 16:09:13Z |
+| Build | ✅ success | 16:09:41Z |
+| Test | ✅ success | 16:10:28Z |
+| Audit NuGet | ✅ success | 16:10:46Z |
+| Restore .NET tools | ✅ success | 16:10:48Z |
+| Check EF Core pending model changes | ✅ success | 16:10:51Z |
+
+- Nombre de tests CI : **396** (App 124 / Application 49 / Domain 223)
+- Statut final du workflow : **success**
+
+**P2B-2I = GO DÉFINITIF**
+
+## 21. Prochaine étape candidate
 
 **P2B-2J** — poursuite du strangler sur les flux restants d'`OrdersViewModel`/`OrderDetailViewModel` non encore
 migrés (p. ex. impression de la fiche de fabrication, ou un flux de notification résiduel), à confirmer après
 inventaire. Aucune ouverture des modules financiers (Payment/Invoice/Quote/Money/TVA/pays) tant que les gates
 réglementaires restent fermés.
 
-> Phase **P2B-2I terminée** — arrêt ici. Aucun commit, aucun push, pas de phase suivante entamée.
+> Phase **P2B-2I terminée** — commit poussé, CI vert, GO DÉFINITIF. Pas de phase suivante entamée.
