@@ -331,6 +331,35 @@ repository, `DbContext` ou service Infrastructure modifié.
 
 ---
 
+## 17 bis. Validation CI distante (run réel)
+
+Le push du commit `889e663` a **déclenché** le pipeline GitHub Actions via le motif `p2*`.
+
+| Élément | Valeur réelle |
+|---|---|
+| **Run** | **#25** — id **`27450403328`** |
+| **Lien** | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27450403328 |
+| **Commit testé** | **`889e663`** (`head_sha = 889e663c452085e79efd115297e629d09a86d183`) |
+| **Branche testée** | **`p2b-architecture`** (déclenchée par le motif `p2*`) |
+| Événement / workflow | `push` / `CI` — `Restore / Build / Test / Scan` |
+| Runner | `windows-latest` (GitHub-hosted) |
+| Durée | ≈ 2 min 38 s (00:12:34 → 00:15:12 UTC) |
+| Setup .NET (SDK `global.json`) | ✅ success (step #3) |
+| **Restore** (step #5) | ✅ **success** |
+| **Build** (step #6) | ✅ **success** |
+| **Test** (step #7) | ✅ **success** (suite **329** confirmée localement) |
+| **Audit NuGet** (step #8, JSON + sévérité) | ✅ **success** — **0 vulnérabilité** |
+| **Restore .NET tools** (step #9) | ✅ **success** (`dotnet-ef` 8.0.27) |
+| **Check EF Core pending model changes** (step #10) | ✅ **success** — `has-pending-model-changes` = **false** |
+| **Statut final du workflow** | ✅ **completed / success (VERT)** |
+
+Tous les steps en conclusion `success` : *Set up job, Checkout, Setup .NET, Diagnostic SDK, Restore, Build,
+Test, Audit des packages vulnérables, Restore .NET tools, Check EF Core pending model changes, Post-steps,
+Complete job*. **VALIDATION DISTANTE OBTENUE** : la gate roadmap « pipeline distant vert » est **levée** pour
+P2B-2C.
+
+---
+
 ## 18. Verdict — GO / NO-GO
 
 | Critère d'acceptation P2B-2C | Statut |
@@ -354,18 +383,18 @@ repository, `DbContext` ou service Infrastructure modifié.
 | Aucune migration / aucun modèle EF modifié | ✅ |
 | Aucune règle Belgique/Maroc/fiscalité/devis/facture/`Money` | ✅ |
 | Rapport complet (19 sections) | ✅ |
+| Commit & push (sur autorisation explicite) | ✅ (`889e663`, branche `p2b-architecture`, sans force) |
+| CI distante verte (restore/build/test/audit/tools/EF) | ✅ run **#25** (`27450403328`, commit `889e663`) |
 
-### ✅ **P2B-2C = GO LOCAL**
+### ✅ **P2B-2C = GO DÉFINITIF**
 
 Le use case « Enregistrer une vente en magasin » est extrait **iso-fonctionnellement** de
 `PersistSaleAsync` vers `MMV.Application/UseCases/Sales/RegisterSale/`, réutilisant **exactement** les
 primitives P2A et les repositories. `SaleFormViewModel` **délègue** (transaction, numérotation, stock,
 mouvements gérés dans le use case) ; la chaîne DI transmet le use case obligatoire jusqu'à la ViewModel.
-Build/tests/audit/EF **verts en local**. **Aucun** commit/push, **aucune** migration, **aucune** règle métier
-réglementaire modifiée.
-
-> **Validation CI distante requise** (gate roadmap « pipeline distant vert ») : à obtenir sur autorisation
-> explicite de commit/push, comme pour P2B-2A/2B. Non effectuée ici (`ALLOW_PUSH=false`).
+Build/tests/audit/EF **verts en local et en CI distante** (run #25 `27450403328`, commit `889e663`, branche
+`p2b-architecture`) ⇒ la gate « pipeline distant vert » est **levée** (cf. §17 bis). **Aucune** migration,
+**aucune** règle métier réglementaire modifiée.
 
 ---
 
@@ -384,4 +413,5 @@ chaque étape**.
 
 ## Arrêt obligatoire
 
-Fin de `P2B-2C`. **Aucun commit, aucun push, aucune migration. P2B-2D non commencé.**
+Fin de `P2B-2C`. Commit `889e663` + commit documentaire (validation CI) **poussés sur autorisation
+explicite** (branche `p2b-architecture`, sans force). **Aucune migration. P2B-2D non commencé.**
