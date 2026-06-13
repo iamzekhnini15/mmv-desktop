@@ -6,8 +6,8 @@
 |-----------|--------|
 | TARGET_PHASE_ID | P2B-2J |
 | EXECUTION_MODE | IMPLEMENT |
-| ALLOW_COMMIT | false |
-| ALLOW_PUSH | false |
+| ALLOW_COMMIT | true |
+| ALLOW_PUSH | true |
 
 Objectif strict : nettoyer les dépendances mortes laissées par les extractions applicatives P2B-2C → P2B-2I,
 simplifier les constructeurs des ViewModels concernées, adapter le wiring DI si nécessaire, vérifier la
@@ -226,22 +226,23 @@ Aucune. Audit NuGet (transitif inclus) vert sur les 7 projets.
 
 ## 18. État Git final
 
-Working tree (non commité, conformément à ALLOW_COMMIT=false) :
+Commit créé : `a42bb1b refactor(P2B-2J): prune dead order viewmodel dependencies`
 
+Fichiers committés :
 ```
- M src/MMV.App/ViewModels/OrderDetailViewModel.cs
- M src/MMV.App/ViewModels/OrdersViewModel.cs
- M src/MMV.Infrastructure/DependencyInjection.cs
- M tests/MMV.App.Tests/ViewModels/OrderDetailViewModelAdvanceDelegationTests.cs
- M tests/MMV.App.Tests/ViewModels/OrderDetailViewModelEncashDelegationTests.cs
- M tests/MMV.App.Tests/ViewModels/OrdersViewModelDeleteDelegationTests.cs
-?? tests/MMV.App.Tests/ViewModels/OrderViewModelDependencyHygieneTests.cs
-?? docs/implementation/P2B-2J-report.md
+A  docs/implementation/P2B-2J-report.md
+M  src/MMV.App/ViewModels/OrderDetailViewModel.cs
+M  src/MMV.App/ViewModels/OrdersViewModel.cs
+M  src/MMV.Infrastructure/DependencyInjection.cs
+M  tests/MMV.App.Tests/ViewModels/OrderDetailViewModelAdvanceDelegationTests.cs
+M  tests/MMV.App.Tests/ViewModels/OrderDetailViewModelEncashDelegationTests.cs
+A  tests/MMV.App.Tests/ViewModels/OrderViewModelDependencyHygieneTests.cs
+M  tests/MMV.App.Tests/ViewModels/OrdersViewModelDeleteDelegationTests.cs
 ```
 
-`git diff --stat` (code) : 6 fichiers modifiés, 21 insertions, 42 suppressions. Aucun commit, aucun push.
+`git diff --stat` (code) : 6 fichiers modifiés, 21 insertions, 42 suppressions. Push : `4c69d54..a42bb1b p2b-architecture -> p2b-architecture`.
 
-## 19. Verdict
+## 19. Verdict local
 
 **GO local.**
 
@@ -253,12 +254,30 @@ Working tree (non commité, conformément à ALLOW_COMMIT=false) :
   `has-pending-model-changes` = false ; aucune migration ; aucun modèle EF modifié.
 - Aucune règle Belgique/Maroc/fiscalité/devis/facture/Money touchée.
 
-## 20. Prochaine étape candidate
+## 20. Validation CI distante
+
+| Champ | Valeur |
+|-------|--------|
+| Lien du run | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27472724654 |
+| Identifiant du run | 27472724654 |
+| Commit testé | `a42bb1bfcf68db70962e3f7e4a0a0a3f9c26285e` |
+| Branche testée | `p2b-architecture` |
+| Résultat Restore | **success** |
+| Résultat Build | **success** |
+| Résultat Test | **success** |
+| Nombre de tests | **398** (App 126 / Application 49 / Domain 223) |
+| Résultat Audit NuGet | **success** — 0 vulnérabilité |
+| Résultat Restore .NET tools | **success** |
+| Résultat Check EF Core pending model changes | **success** — No changes |
+| Statut final du workflow | **completed — success** |
+
+**P2B-2J = GO DÉFINITIF**
+
+## 21. Prochaine étape candidate
 
 **P2B-2K** — au choix (à arbitrer hors de cette phase) :
 - traitement ciblé du warning préexistant **CS1998** dans `OrderFormViewModel.LoadExistingOrderAsync` (nettoyage
   technique mineur, sans changement de comportement) ; **ou**
-- poursuite de la stratégie strangler sur un éventuel flux non encore migré, **ou** validation CI distante de
-  P2B-2J (run + `has-pending-model-changes`) avant d'ouvrir la suite.
+- poursuite de la stratégie strangler sur un éventuel flux non encore migré.
 
-> Aucune décision prise ici : la phase P2B-2J s'arrête après ce rapport, sans commit ni push.
+> La phase P2B-2J s'arrête ici. Ne pas commencer P2B-2K.
