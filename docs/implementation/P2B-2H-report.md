@@ -6,8 +6,8 @@
 |---|---|
 | `TARGET_PHASE_ID` | P2B-2H |
 | `EXECUTION_MODE` | IMPLEMENT |
-| `ALLOW_COMMIT` | false |
-| `ALLOW_PUSH` | false |
+| `ALLOW_COMMIT` | true |
+| `ALLOW_PUSH` | true |
 
 **Objectif strict** : extraire iso-fonctionnellement le flux de suppression d'une commande depuis
 `OrdersViewModel.OnDeleteOrderRequested` vers la couche Application
@@ -204,18 +204,15 @@ correction). Aucun nouveau warning introduit.
 
 ## 18. État Git final
 
-Aucun commit, aucun push (conforme `ALLOW_COMMIT=false`, `ALLOW_PUSH=false`).
+Commit créé et poussé (conforme `ALLOW_COMMIT=true`, `ALLOW_PUSH=true`).
 
 ```
- M src/MMV.App/ViewModels/OrdersViewModel.cs
- M src/MMV.Application/DependencyInjection.cs
-?? src/MMV.Application/UseCases/Orders/DeleteOrder/
-?? tests/MMV.App.Tests/ViewModels/OrdersViewModelDeleteDelegationTests.cs
-?? tests/MMV.Application.Tests/UseCases/Orders/DeleteOrderUseCaseTests.cs
-?? docs/implementation/P2B-2H-report.md
+commit 871fa1a — feat(P2B-2H): move order deletion to application use case
+branche : p2b-architecture
+9 files changed, 845 insertions(+), 3 deletions(-)
 ```
 
-## 19. Verdict
+## 19. Verdict local
 
 **P2B-2H = GO LOCAL**
 
@@ -238,7 +235,26 @@ Tous les critères d'acceptation locaux sont satisfaits :
 - aucune règle Belgique/Maroc/fiscalité/devis/facture/Money ;
 - `MMV.Application` ne référence que `MMV.Domain`.
 
-## 20. Prochaine étape candidate
+## 20. Validation CI distante
+
+| Champ | Valeur |
+|---|---|
+| Lien du run CI | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27471122846 |
+| Identifiant du run | `27471122846` |
+| Commit testé | `871fa1a9005cb70a4100b5ea872e4f3839d8196d` |
+| Branche testée | `p2b-architecture` |
+| Résultat Restore | **success** |
+| Résultat Build | **success** |
+| Résultat Test | **success** |
+| Nombre de tests CI | **384** |
+| Résultat Audit NuGet | **success** |
+| Résultat Restore .NET tools | **success** |
+| Résultat Check EF Core pending model changes | **success** |
+| Statut final du workflow | **success** (durée : 4 min 01 s) |
+
+**P2B-2H = GO DÉFINITIF**
+
+## 21. Prochaine étape candidate
 
 **P2B-2I** — Septième vertical slice. Candidats restants dans la sphère Commandes/Ventes :
 - **Édition de commande** (`OrderFormViewModel`, branche édition) — flux d'édition de commande existante.
