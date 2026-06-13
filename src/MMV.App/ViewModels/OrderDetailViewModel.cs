@@ -7,7 +7,6 @@ using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -17,9 +16,6 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class OrderDetailViewModel : BaseViewModel
 {
-    private readonly IOrderRepository _orderRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly INotificationRepository? _notificationRepository;
     private readonly IAdvanceOrderStatusUseCase _advanceOrderStatusUseCase;
     private readonly ISettleOrderBalanceUseCase _settleOrderBalanceUseCase;
 
@@ -232,21 +228,17 @@ public class OrderDetailViewModel : BaseViewModel
     #endregion
 
     public OrderDetailViewModel(
-        IOrderRepository orderRepository,
-        IUnitOfWork unitOfWork,
         IAdvanceOrderStatusUseCase advanceOrderStatusUseCase,
-        ISettleOrderBalanceUseCase settleOrderBalanceUseCase,
-        INotificationRepository? notificationRepository = null)
+        ISettleOrderBalanceUseCase settleOrderBalanceUseCase)
     {
-        _orderRepository = orderRepository;
-        _unitOfWork = unitOfWork;
         // Use case d'avancement de statut (P2B-2E) obligatoire : le flux d'avancement est délégué à la couche
         // Application (plus de mise à jour de statut / mouvements de stock / notification directs dans la VM).
         _advanceOrderStatusUseCase = advanceOrderStatusUseCase ?? throw new ArgumentNullException(nameof(advanceOrderStatusUseCase));
         // Use case d'encaissement du solde (P2B-2G) obligatoire : le flux d'encaissement est délégué à la couche
         // Application (plus de mise à jour du paiement / notification / SaveChanges directs dans la VM).
+        // P2B-2J : IOrderRepository / IUnitOfWork / INotificationRepository retirés (dépendances mortes depuis
+        // P2B-2E/P2B-2G — plus aucun accès direct au repository ni à l'unité de travail dans cette VM).
         _settleOrderBalanceUseCase = settleOrderBalanceUseCase ?? throw new ArgumentNullException(nameof(settleOrderBalanceUseCase));
-        _notificationRepository = notificationRepository;
 
         AdvanceStatusCommand = new RelayCommand(async () => await AdvanceStatusAsync(), () => CanAdvanceStatus);
         BackCommand = new RelayCommand(() => BackRequested?.Invoke(this, EventArgs.Empty));

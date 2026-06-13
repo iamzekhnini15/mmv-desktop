@@ -24,7 +24,6 @@ public class OrdersViewModel : BaseViewModel
     private readonly ICustomerRepository _customerRepository;
     private readonly IProductRepository _productRepository;
     private readonly IPrescriptionRepository _prescriptionRepository;
-    private readonly INotificationRepository _notificationRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDialogService _dialogService;
     private readonly INumberSequenceService _numberSequenceService;
@@ -129,7 +128,6 @@ public class OrdersViewModel : BaseViewModel
         ICustomerRepository customerRepository,
         IProductRepository productRepository,
         IPrescriptionRepository prescriptionRepository,
-        INotificationRepository notificationRepository,
         IUnitOfWork unitOfWork,
         IDialogService dialogService,
         INumberSequenceService numberSequenceService,
@@ -143,7 +141,9 @@ public class OrdersViewModel : BaseViewModel
         _customerRepository = customerRepository;
         _productRepository = productRepository;
         _prescriptionRepository = prescriptionRepository;
-        _notificationRepository = notificationRepository;
+        // P2B-2J : INotificationRepository retiré — il n'était plus que transmis à OrderDetailViewModel, dont le
+        // flux de notification a migré vers les use cases Application (P2B-2E/P2B-2G). IOrderRepository et
+        // IUnitOfWork sont conservés : encore utilisés ici (rechargement du détail, Kanban).
         _unitOfWork = unitOfWork;
         _dialogService = dialogService;
         // Numérotation fiable obligatoire (P2A-1E) : injectée par DI, transmise jusqu'à OrderFormViewModel.
@@ -240,7 +240,7 @@ public class OrdersViewModel : BaseViewModel
             }
 
             DetailViewModel = new OrderDetailViewModel(
-                _orderRepository, _unitOfWork, _advanceOrderStatusUseCase, _settleOrderBalanceUseCase, _notificationRepository);
+                _advanceOrderStatusUseCase, _settleOrderBalanceUseCase);
             DetailViewModel.Initialize(fullOrder);
             DetailViewModel.BackRequested += OnDetailBackRequested;
             DetailViewModel.EditRequested += OnEditOrderRequested;

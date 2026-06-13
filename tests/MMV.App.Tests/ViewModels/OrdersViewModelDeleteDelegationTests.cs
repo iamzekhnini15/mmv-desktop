@@ -88,7 +88,6 @@ public class OrdersViewModelDeleteDelegationTests
         var customerRepo = new Mock<ICustomerRepository>();
         var productRepo = new Mock<IProductRepository>();
         var prescriptionRepo = new Mock<IPrescriptionRepository>();
-        var notificationRepo = new Mock<INotificationRepository>();
         var numberSequenceService = new Mock<INumberSequenceService>();
         var createOrderUseCase = new Mock<ICreateOrderUseCase>();
         var updateOrderUseCase = new Mock<IUpdateOrderUseCase>();
@@ -106,7 +105,6 @@ public class OrdersViewModelDeleteDelegationTests
             customerRepo.Object,
             productRepo.Object,
             prescriptionRepo.Object,
-            notificationRepo.Object,
             unitOfWork.Object,
             dialogService.Object,
             numberSequenceService.Object,
@@ -230,7 +228,6 @@ public class OrdersViewModelDeleteDelegationTests
         var customerRepo = new Mock<ICustomerRepository>();
         var productRepo = new Mock<IProductRepository>();
         var prescriptionRepo = new Mock<IPrescriptionRepository>();
-        var notificationRepo = new Mock<INotificationRepository>();
         var numberSequenceService = new Mock<INumberSequenceService>();
         var createOrderUseCase = new Mock<ICreateOrderUseCase>();
         var updateOrderUseCase = new Mock<IUpdateOrderUseCase>();
@@ -243,7 +240,6 @@ public class OrdersViewModelDeleteDelegationTests
             customerRepo.Object,
             productRepo.Object,
             prescriptionRepo.Object,
-            notificationRepo.Object,
             unitOfWork.Object,
             dialogService.Object,
             numberSequenceService.Object,

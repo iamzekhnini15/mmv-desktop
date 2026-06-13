@@ -8,7 +8,6 @@ using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
-using MMV.Domain.Interfaces.Repositories;
 using Moq;
 using Xunit;
 
@@ -62,14 +61,9 @@ public class OrderDetailViewModelAdvanceDelegationTests
     /// <summary>Construit une VM initialisée sur une commande « Nouveau » prête à avancer (CanAdvanceStatus).</summary>
     private static OrderDetailViewModel BuildInitializedViewModel(IAdvanceOrderStatusUseCase useCase)
     {
-        var orderRepo = new Mock<IOrderRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
-        var notificationRepo = new Mock<INotificationRepository>();
-
         var settleUseCase = new Mock<ISettleOrderBalanceUseCase>();
 
-        var viewModel = new OrderDetailViewModel(
-            orderRepo.Object, unitOfWork.Object, useCase, settleUseCase.Object, notificationRepo.Object);
+        var viewModel = new OrderDetailViewModel(useCase, settleUseCase.Object);
 
         var order = new Order
         {
@@ -169,12 +163,10 @@ public class OrderDetailViewModelAdvanceDelegationTests
     [Fact]
     public void Constructor_WithoutAdvanceOrderStatusUseCase_Throws()
     {
-        var orderRepo = new Mock<IOrderRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
         var settleUseCase = new Mock<ISettleOrderBalanceUseCase>();
 
         Assert.Throws<ArgumentNullException>(() => new OrderDetailViewModel(
-            orderRepo.Object, unitOfWork.Object, advanceOrderStatusUseCase: null!, settleUseCase.Object));
+            advanceOrderStatusUseCase: null!, settleUseCase.Object));
     }
 
     // ------------------------------------------------------------------

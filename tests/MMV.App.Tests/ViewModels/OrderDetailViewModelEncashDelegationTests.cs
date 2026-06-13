@@ -8,7 +8,6 @@ using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
-using MMV.Domain.Interfaces.Repositories;
 using Moq;
 using Xunit;
 
@@ -70,13 +69,9 @@ public class OrderDetailViewModelEncashDelegationTests
     /// <summary>Construit une VM initialisée sur une commande avec un solde restant à encaisser.</summary>
     private static OrderDetailViewModel BuildInitializedViewModel(ISettleOrderBalanceUseCase settleUseCase)
     {
-        var orderRepo = new Mock<IOrderRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
         var advanceUseCase = new Mock<IAdvanceOrderStatusUseCase>();
-        var notificationRepo = new Mock<INotificationRepository>();
 
-        var viewModel = new OrderDetailViewModel(
-            orderRepo.Object, unitOfWork.Object, advanceUseCase.Object, settleUseCase, notificationRepo.Object);
+        var viewModel = new OrderDetailViewModel(advanceUseCase.Object, settleUseCase);
 
         var order = new Order
         {
@@ -184,12 +179,10 @@ public class OrderDetailViewModelEncashDelegationTests
     [Fact]
     public void Constructor_WithoutSettleOrderBalanceUseCase_Throws()
     {
-        var orderRepo = new Mock<IOrderRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
         var advanceUseCase = new Mock<IAdvanceOrderStatusUseCase>();
 
         Assert.Throws<ArgumentNullException>(() => new OrderDetailViewModel(
-            orderRepo.Object, unitOfWork.Object, advanceUseCase.Object, settleOrderBalanceUseCase: null!));
+            advanceUseCase.Object, settleOrderBalanceUseCase: null!));
     }
 
     // ------------------------------------------------------------------
@@ -217,12 +210,9 @@ public class OrderDetailViewModelEncashDelegationTests
     public void EncashBalanceCommand_Disabled_WhenNoRemainingBalance()
     {
         var spy = new SpySettleOrderBalanceUseCase();
-        var orderRepo = new Mock<IOrderRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
         var advanceUseCase = new Mock<IAdvanceOrderStatusUseCase>();
 
-        var viewModel = new OrderDetailViewModel(
-            orderRepo.Object, unitOfWork.Object, advanceUseCase.Object, spy);
+        var viewModel = new OrderDetailViewModel(advanceUseCase.Object, spy);
 
         var order = new Order
         {
