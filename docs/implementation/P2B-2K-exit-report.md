@@ -11,8 +11,8 @@
 |-----------|--------|
 | TARGET_PHASE_ID | P2B-2K |
 | EXECUTION_MODE | ANALYZE_AND_DOCUMENT |
-| ALLOW_COMMIT | false |
-| ALLOW_PUSH | false |
+| ALLOW_COMMIT | true |
+| ALLOW_PUSH | true |
 
 ## 2. Prérequis
 
@@ -306,10 +306,31 @@ rg "AddInfrastructure" (dépôt)
 
 **Décision de sortie : P2B = GO SORTIE** (fermable, prête pour préparation de merge vers `main`).
 
-## 20. Prochaine étape candidate
+## 20. Validation CI distante
+
+| Champ | Valeur |
+|-------|--------|
+| Lien run CI | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27495318321 |
+| Identifiant run | `27495318321` |
+| Commit testé | `f29ab882504ce7d4f4c718e3def1894039f745b1` |
+| Branche testée | `p2b-architecture` |
+| Résultat Restore | ✅ success |
+| Résultat Build | ✅ success |
+| Résultat Test | ✅ success |
+| Nombre de tests | **398** |
+| Résultat Audit NuGet | ✅ success |
+| Résultat Restore .NET tools | ✅ success |
+| Résultat Check EF Core pending model changes | ✅ success |
+| Statut final du workflow | ✅ **completed / success** |
+
+**P2B-2K = GO DÉFINITIF**
+
+**P2B = GO SORTIE DÉFINITIF**
+
+## 21. Prochaine étape candidate
 
 **P2C-0** — finaliser / préparer le merge de `p2b-architecture` vers `main` (P2B validée),
 puis **P2C-1** — créer les tests garde-fous « UI sans persistance » avant toute migration de
 flux. (Arbitrage hors de cette phase.)
 
-> Fin de P2B-2K. Aucun commit, aucun push. Ne pas commencer P2C.
+> Fin de P2B-2K. Ne pas commencer P2C.
