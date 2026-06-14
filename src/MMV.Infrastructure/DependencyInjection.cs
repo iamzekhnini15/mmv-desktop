@@ -14,6 +14,15 @@ namespace MMV.Infrastructure;
 /// <summary>
 /// Méthodes d'enregistrement des services d'infrastructure dans l'IoC container.
 /// </summary>
+/// <remarks>
+/// P2B-2J (constat de nettoyage) : <see cref="AddInfrastructure"/> n'est <b>pas</b> appelée par le composition
+/// root actuel. <c>MMV.App.App.ConfigureServices</c> enregistre directement le <c>DbContext</c>, les repositories
+/// et les services techniques (cf. cycle de vie SQLite P2A-1A, qui pilote le chemin de base et la préparation).
+/// Cette méthode est donc <b>inerte mais inoffensive</b> : elle n'a aucun effet de bord au démarrage et n'est
+/// invoquée par aucun code de production ni de test. Elle est <b>volontairement conservée</b> comme point
+/// d'extension réutilisable (composition root alternatif, intégration future) — sa suppression est hors périmètre
+/// de cette phase de nettoyage (cf. rapport P2B-2J §8/§9).
+/// </remarks>
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(

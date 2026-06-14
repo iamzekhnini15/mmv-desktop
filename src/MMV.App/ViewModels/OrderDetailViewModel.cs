@@ -1,12 +1,12 @@
 using System;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
+using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -16,10 +16,8 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class OrderDetailViewModel : BaseViewModel
 {
-    private readonly IOrderRepository _orderRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IStockMovementRepository _stockMovementRepository;
-    private readonly INotificationRepository? _notificationRepository;
+    private readonly IAdvanceOrderStatusUseCase _advanceOrderStatusUseCase;
+    private readonly ISettleOrderBalanceUseCase _settleOrderBalanceUseCase;
 
     private Order? _order;
     private ObservableCollection<OrderItem> _items = new();
@@ -230,15 +228,17 @@ public class OrderDetailViewModel : BaseViewModel
     #endregion
 
     public OrderDetailViewModel(
-        IOrderRepository orderRepository,
-        IUnitOfWork unitOfWork,
-        IStockMovementRepository stockMovementRepository,
-        INotificationRepository? notificationRepository = null)
+        IAdvanceOrderStatusUseCase advanceOrderStatusUseCase,
+        ISettleOrderBalanceUseCase settleOrderBalanceUseCase)
     {
-        _orderRepository = orderRepository;
-        _unitOfWork = unitOfWork;
-        _stockMovementRepository = stockMovementRepository;
-        _notificationRepository = notificationRepository;
+        // Use case d'avancement de statut (P2B-2E) obligatoire : le flux d'avancement est délégué à la couche
+        // Application (plus de mise à jour de statut / mouvements de stock / notification directs dans la VM).
+        _advanceOrderStatusUseCase = advanceOrderStatusUseCase ?? throw new ArgumentNullException(nameof(advanceOrderStatusUseCase));
+        // Use case d'encaissement du solde (P2B-2G) obligatoire : le flux d'encaissement est délégué à la couche
+        // Application (plus de mise à jour du paiement / notification / SaveChanges directs dans la VM).
+        // P2B-2J : IOrderRepository / IUnitOfWork / INotificationRepository retirés (dépendances mortes depuis
+        // P2B-2E/P2B-2G — plus aucun accès direct au repository ni à l'unité de travail dans cette VM).
+        _settleOrderBalanceUseCase = settleOrderBalanceUseCase ?? throw new ArgumentNullException(nameof(settleOrderBalanceUseCase));
 
         AdvanceStatusCommand = new RelayCommand(async () => await AdvanceStatusAsync(), () => CanAdvanceStatus);
         BackCommand = new RelayCommand(() => BackRequested?.Invoke(this, EventArgs.Empty));
@@ -314,9 +314,11 @@ public class OrderDetailViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Fait avancer le statut de la commande vers l'étape suivante.
-    /// Gère la mise à jour du stock lors du passage en fabrication.
-    /// Crée une notification de changement de statut.
+    /// Fait avancer le statut de la commande vers l'étape suivante en <b>déléguant</b> l'orchestration métier
+    /// (mise à jour du statut, mouvements de stock de fabrication, notification, enregistrement) au use case
+    /// Application <see cref="IAdvanceOrderStatusUseCase"/> (P2B-2E). La ViewModel conserve la validation/garde
+    /// d'affichage (<see cref="CanAdvanceStatus"/>), construit la commande à partir de son état (statut courant,
+    /// transition résolue, libellés d'affichage) et mappe le résultat vers son état local / ses événements.
     /// </summary>
     private async Task AdvanceStatusAsync()
     {
@@ -328,51 +330,29 @@ public class OrderDetailViewModel : BaseViewModel
 
         try
         {
-            var previousStatus = Order.Status;
+            var command = new AdvanceOrderStatusCommand
+            {
+                OrderId = Order.OrderId,
+                CurrentStatus = Order.Status,
+                NextStatus = nextStatus.Value,
+                CustomerDisplayName = CustomerName,
+                CurrentStatusDisplay = OrdersListViewModel.StatusEnumToDisplay(Order.Status),
+                NextStatusDisplay = OrdersListViewModel.StatusEnumToDisplay(nextStatus.Value)
+            };
 
-            // Recharger la commande fraîche pour éviter les conflits EF
-            var fresh = await _orderRepository.GetWithItemsAsync(Order.OrderId);
-            if (fresh == null)
+            var result = await _advanceOrderStatusUseCase.ExecuteAsync(command);
+            if (!result.OrderFound || result.Order == null)
             {
                 ErrorMessage = "Commande introuvable.";
                 return;
             }
 
-            fresh.Status = nextStatus.Value;
-            await _orderRepository.UpdateAsync(fresh);
-
-            // Sortie de stock lors du passage en fabrication
-            if (previousStatus == OrderStatus.ToFabricate && nextStatus.Value == OrderStatus.InProgress)
-            {
-                await CreateStockMovementsForFabrication(fresh);
-            }
-
-            // Créer une notification
-            if (_notificationRepository != null)
-            {
-                var notification = new Notification
-                {
-                    Type = "OrderStatusChanged",
-                    Title = $"Commande {fresh.OrderNumber} : {OrdersListViewModel.StatusEnumToDisplay(nextStatus.Value)}",
-                    Message = $"La commande {fresh.OrderNumber} ({CustomerName}) est passée de " +
-                              $"'{OrdersListViewModel.StatusEnumToDisplay(previousStatus)}' à " +
-                              $"'{OrdersListViewModel.StatusEnumToDisplay(nextStatus.Value)}'.",
-                    EntityId = fresh.OrderId,
-                    EntityType = "Order",
-                    IsRead = false,
-                    CreatedAt = DateTime.Now
-                };
-                await _notificationRepository.CreateAsync(notification);
-            }
-
-            await _unitOfWork.SaveChangesAsync();
-
             // Mettre à jour l'état local
-            Order = fresh;
-            Items = new ObservableCollection<OrderItem>(fresh.OrderItems);
+            Order = result.Order;
+            Items = new ObservableCollection<OrderItem>(result.Order.OrderItems);
 
             // Signaler que la commande a été mise à jour pour rafraîchir la liste/Kanban
-            OrderUpdated?.Invoke(this, fresh);
+            OrderUpdated?.Invoke(this, result.Order);
         }
         catch (Exception ex)
         {
@@ -386,34 +366,11 @@ public class OrderDetailViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Crée des mouvements de stock de type OUT pour chaque article de la commande.
-    /// </summary>
-    private async Task CreateStockMovementsForFabrication(Order order)
-    {
-        foreach (var item in order.OrderItems.Where(i => i.ProductId.HasValue))
-        {
-            var movement = new StockMovement
-            {
-                ProductId = item.ProductId!.Value,
-                MovementType = StockMovementType.Out,
-                Quantity = item.Quantity,
-                Reason = $"Fabrication commande {order.OrderNumber}",
-                CreatedAt = DateTime.UtcNow,
-            };
-
-            await _stockMovementRepository.CreateAsync(movement);
-
-            // Mettre à jour le stock du produit
-            if (item.Product != null)
-            {
-                item.Product.StockQuantity -= item.Quantity;
-                // Note: le SaveChanges est fait au niveau appelant
-            }
-        }
-    }
-
-    /// <summary>
-    /// Encaisse le montant restant d'une commande.
+    /// Encaisse le montant restant d'une commande en <b>déléguant</b> l'orchestration (rechargement de la
+    /// commande, mise à jour du paiement de la vente liée, notification, enregistrement transactionnel) au use
+    /// case Application <see cref="ISettleOrderBalanceUseCase"/> (P2B-2G). La ViewModel conserve la validation/garde
+    /// d'affichage (<see cref="HasRemainingBalance"/>), construit la commande à partir de son état (identifiant de
+    /// la commande) et mappe le résultat vers son état local / ses événements.
     /// </summary>
     private async Task ExecuteEncashBalanceAsync()
     {
@@ -424,50 +381,24 @@ public class OrderDetailViewModel : BaseViewModel
 
         try
         {
-            // Recharger la commande fraîche avec sa vente
-            var fresh = await _orderRepository.GetWithItemsAsync(Order.OrderId);
-            if (fresh == null || fresh.Sale == null)
+            var command = new SettleOrderBalanceCommand { OrderId = Order.OrderId };
+
+            var result = await _settleOrderBalanceUseCase.ExecuteAsync(command);
+            if (!result.OrderFound || result.Order == null)
             {
                 ErrorMessage = "Commande introuvable.";
                 return;
             }
 
-            // Sauvegarder le montant restant avant modification pour la notification
-            var amountToEncash = fresh.Sale.RemainingAmount ?? 0;
-
-            // Mettre à jour le paiement sur la vente : acompte devient le montant total, restant devient 0
-            fresh.Sale.DepositAmount = fresh.Sale.FinalAmount;
-            fresh.Sale.RemainingAmount = 0;
-
-            await _orderRepository.UpdateAsync(fresh);
-            await _unitOfWork.SaveChangesAsync();
-
             // Mettre à jour l'état local
-            Order = fresh;
+            Order = result.Order;
             OnPropertyChanged(nameof(DepositAmount));
             OnPropertyChanged(nameof(RemainingAmount));
             OnPropertyChanged(nameof(HasRemainingBalance));
             (EncashBalanceCommand as RelayCommand)?.RaiseCanExecuteChanged();
 
-            // Créer une notification
-            if (_notificationRepository != null)
-            {
-                var notification = new Notification
-                {
-                    Type = "PaymentReceived",
-                    Title = $"Paiement encaissé - {fresh.OrderNumber}",
-                    Message = $"Le solde de {amountToEncash:F2} € a été encaissé pour la commande {fresh.OrderNumber}.",
-                    EntityId = fresh.OrderId,
-                    EntityType = "Order",
-                    IsRead = false,
-                    CreatedAt = DateTime.Now
-                };
-                await _notificationRepository.CreateAsync(notification);
-                await _unitOfWork.SaveChangesAsync();
-            }
-
             // Signaler que la commande a été mise à jour pour rafraîchir la liste/Kanban
-            OrderUpdated?.Invoke(this, fresh);
+            OrderUpdated?.Invoke(this, result.Order);
         }
         catch (Exception ex)
         {

@@ -1,78 +1,73 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
 using MMV.App.Services;
 using MMV.App.ViewModels;
+using MMV.Application.UseCases.Stock.CreateStockMovement;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
-using MMV.Infrastructure.Data;
-using MMV.Infrastructure.Persistence;
-using MMV.Infrastructure.Repositories;
+using MMV.Domain.Exceptions;
+using MMV.Domain.Interfaces.Repositories;
+using Moq;
 using Xunit;
 
 namespace MMV.App.Tests.ViewModels;
 
 /// <summary>
-/// P2A-1D-R2 — Sécurisation des sorties manuelles de stock (<see cref="StockMovementFormViewModel"/>).
+/// P2B-2F — Comportement de présentation de <see cref="StockMovementFormViewModel"/> après extraction du flux de
+/// création de <b>mouvement manuel de stock</b> vers <see cref="ICreateStockMovementUseCase"/>.
 ///
-/// Prouve, sur un <b>vrai SQLite temporaire</b>, qu'une sortie manuelle standard :
-/// <list type="number">
-///   <item>décrémente le stock quand la quantité est suffisante ;</item>
-///   <item>autorise un décrément exactement égal au stock disponible (→ 0) ;</item>
-///   <item>est <b>refusée</b> (erreur contrôlée) quand la quantité dépasse le stock ;</item>
-///   <item>ne rend <b>jamais</b> le stock négatif ;</item>
-///   <item>ne persiste <b>aucun</b> <see cref="StockMovement"/> en cas de refus ;</item>
-///   <item>décrément + mouvement sont <b>atomiques</b> (tout ou rien) ;</item>
-///   <item>affiche un <b>message utilisateur contrôlé</b> et aucune notification de succès ;</item>
-///   <item>n'utilise <b>plus</b> de confirmation autorisant volontairement un stock négatif.</item>
-/// </list>
-/// Une entrée (In) reste un incrément ; un ajustement (Adjustment) reste une correction absolue (≥ 0).
+/// La VM ne récupère plus le produit, n'ouvre plus de transaction, ne décrémente / n'incrémente plus le stock et
+/// ne crée plus le <c>StockMovement</c> directement : pour chaque ligne valide du formulaire multi-produits, elle
+/// construit une <see cref="CreateStockMovementCommand"/> et <b>délègue</b>. Ces tests vérifient : (1) la
+/// délégation effective + l'événement <c>MovementSaved</c> + le mapping ligne → commande ; (2) le libellé de
+/// motif par défaut quand aucune note n'est saisie ; (3) le refus métier (stock insuffisant) propagé en message
+/// utilisateur contrôlé sans <c>MovementSaved</c> ; (4) un produit introuvable compté en erreur ; (5) la boucle
+/// multi-lignes ; (6) le rejet d'un use case absent ; (7) la garde <c>IsSaving</c>.
+///
+/// La couverture de persistance (vrai SQLite : incrément, décrément sûr, ajustement, rollback, motif) est portée
+/// par <c>MMV.Application.Tests.UseCases.Stock.CreateStockMovementUseCaseTests</c>.
 /// </summary>
-public sealed class StockMovementFormViewModelTests : IDisposable
+public sealed class StockMovementFormViewModelTests
 {
-    private readonly string _workDirectory;
-
-    public StockMovementFormViewModelTests()
+    /// <summary>Espion de use case : compte les appels, mémorise les commandes, joue un comportement.</summary>
+    private sealed class SpyCreateStockMovementUseCase : ICreateStockMovementUseCase
     {
-        _workDirectory = Path.Combine(Path.GetTempPath(), "mmv-p2a1d-r2-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(_workDirectory);
-    }
+        private int _executeCount;
+        private readonly Func<CreateStockMovementCommand, Task<CreateStockMovementResult>> _behavior;
 
-    public void Dispose()
-    {
-        SqliteConnection.ClearAllPools();
-        try
-        {
-            if (Directory.Exists(_workDirectory))
-            {
-                Directory.Delete(_workDirectory, recursive: true);
-            }
-        }
-        catch
-        {
-            // Nettoyage best-effort.
-        }
-    }
+        public SpyCreateStockMovementUseCase(Func<CreateStockMovementCommand, Task<CreateStockMovementResult>>? behavior = null)
+            => _behavior = behavior ?? (cmd => Task.FromResult(SuccessResult(cmd)));
 
-    // ------------------------------------------------------------------
-    // Doubles & utilitaires
-    // ------------------------------------------------------------------
+        public int ExecuteCount => _executeCount;
+        public List<CreateStockMovementCommand> Commands { get; } = new();
+        public CreateStockMovementCommand? LastCommand => Commands.Count > 0 ? Commands[^1] : null;
+
+        public Task<CreateStockMovementResult> ExecuteAsync(CreateStockMovementCommand command, CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _executeCount);
+            Commands.Add(command);
+            return _behavior(command);
+        }
+
+        public static CreateStockMovementResult SuccessResult(CreateStockMovementCommand cmd) => new()
+        {
+            ProductFound = true,
+            StockMovementId = 1,
+            ProductId = cmd.ProductId,
+            MovementType = cmd.MovementType,
+            Quantity = cmd.Quantity,
+            NewStockQuantity = cmd.Quantity,
+        };
+    }
 
     private sealed class FakeDialogService : IDialogService
     {
         public string? LastInfoMessage { get; private set; }
-        public int ConfirmationCount { get; private set; }
 
-        public Task<bool> ShowConfirmationAsync(string title, string message)
-        {
-            ConfirmationCount++;
-            return Task.FromResult(false);
-        }
+        public Task<bool> ShowConfirmationAsync(string title, string message) => Task.FromResult(false);
 
         public Task ShowErrorAsync(string title, string message) => Task.CompletedTask;
 
@@ -83,60 +78,20 @@ public sealed class StockMovementFormViewModelTests : IDisposable
         }
     }
 
-    private string PathFor(string fileName) => Path.Combine(_workDirectory, fileName);
-
-    private static OpticDbContext CreateContext(string databasePath)
+    private static StockMovementFormViewModel BuildViewModel(ICreateStockMovementUseCase useCase, IDialogService dialog)
     {
-        var connectionString = $"Data Source={databasePath};Pooling=False";
-        var options = new DbContextOptionsBuilder<OpticDbContext>()
-            .UseSqlite(connectionString)
-            .Options;
-        return new OpticDbContext(options);
+        var productRepository = new Mock<IProductRepository>();
+        return new StockMovementFormViewModel(productRepository.Object, dialog, useCase);
     }
 
-    private static long SeedProduct(string databasePath, int initialStock)
-    {
-        using var context = CreateContext(databasePath);
-        context.Database.EnsureCreated();
-
-        var supplier = new Supplier { Name = "Fournisseur Test" };
-        context.Suppliers.Add(supplier);
-        context.SaveChanges();
-
-        var product = new Product
-        {
-            Reference = "REF-MAN-001",
-            Name = "Monture Test",
-            Category = ProductCategoryEnum.MONTURE,
-            SupplierId = supplier.SupplierId,
-            PurchasePrice = 10m,
-            SalePrice = 20m,
-            StockQuantity = initialStock,
-        };
-        context.Products.Add(product);
-        context.SaveChanges();
-        return product.ProductId;
-    }
-
-    private static StockMovementFormViewModel BuildViewModel(OpticDbContext context, IDialogService dialog)
-    {
-        var unitOfWork = new UnitOfWork(context);
-        var productRepository = new ProductRepository(context);
-        var stockMovementRepository = new StockMovementRepository(context);
-        var runner = new EfTransactionRunner(context);
-        var stockMutation = new EfStockMutationService(context);
-
-        return new StockMovementFormViewModel(
-            stockMovementRepository, productRepository, unitOfWork, dialog, runner, stockMutation);
-    }
-
-    private static void AddLine(StockMovementFormViewModel viewModel, long productId, string movementType, int quantity)
+    private static void AddLine(StockMovementFormViewModel viewModel, long productId, string movementType, int quantity, string notes = "")
     {
         var line = new ProductMovementLine(new List<Product> { new() { ProductId = productId } })
         {
             Product = new Product { ProductId = productId },
             MovementType = movementType,
             Quantity = quantity,
+            Notes = notes,
         };
         viewModel.MovementLines.Add(line);
     }
@@ -152,173 +107,157 @@ public sealed class StockMovementFormViewModelTests : IDisposable
         Assert.True(condition(), "La condition attendue n'a pas été atteinte dans le délai imparti.");
     }
 
-    private static (int stock, int movements) ReadState(string databasePath, long productId)
-    {
-        using var verify = CreateContext(databasePath);
-        var stock = verify.Products.AsNoTracking().Single(p => p.ProductId == productId).StockQuantity;
-        var movements = verify.StockMovements.AsNoTracking().Count(m => m.ProductId == productId);
-        return (stock, movements);
-    }
-
     // ------------------------------------------------------------------
-    // (1) Sortie suffisante → décrément + mouvement persistés
+    // (1) Une ligne valide : délégation + MovementSaved + mapping ligne → commande
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task ManualOut_SufficientStock_DecrementsAndRecordsMovement()
+    public async Task Save_ValidLine_DelegatesToUseCase_AndRaisesMovementSaved()
     {
-        var dbPath = PathFor("man-out-ok.db");
-        var productId = SeedProduct(dbPath, initialStock: 10);
+        var spy = new SpyCreateStockMovementUseCase();
         var dialog = new FakeDialogService();
+        var viewModel = BuildViewModel(spy, dialog);
         var saved = false;
+        viewModel.MovementSaved += (_, _) => saved = true;
 
-        using (var context = CreateContext(dbPath))
-        {
-            var viewModel = BuildViewModel(context, dialog);
-            viewModel.MovementSaved += (_, _) => saved = true;
-            AddLine(viewModel, productId, "Out", 3);
+        AddLine(viewModel, productId: 7, movementType: "In", quantity: 4, notes: "Réception fournisseur");
 
-            viewModel.SaveCommand.Execute(null);
-            await WaitUntilAsync(() => !viewModel.IsSaving);
-        }
+        viewModel.SaveCommand.Execute(null);
+        await WaitUntilAsync(() => !viewModel.IsSaving);
 
-        var (stock, movements) = ReadState(dbPath, productId);
-        Assert.Equal(7, stock);            // 10 - 3
-        Assert.Equal(1, movements);        // mouvement enregistré
+        Assert.Equal(1, spy.ExecuteCount);
         Assert.True(saved);
-        Assert.Equal(0, dialog.ConfirmationCount); // plus aucune confirmation de stock négatif
+
+        var command = spy.LastCommand!;
+        Assert.Equal(7, command.ProductId);
+        Assert.Equal(StockMovementType.In, command.MovementType);
+        Assert.Equal(4, command.Quantity);
+        Assert.Equal("Réception fournisseur", command.Reason);
+
+        Assert.Null(viewModel.ErrorMessage);
+        Assert.Equal("1 mouvement(s) enregistré(s) avec succès.", dialog.LastInfoMessage);
     }
 
     // ------------------------------------------------------------------
-    // (2) Sortie exactement égale au stock → 0
+    // (2) Motif par défaut « Mouvement {type} » quand aucune note n'est saisie
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task ManualOut_ExactlyAvailable_ReachesZero()
+    public async Task Save_WithoutNotes_BuildsDefaultReason()
     {
-        var dbPath = PathFor("man-out-exact.db");
-        var productId = SeedProduct(dbPath, initialStock: 5);
+        var spy = new SpyCreateStockMovementUseCase();
         var dialog = new FakeDialogService();
+        var viewModel = BuildViewModel(spy, dialog);
 
-        using (var context = CreateContext(dbPath))
-        {
-            var viewModel = BuildViewModel(context, dialog);
-            AddLine(viewModel, productId, "Out", 5);
+        AddLine(viewModel, productId: 3, movementType: "Out", quantity: 2);
 
-            viewModel.SaveCommand.Execute(null);
-            await WaitUntilAsync(() => !viewModel.IsSaving);
-        }
+        viewModel.SaveCommand.Execute(null);
+        await WaitUntilAsync(() => !viewModel.IsSaving);
 
-        var (stock, movements) = ReadState(dbPath, productId);
-        Assert.Equal(0, stock);
-        Assert.Equal(1, movements);
+        Assert.Equal("Mouvement Out", spy.LastCommand!.Reason);
     }
 
     // ------------------------------------------------------------------
-    // (3-7) Sortie supérieure au stock → refus contrôlé, rien persisté, jamais négatif
+    // (3) Stock insuffisant propagé par le use case : message contrôlé, pas de MovementSaved
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task ManualOut_MoreThanAvailable_IsRefused_NoMovement_NoNegative_ControlledMessage()
+    public async Task Save_WhenUseCaseThrowsInsufficientStock_ShowsControlledMessage_AndDoesNotRaiseSaved()
     {
-        var dbPath = PathFor("man-out-over.db");
-        var productId = SeedProduct(dbPath, initialStock: 5);
+        var spy = new SpyCreateStockMovementUseCase(_ => Task.FromException<CreateStockMovementResult>(
+            new InsufficientStockException(productId: 7, requestedQuantity: 6, availableQuantity: 5)));
         var dialog = new FakeDialogService();
+        var viewModel = BuildViewModel(spy, dialog);
         var saved = false;
+        viewModel.MovementSaved += (_, _) => saved = true;
 
-        StockMovementFormViewModel viewModel;
-        using (var context = CreateContext(dbPath))
-        {
-            viewModel = BuildViewModel(context, dialog);
-            viewModel.MovementSaved += (_, _) => saved = true;
-            AddLine(viewModel, productId, "Out", 6); // 6 > 5
+        AddLine(viewModel, productId: 7, movementType: "Out", quantity: 6);
 
-            viewModel.SaveCommand.Execute(null);
-            await WaitUntilAsync(() => !viewModel.IsSaving);
-        }
+        viewModel.SaveCommand.Execute(null);
+        await WaitUntilAsync(() => !viewModel.IsSaving);
 
-        var (stock, movements) = ReadState(dbPath, productId);
-        Assert.Equal(5, stock);                     // (4) inchangé, jamais négatif
-        Assert.True(stock >= 0);
-        Assert.Equal(0, movements);                 // (5/6) atomique : aucun mouvement persisté
-        Assert.False(saved);                        // (7) pas de notification de succès
-        Assert.False(string.IsNullOrWhiteSpace(viewModel.ErrorMessage)); // message contrôlé exposé
+        Assert.Equal(1, spy.ExecuteCount);
+        Assert.False(saved);
+        Assert.False(string.IsNullOrWhiteSpace(viewModel.ErrorMessage));
         Assert.Contains("Stock insuffisant", viewModel.ErrorMessage!);
-        Assert.Equal(0, dialog.ConfirmationCount);  // (8) plus de confirmation de stock négatif
+        Assert.NotNull(dialog.LastInfoMessage);
+        Assert.Contains("Aucun mouvement enregistré.", dialog.LastInfoMessage!);
     }
 
     // ------------------------------------------------------------------
-    // (Comportement) Entrée → incrément (inchangé, jamais négatif)
+    // (4) Produit introuvable : ligne comptée en erreur, pas de MovementSaved
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task ManualIn_IncrementsStock_AndRecordsMovement()
+    public async Task Save_WhenProductNotFound_CountsAsError_AndDoesNotRaiseSaved()
     {
-        var dbPath = PathFor("man-in.db");
-        var productId = SeedProduct(dbPath, initialStock: 5);
+        var spy = new SpyCreateStockMovementUseCase(_ => Task.FromResult(new CreateStockMovementResult { ProductFound = false }));
         var dialog = new FakeDialogService();
+        var viewModel = BuildViewModel(spy, dialog);
+        var saved = false;
+        viewModel.MovementSaved += (_, _) => saved = true;
 
-        using (var context = CreateContext(dbPath))
-        {
-            var viewModel = BuildViewModel(context, dialog);
-            AddLine(viewModel, productId, "In", 4);
+        AddLine(viewModel, productId: 99, movementType: "In", quantity: 1);
 
-            viewModel.SaveCommand.Execute(null);
-            await WaitUntilAsync(() => !viewModel.IsSaving);
-        }
+        viewModel.SaveCommand.Execute(null);
+        await WaitUntilAsync(() => !viewModel.IsSaving);
 
-        var (stock, movements) = ReadState(dbPath, productId);
-        Assert.Equal(9, stock);     // 5 + 4
-        Assert.Equal(1, movements);
+        Assert.Equal(1, spy.ExecuteCount);
+        Assert.False(saved);
+        Assert.Equal("Aucun mouvement enregistré.\n1 erreur(s) détectée(s).", dialog.LastInfoMessage);
     }
 
     // ------------------------------------------------------------------
-    // (Comportement) Ajustement → correction absolue contrôlée (≥ 0)
+    // (5) Plusieurs lignes valides : une délégation par ligne, message de synthèse
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task ManualAdjustment_SetsAbsoluteStock_AndRecordsMovement()
+    public async Task Save_MultipleValidLines_DelegatesPerLine()
     {
-        var dbPath = PathFor("man-adjust.db");
-        var productId = SeedProduct(dbPath, initialStock: 5);
+        var spy = new SpyCreateStockMovementUseCase();
         var dialog = new FakeDialogService();
+        var viewModel = BuildViewModel(spy, dialog);
 
-        using (var context = CreateContext(dbPath))
-        {
-            var viewModel = BuildViewModel(context, dialog);
-            AddLine(viewModel, productId, "Adjustment", 8);
+        AddLine(viewModel, productId: 1, movementType: "In", quantity: 2);
+        AddLine(viewModel, productId: 2, movementType: "Adjustment", quantity: 5);
 
-            viewModel.SaveCommand.Execute(null);
-            await WaitUntilAsync(() => !viewModel.IsSaving);
-        }
+        viewModel.SaveCommand.Execute(null);
+        await WaitUntilAsync(() => !viewModel.IsSaving);
 
-        var (stock, movements) = ReadState(dbPath, productId);
-        Assert.Equal(8, stock);     // ajustement absolu
-        Assert.Equal(1, movements);
-        Assert.True(stock >= 0);
+        Assert.Equal(2, spy.ExecuteCount);
+        Assert.Equal("2 mouvement(s) enregistré(s) avec succès.", dialog.LastInfoMessage);
     }
 
     // ------------------------------------------------------------------
-    // (R2) Construction impossible sans frontière transactionnelle / décrément sûr
+    // (6) Aucune création possible sans use case (erreur de configuration)
     // ------------------------------------------------------------------
 
     [Fact]
-    public void Constructor_WithoutTransactionRunnerOrStockMutation_Throws()
+    public void Constructor_WithoutCreateStockMovementUseCase_Throws()
     {
-        var dbPath = PathFor("ctor-guard.db");
-        SeedProduct(dbPath, initialStock: 1);
+        var productRepository = new Mock<IProductRepository>();
         var dialog = new FakeDialogService();
-
-        using var context = CreateContext(dbPath);
-        var unitOfWork = new UnitOfWork(context);
-        var productRepository = new ProductRepository(context);
-        var stockMovementRepository = new StockMovementRepository(context);
-        var stockMutation = new EfStockMutationService(context);
 
         Assert.Throws<ArgumentNullException>(() => new StockMovementFormViewModel(
-            stockMovementRepository, productRepository, unitOfWork, dialog, null!, stockMutation));
+            productRepository.Object, dialog, createStockMovementUseCase: null!));
+    }
 
-        Assert.Throws<ArgumentNullException>(() => new StockMovementFormViewModel(
-            stockMovementRepository, productRepository, unitOfWork, dialog, new EfTransactionRunner(context), null!));
+    // ------------------------------------------------------------------
+    // (7) Garde IsSaving : remise à false en fin de flux
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Save_ResetsIsSaving_WhenComplete()
+    {
+        var spy = new SpyCreateStockMovementUseCase();
+        var dialog = new FakeDialogService();
+        var viewModel = BuildViewModel(spy, dialog);
+
+        AddLine(viewModel, productId: 1, movementType: "In", quantity: 1);
+
+        viewModel.SaveCommand.Execute(null);
+        await WaitUntilAsync(() => !viewModel.IsSaving);
+
+        Assert.False(viewModel.IsSaving);
     }
 }

@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Stock.CreateStockMovement;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
-using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
@@ -140,22 +140,15 @@ public class ProductMovementLine : BaseViewModel
 /// </summary>
 public class StockMovementFormViewModel : BaseViewModel
 {
-    private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IProductRepository _productRepository;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly IDialogService _dialogService;
 
     /// <summary>
-    /// Frontière transactionnelle (P2A-1C) : rend atomiques le décrément de stock et la création du
-    /// mouvement d'une sortie manuelle (décrément + mouvement, ou rien). <b>Obligatoire</b> (P2A-1D-R2).
+    /// Use case applicatif (P2B-2F) : crée un mouvement manuel de stock et applique son effet sur le produit
+    /// (décrément sûr / incrément / ajustement) de façon atomique. La frontière transactionnelle et le décrément
+    /// sûr (P2A-1D-R2) vivent désormais dans le use case, plus dans cette ViewModel. <b>Obligatoire</b>.
     /// </summary>
-    private readonly ITransactionRunner _transactionRunner;
-
-    /// <summary>
-    /// Décrément de stock atomique conditionnel (P2A-1D, R-09) : une sortie manuelle standard ne peut
-    /// plus rendre le stock négatif. <b>Obligatoire</b> (P2A-1D-R2).
-    /// </summary>
-    private readonly IStockMutationService _stockMutationService;
+    private readonly ICreateStockMovementUseCase _createStockMovementUseCase;
 
     private ObservableCollection<Product> _products = new();
     private ObservableCollection<ProductMovementLine> _movementLines = new();
@@ -195,20 +188,15 @@ public class StockMovementFormViewModel : BaseViewModel
     public event EventHandler? CancelRequested;
 
     public StockMovementFormViewModel(
-        IStockMovementRepository stockMovementRepository,
         IProductRepository productRepository,
-        IUnitOfWork unitOfWork,
         IDialogService dialogService,
-        ITransactionRunner transactionRunner,
-        IStockMutationService stockMutationService)
+        ICreateStockMovementUseCase createStockMovementUseCase)
     {
-        _stockMovementRepository = stockMovementRepository;
         _productRepository = productRepository;
-        _unitOfWork = unitOfWork;
         _dialogService = dialogService;
-        // P2A-1D-R2 : frontière transactionnelle + décrément sûr obligatoires (pas de sortie négative).
-        _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
-        _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
+        // P2B-2F : la création de mouvement manuel (frontière transactionnelle + décrément sûr P2A-1D-R2) est
+        // déléguée au use case applicatif, désormais obligatoire.
+        _createStockMovementUseCase = createStockMovementUseCase ?? throw new ArgumentNullException(nameof(createStockMovementUseCase));
 
         AddLineCommand = new RelayCommand(ExecuteAddLine);
         RemoveLineCommand = new RelayCommand<ProductMovementLine>(ExecuteRemoveLine);
@@ -280,54 +268,25 @@ public class StockMovementFormViewModel : BaseViewModel
             {
                 try
                 {
-                    // Récupérer le produit frais pour éviter les conflits de tracking
-                    var product = await _productRepository.GetByIdAsync(line.Product!.ProductId);
-                    if (product == null)
+                    // P2B-2F : la création du mouvement manuel (rechargement produit, frontière transactionnelle,
+                    // décrément sûr / incrément / ajustement, création du mouvement, SaveChanges) est déléguée au
+                    // use case applicatif. La ViewModel ne fait plus que construire la commande, compter les
+                    // résultats et restituer les messages — comportement utilisateur inchangé (P2A-1D-R2 préservé).
+                    var command = new CreateStockMovementCommand
                     {
+                        ProductId = line.Product!.ProductId,
+                        MovementType = Enum.Parse<StockMovementType>(line.MovementType),
+                        Quantity = line.Quantity,
+                        Reason = string.IsNullOrWhiteSpace(line.Notes) ? $"Mouvement {line.MovementType}" : line.Notes,
+                    };
+
+                    var result = await _createStockMovementUseCase.ExecuteAsync(command);
+                    if (!result.ProductFound)
+                    {
+                        // Produit introuvable : ligne comptée en erreur (comme l'ancien `continue`).
                         errorCount++;
                         continue;
                     }
-
-                    var movementType = Enum.Parse<StockMovementType>(line.MovementType);
-                    var movement = new StockMovement
-                    {
-                        ProductId = product.ProductId,
-                        MovementType = movementType,
-                        Quantity = line.Quantity,
-                        Reason = string.IsNullOrWhiteSpace(line.Notes) ? $"Mouvement {line.MovementType}" : line.Notes
-                    };
-
-                    // P2A-1D-R2 : décrément (ou mise à jour) du stock ET création du mouvement de façon
-                    // ATOMIQUE (frontière transactionnelle) — tout ou rien. Pour une sortie standard, le
-                    // décrément atomique conditionnel garantit qu'un stock négatif est IMPOSSIBLE : si le
-                    // stock est insuffisant, InsufficientStockException est levée et rien n'est persisté
-                    // (ni décrément, ni mouvement). Plus aucune confirmation n'autorise un stock négatif.
-                    await _transactionRunner.RunAsync(async ct =>
-                    {
-                        switch (movementType)
-                        {
-                            case StockMovementType.Out:
-                                // Sortie standard : décrément atomique conditionnel (jamais négatif).
-                                await _stockMutationService.DecrementStockAsync(product.ProductId, line.Quantity, ct);
-                                break;
-
-                            case StockMovementType.In:
-                                // Entrée : incrément (aucun risque de négatif).
-                                product.StockQuantity += line.Quantity;
-                                await _productRepository.UpdateAsync(product, ct);
-                                break;
-
-                            default: // StockMovementType.Adjustment
-                                // Ajustement d'inventaire : correction CONTRÔLÉE en valeur absolue
-                                // (quantité saisie ≥ 1, jamais négative) — distincte d'une sortie standard.
-                                product.StockQuantity = line.Quantity;
-                                await _productRepository.UpdateAsync(product, ct);
-                                break;
-                        }
-
-                        await _stockMovementRepository.CreateAsync(movement, ct);
-                        await _unitOfWork.SaveChangesAsync(ct);
-                    });
 
                     successCount++;
                 }

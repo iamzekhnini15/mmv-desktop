@@ -3,6 +3,11 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
+using MMV.Application.UseCases.Orders.CreateOrder;
+using MMV.Application.UseCases.Orders.DeleteOrder;
+using MMV.Application.UseCases.Orders.SettleOrderBalance;
+using MMV.Application.UseCases.Orders.UpdateOrder;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
@@ -19,11 +24,14 @@ public class OrdersViewModel : BaseViewModel
     private readonly ICustomerRepository _customerRepository;
     private readonly IProductRepository _productRepository;
     private readonly IPrescriptionRepository _prescriptionRepository;
-    private readonly IStockMovementRepository _stockMovementRepository;
-    private readonly INotificationRepository _notificationRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDialogService _dialogService;
     private readonly INumberSequenceService _numberSequenceService;
+    private readonly ICreateOrderUseCase _createOrderUseCase;
+    private readonly IUpdateOrderUseCase _updateOrderUseCase;
+    private readonly IAdvanceOrderStatusUseCase _advanceOrderStatusUseCase;
+    private readonly ISettleOrderBalanceUseCase _settleOrderBalanceUseCase;
+    private readonly IDeleteOrderUseCase _deleteOrderUseCase;
 
     private OrdersListViewModel _listViewModel;
     private OrderFormViewModel? _formViewModel;
@@ -120,22 +128,38 @@ public class OrdersViewModel : BaseViewModel
         ICustomerRepository customerRepository,
         IProductRepository productRepository,
         IPrescriptionRepository prescriptionRepository,
-        IStockMovementRepository stockMovementRepository,
-        INotificationRepository notificationRepository,
         IUnitOfWork unitOfWork,
         IDialogService dialogService,
-        INumberSequenceService numberSequenceService)
+        INumberSequenceService numberSequenceService,
+        ICreateOrderUseCase createOrderUseCase,
+        IUpdateOrderUseCase updateOrderUseCase,
+        IAdvanceOrderStatusUseCase advanceOrderStatusUseCase,
+        ISettleOrderBalanceUseCase settleOrderBalanceUseCase,
+        IDeleteOrderUseCase deleteOrderUseCase)
     {
         _orderRepository = orderRepository;
         _customerRepository = customerRepository;
         _productRepository = productRepository;
         _prescriptionRepository = prescriptionRepository;
-        _stockMovementRepository = stockMovementRepository;
-        _notificationRepository = notificationRepository;
+        // P2B-2J : INotificationRepository retiré — il n'était plus que transmis à OrderDetailViewModel, dont le
+        // flux de notification a migré vers les use cases Application (P2B-2E/P2B-2G). IOrderRepository et
+        // IUnitOfWork sont conservés : encore utilisés ici (rechargement du détail, Kanban).
         _unitOfWork = unitOfWork;
         _dialogService = dialogService;
         // Numérotation fiable obligatoire (P2A-1E) : injectée par DI, transmise jusqu'à OrderFormViewModel.
         _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
+        // Use case de création (P2B-2D) obligatoire : transmis jusqu'à OrderFormViewModel pour la délégation.
+        _createOrderUseCase = createOrderUseCase ?? throw new ArgumentNullException(nameof(createOrderUseCase));
+        // Use case d'édition (P2B-2I) obligatoire : transmis jusqu'à OrderFormViewModel pour la délégation du
+        // flux de modification d'une commande existante.
+        _updateOrderUseCase = updateOrderUseCase ?? throw new ArgumentNullException(nameof(updateOrderUseCase));
+        // Use case d'avancement de statut (P2B-2E) obligatoire : transmis jusqu'à OrderDetailViewModel.
+        _advanceOrderStatusUseCase = advanceOrderStatusUseCase ?? throw new ArgumentNullException(nameof(advanceOrderStatusUseCase));
+        // Use case d'encaissement du solde (P2B-2G) obligatoire : transmis jusqu'à OrderDetailViewModel.
+        _settleOrderBalanceUseCase = settleOrderBalanceUseCase ?? throw new ArgumentNullException(nameof(settleOrderBalanceUseCase));
+        // Use case de suppression de commande (P2B-2H) obligatoire : le flux de suppression est délégué à la
+        // couche Application (plus de DeleteAsync/SaveChangesAsync directs dans la VM).
+        _deleteOrderUseCase = deleteOrderUseCase ?? throw new ArgumentNullException(nameof(deleteOrderUseCase));
 
         // Initialiser la liste
         _listViewModel = new OrdersListViewModel(orderRepository);
@@ -157,8 +181,8 @@ public class OrdersViewModel : BaseViewModel
         {
             ErrorMessage = null;
             FormViewModel = new OrderFormViewModel(
-                _orderRepository, _customerRepository, _productRepository,
-                _prescriptionRepository, _unitOfWork, _numberSequenceService);
+                _customerRepository, _productRepository, _prescriptionRepository,
+                _numberSequenceService, _createOrderUseCase, _updateOrderUseCase);
             FormViewModel.OrderSaved += OnOrderSaved;
             FormViewModel.CancelRequested += OnFormCancelled;
 
@@ -184,8 +208,8 @@ public class OrdersViewModel : BaseViewModel
             CloseDetail();
 
             FormViewModel = new OrderFormViewModel(
-                _orderRepository, _customerRepository, _productRepository,
-                _prescriptionRepository, _unitOfWork, _numberSequenceService, order);
+                _customerRepository, _productRepository, _prescriptionRepository,
+                _numberSequenceService, _createOrderUseCase, _updateOrderUseCase, order);
             FormViewModel.OrderSaved += OnOrderSaved;
             FormViewModel.CancelRequested += OnFormCancelled;
 
@@ -216,7 +240,7 @@ public class OrdersViewModel : BaseViewModel
             }
 
             DetailViewModel = new OrderDetailViewModel(
-                _orderRepository, _unitOfWork, _stockMovementRepository, _notificationRepository);
+                _advanceOrderStatusUseCase, _settleOrderBalanceUseCase);
             DetailViewModel.Initialize(fullOrder);
             DetailViewModel.BackRequested += OnDetailBackRequested;
             DetailViewModel.EditRequested += OnEditOrderRequested;
@@ -303,8 +327,8 @@ public class OrdersViewModel : BaseViewModel
         {
             try
             {
-                await _orderRepository.DeleteAsync(order.OrderId);
-                await _unitOfWork.SaveChangesAsync();
+                var command = new DeleteOrderCommand { OrderId = order.OrderId };
+                await _deleteOrderUseCase.ExecuteAsync(command);
                 CloseDetail();
                 await ListViewModel.LoadOrdersAsync();
             }

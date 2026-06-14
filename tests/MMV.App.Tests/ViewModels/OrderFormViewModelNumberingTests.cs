@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
+using MMV.Application.UseCases.Orders.CreateOrder;
+using MMV.Application.UseCases.Orders.UpdateOrder;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
@@ -39,39 +41,41 @@ public class OrderFormViewModelNumberingTests
     [Fact]
     public async Task InitializeAsync_AssignsOrderNumberFromSequenceService_NotCounting()
     {
-        var orderRepo = new Mock<IOrderRepository>();
         var customerRepo = CustomerRepo();
         var productRepo = ProductRepo();
         var prescriptionRepo = new Mock<IPrescriptionRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
 
         var numberSequence = new Mock<INumberSequenceService>();
         numberSequence.Setup(s => s.NextNumberAsync(DocumentSequenceNames.Order, It.IsAny<CancellationToken>()))
             .ReturnsAsync("CMD-000007");
 
+        var createOrderUseCase = new Mock<ICreateOrderUseCase>();
+        var updateOrderUseCase = new Mock<IUpdateOrderUseCase>();
+
         var viewModel = new OrderFormViewModel(
-            orderRepo.Object, customerRepo.Object, productRepo.Object,
-            prescriptionRepo.Object, unitOfWork.Object, numberSequence.Object);
+            customerRepo.Object, productRepo.Object, prescriptionRepo.Object,
+            numberSequence.Object, createOrderUseCase.Object, updateOrderUseCase.Object);
 
         await viewModel.InitializeAsync();
 
-        // Le numéro vient de la séquence (déterministe) ; l'ancien comptage GetAllAsync n'est plus utilisé.
+        // Le numéro vient de la séquence (déterministe) ; l'ancien comptage count+1 n'est plus possible — depuis
+        // P2B-2I la ViewModel ne reçoit même plus IOrderRepository (persistance entièrement déléguée).
         Assert.Equal("CMD-000007", viewModel.OrderNumber);
         numberSequence.Verify(s => s.NextNumberAsync(DocumentSequenceNames.Order, It.IsAny<CancellationToken>()), Times.Once);
-        orderRepo.Verify(r => r.GetAllAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public void Constructor_WithoutNumberSequenceService_Throws()
     {
-        var orderRepo = new Mock<IOrderRepository>();
         var customerRepo = new Mock<ICustomerRepository>();
         var productRepo = new Mock<IProductRepository>();
         var prescriptionRepo = new Mock<IPrescriptionRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
+
+        var createOrderUseCase = new Mock<ICreateOrderUseCase>();
+        var updateOrderUseCase = new Mock<IUpdateOrderUseCase>();
 
         Assert.Throws<ArgumentNullException>(() => new OrderFormViewModel(
-            orderRepo.Object, customerRepo.Object, productRepo.Object,
-            prescriptionRepo.Object, unitOfWork.Object, null!));
+            customerRepo.Object, productRepo.Object, prescriptionRepo.Object,
+            null!, createOrderUseCase.Object, updateOrderUseCase.Object));
     }
 }

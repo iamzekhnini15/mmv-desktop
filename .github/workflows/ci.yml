@@ -5,7 +5,10 @@ name: CI
 
 on:
   push:
-    branches: [ main, phase2a-stabilization ]
+    branches:
+      - main
+      - 'phase*'
+      - 'p2*'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -99,3 +102,15 @@ jobs:
             exit 1
           }
           Write-Host "Aucune vulnerabilite High/Critical detectee."
+
+      # Outil EF Core verrouille par le manifeste local (.config/dotnet-tools.json) :
+      # restauration explicite avant tout appel `dotnet ef` sur le runner.
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      # Contrôle EF Core (depuis P2A-1R19) : le modèle compilé doit être STRICTEMENT
+      # aligné sur la dernière migration. `has-pending-model-changes` sort en échec
+      # (exit code non nul) si un changement de modèle n'a pas encore été matérialisé
+      # par une migration. `--no-build` réutilise le binaire Debug déjà produit ci-dessus.
+      - name: Check EF Core pending model changes
+        run: dotnet ef migrations has-pending-model-changes --project src/MMV.Infrastructure --no-build
