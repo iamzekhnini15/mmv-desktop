@@ -180,13 +180,37 @@ dotnet list src/MMV.Application/MMV.Application.csproj package
 - **Réduction d'allowlist obligatoire** : la garde « stale allowlist » impose de retirer une entrée dès que la dépendance disparaît — bénéfique, mais exige de mettre à jour le test à chaque phase P2C (comportement voulu).
 - **Périmètre figé** : ces tests ne corrigent **aucune** violation ; ils ne font que geler la baseline. La dette UI⇄persistance reste entière jusqu'aux phases P2C suivantes.
 
-## 14. Verdict
+## 14. Validation CI distante
 
-**P2C-1 = GO (local uniquement).**
+| Paramètre | Valeur |
+|---|---|
+| Lien du run | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27496279411 |
+| Identifiant du run | 27496279411 |
+| Commit testé | `b292affa941bf24ce3bf04777bac4ee031a2ee7e` |
+| Branche testée | `p2c-ui-cleanup` |
+| Workflow | CI — Restore / Build / Test / Scan |
+| Événement déclencheur | push |
 
-Critères d'acceptation tous satisfaits : branche `p2c-ui-cleanup` créée depuis `main`, aucun code métier/VM/use case/migration touché, tests garde-fous créés avec allowlists explicites, violations documentées (78), tests verts (403 > 398), 0 vulnérabilité, `has-pending-model-changes = false`, rapport présent. Aucun commit, aucun push.
+| Étape CI | Résultat |
+|---|---|
+| Restore | **success** (10:42:01 → 10:42:58) |
+| Build | **success** (10:42:58 → 10:43:25) |
+| Test | **success** (10:43:25 → 10:44:09) |
+| Audit NuGet (JSON + sévérité) | **success** (10:44:09 → 10:44:27) |
+| Restore .NET tools | **success** (10:44:27 → 10:44:28) |
+| Check EF Core pending model changes | **success** (10:44:28 → 10:44:31) |
+| **Statut final du workflow** | **completed / success** |
 
-## 15. Prochaine étape candidate
+Nombre de tests CI : **403** (App 131 + Application 49 + Domain 223).
+Durée totale : **3 min 18 s**.
+
+## 15. Verdict
+
+**P2C-1 = GO DÉFINITIF.**
+
+Critères d'acceptation tous satisfaits localement et validés par CI : branche `p2c-ui-cleanup` créée depuis `main`, aucun code métier/VM/use case/migration touché, tests garde-fous créés avec allowlists explicites, violations documentées (78), tests verts (403), 0 vulnérabilité, `has-pending-model-changes = false`. CI GitHub Actions complétée avec succès (run 27496279411).
+
+## 17. Prochaine étape candidate
 
 **P2C-2** — première réduction d'allowlist : migrer la persistance d'un code-behind « feuille » vers la couche Application, en commençant par le cas le plus isolé :
 
