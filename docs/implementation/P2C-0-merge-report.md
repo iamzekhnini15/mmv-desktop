@@ -142,19 +142,25 @@ Push effectué avec succès le 2026-06-14.
 
 ## 11. Validation CI distante — main
 
-> `gh` CLI non disponible localement.  
-> **À vérifier manuellement sur GitHub Actions :**  
-> https://github.com/iamzekhnini15/mmv-desktop/actions?query=branch%3Amain
+Vérification effectuée via GitHub API le 2026-06-14.
 
-Critères à valider :
-- workflow : Restore / Build / Test / Scan
-- branche : main
-- commit : `9a40772`
-- event : push
-- statut attendu : completed / success
-- tests attendus : 398
-- vulnérabilités : 0
-- has-pending-model-changes : success
+| Run ID | Commit | Événement | Statut | Conclusion |
+|--------|--------|-----------|--------|------------|
+| `27495662156` | `9a40772` (merge P2C-0) | push | completed | **success** |
+| `27495698482` | `1f8e05ce` (rapport P2C-0) | push | completed | **success** |
+
+Étapes validées pour le run `27495662156` (commit de merge) :
+
+| Étape | Conclusion |
+|-------|------------|
+| Checkout | ✅ success |
+| Setup .NET | ✅ success |
+| Restore | ✅ success |
+| Build | ✅ success |
+| Test | ✅ success |
+| Audit des packages vulnérables | ✅ success |
+| Restore .NET tools | ✅ success |
+| Check EF Core pending model changes | ✅ success |
 
 ---
 
@@ -163,7 +169,6 @@ Critères à valider :
 | Type | Détail |
 |------|--------|
 | Warning CS1998 | `OrderFormViewModel.cs:464` — méthode async sans await. Warning préexistant, non introduit par P2B. |
-| CI distante | Non vérifiable automatiquement (gh absent). Vérification manuelle requise. |
 | Branche p2b-architecture | Conservée — non supprimée, conformément aux interdictions. |
 
 ---
@@ -180,12 +185,12 @@ Critères à valider :
 | 0 vulnérabilité | ✅ |
 | has-pending-model-changes = false | ✅ |
 | push main effectué | ✅ |
-| CI distante main | ⏳ en attente (vérification manuelle) |
+| CI distante main | ✅ completed / success (runs 27495662156 + 27495698482) |
 | rapport P2C-0 créé | ✅ |
 | aucun code fonctionnel modifié hors merge | ✅ |
 | aucune phase P2C-1 commencée | ✅ |
 
-**Verdict local : GO DÉFINITIF (sous réserve CI distante verte)**
+**Verdict : GO DÉFINITIF**
 
 ---
 
@@ -193,4 +198,4 @@ Critères à valider :
 
 **P2C-1 — Tests garde-fous UI sans persistance**
 
-À démarrer uniquement après confirmation CI distante verte sur main.
+CI distante confirmée verte. P2C-1 peut démarrer.
