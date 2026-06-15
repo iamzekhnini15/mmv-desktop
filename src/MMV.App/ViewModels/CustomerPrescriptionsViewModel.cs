@@ -4,6 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Prescriptions.CreatePrescription;
+using MMV.Application.UseCases.Prescriptions.DeletePrescription;
+using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
 
@@ -14,8 +17,12 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class CustomerPrescriptionsViewModel : BaseViewModel
 {
+    // Conservé pour les lectures d'affichage (chargement de la liste des ordonnances du client). Les écritures
+    // (create/update/delete) sont déléguées aux use cases Application ci-dessous (P2C-4).
     private readonly IPrescriptionRepository _prescriptionRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICreatePrescriptionUseCase _createPrescriptionUseCase;
+    private readonly IUpdatePrescriptionUseCase _updatePrescriptionUseCase;
+    private readonly IDeletePrescriptionUseCase _deletePrescriptionUseCase;
     private long _customerId;
     private bool _isInEditMode;
     private bool _isShowingDetail;
@@ -139,10 +146,16 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     /// </summary>
     public ICommand RefreshCommand { get; }
 
-    public CustomerPrescriptionsViewModel(IPrescriptionRepository prescriptionRepository, IUnitOfWork unitOfWork)
+    public CustomerPrescriptionsViewModel(
+        IPrescriptionRepository prescriptionRepository,
+        ICreatePrescriptionUseCase createPrescriptionUseCase,
+        IUpdatePrescriptionUseCase updatePrescriptionUseCase,
+        IDeletePrescriptionUseCase deletePrescriptionUseCase)
     {
         _prescriptionRepository = prescriptionRepository ?? throw new ArgumentNullException(nameof(prescriptionRepository));
-        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _createPrescriptionUseCase = createPrescriptionUseCase ?? throw new ArgumentNullException(nameof(createPrescriptionUseCase));
+        _updatePrescriptionUseCase = updatePrescriptionUseCase ?? throw new ArgumentNullException(nameof(updatePrescriptionUseCase));
+        _deletePrescriptionUseCase = deletePrescriptionUseCase ?? throw new ArgumentNullException(nameof(deletePrescriptionUseCase));
         _prescriptions = new ObservableCollection<Prescription>();
 
         CreateCommand = new RelayCommand(ExecuteCreate);
@@ -199,7 +212,7 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     /// </summary>
     private void ExecuteCreate()
     {
-        FormViewModel = new PrescriptionFormViewModel(_prescriptionRepository, _unitOfWork)
+        FormViewModel = new PrescriptionFormViewModel(_createPrescriptionUseCase, _updatePrescriptionUseCase)
         {
             CustomerId = CustomerId
         };
@@ -216,7 +229,7 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     {
         if (prescription == null) return;
 
-        DetailViewModel = new PrescriptionDetailViewModel(_prescriptionRepository)
+        DetailViewModel = new PrescriptionDetailViewModel
         {
             CurrentPrescription = prescription
         };
@@ -234,7 +247,7 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     {
         if (prescription == null) return;
 
-        FormViewModel = new PrescriptionFormViewModel(_prescriptionRepository, _unitOfWork);
+        FormViewModel = new PrescriptionFormViewModel(_createPrescriptionUseCase, _updatePrescriptionUseCase);
         FormViewModel.LoadPrescription(prescription);
         FormViewModel.PrescriptionSaved += OnPrescriptionSaved;
         FormViewModel.Cancelled += OnFormCancelled;
@@ -252,8 +265,15 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
         // TODO: Ajouter confirmation
         try
         {
-            await _prescriptionRepository.DeleteAsync(prescription.PrescriptionId);
-            await _unitOfWork.CommitAsync();
+            var result = await _deletePrescriptionUseCase.ExecuteAsync(
+                new DeletePrescriptionCommand { PrescriptionId = prescription.PrescriptionId });
+
+            if (!result.PrescriptionFound)
+            {
+                ErrorMessage = "L'ordonnance à supprimer est introuvable.";
+                return;
+            }
+
             await LoadPrescriptionsAsync();
         }
         catch (Exception ex)

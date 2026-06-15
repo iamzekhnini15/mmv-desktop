@@ -55,6 +55,8 @@ public sealed class AppUiPersistenceGuardrailTests
         // P2C-2 : "CustomerFormViewModel -> ICustomerRepository" retiré — la VM délègue désormais à
         // ICreateCustomerUseCase / IUpdateCustomerUseCase (couche Application).
         "CustomerInfoViewModel -> ISaleRepository",
+        // CustomerPrescriptionsViewModel conserve IPrescriptionRepository pour ses lectures d'affichage
+        // (LoadPrescriptionsAsync). Les écritures (create/update/delete) sont passées aux use cases en P2C-4.
         "CustomerPrescriptionsViewModel -> IPrescriptionRepository",
         "CustomerPurchaseHistoryViewModel -> ISaleRepository",
         "CustomersListViewModel -> ICustomerRepository",
@@ -79,8 +81,10 @@ public sealed class AppUiPersistenceGuardrailTests
         "OrdersViewModel -> IOrderRepository",
         "OrdersViewModel -> IPrescriptionRepository",
         "OrdersViewModel -> IProductRepository",
-        "PrescriptionDetailViewModel -> IPrescriptionRepository",
-        "PrescriptionFormViewModel -> IPrescriptionRepository",
+        // P2C-4 : "PrescriptionDetailViewModel -> IPrescriptionRepository" retiré — la VM de détail est purement
+        // présentationnelle (la dépendance injectée était morte) et ne reçoit plus aucun port de persistance.
+        // P2C-4 : "PrescriptionFormViewModel -> IPrescriptionRepository" retiré — la création/modification d'ordonnance
+        // est désormais portée par ICreatePrescriptionUseCase / IUpdatePrescriptionUseCase (couche Application).
         "ProductFormViewModel -> INotificationRepository",
         "ProductFormViewModel -> IProductRepository",
         "ProductFormViewModel -> ISupplierRepository",
@@ -108,10 +112,15 @@ public sealed class AppUiPersistenceGuardrailTests
     /// </summary>
     private static readonly HashSet<string> AllowedViewModelUnitOfWorkConstructorDependencies = new()
     {
+        // CustomerDetailViewModel conserve IUnitOfWork (param de constructeur) : fiche client détaillée, hors
+        // périmètre P2C-4. La dépendance n'est plus utilisée par les enfants ordonnance (passés aux use cases) ;
+        // son extraction relève d'une phase « fiche client » ultérieure.
         "CustomerDetailViewModel -> IUnitOfWork",
         // P2C-2 : "CustomerFormViewModel -> IUnitOfWork" retiré — la persistance/transaction est portée par les
         // use cases client (couche Application), plus par la VM.
-        "CustomerPrescriptionsViewModel -> IUnitOfWork",
+        // P2C-4 : "CustomerPrescriptionsViewModel -> IUnitOfWork" retiré — la suppression d'ordonnance est désormais
+        // portée par IDeletePrescriptionUseCase (couche Application). La VM ne conserve que IPrescriptionRepository
+        // pour ses lectures d'affichage (LoadPrescriptionsAsync).
         // P2C-3 : "CustomersListViewModel -> IUnitOfWork" retiré — la suppression client est désormais portée par
         // IDeleteCustomerUseCase (couche Application). La VM ne conserve que ICustomerRepository pour ses lectures
         // d'affichage (LoadCustomersAsync), dette reportée vers des query use cases (roadmap §6).
@@ -122,7 +131,8 @@ public sealed class AppUiPersistenceGuardrailTests
         "NotificationsViewModel -> IUnitOfWork",
         "OrderKanbanViewModel -> IUnitOfWork",
         "OrdersViewModel -> IUnitOfWork",
-        "PrescriptionFormViewModel -> IUnitOfWork",
+        // P2C-4 : "PrescriptionFormViewModel -> IUnitOfWork" retiré — la création/modification d'ordonnance est portée
+        // par ICreatePrescriptionUseCase / IUpdatePrescriptionUseCase (couche Application).
         "ProductFormViewModel -> IUnitOfWork",
         "ProductsListViewModel -> IUnitOfWork",
         "ProductsViewModel -> IUnitOfWork",

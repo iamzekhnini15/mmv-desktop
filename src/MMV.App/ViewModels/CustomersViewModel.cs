@@ -3,6 +3,9 @@ using MMV.App.Commands;
 using MMV.Application.UseCases.Customers.CreateCustomer;
 using MMV.Application.UseCases.Customers.DeleteCustomer;
 using MMV.Application.UseCases.Customers.UpdateCustomer;
+using MMV.Application.UseCases.Prescriptions.CreatePrescription;
+using MMV.Application.UseCases.Prescriptions.DeletePrescription;
+using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
@@ -30,6 +33,10 @@ public class CustomersViewModel : BaseViewModel
     private readonly ICreateCustomerUseCase _createCustomerUseCase;
     private readonly IUpdateCustomerUseCase _updateCustomerUseCase;
     private readonly IDeleteCustomerUseCase _deleteCustomerUseCase;
+    // P2C-4 : use cases d'écriture des ordonnances, transmis jusqu'à CustomerDetailViewModel (fiche détail).
+    private readonly ICreatePrescriptionUseCase _createPrescriptionUseCase;
+    private readonly IUpdatePrescriptionUseCase _updatePrescriptionUseCase;
+    private readonly IDeletePrescriptionUseCase _deletePrescriptionUseCase;
     private ICommand? _viewDetailCommand;
 
     /// <summary>
@@ -106,7 +113,7 @@ public class CustomersViewModel : BaseViewModel
     /// <summary>
     /// Initialise le ViewModel avec injection de dépendances.
     /// </summary>
-    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IRegisterSaleUseCase registerSaleUseCase, ICreateCustomerUseCase createCustomerUseCase, IUpdateCustomerUseCase updateCustomerUseCase, IDeleteCustomerUseCase deleteCustomerUseCase)
+    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IRegisterSaleUseCase registerSaleUseCase, ICreateCustomerUseCase createCustomerUseCase, IUpdateCustomerUseCase updateCustomerUseCase, IDeleteCustomerUseCase deleteCustomerUseCase, ICreatePrescriptionUseCase createPrescriptionUseCase, IUpdatePrescriptionUseCase updatePrescriptionUseCase, IDeletePrescriptionUseCase deletePrescriptionUseCase)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersViewModel] Constructor called");
         _customerRepository = customerRepository;
@@ -122,6 +129,10 @@ public class CustomersViewModel : BaseViewModel
         // P2C-3 : use case de suppression client injecté par DI, transmis à CustomersListViewModel (qui ne dépend
         // plus de IUnitOfWork). IUnitOfWork reste requis ici pour CustomerDetailViewModel (fiche détail).
         _deleteCustomerUseCase = deleteCustomerUseCase ?? throw new ArgumentNullException(nameof(deleteCustomerUseCase));
+        // P2C-4 : use cases d'écriture des ordonnances, injectés par DI et transmis à CustomerDetailViewModel.
+        _createPrescriptionUseCase = createPrescriptionUseCase ?? throw new ArgumentNullException(nameof(createPrescriptionUseCase));
+        _updatePrescriptionUseCase = updatePrescriptionUseCase ?? throw new ArgumentNullException(nameof(updatePrescriptionUseCase));
+        _deletePrescriptionUseCase = deletePrescriptionUseCase ?? throw new ArgumentNullException(nameof(deletePrescriptionUseCase));
 
         Title = "Clients";
 
@@ -207,7 +218,7 @@ public class CustomersViewModel : BaseViewModel
         if (customer != null)
         {
             // Créer une nouvelle instance du CustomerDetailViewModel
-            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _prescriptionRepository, _productRepository, _saleRepository, _registerSaleUseCase);
+            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _prescriptionRepository, _productRepository, _saleRepository, _registerSaleUseCase, _createPrescriptionUseCase, _updatePrescriptionUseCase, _deletePrescriptionUseCase);
             
             // Initialiser avec le client sélectionné
             await CustomerDetailViewModel.InitializeAsync(customer);

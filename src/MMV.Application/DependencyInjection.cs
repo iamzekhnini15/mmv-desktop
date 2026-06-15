@@ -7,6 +7,9 @@ using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Orders.DeleteOrder;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Application.UseCases.Orders.UpdateOrder;
+using MMV.Application.UseCases.Prescriptions.CreatePrescription;
+using MMV.Application.UseCases.Prescriptions.DeletePrescription;
+using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
 
@@ -88,6 +91,14 @@ public static class DependencyInjection
         // CustomersListViewModel.ExecuteDelete). Mono-écriture (Delete + SaveChangesAsync unique),
         // ITransactionRunner non requis.
         services.AddScoped<IDeleteCustomerUseCase, DeleteCustomerUseCase>();
+
+        // Réduction de dette P2C-4 — écritures du module Ordonnances. Portée Scoped : même portée que OpticDbContext,
+        // IPrescriptionRepository et IUnitOfWork — donc même DbContext (cohérent avec le flux d'origine porté par
+        // PrescriptionFormViewModel et CustomerPrescriptionsViewModel). Chaque écriture est mono-écriture
+        // (Create/Update/Delete + SaveChangesAsync unique), ITransactionRunner non requis.
+        services.AddScoped<ICreatePrescriptionUseCase, CreatePrescriptionUseCase>();
+        services.AddScoped<IUpdatePrescriptionUseCase, UpdatePrescriptionUseCase>();
+        services.AddScoped<IDeletePrescriptionUseCase, DeletePrescriptionUseCase>();
         return services;
     }
 }

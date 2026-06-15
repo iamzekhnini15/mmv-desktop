@@ -2,7 +2,6 @@ using System;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -11,7 +10,6 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class PrescriptionDetailViewModel : BaseViewModel
 {
-    private readonly IPrescriptionRepository _prescriptionRepository;
     private Prescription? _currentPrescription;
 
     /// <summary>
@@ -53,10 +51,8 @@ public class PrescriptionDetailViewModel : BaseViewModel
     /// </summary>
     public event EventHandler? BackRequested;
 
-    public PrescriptionDetailViewModel(IPrescriptionRepository prescriptionRepository)
+    public PrescriptionDetailViewModel()
     {
-        _prescriptionRepository = prescriptionRepository ?? throw new ArgumentNullException(nameof(prescriptionRepository));
-
         BackCommand = new RelayCommand(ExecuteBack);
         EditCommand = new RelayCommand(ExecuteEdit);
         DeleteCommand = new RelayCommand(ExecuteDelete);
