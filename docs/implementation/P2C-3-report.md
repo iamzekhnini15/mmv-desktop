@@ -7,10 +7,8 @@
 | `TARGET_PHASE_ID` | P2C-3 |
 | `EXECUTION_MODE` | IMPLEMENT |
 | `SOURCE_BRANCH` | p2c-ui-cleanup |
-| `ALLOW_COMMIT` | false |
-| `ALLOW_PUSH` | false |
-
-Aucun commit créé, aucun push effectué (conformément à `ALLOW_COMMIT = false` / `ALLOW_PUSH = false`).
+| `ALLOW_COMMIT` | true |
+| `ALLOW_PUSH` | true |
 
 ## 2. État Git initial
 
@@ -167,15 +165,34 @@ dotnet list src/MMV.Application/MMV.Application.csproj package
 - **`async void ExecuteDelete`** conservé (contrainte `RelayCommand`/MVVM) : comportement inchangé, exceptions captées → `ErrorMessage`.
 - **Absence de confirmation utilisateur** sur la suppression : comportement d'origine inchangé (non introduit ici pour rester iso-fonctionnel) ; pourrait être ajouté ultérieurement via `IDialogService` si souhaité (évolution UX, hors nettoyage architectural).
 
-## 16. Verdict
+## 16. Validation CI distante
 
-**P2C-3 = GO local.**
+| Champ | Valeur |
+|---|---|
+| Lien du run | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27580886305 |
+| Identifiant du run | 27580886305 (CI #51) |
+| Commit testé | `146ceb59724bb38d6afd002159fa0070ca5382b4` |
+| Branche testée | `p2c-ui-cleanup` |
+| Créé le | 2026-06-15T22:34:59Z |
+| Complété le | 2026-06-15T22:37:57Z |
 
-Critères d'acceptation satisfaits : `DeleteCustomerUseCase` créé et enregistré en DI Application ; `CustomersListViewModel` n'expose plus `Repository` / `UnitOfWork` et ne dépend plus de `IUnitOfWork` ; suppression client déléguée à `IDeleteCustomerUseCase` ; tests Application ajoutés (SQLite réel, 5) ; tests App ajoutés (délégation + garde-fous, 7) ; `AppUiPersistenceGuardrailTests` verts ; allowlist réduite (74 → 71, dont `AllowedPublicPersistenceProperties` 2 → 0) ; build vert ; **429 tests verts** ; 0 vulnérabilité ; `has-pending-model-changes = false` ; aucune migration ; aucun modèle EF modifié ; rapport P2C-3 créé.
+| Étape CI | Résultat |
+|---|---|
+| Restore | **success** |
+| Build | **success** |
+| Test | **success** (429 tests) |
+| Audit NuGet (`Audit des packages vulnérables`) | **success** (0 vulnérabilité) |
+| Restore .NET tools | **success** (`dotnet-ef` 8.0.27) |
+| Check EF Core pending model changes | **success** (false) |
+| **Statut final du workflow** | **completed / success** |
 
-> Validation CI distante non effectuée (`ALLOW_PUSH = false`) — à réaliser après commit/push, selon le protocole des phases précédentes.
+## 17. Verdict
 
-## 17. Prochaine étape candidate
+**P2C-3 = GO DÉFINITIF COMPLET.**
+
+Critères d'acceptation satisfaits : `DeleteCustomerUseCase` créé et enregistré en DI Application ; `CustomersListViewModel` n'expose plus `Repository` / `UnitOfWork` et ne dépend plus de `IUnitOfWork` ; suppression client déléguée à `IDeleteCustomerUseCase` ; tests Application ajoutés (SQLite réel, 5) ; tests App ajoutés (délégation + garde-fous, 7) ; `AppUiPersistenceGuardrailTests` verts ; allowlist réduite (74 → 71, dont `AllowedPublicPersistenceProperties` 2 → 0) ; build vert ; **429 tests verts** ; 0 vulnérabilité ; `has-pending-model-changes = false` ; aucune migration ; aucun modèle EF modifié ; rapport P2C-3 créé. Commit `146ceb5` poussé sur `p2c-ui-cleanup`. CI GitHub Actions run #51 : **completed / success**.
+
+## 18. Prochaine étape candidate
 
 **P2C-4 — Ordonnances** (selon roadmap §4) : extraire la persistance directe de `PrescriptionFormViewModel`, `PrescriptionDetailViewModel` et `CustomerPrescriptionsViewModel` vers des use cases Application (create/update/delete d'ordonnance), réduisant les entrées d'allowlist correspondantes (`*Prescription* -> IPrescriptionRepository` / `-> IUnitOfWork`).
 
