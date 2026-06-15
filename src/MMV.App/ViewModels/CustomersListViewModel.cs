@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Customers.DeleteCustomer;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
 
@@ -15,8 +16,8 @@ namespace MMV.App.ViewModels;
 public class CustomersListViewModel : BaseViewModel
 {
     private readonly ICustomerRepository _customerRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    
+    private readonly IDeleteCustomerUseCase _deleteCustomerUseCase;
+
     private ObservableCollection<Customer> _customers;
     private ObservableCollection<Customer> _filteredCustomers;
     private Customer? _selectedCustomer;
@@ -24,16 +25,6 @@ public class CustomersListViewModel : BaseViewModel
     private int _currentPage = 1;
     private int _pageSize = 20;
     private int _totalCustomers;
-
-    /// <summary>
-    /// Expose le repository pour accès depuis le code-behind
-    /// </summary>
-    public ICustomerRepository Repository => _customerRepository;
-    
-    /// <summary>
-    /// Expose le UnitOfWork pour accès depuis le code-behind
-    /// </summary>
-    public IUnitOfWork UnitOfWork => _unitOfWork;
 
     /// <summary>
     /// Liste complète des clients.
@@ -147,12 +138,15 @@ public class CustomersListViewModel : BaseViewModel
     /// </summary>
     public event EventHandler<Customer>? ViewCustomerDetailsRequested;
 
-    public CustomersListViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork)
+    public CustomersListViewModel(ICustomerRepository customerRepository, IDeleteCustomerUseCase deleteCustomerUseCase)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersListViewModel] Constructor called");
+        // ICustomerRepository conservé pour les lectures d'affichage (LoadCustomersAsync) — dette P2C reportée
+        // vers des query use cases (cf. roadmap §6). La persistance (suppression) est désormais déléguée au
+        // IDeleteCustomerUseCase de la couche Application : plus aucun IUnitOfWork ni SaveChangesAsync ici.
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
-        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-        
+        _deleteCustomerUseCase = deleteCustomerUseCase ?? throw new ArgumentNullException(nameof(deleteCustomerUseCase));
+
         _customers = new ObservableCollection<Customer>();
         _filteredCustomers = new ObservableCollection<Customer>();
         
@@ -257,18 +251,28 @@ public class CustomersListViewModel : BaseViewModel
     {
         if (SelectedCustomer == null) return;
 
+        var customerToDelete = SelectedCustomer;
+
         IsLoading = true;
         ErrorMessage = string.Empty;
 
         try
         {
-            await _customerRepository.DeleteAsync(SelectedCustomer.CustomerId);
-            await _unitOfWork.SaveChangesAsync();
-            
+            // P2C-3 : la suppression (DeleteAsync + SaveChangesAsync) est portée par la couche Application.
+            // La VM construit la commande à partir de son état et délègue ; elle conserve la mise à jour d'écran.
+            var result = await _deleteCustomerUseCase.ExecuteAsync(
+                new DeleteCustomerCommand { CustomerId = customerToDelete.CustomerId });
+
+            if (!result.CustomerFound)
+            {
+                ErrorMessage = "Le client à supprimer est introuvable.";
+                return;
+            }
+
             // Retirer de la liste
-            Customers.Remove(SelectedCustomer);
+            Customers.Remove(customerToDelete);
             ApplyFilter();
-            
+
             SelectedCustomer = null;
         }
         catch (Exception ex)

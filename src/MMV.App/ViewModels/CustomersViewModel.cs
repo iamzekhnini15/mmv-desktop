@@ -1,6 +1,7 @@
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Customers.CreateCustomer;
+using MMV.Application.UseCases.Customers.DeleteCustomer;
 using MMV.Application.UseCases.Customers.UpdateCustomer;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Domain.Entities;
@@ -28,6 +29,7 @@ public class CustomersViewModel : BaseViewModel
     private readonly IRegisterSaleUseCase _registerSaleUseCase;
     private readonly ICreateCustomerUseCase _createCustomerUseCase;
     private readonly IUpdateCustomerUseCase _updateCustomerUseCase;
+    private readonly IDeleteCustomerUseCase _deleteCustomerUseCase;
     private ICommand? _viewDetailCommand;
 
     /// <summary>
@@ -104,7 +106,7 @@ public class CustomersViewModel : BaseViewModel
     /// <summary>
     /// Initialise le ViewModel avec injection de dépendances.
     /// </summary>
-    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IRegisterSaleUseCase registerSaleUseCase, ICreateCustomerUseCase createCustomerUseCase, IUpdateCustomerUseCase updateCustomerUseCase)
+    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IRegisterSaleUseCase registerSaleUseCase, ICreateCustomerUseCase createCustomerUseCase, IUpdateCustomerUseCase updateCustomerUseCase, IDeleteCustomerUseCase deleteCustomerUseCase)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersViewModel] Constructor called");
         _customerRepository = customerRepository;
@@ -117,11 +119,14 @@ public class CustomersViewModel : BaseViewModel
         // P2C-2 : use cases client (create/update) injectés par DI, transmis au CustomerFormViewModel.
         _createCustomerUseCase = createCustomerUseCase ?? throw new ArgumentNullException(nameof(createCustomerUseCase));
         _updateCustomerUseCase = updateCustomerUseCase ?? throw new ArgumentNullException(nameof(updateCustomerUseCase));
+        // P2C-3 : use case de suppression client injecté par DI, transmis à CustomersListViewModel (qui ne dépend
+        // plus de IUnitOfWork). IUnitOfWork reste requis ici pour CustomerDetailViewModel (fiche détail).
+        _deleteCustomerUseCase = deleteCustomerUseCase ?? throw new ArgumentNullException(nameof(deleteCustomerUseCase));
 
         Title = "Clients";
-        
+
         // Initialiser le ViewModel de la liste avec les bonnes dépendances
-        _customersListViewModel = new CustomersListViewModel(customerRepository, unitOfWork);
+        _customersListViewModel = new CustomersListViewModel(customerRepository, _deleteCustomerUseCase);
         
         // Écouter les événements du ViewModel de la liste
         _customersListViewModel.CreateCustomerRequested += OnCreateCustomerRequested;

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using MMV.Application.UseCases.Customers.CreateCustomer;
+using MMV.Application.UseCases.Customers.DeleteCustomer;
 using MMV.Application.UseCases.Customers.UpdateCustomer;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
@@ -81,6 +82,12 @@ public static class DependencyInjection
         // SaveChangesAsync unique), ITransactionRunner non requis.
         services.AddScoped<ICreateCustomerUseCase, CreateCustomerUseCase>();
         services.AddScoped<IUpdateCustomerUseCase, UpdateCustomerUseCase>();
+
+        // Reliquat client P2C-3 — flux « delete ». Portée Scoped : même portée que OpticDbContext,
+        // ICustomerRepository et IUnitOfWork — donc même DbContext (cohérent avec le flux d'origine porté par
+        // CustomersListViewModel.ExecuteDelete). Mono-écriture (Delete + SaveChangesAsync unique),
+        // ITransactionRunner non requis.
+        services.AddScoped<IDeleteCustomerUseCase, DeleteCustomerUseCase>();
         return services;
     }
 }

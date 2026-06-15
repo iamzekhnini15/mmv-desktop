@@ -112,7 +112,9 @@ public sealed class AppUiPersistenceGuardrailTests
         // P2C-2 : "CustomerFormViewModel -> IUnitOfWork" retiré — la persistance/transaction est portée par les
         // use cases client (couche Application), plus par la VM.
         "CustomerPrescriptionsViewModel -> IUnitOfWork",
-        "CustomersListViewModel -> IUnitOfWork",
+        // P2C-3 : "CustomersListViewModel -> IUnitOfWork" retiré — la suppression client est désormais portée par
+        // IDeleteCustomerUseCase (couche Application). La VM ne conserve que ICustomerRepository pour ses lectures
+        // d'affichage (LoadCustomersAsync), dette reportée vers des query use cases (roadmap §6).
         "CustomersViewModel -> IUnitOfWork",
         "InventoryViewModel -> IUnitOfWork",
         "MainWindowViewModel -> IUnitOfWork",
@@ -139,8 +141,9 @@ public sealed class AppUiPersistenceGuardrailTests
     /// </summary>
     private static readonly HashSet<string> AllowedPublicPersistenceProperties = new()
     {
-        "CustomersListViewModel.Repository",
-        "CustomersListViewModel.UnitOfWork",
+        // P2C-3 : "CustomersListViewModel.Repository" et "CustomersListViewModel.UnitOfWork" retirés — la fuite de
+        // ports de persistance vers le code-behind est éliminée (la suppression passe par IDeleteCustomerUseCase,
+        // le repository n'est plus exposé publiquement). Allowlist vidée : aucun ViewModel ne ré-expose ses ports.
     };
 
     /// <summary>
