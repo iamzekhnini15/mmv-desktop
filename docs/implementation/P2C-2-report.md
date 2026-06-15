@@ -199,6 +199,8 @@ dotnet list src/MMV.Application/MMV.Application.csproj package
 
 ## 16. Validation CI distante
 
+### Run implémentation (commit `e15c614`)
+
 | Champ | Valeur |
 |---|---|
 | Run ID | 27546180258 |
@@ -209,13 +211,24 @@ dotnet list src/MMV.Application/MMV.Application.csproj package
 | Durée | 4m03s |
 | Workflow | Restore / Build / Test / Scan |
 
-CI distante **verte** sur le commit de référence P2C-2.
+### Run documentaire (commit `ba4f30d`)
+
+| Champ | Valeur |
+|---|---|
+| CI # | 49 |
+| Commit testé | `ba4f30d` |
+| Branche | `p2c-ui-cleanup` |
+| Statut | **completed / success** |
+| Durée | 2m 54s |
+| Workflow | Restore / Build / Test / Scan |
+
+CI distante **verte** sur le commit documentaire.
 
 ## 17. Verdict
 
 **P2C-2 = GO DÉFINITIF COMPLET.**
 
-Tous les critères d'acceptation satisfaits : `CreateCustomerUseCase` et `UpdateCustomerUseCase` créés et enregistrés en DI Application ; `CustomerFormViewModel` ne dépend plus de `ICustomerRepository` ni de `IUnitOfWork` ; `CustomerFormView.axaml.cs` et `CustomersView.axaml.cs` ne font plus de persistance directe ; tests Application ajoutés (SQLite réel) ; tests App adaptés (délégation + garde-fous) ; `AppUiPersistenceGuardrailTests` verts ; allowlist réduite (78 → 74) ; build vert ; **417 tests verts** ; 0 vulnérabilité ; `has-pending-model-changes = false` ; aucune migration ; aucun modèle EF modifié. CI distante #48 (run 27546180258) verte sur `e15c614`.
+Tous les critères d'acceptation satisfaits : `CreateCustomerUseCase` et `UpdateCustomerUseCase` créés et enregistrés en DI Application ; `CustomerFormViewModel` ne dépend plus de `ICustomerRepository` ni de `IUnitOfWork` ; `CustomerFormView.axaml.cs` et `CustomersView.axaml.cs` ne font plus de persistance directe ; tests Application ajoutés (SQLite réel) ; tests App adaptés (délégation + garde-fous) ; `AppUiPersistenceGuardrailTests` verts ; allowlist réduite (78 → 74) ; build vert ; **417 tests verts** ; 0 vulnérabilité ; `has-pending-model-changes = false` ; aucune migration ; aucun modèle EF modifié. CI distante #48 (run 27546180258) verte sur `e15c614` ; CI documentaire #49 verte sur `ba4f30d`.
 
 ## 18. Prochaine étape candidate
 
