@@ -1,5 +1,7 @@
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Customers.CreateCustomer;
+using MMV.Application.UseCases.Customers.UpdateCustomer;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
@@ -24,6 +26,8 @@ public class CustomersViewModel : BaseViewModel
     private readonly IProductRepository _productRepository;
     private readonly ISaleRepository _saleRepository;
     private readonly IRegisterSaleUseCase _registerSaleUseCase;
+    private readonly ICreateCustomerUseCase _createCustomerUseCase;
+    private readonly IUpdateCustomerUseCase _updateCustomerUseCase;
     private ICommand? _viewDetailCommand;
 
     /// <summary>
@@ -100,7 +104,7 @@ public class CustomersViewModel : BaseViewModel
     /// <summary>
     /// Initialise le ViewModel avec injection de dépendances.
     /// </summary>
-    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IRegisterSaleUseCase registerSaleUseCase)
+    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IRegisterSaleUseCase registerSaleUseCase, ICreateCustomerUseCase createCustomerUseCase, IUpdateCustomerUseCase updateCustomerUseCase)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersViewModel] Constructor called");
         _customerRepository = customerRepository;
@@ -110,6 +114,9 @@ public class CustomersViewModel : BaseViewModel
         _saleRepository = saleRepository;
         // Use case de sauvegarde de vente obligatoire (P2B-2C) : injecté par DI, transmis jusqu'à SaleFormViewModel.
         _registerSaleUseCase = registerSaleUseCase ?? throw new ArgumentNullException(nameof(registerSaleUseCase));
+        // P2C-2 : use cases client (create/update) injectés par DI, transmis au CustomerFormViewModel.
+        _createCustomerUseCase = createCustomerUseCase ?? throw new ArgumentNullException(nameof(createCustomerUseCase));
+        _updateCustomerUseCase = updateCustomerUseCase ?? throw new ArgumentNullException(nameof(updateCustomerUseCase));
 
         Title = "Clients";
         
@@ -131,7 +138,7 @@ public class CustomersViewModel : BaseViewModel
     {
         Console.WriteLine(">>> CustomersViewModel: OnCreateCustomerRequested RECEIVED <<<");
         // Créer une nouvelle instance du formulaire vide
-        CustomerFormViewModel = new CustomerFormViewModel(_customerRepository, _unitOfWork);
+        CustomerFormViewModel = new CustomerFormViewModel(_createCustomerUseCase, _updateCustomerUseCase);
         CustomerFormViewModel.InitializeForCreate(); // Initialize for create mode
         
         // S'abonner aux événements pour fermer le formulaire et rafraîchir la liste
@@ -153,7 +160,7 @@ public class CustomersViewModel : BaseViewModel
     {
         System.Diagnostics.Debug.WriteLine($"[CustomersViewModel] OnEditCustomerRequested called for customer {customer.FirstName} {customer.LastName}");
         // Créer une instance du formulaire avec les données du client
-        CustomerFormViewModel = new CustomerFormViewModel(_customerRepository, _unitOfWork);
+        CustomerFormViewModel = new CustomerFormViewModel(_createCustomerUseCase, _updateCustomerUseCase);
         CustomerFormViewModel.InitializeForEdit(customer); // Initialize with customer data
         CustomerFormViewModel.CustomerSaved += OnCustomerFormSaved;
         CustomerFormViewModel.Cancelled += OnCustomerFormCancelled;

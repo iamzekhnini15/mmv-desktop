@@ -1,17 +1,24 @@
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Customers.CreateCustomer;
+using MMV.Application.UseCases.Customers.UpdateCustomer;
 using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour le formulaire de création/édition d'un client.
 /// </summary>
+/// <remarks>
+/// P2C-2 : la persistance directe (repository + <c>IUnitOfWork</c> + <c>SaveChangesAsync</c>) a été déplacée vers
+/// la couche Application. La ViewModel ne fait plus qu'orchestrer l'écran (état, validation de surface,
+/// construction des commandes) puis déléguer à <see cref="ICreateCustomerUseCase"/> /
+/// <see cref="IUpdateCustomerUseCase"/>.
+/// </remarks>
 public class CustomerFormViewModel : BaseViewModel
 {
-    private readonly ICustomerRepository _customerRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICreateCustomerUseCase _createCustomerUseCase;
+    private readonly IUpdateCustomerUseCase _updateCustomerUseCase;
     private Customer? _originalCustomer;
 
     #region Properties
@@ -201,10 +208,10 @@ public class CustomerFormViewModel : BaseViewModel
 
     #endregion
 
-    public CustomerFormViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork)
+    public CustomerFormViewModel(ICreateCustomerUseCase createCustomerUseCase, IUpdateCustomerUseCase updateCustomerUseCase)
     {
-        _customerRepository = customerRepository;
-        _unitOfWork = unitOfWork;
+        _createCustomerUseCase = createCustomerUseCase ?? throw new ArgumentNullException(nameof(createCustomerUseCase));
+        _updateCustomerUseCase = updateCustomerUseCase ?? throw new ArgumentNullException(nameof(updateCustomerUseCase));
 
         SaveCommand = new RelayCommand(ExecuteSave, CanExecuteSave);
         CancelCommand = new RelayCommand(ExecuteCancel, CanExecuteCancel);
@@ -344,93 +351,98 @@ public class CustomerFormViewModel : BaseViewModel
 
     private async void ExecuteSave()
     {
-        System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] ExecuteSave called");
-        Console.WriteLine("[CustomerFormViewModel] ExecuteSave called");
-        System.Diagnostics.Debug.WriteLine($"[CustomerFormViewModel] FirstName: '{FirstName}', LastName: '{LastName}'");
-        Console.WriteLine($"[CustomerFormViewModel] FirstName: '{FirstName}', LastName: '{LastName}'");
-        
         if (!IsFormValid())
         {
-            System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] Form validation failed");
-            Console.WriteLine("[CustomerFormViewModel] Form validation failed");
             ErrorMessage = "Veuillez corriger les erreurs dans le formulaire";
             return;
         }
 
-        System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] Form is valid, starting save...");
-        Console.WriteLine("[CustomerFormViewModel] Form is valid, starting save...");
         IsSaving = true;
         ErrorMessage = string.Empty;
 
         try
         {
-            Customer customer;
-
+            // P2C-2 : la persistance est déléguée à la couche Application. La ViewModel se contente de construire
+            // la commande à partir de l'état du formulaire, d'appeler le use case et de réagir au résultat.
             if (IsEditMode && _originalCustomer != null)
             {
-                // Mode édition : mettre à jour le client existant
-                customer = _originalCustomer;
-                customer.FirstName = FirstName;
-                customer.LastName = LastName;
-                customer.Email = string.IsNullOrWhiteSpace(Email) ? null : Email;
-                customer.Phone = string.IsNullOrWhiteSpace(Phone) ? null : Phone;
-                customer.BirthDate = BirthDate?.UtcDateTime;
-                customer.Address = string.IsNullOrWhiteSpace(Address) ? null : Address;
-                customer.City = string.IsNullOrWhiteSpace(City) ? null : City;
-                customer.PostalCode = string.IsNullOrWhiteSpace(PostalCode) ? null : PostalCode;
-                customer.SocialSecurityNumber = string.IsNullOrWhiteSpace(SocialSecurityNumber) ? null : SocialSecurityNumber;
-                customer.InsuranceName = string.IsNullOrWhiteSpace(InsuranceName) ? null : InsuranceName;
-                customer.Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes;
-                customer.UpdatedAt = DateTime.UtcNow;
+                var result = await _updateCustomerUseCase.ExecuteAsync(new UpdateCustomerCommand
+                {
+                    CustomerId = _originalCustomer.CustomerId,
+                    FirstName = FirstName,
+                    LastName = LastName,
+                    Email = Email,
+                    Phone = Phone,
+                    BirthDate = BirthDate?.UtcDateTime,
+                    Address = Address,
+                    City = City,
+                    PostalCode = PostalCode,
+                    SocialSecurityNumber = SocialSecurityNumber,
+                    InsuranceName = InsuranceName,
+                    Notes = Notes
+                });
 
-                await _customerRepository.UpdateAsync(customer);
+                if (!result.CustomerFound)
+                {
+                    ErrorMessage = "Le client à modifier est introuvable.";
+                    return;
+                }
+
+                // Refléter les champs édités dans l'instance affichée (cohérent avec le flux d'origine qui mutait
+                // l'entité chargée) avant de notifier ; la liste est ensuite rechargée par le parent.
+                ApplyFormTo(_originalCustomer);
+                CustomerSaved?.Invoke(this, _originalCustomer);
             }
             else
             {
-                // Mode création : créer un nouveau client
-                customer = new Customer
+                var result = await _createCustomerUseCase.ExecuteAsync(new CreateCustomerCommand
                 {
                     FirstName = FirstName,
                     LastName = LastName,
-                    Email = string.IsNullOrWhiteSpace(Email) ? null : Email,
-                    Phone = string.IsNullOrWhiteSpace(Phone) ? null : Phone,
+                    Email = Email,
+                    Phone = Phone,
                     BirthDate = BirthDate?.UtcDateTime,
-                    Address = string.IsNullOrWhiteSpace(Address) ? null : Address,
-                    City = string.IsNullOrWhiteSpace(City) ? null : City,
-                    PostalCode = string.IsNullOrWhiteSpace(PostalCode) ? null : PostalCode,
-                    SocialSecurityNumber = string.IsNullOrWhiteSpace(SocialSecurityNumber) ? null : SocialSecurityNumber,
-                    InsuranceName = string.IsNullOrWhiteSpace(InsuranceName) ? null : InsuranceName,
-                    Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
+                    Address = Address,
+                    City = City,
+                    PostalCode = PostalCode,
+                    SocialSecurityNumber = SocialSecurityNumber,
+                    InsuranceName = InsuranceName,
+                    Notes = Notes
+                });
 
-                await _customerRepository.CreateAsync(customer);
+                var created = new Customer { CustomerId = result.CustomerId };
+                ApplyFormTo(created);
+                CustomerSaved?.Invoke(this, created);
             }
-
-            System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] Saving to database...");
-            Console.WriteLine("[CustomerFormViewModel] Saving to database...");
-            await _unitOfWork.SaveChangesAsync();
-            System.Diagnostics.Debug.WriteLine("[CustomerFormViewModel] Save successful!");
-            Console.WriteLine("[CustomerFormViewModel] Save successful!");
-
-            // Déclencher l'événement de succès
-            System.Diagnostics.Debug.WriteLine($"[CustomerFormViewModel] Invoking CustomerSaved event (subscribers: {CustomerSaved?.GetInvocationList().Length ?? 0})");
-            Console.WriteLine($"[CustomerFormViewModel] Invoking CustomerSaved event (subscribers: {CustomerSaved?.GetInvocationList().Length ?? 0})");
-            CustomerSaved?.Invoke(this, customer);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CustomerFormViewModel] ERROR: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"[CustomerFormViewModel] Stack trace: {ex.StackTrace}");
-            Console.WriteLine($"[CustomerFormViewModel] ERROR: {ex.Message}");
-            Console.WriteLine($"[CustomerFormViewModel] Stack trace: {ex.StackTrace}");
             ErrorMessage = $"Erreur lors de l'enregistrement : {ex.Message}";
         }
         finally
         {
             IsSaving = false;
         }
+    }
+
+    /// <summary>
+    /// Reporte l'état du formulaire (champs optionnels normalisés en null si blancs) sur une entité <see cref="Customer"/>
+    /// destinée uniquement à l'affichage / à la notification <see cref="CustomerSaved"/>. La persistance reste
+    /// assurée par les use cases ; cette copie ne déclenche aucune écriture.
+    /// </summary>
+    private void ApplyFormTo(Customer customer)
+    {
+        customer.FirstName = FirstName;
+        customer.LastName = LastName;
+        customer.Email = string.IsNullOrWhiteSpace(Email) ? null : Email;
+        customer.Phone = string.IsNullOrWhiteSpace(Phone) ? null : Phone;
+        customer.BirthDate = BirthDate?.UtcDateTime;
+        customer.Address = string.IsNullOrWhiteSpace(Address) ? null : Address;
+        customer.City = string.IsNullOrWhiteSpace(City) ? null : City;
+        customer.PostalCode = string.IsNullOrWhiteSpace(PostalCode) ? null : PostalCode;
+        customer.SocialSecurityNumber = string.IsNullOrWhiteSpace(SocialSecurityNumber) ? null : SocialSecurityNumber;
+        customer.InsuranceName = string.IsNullOrWhiteSpace(InsuranceName) ? null : InsuranceName;
+        customer.Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes;
     }
 
     private bool CanExecuteCancel()

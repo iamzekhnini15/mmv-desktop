@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using MMV.App.ViewModels;
-using MMV.Domain.Entities;
 
 namespace MMV.App.Views.Clients;
 
@@ -73,70 +72,6 @@ public partial class CustomerFormView : UserControl
         {
             if (formVm.CancelCommand.CanExecute(null))
                 formVm.CancelCommand.Execute(null);
-        }
-    }
-
-    private async void ButtonEnregistrer_Click(object? sender, RoutedEventArgs e)
-    {
-        System.Diagnostics.Debug.WriteLine("[CustomerFormView] ButtonEnregistrer_Click called");
-        System.Diagnostics.Debug.WriteLine($"[CustomerFormView] DataContext type: {DataContext?.GetType().Name ?? "null"}");
-
-        // If the view's DataContext is the parent CustomersViewModel, keep old behavior
-        if (DataContext is CustomersViewModel parentVm)
-        {
-            var customer = parentVm.CustomersListViewModel.SelectedCustomer;
-
-            if (customer == null)
-            {
-                customer = new Customer();
-            }
-
-            try
-            {
-                if (customer.CustomerId == 0)
-                {
-                    await parentVm.CustomersListViewModel.Repository.CreateAsync(customer);
-                }
-                else
-                {
-                    await parentVm.CustomersListViewModel.Repository.UpdateAsync(customer);
-                }
-
-                await parentVm.CustomersListViewModel.UnitOfWork.SaveChangesAsync();
-                await parentVm.CustomersListViewModel.LoadCustomersAsync();
-
-                parentVm.IsInEditMode = false;
-                parentVm.IsCreatingNew = false;
-                parentVm.CustomersListViewModel.SelectedCustomer = null;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Erreur: {ex.Message}");
-            }
-
-            return;
-        }
-
-        // If the view's DataContext is the form's ViewModel, execute its SaveCommand
-        if (DataContext is CustomerFormViewModel formVm)
-        {
-            System.Diagnostics.Debug.WriteLine("[CustomerFormView] Found CustomerFormViewModel");
-            System.Diagnostics.Debug.WriteLine($"[CustomerFormView] SaveCommand.CanExecute: {formVm.SaveCommand.CanExecute(null)}");
-            System.Diagnostics.Debug.WriteLine($"[CustomerFormView] FirstName: '{formVm.FirstName}', LastName: '{formVm.LastName}'");
-            
-            if (formVm.SaveCommand.CanExecute(null))
-            {
-                System.Diagnostics.Debug.WriteLine("[CustomerFormView] Executing SaveCommand");
-                formVm.SaveCommand.Execute(null);
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("[CustomerFormView] SaveCommand.CanExecute returned false - cannot save");
-            }
-        }
-        else
-        {
-            System.Diagnostics.Debug.WriteLine("[CustomerFormView] DataContext is NOT CustomerFormViewModel");
         }
     }
 }

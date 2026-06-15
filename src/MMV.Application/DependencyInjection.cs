@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using MMV.Application.UseCases.Customers.CreateCustomer;
+using MMV.Application.UseCases.Customers.UpdateCustomer;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Orders.DeleteOrder;
@@ -72,6 +74,13 @@ public static class DependencyInjection
         // Mono-écriture (UpdateAsync + SaveChangesAsync unique, reconstruction des lignes incluse via cascades EF),
         // ITransactionRunner non requis.
         services.AddScoped<IUpdateOrderUseCase, UpdateOrderUseCase>();
+
+        // Première réduction de dette P2C (P2C-2) — flux client « create / update ». Portée Scoped : même portée
+        // que OpticDbContext, ICustomerRepository et IUnitOfWork — donc même DbContext (cohérent avec le flux
+        // d'origine porté par CustomerFormViewModel et le code-behind client). Mono-écriture (Create/Update +
+        // SaveChangesAsync unique), ITransactionRunner non requis.
+        services.AddScoped<ICreateCustomerUseCase, CreateCustomerUseCase>();
+        services.AddScoped<IUpdateCustomerUseCase, UpdateCustomerUseCase>();
         return services;
     }
 }

@@ -52,7 +52,8 @@ public sealed class AppUiPersistenceGuardrailTests
         "CustomerDetailViewModel -> IPrescriptionRepository",
         "CustomerDetailViewModel -> IProductRepository",
         "CustomerDetailViewModel -> ISaleRepository",
-        "CustomerFormViewModel -> ICustomerRepository",
+        // P2C-2 : "CustomerFormViewModel -> ICustomerRepository" retiré — la VM délègue désormais à
+        // ICreateCustomerUseCase / IUpdateCustomerUseCase (couche Application).
         "CustomerInfoViewModel -> ISaleRepository",
         "CustomerPrescriptionsViewModel -> IPrescriptionRepository",
         "CustomerPurchaseHistoryViewModel -> ISaleRepository",
@@ -108,7 +109,8 @@ public sealed class AppUiPersistenceGuardrailTests
     private static readonly HashSet<string> AllowedViewModelUnitOfWorkConstructorDependencies = new()
     {
         "CustomerDetailViewModel -> IUnitOfWork",
-        "CustomerFormViewModel -> IUnitOfWork",
+        // P2C-2 : "CustomerFormViewModel -> IUnitOfWork" retiré — la persistance/transaction est portée par les
+        // use cases client (couche Application), plus par la VM.
         "CustomerPrescriptionsViewModel -> IUnitOfWork",
         "CustomersListViewModel -> IUnitOfWork",
         "CustomersViewModel -> IUnitOfWork",
@@ -150,8 +152,9 @@ public sealed class AppUiPersistenceGuardrailTests
     private static readonly HashSet<string> AllowedCodeBehindPersistenceFiles = new()
     {
         "src/MMV.App/App.axaml.cs",
-        "src/MMV.App/Views/Clients/CustomerFormView.axaml.cs",
-        "src/MMV.App/Views/Clients/CustomersView.axaml.cs",
+        // P2C-2 : CustomerFormView.axaml.cs et CustomersView.axaml.cs retirés — la persistance directe
+        // (Repository/UnitOfWork/SaveChangesAsync) du flux client create/update a été supprimée du code-behind
+        // au profit des use cases Application (via CustomerFormViewModel).
         "src/MMV.App/Views/MainWindow.axaml.cs",
     };
 
