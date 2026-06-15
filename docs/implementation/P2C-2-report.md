@@ -197,14 +197,26 @@ dotnet list src/MMV.Application/MMV.Application.csproj package
 - **`async void ExecuteSave`** conservé (contrainte `RelayCommand`/MVVM existante) : comportement inchangé, exceptions captées et remontées en `ErrorMessage`.
 - **Copie d'affichage `ApplyFormTo`** : duplique la normalisation blanc→null côté VM pour l'événement `CustomerSaved` ; sans effet de persistance (la liste est rechargée depuis la base juste après). Acceptable et iso-fonctionnel.
 
-## 16. Verdict
+## 16. Validation CI distante
 
-**P2C-2 = GO local.**
+| Champ | Valeur |
+|---|---|
+| Run ID | 27546180258 |
+| CI # | 48 |
+| Commit testé | `e15c614` |
+| Branche | `p2c-ui-cleanup` |
+| Statut | **completed / success** |
+| Durée | 4m03s |
+| Workflow | Restore / Build / Test / Scan |
 
-Tous les critères d'acceptation satisfaits : `CreateCustomerUseCase` et `UpdateCustomerUseCase` créés et enregistrés en DI Application ; `CustomerFormViewModel` ne dépend plus de `ICustomerRepository` ni de `IUnitOfWork` ; `CustomerFormView.axaml.cs` et `CustomersView.axaml.cs` ne font plus de persistance directe ; tests Application ajoutés (SQLite réel) ; tests App adaptés (délégation + garde-fous) ; `AppUiPersistenceGuardrailTests` verts ; allowlist réduite (78 → 74) ; build vert ; **417 tests verts** ; 0 vulnérabilité ; `has-pending-model-changes = false` ; aucune migration ; aucun modèle EF modifié.
+CI distante **verte** sur le commit de référence P2C-2.
 
-Aucun commit, aucun push (`ALLOW_COMMIT`/`ALLOW_PUSH = false`).
+## 17. Verdict
 
-## 17. Prochaine étape candidate
+**P2C-2 = GO DÉFINITIF COMPLET.**
+
+Tous les critères d'acceptation satisfaits : `CreateCustomerUseCase` et `UpdateCustomerUseCase` créés et enregistrés en DI Application ; `CustomerFormViewModel` ne dépend plus de `ICustomerRepository` ni de `IUnitOfWork` ; `CustomerFormView.axaml.cs` et `CustomersView.axaml.cs` ne font plus de persistance directe ; tests Application ajoutés (SQLite réel) ; tests App adaptés (délégation + garde-fous) ; `AppUiPersistenceGuardrailTests` verts ; allowlist réduite (78 → 74) ; build vert ; **417 tests verts** ; 0 vulnérabilité ; `has-pending-model-changes = false` ; aucune migration ; aucun modèle EF modifié. CI distante #48 (run 27546180258) verte sur `e15c614`.
+
+## 18. Prochaine étape candidate
 
 **P2C-3 — Clients (reliquat) :** retirer la fuite `CustomersListViewModel.Repository` / `.UnitOfWork` (propriétés publiques) et migrer la **suppression** client (`CustomersListViewModel.ExecuteDelete`) vers un `DeleteCustomerUseCase`, puis les **lectures d'affichage** (`LoadCustomersAsync`, fiche détail) vers des query use cases / ports de lecture — réduisant alors `AllowedPublicPersistenceProperties` (2 → 0) et les dépendances repository/UoW restantes des ViewModels clients.
