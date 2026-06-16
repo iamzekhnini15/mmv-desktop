@@ -200,7 +200,32 @@ Détail des tests ajoutés : **+34** (App +18, Application +16, Domain +0).
 
 **Aucune migration créée.** Aucun modèle EF modifié (`has-pending-model-changes = false`). Aucune entité Domain modifiée. Aucun repository Infrastructure modifié.
 
-## 16. Risques résiduels
+## 16. Validation CI distante
+
+Commit applicatif `f52f4cd` poussé sur `p2c-ui-cleanup` (`da45c3d..f52f4cd`).
+
+| Champ | Valeur |
+|---|---|
+| Lien du run | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27584443523 |
+| Identifiant du run | 27584443523 (CI #53) |
+| Commit testé | `f52f4cdf018740f2debd0280c9f5cacb53237058` |
+| Branche testée | `p2c-ui-cleanup` |
+| Event | push |
+| Workflow | CI (Restore / Build / Test / Scan) |
+| Créé le | 2026-06-15T23:59:05Z |
+| Complété le | 2026-06-16T00:02:16Z |
+
+| Étape CI | Résultat |
+|---|---|
+| Restore | **success** |
+| Build | **success** |
+| Test | **success** (463 tests) |
+| Audit NuGet (`Audit des packages vulnérables`) | **success** (0 vulnérabilité) |
+| Restore .NET tools | **success** (`dotnet-ef` 8.0.27) |
+| Check EF Core pending model changes | **success** (false) |
+| **Statut final du workflow** | **completed / success** |
+
+## 17. Risques résiduels
 
 - **Changement de comportement assumé (validé) :** l'édition d'ordonnance effectue désormais un vrai `UPDATE` (plus de doublon). C'est une correction de bug latent, conforme à l'intention de l'UI et au choix explicite du demandeur ; à signaler en revue.
 - **`CustomerPrescriptionsViewModel` dépend encore de `IPrescriptionRepository`** (lecture `LoadPrescriptionsAsync`) : 1 entrée d'allowlist conservée (réelle). Dette → query use cases / port de lecture.
@@ -209,13 +234,13 @@ Détail des tests ajoutés : **+34** (App +18, Application +16, Domain +0).
 - **Absence de confirmation utilisateur** sur la suppression : comportement d'origine inchangé (TODO conservé).
 - **Bug latent connexe non corrigé (hors périmètre) :** `LoadPrescription` fait `new DateTimeOffset(prescription.IssueDate)` ; sur une `IssueDate` à `DateTime.MinValue` et un fuseau UTC+, cela lève `ArgumentOutOfRangeException`. Sans effet sur les données réelles (les ordonnances ont une date réelle) ; non traité ici pour rester iso-fonctionnel.
 
-## 17. Verdict
+## 18. Verdict
 
-**P2C-4 = GO local.**
+**P2C-4 = GO DÉFINITIF COMPLET.**
 
-Critères d'acceptation satisfaits : `CreatePrescriptionUseCase`, `UpdatePrescriptionUseCase`, `DeletePrescriptionUseCase` créés et enregistrés en DI Application ; les ViewModels d'ordonnance ne font plus de `Create/Update/Delete/Commit/SaveChanges` direct pour les écritures traitées ; tests Application ajoutés (SQLite réel, 16) ; tests App ajoutés (délégation + garde-fous, 18) ; `AppUiPersistenceGuardrailTests` verts ; allowlist réduite (71 → 67, −4) ; build vert ; **463 tests verts** ; 0 vulnérabilité ; `has-pending-model-changes = false` ; aucune migration ; aucun modèle EF modifié ; rapport P2C-4 créé. **Aucun commit, aucun push** (conforme aux paramètres).
+Critères d'acceptation satisfaits : `CreatePrescriptionUseCase`, `UpdatePrescriptionUseCase`, `DeletePrescriptionUseCase` créés et enregistrés en DI Application ; les ViewModels d'ordonnance ne font plus de `Create/Update/Delete/Commit/SaveChanges` direct pour les écritures traitées ; tests Application ajoutés (SQLite réel, 16) ; tests App ajoutés (délégation + garde-fous, 18) ; `AppUiPersistenceGuardrailTests` verts ; allowlist réduite (71 → 67, −4) ; build vert ; **463 tests verts** ; 0 vulnérabilité ; `has-pending-model-changes = false` ; aucune migration ; aucun modèle EF modifié ; rapport P2C-4 créé. Commit `f52f4cd` poussé sur `p2c-ui-cleanup`. CI GitHub Actions run #53 (`27584443523`) : **completed / success**.
 
-## 18. Prochaine étape candidate
+## 19. Prochaine étape candidate
 
 - **Reliquat lecture ordonnance / client** : migrer `LoadPrescriptionsAsync` (et lectures client) vers des **query use cases**, ce qui retirerait `CustomerPrescriptionsViewModel -> IPrescriptionRepository` et les dernières dépendances `ICustomerRepository`/`IUnitOfWork` des VM clients (dont `CustomerDetailViewModel -> IUnitOfWork`).
 - **P2C-5 — module suivant** selon la roadmap (ex. Produits / Stock, ou Notifications), en continuant à ne traiter que les écritures existantes et à réduire l'allowlist.
