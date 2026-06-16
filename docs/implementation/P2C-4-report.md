@@ -225,6 +225,23 @@ Commit applicatif `f52f4cd` poussé sur `p2c-ui-cleanup` (`da45c3d..f52f4cd`).
 | Check EF Core pending model changes | **success** (false) |
 | **Statut final du workflow** | **completed / success** |
 
+### Commit documentaire
+
+Commit documentaire `36fda91` poussé sur `p2c-ui-cleanup` (`f52f4cd..36fda91`).
+
+| Champ | Valeur |
+|---|---|
+| Lien du run | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/27585091913 |
+| Identifiant du run | 27585091913 (CI #54) |
+| Commit testé | `36fda91` |
+| Branche testée | `p2c-ui-cleanup` |
+| Event | push |
+| Workflow | CI (Restore / Build / Test / Scan) |
+| Créé le | 2026-06-16T00:14:36Z |
+| Complété le | 2026-06-16T00:17:47Z |
+| Étapes (Restore / Build / Test / Audit NuGet / Restore .NET tools / Check EF Core pending) | toutes **success** |
+| **Statut final du workflow** | **completed / success** |
+
 ## 17. Risques résiduels
 
 - **Changement de comportement assumé (validé) :** l'édition d'ordonnance effectue désormais un vrai `UPDATE` (plus de doublon). C'est une correction de bug latent, conforme à l'intention de l'UI et au choix explicite du demandeur ; à signaler en revue.
