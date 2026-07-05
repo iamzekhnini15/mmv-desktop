@@ -15,7 +15,6 @@ namespace MMV.App.ViewModels;
 public class SuppliersListViewModel : BaseViewModel
 {
     private readonly ISupplierRepository _supplierRepository;
-    private readonly IUnitOfWork _unitOfWork;
 
     private ObservableCollection<Supplier> _suppliers;
     private ObservableCollection<Supplier> _filteredSuppliers;
@@ -111,10 +110,11 @@ public class SuppliersListViewModel : BaseViewModel
     public event EventHandler? CreateSupplierRequested;
     public event EventHandler<Supplier>? ViewSupplierDetailsRequested;
 
-    public SuppliersListViewModel(ISupplierRepository supplierRepository, IUnitOfWork unitOfWork)
+    // P2C-GLOBAL : la liste ne consomme que ISupplierRepository (lectures d'affichage). Le paramètre IUnitOfWork
+    // historiquement injecté n'était jamais utilisé (dépendance morte) et a été supprimé.
+    public SuppliersListViewModel(ISupplierRepository supplierRepository)
     {
         _supplierRepository = supplierRepository;
-        _unitOfWork = unitOfWork;
 
         _suppliers = new ObservableCollection<Supplier>();
         _filteredSuppliers = new ObservableCollection<Supplier>();

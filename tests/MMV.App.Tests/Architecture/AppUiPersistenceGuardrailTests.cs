@@ -48,15 +48,23 @@ public sealed class AppUiPersistenceGuardrailTests
     /// </summary>
     private static readonly HashSet<string> AllowedViewModelRepositoryConstructorDependencies = new()
     {
+        // P2C-GLOBAL : après extraction de TOUTES les écritures restantes vers la couche Application, les entrées
+        // ci-dessous ne correspondent plus qu'à des LECTURES d'affichage (chargement de listes / détail). Elles
+        // constituent la dette ouverte adressée par P2D (query use cases + DTO applicatifs). Les entrées d'écriture
+        // suivantes ont été retirées en P2C-GLOBAL :
+        //   - "InventoryViewModel -> IStockMovementRepository" (ajustement porté par ICreateStockMovementUseCase) ;
+        //   - "MainWindowViewModel -> INotificationRepository/IProductRepository" (IGenerateLowStockNotificationsUseCase) ;
+        //   - "NotificationsListViewModel/NotificationsViewModel -> IProductRepository" (génération stock bas = use case) ;
+        //   - "ProductFormViewModel -> IProductRepository/INotificationRepository" (ICreate/IUpdateProductUseCase) ;
+        //   - "SupplierFormViewModel -> ISupplierRepository" (ICreate/IUpdateSupplierUseCase) ;
+        //   - "UserFormViewModel -> IUserRepository" (ICreate/IUpdateUserUseCase).
+        // "ProductsViewModel -> IStockMovementRepository" est AJOUTÉ : lecture de composition, remplace l'accès
+        // IUnitOfWork.StockMovements pour alimenter StockMovementsViewModel (aucune écriture depuis la VM).
         "CustomerDetailViewModel -> ICustomerRepository",
         "CustomerDetailViewModel -> IPrescriptionRepository",
         "CustomerDetailViewModel -> IProductRepository",
         "CustomerDetailViewModel -> ISaleRepository",
-        // P2C-2 : "CustomerFormViewModel -> ICustomerRepository" retiré — la VM délègue désormais à
-        // ICreateCustomerUseCase / IUpdateCustomerUseCase (couche Application).
         "CustomerInfoViewModel -> ISaleRepository",
-        // CustomerPrescriptionsViewModel conserve IPrescriptionRepository pour ses lectures d'affichage
-        // (LoadPrescriptionsAsync). Les écritures (create/update/delete) sont passées aux use cases en P2C-4.
         "CustomerPrescriptionsViewModel -> IPrescriptionRepository",
         "CustomerPurchaseHistoryViewModel -> ISaleRepository",
         "CustomersListViewModel -> ICustomerRepository",
@@ -65,13 +73,8 @@ public sealed class AppUiPersistenceGuardrailTests
         "CustomersViewModel -> IProductRepository",
         "CustomersViewModel -> ISaleRepository",
         "InventoryViewModel -> IProductRepository",
-        "InventoryViewModel -> IStockMovementRepository",
-        "MainWindowViewModel -> INotificationRepository",
-        "MainWindowViewModel -> IProductRepository",
         "NotificationsListViewModel -> INotificationRepository",
-        "NotificationsListViewModel -> IProductRepository",
         "NotificationsViewModel -> INotificationRepository",
-        "NotificationsViewModel -> IProductRepository",
         "OrderFormViewModel -> ICustomerRepository",
         "OrderFormViewModel -> IPrescriptionRepository",
         "OrderFormViewModel -> IProductRepository",
@@ -81,15 +84,10 @@ public sealed class AppUiPersistenceGuardrailTests
         "OrdersViewModel -> IOrderRepository",
         "OrdersViewModel -> IPrescriptionRepository",
         "OrdersViewModel -> IProductRepository",
-        // P2C-4 : "PrescriptionDetailViewModel -> IPrescriptionRepository" retiré — la VM de détail est purement
-        // présentationnelle (la dépendance injectée était morte) et ne reçoit plus aucun port de persistance.
-        // P2C-4 : "PrescriptionFormViewModel -> IPrescriptionRepository" retiré — la création/modification d'ordonnance
-        // est désormais portée par ICreatePrescriptionUseCase / IUpdatePrescriptionUseCase (couche Application).
-        "ProductFormViewModel -> INotificationRepository",
-        "ProductFormViewModel -> IProductRepository",
         "ProductFormViewModel -> ISupplierRepository",
         "ProductsListViewModel -> IProductRepository",
         "ProductsViewModel -> IProductRepository",
+        "ProductsViewModel -> IStockMovementRepository",
         "ProductsViewModel -> ISupplierRepository",
         "SaleFormViewModel -> IPrescriptionRepository",
         "SaleFormViewModel -> IProductRepository",
@@ -98,10 +96,8 @@ public sealed class AppUiPersistenceGuardrailTests
         "StockMovementsListViewModel -> IStockMovementRepository",
         "StockMovementsViewModel -> IProductRepository",
         "StockMovementsViewModel -> IStockMovementRepository",
-        "SupplierFormViewModel -> ISupplierRepository",
         "SuppliersListViewModel -> ISupplierRepository",
         "SuppliersViewModel -> ISupplierRepository",
-        "UserFormViewModel -> IUserRepository",
         "UsersListViewModel -> IUserRepository",
         "UsersViewModel -> IUserRepository",
     };
@@ -112,36 +108,12 @@ public sealed class AppUiPersistenceGuardrailTests
     /// </summary>
     private static readonly HashSet<string> AllowedViewModelUnitOfWorkConstructorDependencies = new()
     {
-        // CustomerDetailViewModel conserve IUnitOfWork (param de constructeur) : fiche client détaillée, hors
-        // périmètre P2C-4. La dépendance n'est plus utilisée par les enfants ordonnance (passés aux use cases) ;
-        // son extraction relève d'une phase « fiche client » ultérieure.
-        "CustomerDetailViewModel -> IUnitOfWork",
-        // P2C-2 : "CustomerFormViewModel -> IUnitOfWork" retiré — la persistance/transaction est portée par les
-        // use cases client (couche Application), plus par la VM.
-        // P2C-4 : "CustomerPrescriptionsViewModel -> IUnitOfWork" retiré — la suppression d'ordonnance est désormais
-        // portée par IDeletePrescriptionUseCase (couche Application). La VM ne conserve que IPrescriptionRepository
-        // pour ses lectures d'affichage (LoadPrescriptionsAsync).
-        // P2C-3 : "CustomersListViewModel -> IUnitOfWork" retiré — la suppression client est désormais portée par
-        // IDeleteCustomerUseCase (couche Application). La VM ne conserve que ICustomerRepository pour ses lectures
-        // d'affichage (LoadCustomersAsync), dette reportée vers des query use cases (roadmap §6).
-        "CustomersViewModel -> IUnitOfWork",
-        "InventoryViewModel -> IUnitOfWork",
-        "MainWindowViewModel -> IUnitOfWork",
-        "NotificationsListViewModel -> IUnitOfWork",
-        "NotificationsViewModel -> IUnitOfWork",
-        "OrderKanbanViewModel -> IUnitOfWork",
-        "OrdersViewModel -> IUnitOfWork",
-        // P2C-4 : "PrescriptionFormViewModel -> IUnitOfWork" retiré — la création/modification d'ordonnance est portée
-        // par ICreatePrescriptionUseCase / IUpdatePrescriptionUseCase (couche Application).
-        "ProductFormViewModel -> IUnitOfWork",
-        "ProductsListViewModel -> IUnitOfWork",
-        "ProductsViewModel -> IUnitOfWork",
-        "SupplierFormViewModel -> IUnitOfWork",
-        "SuppliersListViewModel -> IUnitOfWork",
-        "SuppliersViewModel -> IUnitOfWork",
-        "UserFormViewModel -> IUnitOfWork",
-        "UsersListViewModel -> IUnitOfWork",
-        "UsersViewModel -> IUnitOfWork",
+        // P2C-GLOBAL : allowlist VIDÉE. Plus AUCUN ViewModel ne dépend d'IUnitOfWork. Toutes les écritures
+        // (client, ordonnance, produit, fournisseur, utilisateur, notification, stock, avancement de commande) sont
+        // désormais portées par des use cases de la couche Application, qui possèdent seuls la frontière
+        // transactionnelle (SaveChangesAsync). Les précédentes entrées (CustomerDetailViewModel, CustomersViewModel,
+        // InventoryViewModel, MainWindowViewModel, Notifications*, OrderKanbanViewModel, OrdersViewModel, Product*,
+        // Supplier*, User*) ont toutes été retirées.
     };
 
     /// <summary>
@@ -164,11 +136,12 @@ public sealed class AppUiPersistenceGuardrailTests
     /// </summary>
     private static readonly HashSet<string> AllowedCodeBehindPersistenceFiles = new()
     {
+        // App.axaml.cs est le composition root (DI) : seul code-behind autorisé à mentionner des jetons de
+        // persistance (il enregistre repositories/UnitOfWork/DbContext dans le conteneur).
         "src/MMV.App/App.axaml.cs",
-        // P2C-2 : CustomerFormView.axaml.cs et CustomersView.axaml.cs retirés — la persistance directe
-        // (Repository/UnitOfWork/SaveChangesAsync) du flux client create/update a été supprimée du code-behind
-        // au profit des use cases Application (via CustomerFormViewModel).
-        "src/MMV.App/Views/MainWindow.axaml.cs",
+        // P2C-GLOBAL : "src/MMV.App/Views/MainWindow.axaml.cs" retiré — le code-behind ne référence plus aucun
+        // repository ni IUnitOfWork ; la fenêtre principale reçoit désormais IGenerateLowStockNotificationsUseCase
+        // (couche Application) au lieu des trois ports de persistance.
     };
 
     /// <summary>Jetons de persistance recherchés dans les code-behind.</summary>

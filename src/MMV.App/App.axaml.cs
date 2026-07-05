@@ -5,6 +5,7 @@ using Avalonia.Markup.Xaml;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MMV.Application;
+using MMV.Application.UseCases.Notifications.GenerateLowStockNotifications;
 using MMV.App.Services;
 using MMV.App.ViewModels;
 using MMV.App.Views;
@@ -70,12 +71,13 @@ public partial class App : Avalonia.Application
             var navigationService = _serviceProvider!.GetRequiredService<INavigationService>();
             var dialogService = _serviceProvider!.GetRequiredService<IDialogService>();
             var permissionService = _serviceProvider!.GetRequiredService<IPermissionService>();
-            var notificationRepository = _serviceProvider!.GetRequiredService<INotificationRepository>();
-            var productRepository = _serviceProvider!.GetRequiredService<IProductRepository>();
-            var unitOfWork = _serviceProvider!.GetRequiredService<IUnitOfWork>();
+            // P2C-GLOBAL : la fenêtre principale ne reçoit plus de repositories directs ; la génération/comptage des
+            // notifications de stock bas est portée par un use case Application (composition root).
+            var generateLowStockNotificationsUseCase =
+                _serviceProvider!.GetRequiredService<IGenerateLowStockNotificationsUseCase>();
 
             var mainWindow = new MainWindow(navigationService, sessionService, permissionService,
-                notificationRepository, productRepository, unitOfWork);
+                generateLowStockNotificationsUseCase);
 
             // Configurer DialogService avec la MainWindow
             if (dialogService is DialogService ds)

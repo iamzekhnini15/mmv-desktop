@@ -1,18 +1,24 @@
 using System;
 using System.Threading.Tasks;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Suppliers.CreateSupplier;
+using MMV.Application.UseCases.Suppliers.UpdateSupplier;
 using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour le formulaire de création/édition d'un fournisseur.
+/// <para>
+/// P2C-GLOBAL : la persistance directe (repository + <c>IUnitOfWork</c> + <c>SaveChangesAsync</c>) a été déplacée
+/// vers la couche Application (<see cref="ICreateSupplierUseCase"/> / <see cref="IUpdateSupplierUseCase"/>). La
+/// ViewModel ne conserve que l'état d'écran, la validation de surface et la délégation aux use cases.
+/// </para>
 /// </summary>
 public class SupplierFormViewModel : BaseViewModel
 {
-    private readonly ISupplierRepository _supplierRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICreateSupplierUseCase _createSupplierUseCase;
+    private readonly IUpdateSupplierUseCase _updateSupplierUseCase;
     private Supplier? _originalSupplier;
 
     private string _name = string.Empty;
@@ -84,10 +90,10 @@ public class SupplierFormViewModel : BaseViewModel
     public event EventHandler<Supplier>? SupplierSaved;
     public event EventHandler? Cancelled;
 
-    public SupplierFormViewModel(ISupplierRepository supplierRepository, IUnitOfWork unitOfWork)
+    public SupplierFormViewModel(ICreateSupplierUseCase createSupplierUseCase, IUpdateSupplierUseCase updateSupplierUseCase)
     {
-        _supplierRepository = supplierRepository;
-        _unitOfWork = unitOfWork;
+        _createSupplierUseCase = createSupplierUseCase ?? throw new ArgumentNullException(nameof(createSupplierUseCase));
+        _updateSupplierUseCase = updateSupplierUseCase ?? throw new ArgumentNullException(nameof(updateSupplierUseCase));
 
         SaveCommand = new RelayCommand(async () => await SaveAsync(), CanSave);
         CancelCommand = new RelayCommand(ExecuteCancel, () => !IsSaving);
@@ -136,30 +142,45 @@ public class SupplierFormViewModel : BaseViewModel
         {
             if (IsEditMode && _originalSupplier != null)
             {
+                await _updateSupplierUseCase.ExecuteAsync(new UpdateSupplierCommand
+                {
+                    SupplierId = _originalSupplier.SupplierId,
+                    Name = Name,
+                    ContactEmail = ContactEmail,
+                    Phone = Phone,
+                    Address = Address,
+                    ReferenceCode = ReferenceCode
+                });
+
+                // Refléter les champs saisis sur l'entité d'origine pour l'événement (comportement d'affichage inchangé).
                 _originalSupplier.Name = Name;
                 _originalSupplier.ContactEmail = ContactEmail;
                 _originalSupplier.Phone = Phone;
                 _originalSupplier.Address = Address;
                 _originalSupplier.ReferenceCode = ReferenceCode;
 
-                await _supplierRepository.UpdateAsync(_originalSupplier);
-                await _unitOfWork.SaveChangesAsync();
-
                 SupplierSaved?.Invoke(this, _originalSupplier);
             }
             else
             {
-                var supplier = new Supplier
+                var result = await _createSupplierUseCase.ExecuteAsync(new CreateSupplierCommand
                 {
                     Name = Name,
                     ContactEmail = ContactEmail,
                     Phone = Phone,
                     Address = Address,
                     ReferenceCode = ReferenceCode
-                };
+                });
 
-                await _supplierRepository.CreateAsync(supplier);
-                await _unitOfWork.SaveChangesAsync();
+                var supplier = new Supplier
+                {
+                    SupplierId = result.SupplierId,
+                    Name = Name,
+                    ContactEmail = ContactEmail,
+                    Phone = Phone,
+                    Address = Address,
+                    ReferenceCode = ReferenceCode
+                };
 
                 SupplierSaved?.Invoke(this, supplier);
             }

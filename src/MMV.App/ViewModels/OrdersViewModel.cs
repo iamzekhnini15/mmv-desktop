@@ -24,7 +24,6 @@ public class OrdersViewModel : BaseViewModel
     private readonly ICustomerRepository _customerRepository;
     private readonly IProductRepository _productRepository;
     private readonly IPrescriptionRepository _prescriptionRepository;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly IDialogService _dialogService;
     private readonly INumberSequenceService _numberSequenceService;
     private readonly ICreateOrderUseCase _createOrderUseCase;
@@ -123,12 +122,14 @@ public class OrdersViewModel : BaseViewModel
 
     #endregion
 
+    // P2C-GLOBAL : le paramètre IUnitOfWork a été supprimé — après le passage de l'avancement Kanban à
+    // IAdvanceOrderStatusUseCase, il n'était plus utilisé (dépendance morte). IOrderRepository reste conservé pour
+    // les lectures d'affichage (rechargement du détail / listes).
     public OrdersViewModel(
         IOrderRepository orderRepository,
         ICustomerRepository customerRepository,
         IProductRepository productRepository,
         IPrescriptionRepository prescriptionRepository,
-        IUnitOfWork unitOfWork,
         IDialogService dialogService,
         INumberSequenceService numberSequenceService,
         ICreateOrderUseCase createOrderUseCase,
@@ -141,10 +142,6 @@ public class OrdersViewModel : BaseViewModel
         _customerRepository = customerRepository;
         _productRepository = productRepository;
         _prescriptionRepository = prescriptionRepository;
-        // P2B-2J : INotificationRepository retiré — il n'était plus que transmis à OrderDetailViewModel, dont le
-        // flux de notification a migré vers les use cases Application (P2B-2E/P2B-2G). IOrderRepository et
-        // IUnitOfWork sont conservés : encore utilisés ici (rechargement du détail, Kanban).
-        _unitOfWork = unitOfWork;
         _dialogService = dialogService;
         // Numérotation fiable obligatoire (P2A-1E) : injectée par DI, transmise jusqu'à OrderFormViewModel.
         _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
@@ -266,7 +263,7 @@ public class OrdersViewModel : BaseViewModel
         {
             if (KanbanViewModel == null)
             {
-                KanbanViewModel = new OrderKanbanViewModel(_orderRepository, _unitOfWork);
+                KanbanViewModel = new OrderKanbanViewModel(_orderRepository, _advanceOrderStatusUseCase);
                 KanbanViewModel.ViewOrderDetailRequested += OnViewOrderDetail;
                 KanbanViewModel.BackToListRequested += OnKanbanBackToList;
             }

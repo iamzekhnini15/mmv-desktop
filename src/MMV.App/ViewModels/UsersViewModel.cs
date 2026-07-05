@@ -1,6 +1,9 @@
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Users.CreateUser;
+using MMV.Application.UseCases.Users.SetUserActive;
+using MMV.Application.UseCases.Users.UpdateUser;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
 
@@ -10,15 +13,21 @@ namespace MMV.App.ViewModels;
 /// ViewModel coordinateur pour le module Gestion Utilisateurs.
 /// Gère la navigation entre la liste et le formulaire utilisateur.
 /// Accessible uniquement aux ADMIN.
+/// <para>
+/// P2C-GLOBAL : les écritures sont déléguées aux use cases Application (create / update / activation).
+/// <see cref="IUserRepository"/> n'est conservé que pour les lectures de la liste ; <c>IUnitOfWork</c> et
+/// <c>IAuthenticationService</c> ont été retirés (le hachage vit désormais dans les use cases).
+/// </para>
 /// </summary>
 public class UsersViewModel : BaseViewModel
 {
     private readonly IUserRepository _userRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICreateUserUseCase _createUserUseCase;
+    private readonly IUpdateUserUseCase _updateUserUseCase;
+    private readonly ISetUserActiveUseCase _setUserActiveUseCase;
     private readonly ISessionService _sessionService;
     private readonly IPermissionService _permissionService;
     private readonly IDialogService _dialogService;
-    private readonly Domain.Services.IAuthenticationService _authenticationService;
 
     private UsersListViewModel? _listViewModel;
     private UserFormViewModel? _formViewModel;
@@ -50,18 +59,20 @@ public class UsersViewModel : BaseViewModel
 
     public UsersViewModel(
         IUserRepository userRepository,
-        IUnitOfWork unitOfWork,
+        ICreateUserUseCase createUserUseCase,
+        IUpdateUserUseCase updateUserUseCase,
+        ISetUserActiveUseCase setUserActiveUseCase,
         ISessionService sessionService,
         IPermissionService permissionService,
-        IDialogService dialogService,
-        Domain.Services.IAuthenticationService authenticationService)
+        IDialogService dialogService)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
-        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _createUserUseCase = createUserUseCase ?? throw new ArgumentNullException(nameof(createUserUseCase));
+        _updateUserUseCase = updateUserUseCase ?? throw new ArgumentNullException(nameof(updateUserUseCase));
+        _setUserActiveUseCase = setUserActiveUseCase ?? throw new ArgumentNullException(nameof(setUserActiveUseCase));
         _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
         _permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
         _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
-        _authenticationService = authenticationService ?? throw new ArgumentNullException(nameof(authenticationService));
 
         Title = "Gestion des Utilisateurs";
 
@@ -70,14 +81,14 @@ public class UsersViewModel : BaseViewModel
 
     private void InitializeListViewModel()
     {
-        ListViewModel = new UsersListViewModel(_userRepository, _unitOfWork, _dialogService);
+        ListViewModel = new UsersListViewModel(_userRepository, _setUserActiveUseCase, _dialogService);
         ListViewModel.CreateUserRequested += OnCreateUserRequested;
         ListViewModel.EditUserRequested += OnEditUserRequested;
     }
 
     private void OnCreateUserRequested(object? sender, EventArgs e)
     {
-        FormViewModel = new UserFormViewModel(_userRepository, _unitOfWork, _authenticationService);
+        FormViewModel = new UserFormViewModel(_createUserUseCase, _updateUserUseCase);
         FormViewModel.InitializeForCreate();
         FormViewModel.UserSaved += OnUserSaved;
         FormViewModel.Cancelled += OnFormCancelled;
@@ -86,7 +97,7 @@ public class UsersViewModel : BaseViewModel
 
     private void OnEditUserRequested(object? sender, User user)
     {
-        FormViewModel = new UserFormViewModel(_userRepository, _unitOfWork, _authenticationService);
+        FormViewModel = new UserFormViewModel(_createUserUseCase, _updateUserUseCase);
         FormViewModel.InitializeForEdit(user);
         FormViewModel.UserSaved += OnUserSaved;
         FormViewModel.Cancelled += OnFormCancelled;

@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Notifications.GenerateLowStockNotifications;
+using MMV.Application.UseCases.Notifications.MarkAllNotificationsRead;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
 
@@ -11,12 +13,17 @@ namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour la liste des notifications.
+/// <para>
+/// P2C-GLOBAL : le marquage global et la génération de notifications de stock bas passent par les use cases
+/// Application. <see cref="INotificationRepository"/> n'est conservé que pour les lectures d'affichage
+/// (<c>GetAllAsync</c>, <c>CountUnreadAsync</c>) ; <c>IProductRepository</c> et <c>IUnitOfWork</c> ont été retirés.
+/// </para>
 /// </summary>
 public class NotificationsListViewModel : BaseViewModel
 {
     private readonly INotificationRepository _notificationRepository;
-    private readonly IProductRepository _productRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMarkAllNotificationsReadUseCase _markAllNotificationsReadUseCase;
+    private readonly IGenerateLowStockNotificationsUseCase _generateLowStockNotificationsUseCase;
 
     private ObservableCollection<Notification> _notifications;
     private int _unreadCount;
@@ -41,12 +48,12 @@ public class NotificationsListViewModel : BaseViewModel
 
     public NotificationsListViewModel(
         INotificationRepository notificationRepository,
-        IProductRepository productRepository,
-        IUnitOfWork unitOfWork)
+        IMarkAllNotificationsReadUseCase markAllNotificationsReadUseCase,
+        IGenerateLowStockNotificationsUseCase generateLowStockNotificationsUseCase)
     {
         _notificationRepository = notificationRepository;
-        _productRepository = productRepository;
-        _unitOfWork = unitOfWork;
+        _markAllNotificationsReadUseCase = markAllNotificationsReadUseCase ?? throw new ArgumentNullException(nameof(markAllNotificationsReadUseCase));
+        _generateLowStockNotificationsUseCase = generateLowStockNotificationsUseCase ?? throw new ArgumentNullException(nameof(generateLowStockNotificationsUseCase));
 
         _notifications = new ObservableCollection<Notification>();
 
@@ -84,36 +91,7 @@ public class NotificationsListViewModel : BaseViewModel
     {
         try
         {
-            var products = await _productRepository.GetAllAsync();
-            var lowStockProducts = products.Where(p => p.StockQuantity <= p.StockAlertThreshold).ToList();
-
-            foreach (var product in lowStockProducts)
-            {
-                // Vérifier si une notification existe déjà pour ce produit
-                var existingNotifications = await _notificationRepository.GetAllAsync();
-                var exists = existingNotifications.Any(n => 
-                    n.Type == "LowStock" && 
-                    n.EntityId == product.ProductId && 
-                    !n.IsRead);
-
-                if (!exists)
-                {
-                    var notification = new Notification
-                    {
-                        Type = "LowStock",
-                        Title = $"Stock bas : {product.Name}",
-                        Message = $"Le produit {product.Reference} - {product.Name} est en stock bas ({product.StockQuantity}/{product.StockAlertThreshold})",
-                        EntityId = product.ProductId,
-                        EntityType = "Product",
-                        IsRead = false,
-                        CreatedAt = DateTime.Now
-                    };
-
-                    await _notificationRepository.CreateAsync(notification);
-                }
-            }
-
-            await _unitOfWork.SaveChangesAsync();
+            await _generateLowStockNotificationsUseCase.ExecuteAsync();
             await LoadNotificationsAsync();
         }
         catch (Exception ex)
@@ -126,8 +104,7 @@ public class NotificationsListViewModel : BaseViewModel
     {
         try
         {
-            await _notificationRepository.MarkAllAsReadAsync();
-            await _unitOfWork.SaveChangesAsync();
+            await _markAllNotificationsReadUseCase.ExecuteAsync();
             await LoadNotificationsAsync();
         }
         catch (Exception ex)

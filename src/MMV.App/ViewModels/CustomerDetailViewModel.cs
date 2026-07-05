@@ -98,9 +98,11 @@ public class CustomerDetailViewModel : BaseViewModel
     /// </summary>
     public event EventHandler? BackRequested;
 
+    // P2C-GLOBAL : le paramètre IUnitOfWork (historiquement injecté mais jamais stocké ni utilisé — dépendance
+    // morte) a été supprimé. La fiche détail ne fait aucune écriture directe : les écritures d'ordonnance passent
+    // par les use cases transmis à CustomerPrescriptionsViewModel.
     public CustomerDetailViewModel(
         ICustomerRepository customerRepository,
-        IUnitOfWork unitOfWork,
         IPrescriptionRepository prescriptionRepository,
         IProductRepository productRepository,
         ISaleRepository saleRepository,
@@ -110,7 +112,6 @@ public class CustomerDetailViewModel : BaseViewModel
         IDeletePrescriptionUseCase deletePrescriptionUseCase)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
-        _ = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _prescriptionRepository = prescriptionRepository ?? throw new ArgumentNullException(nameof(prescriptionRepository));
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));

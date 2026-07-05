@@ -283,7 +283,7 @@ public class SaleFormViewModelTransactionTests
         // Reproduit la construction de production : CustomerDetailViewModel reçoit le use case par DI (via
         // CustomersViewModel) et DOIT le transmettre à SaleFormViewModel.
         var detail = new CustomerDetailViewModel(
-            customerRepo.Object, unitOfWork.Object, prescriptionRepo.Object,
+            customerRepo.Object, prescriptionRepo.Object,
             productRepo.Object, saleRepo.Object, spy,
             Mock.Of<ICreatePrescriptionUseCase>(), Mock.Of<IUpdatePrescriptionUseCase>(),
             Mock.Of<IDeletePrescriptionUseCase>());

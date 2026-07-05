@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Products.CreateProduct;
+using MMV.Application.UseCases.Products.UpdateProduct;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Repositories;
@@ -12,13 +14,17 @@ namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour le formulaire de création/édition de produit.
+/// <para>
+/// P2C-GLOBAL : la persistance directe (repository produit + <c>IUnitOfWork</c> + <c>SaveChangesAsync</c>) a été
+/// déplacée vers <see cref="ICreateProductUseCase"/> / <see cref="IUpdateProductUseCase"/>.
+/// <see cref="ISupplierRepository"/> n'est conservé que pour la lecture d'affichage (liste déroulante fournisseurs).
+/// </para>
 /// </summary>
 public class ProductFormViewModel : BaseViewModel
 {
-    private readonly IProductRepository _productRepository;
     private readonly ISupplierRepository _supplierRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly INotificationRepository _notificationRepository;
+    private readonly ICreateProductUseCase _createProductUseCase;
+    private readonly IUpdateProductUseCase _updateProductUseCase;
     private readonly Product? _existingProduct;
 
     private long _productId;
@@ -415,15 +421,13 @@ public class ProductFormViewModel : BaseViewModel
     /// Constructeur pour création d'un nouveau produit.
     /// </summary>
     public ProductFormViewModel(
-        IProductRepository productRepository,
         ISupplierRepository supplierRepository,
-        IUnitOfWork unitOfWork,
-        INotificationRepository? notificationRepository = null)
+        ICreateProductUseCase createProductUseCase,
+        IUpdateProductUseCase updateProductUseCase)
     {
-        _productRepository = productRepository;
         _supplierRepository = supplierRepository;
-        _unitOfWork = unitOfWork;
-        _notificationRepository = notificationRepository!;
+        _createProductUseCase = createProductUseCase ?? throw new ArgumentNullException(nameof(createProductUseCase));
+        _updateProductUseCase = updateProductUseCase ?? throw new ArgumentNullException(nameof(updateProductUseCase));
 
         _categories = new ObservableCollection<ProductCategoryEnum>();
         _suppliers = new ObservableCollection<Supplier>();
@@ -438,11 +442,10 @@ public class ProductFormViewModel : BaseViewModel
     /// Constructeur pour édition d'un produit existant.
     /// </summary>
     public ProductFormViewModel(
-        IProductRepository productRepository,
         ISupplierRepository supplierRepository,
-        IUnitOfWork unitOfWork,
-        Product product,
-        INotificationRepository? notificationRepository = null) : this(productRepository, supplierRepository, unitOfWork, notificationRepository)
+        ICreateProductUseCase createProductUseCase,
+        IUpdateProductUseCase updateProductUseCase,
+        Product product) : this(supplierRepository, createProductUseCase, updateProductUseCase)
     {
         _existingProduct = product;
         Title = "Modifier produit";
@@ -646,39 +649,43 @@ public class ProductFormViewModel : BaseViewModel
 
         try
         {
-            Product product;
-
             if (IsEditMode && _existingProduct != null)
             {
-                // Recharger le produit avec tous ses détails pour l'édition
-                var productToEdit = await _productRepository.GetByIdWithDetailsAsync(_existingProduct.ProductId);
-                if (productToEdit == null)
+                await _updateProductUseCase.ExecuteAsync(new UpdateProductCommand
                 {
-                    throw new InvalidOperationException($"Le produit avec l'ID {_existingProduct.ProductId} n'a pas pu être chargé");
-                }
-
-                // Mise à jour d'un produit existant
-                product = productToEdit;
-                product.Reference = Reference;
-                product.Name = Name;
-                product.Description = Description;
-                product.PurchasePrice = PurchasePrice;
-                product.SalePrice = SalePrice;
-                product.RecommendedPrice = RecommendedPrice;
-                product.StockQuantity = StockQuantity;
-                product.StockAlertThreshold = StockAlertThreshold;
-                product.Category = SelectedCategory;
-                product.SupplierId = SupplierId ?? 0;
-
-                // Mettre à jour/créer les détails pour l'édition
-                await UpdateCategorySpecificDetailsAsync(product);
-
-                await _productRepository.UpdateAsync(product);
+                    ProductId = _existingProduct.ProductId,
+                    Reference = Reference,
+                    Name = Name,
+                    Description = Description,
+                    PurchasePrice = PurchasePrice,
+                    SalePrice = SalePrice,
+                    RecommendedPrice = RecommendedPrice,
+                    StockQuantity = StockQuantity,
+                    StockAlertThreshold = StockAlertThreshold,
+                    Category = SelectedCategory,
+                    SupplierId = SupplierId,
+                    GlassMaterial = GlassMaterial,
+                    GlassType = GlassType,
+                    GlassDiameter = GlassDiameter,
+                    GlassIndex = GlassIndex,
+                    PowerLimitMin = PowerLimitMin,
+                    PowerLimitMax = PowerLimitMax,
+                    LensBrand = LensBrand,
+                    LensModel = LensModel,
+                    LensMaterial = LensMaterial,
+                    LensType = LensType,
+                    LensDiameter = LensDiameter,
+                    LensBaseCurve = LensBaseCurve,
+                    LensIsColored = LensIsColored,
+                    LensDuration = LensDuration,
+                    AccessoryColor = AccessoryColor,
+                    AccessorySize = AccessorySize,
+                    AccessoryMaterial = AccessoryMaterial
+                });
             }
             else
             {
-                // Création d'un nouveau produit
-                product = new Product
+                await _createProductUseCase.ExecuteAsync(new CreateProductCommand
                 {
                     Reference = Reference,
                     Name = Name,
@@ -689,42 +696,25 @@ public class ProductFormViewModel : BaseViewModel
                     StockQuantity = StockQuantity,
                     StockAlertThreshold = StockAlertThreshold,
                     Category = SelectedCategory,
-                    SupplierId = SupplierId ?? 0
-                };
-
-                // Créer les détails AVANT la création du produit
-                await CreateCategorySpecificDetailsAsync(product);
-
-                await _productRepository.CreateAsync(product);
-            }
-
-            await _unitOfWork.SaveChangesAsync();
-
-            // Générer une notification si le produit est en stock bas
-            if (_notificationRepository != null && product.StockQuantity <= product.StockAlertThreshold)
-            {
-                var existingNotifications = await _notificationRepository.GetAllAsync();
-                var hasUnreadNotification = existingNotifications.Any(n => 
-                    n.Type == "LowStock" && 
-                    n.EntityId == product.ProductId && 
-                    !n.IsRead);
-
-                if (!hasUnreadNotification)
-                {
-                    var notification = new Notification
-                    {
-                        Type = "LowStock",
-                        Title = $"Stock bas : {product.Name}",
-                        Message = $"Le produit {product.Reference} - {product.Name} est en stock bas ({product.StockQuantity}/{product.StockAlertThreshold})",
-                        EntityId = product.ProductId,
-                        EntityType = "Product",
-                        IsRead = false,
-                        CreatedAt = DateTime.Now
-                    };
-
-                    await _notificationRepository.CreateAsync(notification);
-                    await _unitOfWork.SaveChangesAsync();
-                }
+                    SupplierId = SupplierId,
+                    GlassMaterial = GlassMaterial,
+                    GlassType = GlassType,
+                    GlassDiameter = GlassDiameter,
+                    GlassIndex = GlassIndex,
+                    PowerLimitMin = PowerLimitMin,
+                    PowerLimitMax = PowerLimitMax,
+                    LensBrand = LensBrand,
+                    LensModel = LensModel,
+                    LensMaterial = LensMaterial,
+                    LensType = LensType,
+                    LensDiameter = LensDiameter,
+                    LensBaseCurve = LensBaseCurve,
+                    LensIsColored = LensIsColored,
+                    LensDuration = LensDuration,
+                    AccessoryColor = AccessoryColor,
+                    AccessorySize = AccessorySize,
+                    AccessoryMaterial = AccessoryMaterial
+                });
             }
 
             ProductSaved?.Invoke(this, EventArgs.Empty);
@@ -737,122 +727,6 @@ public class ProductFormViewModel : BaseViewModel
         {
             IsLoading = false;
         }
-    }
-
-    private async Task CreateCategorySpecificDetailsAsync(Product product)
-    {
-        switch (SelectedCategory)
-        {
-            case ProductCategoryEnum.VERRE:
-                if (!string.IsNullOrEmpty(GlassMaterial) || !string.IsNullOrEmpty(GlassType))
-                {
-                    var glassDetail = new GlassDetail
-                    {
-                        Material = Enum.TryParse<GlassMaterial>(GlassMaterial, out var glassMat) ? glassMat : null,
-                        GlassType = Enum.TryParse<GlassType>(GlassType, out var glassTyp) ? glassTyp : null,
-                        Diameter = GlassDiameter,
-                        Index = GlassIndex,
-                        PowerLimitMin = PowerLimitMin,
-                        PowerLimitMax = PowerLimitMax
-                    };
-                    product.GlassDetail = glassDetail;
-                }
-                break;
-
-            case ProductCategoryEnum.LENTILLE:
-                if (!string.IsNullOrEmpty(LensBrand) || !string.IsNullOrEmpty(LensModel))
-                {
-                    var lensDetail = new LensDetail
-                    {
-                        Brand = LensBrand,
-                        Model = LensModel,
-                        Material = Enum.TryParse<LensMaterial>(LensMaterial, out var lensMat) ? lensMat : null,
-                        LensType = Enum.TryParse<LensType>(LensType, out var lensTyp) ? lensTyp : null,
-                        Diameter = LensDiameter,
-                        BaseCurve = LensBaseCurve,
-                        IsColored = LensIsColored,
-                        Duration = Enum.TryParse<LensDuration>(LensDuration, out var lensDur) ? lensDur : null
-                    };
-                    product.LensDetail = lensDetail;
-                }
-                break;
-
-            case ProductCategoryEnum.MONTURE:
-            case ProductCategoryEnum.CLIPS:
-            case ProductCategoryEnum.PLASTIC:
-            case ProductCategoryEnum.SOLAIRE:
-                if (!string.IsNullOrEmpty(AccessoryColor) || !string.IsNullOrEmpty(AccessorySize) || !string.IsNullOrEmpty(AccessoryMaterial))
-                {
-                    var accessoryDetail = new AccessoryDetail
-                    {
-                        Color = AccessoryColor,
-                        Size = AccessorySize,
-                        Material = AccessoryMaterial
-                    };
-                    product.AccessoryDetail = accessoryDetail;
-                }
-                break;
-        }
-
-        await Task.CompletedTask;
-    }
-
-    private async Task UpdateCategorySpecificDetailsAsync(Product product)
-    {
-        switch (SelectedCategory)
-        {
-            case ProductCategoryEnum.VERRE:
-                if (!string.IsNullOrEmpty(GlassMaterial) || !string.IsNullOrEmpty(GlassType))
-                {
-                    if (product.GlassDetail == null)
-                    {
-                        product.GlassDetail = new GlassDetail { ProductId = product.ProductId };
-                    }
-                    product.GlassDetail.Material = Enum.TryParse<GlassMaterial>(GlassMaterial, out var glassMat) ? glassMat : null;
-                    product.GlassDetail.GlassType = Enum.TryParse<GlassType>(GlassType, out var glassTyp) ? glassTyp : null;
-                    product.GlassDetail.Diameter = GlassDiameter;
-                    product.GlassDetail.Index = GlassIndex;
-                    product.GlassDetail.PowerLimitMin = PowerLimitMin;
-                    product.GlassDetail.PowerLimitMax = PowerLimitMax;
-                }
-                break;
-
-            case ProductCategoryEnum.LENTILLE:
-                if (!string.IsNullOrEmpty(LensBrand) || !string.IsNullOrEmpty(LensModel))
-                {
-                    if (product.LensDetail == null)
-                    {
-                        product.LensDetail = new LensDetail { ProductId = product.ProductId };
-                    }
-                    product.LensDetail.Brand = LensBrand;
-                    product.LensDetail.Model = LensModel;
-                    product.LensDetail.Material = Enum.TryParse<LensMaterial>(LensMaterial, out var lensMat) ? lensMat : null;
-                    product.LensDetail.LensType = Enum.TryParse<LensType>(LensType, out var lensTyp) ? lensTyp : null;
-                    product.LensDetail.Diameter = LensDiameter;
-                    product.LensDetail.BaseCurve = LensBaseCurve;
-                    product.LensDetail.IsColored = LensIsColored;
-                    product.LensDetail.Duration = Enum.TryParse<LensDuration>(LensDuration, out var lensDur) ? lensDur : null;
-                }
-                break;
-
-            case ProductCategoryEnum.MONTURE:
-            case ProductCategoryEnum.CLIPS:
-            case ProductCategoryEnum.PLASTIC:
-            case ProductCategoryEnum.SOLAIRE:
-                if (!string.IsNullOrEmpty(AccessoryColor) || !string.IsNullOrEmpty(AccessorySize) || !string.IsNullOrEmpty(AccessoryMaterial))
-                {
-                    if (product.AccessoryDetail == null)
-                    {
-                        product.AccessoryDetail = new AccessoryDetail { ProductId = product.ProductId };
-                    }
-                    product.AccessoryDetail.Color = AccessoryColor;
-                    product.AccessoryDetail.Size = AccessorySize;
-                    product.AccessoryDetail.Material = AccessoryMaterial;
-                }
-                break;
-        }
-
-        await Task.CompletedTask;
     }
 
     private void ExecuteCancel()

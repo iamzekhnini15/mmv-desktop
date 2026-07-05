@@ -2,7 +2,7 @@ using Avalonia.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using MMV.App.Services;
 using MMV.App.ViewModels;
-using MMV.Domain.Interfaces.Repositories;
+using MMV.Application.UseCases.Notifications.GenerateLowStockNotifications;
 
 namespace MMV.App.Views;
 
@@ -26,11 +26,9 @@ public partial class MainWindow : Window
     public MainWindow(INavigationService navigationService,
                      ISessionService sessionService,
                      IPermissionService permissionService,
-                     INotificationRepository? notificationRepository = null,
-                     IProductRepository? productRepository = null,
-                     IUnitOfWork? unitOfWork = null)
+                     IGenerateLowStockNotificationsUseCase? generateLowStockNotificationsUseCase = null)
     {
         InitializeComponent();
-        DataContext = new MainWindowViewModel(navigationService, sessionService, permissionService, notificationRepository, productRepository, unitOfWork);
+        DataContext = new MainWindowViewModel(navigationService, sessionService, permissionService, generateLowStockNotificationsUseCase);
     }
 }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Products.DeleteProduct;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Repositories;
@@ -12,11 +13,15 @@ namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour la liste des produits avec recherche et pagination.
+/// <para>
+/// P2C-GLOBAL : la suppression passe par <see cref="IDeleteProductUseCase"/>. <see cref="IProductRepository"/>
+/// n'est conservé que pour les lectures d'affichage (<c>GetAllAsync</c>) ; <c>IUnitOfWork</c> a été retiré.
+/// </para>
 /// </summary>
 public class ProductsListViewModel : BaseViewModel
 {
     private readonly IProductRepository _productRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IDeleteProductUseCase _deleteProductUseCase;
 
     private ObservableCollection<Product> _products;
     private ObservableCollection<Product> _filteredProducts;
@@ -201,10 +206,10 @@ public class ProductsListViewModel : BaseViewModel
 
     public ProductsListViewModel(
         IProductRepository productRepository,
-        IUnitOfWork unitOfWork)
+        IDeleteProductUseCase deleteProductUseCase)
     {
         _productRepository = productRepository;
-        _unitOfWork = unitOfWork;
+        _deleteProductUseCase = deleteProductUseCase ?? throw new ArgumentNullException(nameof(deleteProductUseCase));
 
         _products = new ObservableCollection<Product>();
         _filteredProducts = new ObservableCollection<Product>();
@@ -367,9 +372,8 @@ public class ProductsListViewModel : BaseViewModel
         
         try
         {
-            await _productRepository.DeleteAsync(SelectedProduct.ProductId);
-            await _unitOfWork.SaveChangesAsync();
-            
+            await _deleteProductUseCase.ExecuteAsync(new DeleteProductCommand { ProductId = SelectedProduct.ProductId });
+
             // Recharger la liste
             await LoadProductsAsync();
         }

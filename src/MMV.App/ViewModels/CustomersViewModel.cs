@@ -25,7 +25,6 @@ public class CustomersViewModel : BaseViewModel
     private bool _isCreatingNew;
     private bool _isShowingDetail;
     private readonly ICustomerRepository _customerRepository;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly IPrescriptionRepository _prescriptionRepository;
     private readonly IProductRepository _productRepository;
     private readonly ISaleRepository _saleRepository;
@@ -113,11 +112,12 @@ public class CustomersViewModel : BaseViewModel
     /// <summary>
     /// Initialise le ViewModel avec injection de dépendances.
     /// </summary>
-    public CustomersViewModel(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IRegisterSaleUseCase registerSaleUseCase, ICreateCustomerUseCase createCustomerUseCase, IUpdateCustomerUseCase updateCustomerUseCase, IDeleteCustomerUseCase deleteCustomerUseCase, ICreatePrescriptionUseCase createPrescriptionUseCase, IUpdatePrescriptionUseCase updatePrescriptionUseCase, IDeletePrescriptionUseCase deletePrescriptionUseCase)
+    // P2C-GLOBAL : le paramètre IUnitOfWork (jusque-là uniquement transmis à CustomerDetailViewModel, où il était
+    // une dépendance morte) a été supprimé. Plus aucune écriture directe ni transaction n'est portée par cette VM.
+    public CustomersViewModel(ICustomerRepository customerRepository, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IRegisterSaleUseCase registerSaleUseCase, ICreateCustomerUseCase createCustomerUseCase, IUpdateCustomerUseCase updateCustomerUseCase, IDeleteCustomerUseCase deleteCustomerUseCase, ICreatePrescriptionUseCase createPrescriptionUseCase, IUpdatePrescriptionUseCase updatePrescriptionUseCase, IDeletePrescriptionUseCase deletePrescriptionUseCase)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersViewModel] Constructor called");
         _customerRepository = customerRepository;
-        _unitOfWork = unitOfWork;
         _prescriptionRepository = prescriptionRepository;
         _productRepository = productRepository;
         _saleRepository = saleRepository;
@@ -218,7 +218,7 @@ public class CustomersViewModel : BaseViewModel
         if (customer != null)
         {
             // Créer une nouvelle instance du CustomerDetailViewModel
-            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _unitOfWork, _prescriptionRepository, _productRepository, _saleRepository, _registerSaleUseCase, _createPrescriptionUseCase, _updatePrescriptionUseCase, _deletePrescriptionUseCase);
+            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _prescriptionRepository, _productRepository, _saleRepository, _registerSaleUseCase, _createPrescriptionUseCase, _updatePrescriptionUseCase, _deletePrescriptionUseCase);
             
             // Initialiser avec le client sélectionné
             await CustomerDetailViewModel.InitializeAsync(customer);

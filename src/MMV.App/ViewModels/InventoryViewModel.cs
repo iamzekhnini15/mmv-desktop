@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Stock.CreateStockMovement;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Repositories;
@@ -13,12 +14,17 @@ namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour la gestion des inventaires.
+/// <para>
+/// P2C-GLOBAL : l'ajustement d'inventaire (mouvement de stock + correction du stock produit) passe désormais par
+/// <see cref="ICreateStockMovementUseCase"/> (branche <c>Adjustment</c>). <see cref="IProductRepository"/> n'est
+/// conservé que pour les lectures d'affichage (chargement de l'inventaire) ; <c>IStockMovementRepository</c> et
+/// <c>IUnitOfWork</c> ont été retirés.
+/// </para>
 /// </summary>
 public class InventoryViewModel : BaseViewModel
 {
     private readonly IProductRepository _productRepository;
-    private readonly IStockMovementRepository _stockMovementRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICreateStockMovementUseCase _createStockMovementUseCase;
     private readonly IDialogService _dialogService;
 
     private ObservableCollection<InventoryItem> _items = new();
@@ -83,13 +89,11 @@ public class InventoryViewModel : BaseViewModel
 
     public InventoryViewModel(
         IProductRepository productRepository,
-        IStockMovementRepository stockMovementRepository,
-        IUnitOfWork unitOfWork,
+        ICreateStockMovementUseCase createStockMovementUseCase,
         IDialogService dialogService)
     {
         _productRepository = productRepository;
-        _stockMovementRepository = stockMovementRepository;
-        _unitOfWork = unitOfWork;
+        _createStockMovementUseCase = createStockMovementUseCase ?? throw new ArgumentNullException(nameof(createStockMovementUseCase));
         _dialogService = dialogService;
 
         LoadInventoryCommand = new RelayCommand(async () => await LoadInventoryAsync());
@@ -190,31 +194,25 @@ public class InventoryViewModel : BaseViewModel
         IsProcessing = true;
         ErrorMessage = null;
 
+        // Le motif reprend l'écart courant avant application (l'ajustement met ensuite l'écart à zéro).
+        var reason = $"Inventaire - Écart: {item.Difference:+#;-#;0}";
+
         try
         {
-            // Fetch fresh product to avoid tracking conflicts
-            var freshProduct = await _productRepository.GetByIdAsync(item.Product.ProductId);
-            if (freshProduct == null)
+            // Ajustement d'inventaire en valeur absolue, désormais porté par le use case (branche Adjustment) :
+            // création du mouvement + correction du stock produit dans une frontière transactionnelle.
+            var result = await _createStockMovementUseCase.ExecuteAsync(new CreateStockMovementCommand
+            {
+                ProductId = item.Product.ProductId,
+                MovementType = StockMovementType.Adjustment,
+                Quantity = item.CountedStock,
+                Reason = reason
+            });
+
+            if (!result.ProductFound)
             {
                 throw new Exception("Produit non trouvé");
             }
-
-            // Create adjustment movement
-            var movement = new StockMovement
-            {
-                ProductId = freshProduct.ProductId,
-                MovementType = StockMovementType.Adjustment,
-                Quantity = item.CountedStock,
-                Reason = $"Inventaire - Écart: {item.Difference:+#;-#;0}"
-            };
-
-            await _stockMovementRepository.CreateAsync(movement);
-
-            // Update product stock
-            freshProduct.StockQuantity = item.CountedStock;
-            await _productRepository.UpdateAsync(freshProduct);
-
-            await _unitOfWork.SaveChangesAsync();
 
             // Update the item in the UI - cela fera disparaître le bouton ✓
             item.OriginalCountedStock = item.CountedStock;

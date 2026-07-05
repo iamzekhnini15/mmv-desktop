@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Repositories;
@@ -13,11 +14,17 @@ namespace MMV.App.ViewModels;
 /// <summary>
 /// ViewModel pour la vue Kanban des commandes.
 /// Organise les commandes en colonnes par statut de workflow.
+/// <para>
+/// P2C-GLOBAL : l'avancement de statut passe désormais par <see cref="IAdvanceOrderStatusUseCase"/> (comme
+/// <c>OrderDetailViewModel</c>), alignant les deux surfaces UI sur la même orchestration applicative.
+/// <see cref="IOrderRepository"/> n'est conservé que pour les lectures d'affichage (répartition des colonnes) ;
+/// <c>IUnitOfWork</c> a été retiré.
+/// </para>
 /// </summary>
 public class OrderKanbanViewModel : BaseViewModel
 {
     private readonly IOrderRepository _orderRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IAdvanceOrderStatusUseCase _advanceOrderStatusUseCase;
 
     private ObservableCollection<Order> _newOrders = new();
     private ObservableCollection<Order> _toFabricateOrders = new();
@@ -89,10 +96,10 @@ public class OrderKanbanViewModel : BaseViewModel
 
     #endregion
 
-    public OrderKanbanViewModel(IOrderRepository orderRepository, IUnitOfWork unitOfWork)
+    public OrderKanbanViewModel(IOrderRepository orderRepository, IAdvanceOrderStatusUseCase advanceOrderStatusUseCase)
     {
         _orderRepository = orderRepository;
-        _unitOfWork = unitOfWork;
+        _advanceOrderStatusUseCase = advanceOrderStatusUseCase ?? throw new ArgumentNullException(nameof(advanceOrderStatusUseCase));
 
         AdvanceStatusCommand = new RelayCommand<Order>(async (o) => await AdvanceStatusAsync(o));
         ViewDetailCommand = new RelayCommand<Order>(o =>
@@ -155,12 +162,19 @@ public class OrderKanbanViewModel : BaseViewModel
 
         try
         {
-            var fresh = await _orderRepository.GetWithItemsAsync(order.OrderId);
-            if (fresh == null) return;
+            var customerName = order.Sale?.Customer != null
+                ? $"{order.Sale.Customer.FirstName} {order.Sale.Customer.LastName}"
+                : "Client inconnu";
 
-            fresh.Status = next.Value;
-            await _orderRepository.UpdateAsync(fresh);
-            await _unitOfWork.SaveChangesAsync();
+            await _advanceOrderStatusUseCase.ExecuteAsync(new AdvanceOrderStatusCommand
+            {
+                OrderId = order.OrderId,
+                CurrentStatus = order.Status,
+                NextStatus = next.Value,
+                CustomerDisplayName = customerName,
+                CurrentStatusDisplay = OrdersListViewModel.StatusEnumToDisplay(order.Status),
+                NextStatusDisplay = OrdersListViewModel.StatusEnumToDisplay(next.Value)
+            });
 
             await LoadOrdersAsync();
         }

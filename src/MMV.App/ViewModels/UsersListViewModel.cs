@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Users.SetUserActive;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Repositories;
@@ -10,11 +11,16 @@ namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour la liste des utilisateurs avec recherche, filtrage et pagination.
+/// <para>
+/// P2C-GLOBAL : le basculement d'activation passe désormais par <see cref="ISetUserActiveUseCase"/>.
+/// <see cref="IUserRepository"/> n'est conservé que pour les lectures d'affichage (<c>GetAllAsync</c>) ;
+/// <c>IUnitOfWork</c> a été retiré.
+/// </para>
 /// </summary>
 public class UsersListViewModel : BaseViewModel
 {
     private readonly IUserRepository _userRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ISetUserActiveUseCase _setUserActiveUseCase;
     private readonly IDialogService _dialogService;
 
     private string _searchText = string.Empty;
@@ -111,11 +117,11 @@ public class UsersListViewModel : BaseViewModel
 
     public UsersListViewModel(
         IUserRepository userRepository,
-        IUnitOfWork unitOfWork,
+        ISetUserActiveUseCase setUserActiveUseCase,
         IDialogService dialogService)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
-        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _setUserActiveUseCase = setUserActiveUseCase ?? throw new ArgumentNullException(nameof(setUserActiveUseCase));
         _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
 
         Title = "Liste des Utilisateurs";
@@ -215,17 +221,24 @@ public class UsersListViewModel : BaseViewModel
 
         if (!confirm) return;
 
+        var targetState = !user.IsActive;
         try
         {
-            user.IsActive = !user.IsActive;
-            await _userRepository.UpdateAsync(user);
-            await _unitOfWork.SaveChangesAsync();
+            var result = await _setUserActiveUseCase.ExecuteAsync(new SetUserActiveCommand
+            {
+                UserId = user.UserId,
+                IsActive = targetState
+            });
+
+            if (result.UserFound)
+            {
+                // Refléter l'état appliqué sur l'entité affichée (comportement d'affichage inchangé).
+                user.IsActive = targetState;
+            }
             ApplyFilter();
         }
         catch (Exception ex)
         {
-            // Rétablir en cas d'erreur
-            user.IsActive = !user.IsActive;
             await _dialogService.ShowErrorAsync("Erreur", $"Impossible de {action} l'utilisateur : {ex.Message}");
         }
     }

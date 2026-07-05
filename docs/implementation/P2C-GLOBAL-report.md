@@ -1,9 +1,9 @@
-# Rapport P2C-GLOBAL — VERDICT : NO-GO baseline (CVE transitive SQLite)
+# Rapport P2C-GLOBAL — VERDICT : **GO (local)**
 
-> **Mission arrêtée à l'étape « baseline » sur décision explicite du demandeur.**
-> Aucune modification de code n'a été effectuée. Aucun use case, aucun ViewModel, aucun
-> garde-fou, aucune allowlist n'a été touché. Le seul artefact produit par cette mission est
-> **ce rapport**.
+> Reprise après **P2C-SEC-1** (pin SQLite / CVE). Nettoyage final de la persistance directe
+> restante dans `src/MMV.App` : extraction de **toutes** les écritures UI vers des use cases
+> de la couche Application, réduction maximale des garde-fous, préparation de P2D.
+> Aucun commit, aucun push (conforme à `ALLOW_COMMIT = false` / `ALLOW_PUSH = false`).
 
 ## 1. Paramètres reçus
 
@@ -15,168 +15,204 @@
 | `ALLOW_COMMIT` | false |
 | `ALLOW_PUSH` | false |
 
-Aucun commit créé, aucun push effectué (conforme à `ALLOW_COMMIT = false` / `ALLOW_PUSH = false`).
-
 ## 2. État Git initial
 
-| Contrôle | Attendu (brief) | Obtenu |
+- Branche : `p2c-ui-cleanup` ✓
+- Working tree : propre ✓
+- Dernier commit : `aa488fa fix(P2C-SEC-1): pin sqlite native bundle to remediate CVE` ✓ (présent)
+
+## 3. Baseline après P2C-SEC-1 (avant modification)
+
+| Contrôle | Résultat |
+|---|---|
+| `dotnet build MMV.sln -c Debug` | vert (0 erreur) |
+| `dotnet test MMV.sln` | **463** tests verts (App 161 · Application 79 · Domain 223) |
+| `dotnet list … --vulnerable --include-transitive` | 0 vulnérabilité |
+| `ef migrations has-pending-model-changes` | `false` |
+| `MMV.Application` references | uniquement `MMV.Domain` |
+| `MMV.Application` packages | uniquement `Microsoft.Extensions.DependencyInjection.Abstractions` |
+
+> **Réserve CI :** l'outil `gh` n'était pas authentifié dans l'environnement d'exécution ; la
+> validation distante **CI #56** n'a pas pu être vérifiée directement. La baseline **locale**
+> est intégralement verte, ce qui a autorisé la reprise. À confirmer côté CI avant tout merge.
+
+## 4. Inventaire global des violations UI restantes (avant modification)
+
+| ViewModel / code-behind | Dépendance | Type | Usage exact | Action P2C-GLOBAL |
+|---|---|---|---|---|
+| `SupplierFormViewModel` | `ISupplierRepository`, `IUnitOfWork` | écriture | `CreateAsync`/`UpdateAsync` + `SaveChangesAsync` | → `ICreate/IUpdateSupplierUseCase` |
+| `SuppliersViewModel` | `ISupplierRepository`, `IUnitOfWork` | écriture + lecture + composition | `DeleteAsync`+`SaveChangesAsync` ; `GetWithProductsAsync` (lecture) | delete → `IDeleteSupplierUseCase` ; repo conservé (lecture) ; UoW retiré |
+| `SuppliersListViewModel` | `ISupplierRepository`, `IUnitOfWork` | lecture + **dépendance morte** | `GetAllAsync` ; UoW jamais utilisé | UoW **supprimé** (mort) ; repo conservé (lecture) |
+| `UserFormViewModel` | `IUserRepository`, `IUnitOfWork`, `IAuthenticationService` | écriture | unicité + hachage + `Create/UpdateAsync` + `SaveChangesAsync` | → `ICreate/IUpdateUserUseCase` |
+| `UsersListViewModel` | `IUserRepository`, `IUnitOfWork` | écriture + lecture | toggle actif : `UpdateAsync`+`SaveChangesAsync` ; `GetAllAsync` (lecture) | toggle → `ISetUserActiveUseCase` ; repo conservé (lecture) ; UoW retiré |
+| `UsersViewModel` | `IUserRepository`, `IUnitOfWork`, `IAuthenticationService` | composition | construit list/form | injecte use cases ; UoW + auth retirés |
+| `ProductFormViewModel` | `IProductRepository`, `ISupplierRepository`, `IUnitOfWork`, `INotificationRepository` | écriture + lecture | `Create/UpdateAsync` produit + détails ; `GetAllAsync` fournisseurs (lecture) | → `ICreate/IUpdateProductUseCase` ; supplier repo conservé (lecture) |
+| `ProductsListViewModel` | `IProductRepository`, `IUnitOfWork` | écriture + lecture | `DeleteAsync`+`SaveChangesAsync` ; `GetAllAsync` (lecture) | delete → `IDeleteProductUseCase` ; repo conservé ; UoW retiré |
+| `ProductsViewModel` | `IProductRepository`, `ISupplierRepository`, `IUnitOfWork` | composition | `UnitOfWork.StockMovements` pour construire l'enfant | UoW → injection directe `IStockMovementRepository` ; injecte les use cases produit/fournisseur |
+| `InventoryViewModel` | `IProductRepository`, `IStockMovementRepository`, `IUnitOfWork` | écriture + lecture | ajustement : `CreateAsync`+`UpdateAsync`+`SaveChangesAsync` ; `GetAllAsync` (lecture) | ajustement → `ICreateStockMovementUseCase` (réutilisé) ; product repo conservé (lecture) |
+| `NotificationsListViewModel` | `INotificationRepository`, `IProductRepository`, `IUnitOfWork` | écriture + lecture | `MarkAllAsRead`/génération stock bas + `SaveChangesAsync` ; `GetAllAsync`/`CountUnread` (lecture) | → `IMarkAllNotificationsRead`/`IGenerateLowStockNotifications` ; notif repo conservé (lecture) |
+| `NotificationsViewModel` | `INotificationRepository`, `IProductRepository`, `IUnitOfWork` | composition | construit l'enfant | injecte use cases ; product repo + UoW retirés |
+| `MainWindowViewModel` | `INotificationRepository`, `IProductRepository`, `IUnitOfWork` | écriture + lecture | génération stock bas + `CountUnread` | → `IGenerateLowStockNotificationsUseCase` |
+| `Views/MainWindow.axaml.cs` | 3 repos (code-behind) | composition | transmet au VM | remplacés par `IGenerateLowStockNotificationsUseCase` |
+| `OrderKanbanViewModel` | `IOrderRepository`, `IUnitOfWork` | écriture + lecture | avancement : `UpdateAsync`+`SaveChangesAsync` ; `GetAllWithItemsAsync` (lecture) | avancement → `IAdvanceOrderStatusUseCase` (réutilisé) ; order repo conservé (lecture) |
+| `OrdersViewModel` | `IUnitOfWork` | **dépendance morte** (après Kanban) | plus aucun usage | UoW **supprimé** (mort) |
+| `CustomersViewModel` | `IUnitOfWork` | pass-through | transmis à `CustomerDetailViewModel` | UoW **supprimé** (mort en aval) |
+| `CustomerDetailViewModel` | `IUnitOfWork` | **dépendance morte** | seulement null-checké, jamais stocké | UoW **supprimé** (mort) |
+
+## 5. Stratégie appliquée
+
+Quatre sous-phases internes, **module par module**, chaque module suivi d'une compilation :
+
+- **A — Dépendances mortes.** `SuppliersListViewModel`, `OrdersViewModel`, `CustomersViewModel`,
+  `CustomerDetailViewModel` : suppression de paramètres `IUnitOfWork` injectés mais inutilisés.
+- **B — Écritures → Application.** Création de use cases *command* pour Fournisseurs, Utilisateurs,
+  Produits, Notifications ; réutilisation de use cases existants pour Inventaire
+  (`CreateStockMovement`, branche *Adjustment*) et Kanban (`AdvanceOrderStatus`).
+- **C — Lectures.** Les lectures d'affichage restantes (chargement de listes / détail) sont
+  **conservées et justifiées** en tant que dette explicite reportée vers **P2D** (query use cases +
+  DTO applicatifs) — voir `docs/architecture/P2D-read-application-roadmap.md`.
+- **D — Garde-fous.** Synchronisation des allowlists : `IUnitOfWork` → **0**, code-behind → `App.axaml.cs`
+  uniquement, propriétés publiques de persistance → **0** (inchangé), repositories → uniquement des lectures.
+
+Principe directeur : **déplacement iso-fonctionnel** (aucune règle métier nouvelle, aucun `Money`,
+aucune règle Belgique/Maroc/SaaS). Chaque écriture mono-`SaveChanges` reste atomique sans
+`ITransactionRunner` (cohérent avec les use cases P2B/P2C existants).
+
+## 6. Use cases *command* créés
+
+| Module | Use cases | Dépendances |
 |---|---|---|
-| `git branch --show-current` | `p2c-ui-cleanup` | **`p2c-ui-cleanup`** ✅ |
-| `git status --short` | working tree propre | **propre** ✅ |
-| Présence commit applicatif P2C-4 | oui | **`f52f4cd feat(P2C-4): move prescription writes to application use cases`** ✅ |
-| Présence commit documentaire P2C-4 | oui | **`d2961ff docs(P2C-4): record documentary commit CI validation (CI #54 success)`** ✅ |
+| Fournisseurs | `CreateSupplier`, `UpdateSupplier`, `DeleteSupplier` | `ISupplierRepository`, `IUnitOfWork` |
+| Utilisateurs | `CreateUser`, `UpdateUser`, `SetUserActive` | `IUserRepository`, `IUnitOfWork`, `IAuthenticationService` (hachage) |
+| Produits | `CreateProduct`, `UpdateProduct`, `DeleteProduct` | `IProductRepository`, `IUnitOfWork` |
+| Notifications | `MarkAllNotificationsRead`, `GenerateLowStockNotifications` | `INotificationRepository` (+ `IProductRepository` pour la génération), `IUnitOfWork` |
 
-`git log -10 --oneline` :
+**11 use cases** (42 fichiers source : commande/résultat/interface/implémentation), enregistrés en
+`Scoped` dans `MMV.Application/DependencyInjection.cs`.
 
-```
-d2961ff docs(P2C-4): record documentary commit CI validation (CI #54 success)
-36fda91 docs(P2C-4): record prescription use cases CI validation
-f52f4cd feat(P2C-4): move prescription writes to application use cases
-da45c3d docs(P2C-3): record customer deletion CI validation
-146ceb5 feat(P2C-3): move customer deletion to application use case
-21fc1c2 docs(P2C-2): record documentary CI validation (CI #49 success)
-ba4f30d docs(P2C-2): record customer use cases CI validation
-e15c614 feat(P2C-2): move customer create update to application use cases
-e3d2e9d docs(P2C-1): record UI guardrails CI validation
-b292aff test(P2C-1): add UI persistence guardrails
-```
+## 7. Query use cases créés
 
-**Précondition (§3 du brief) : SATISFAITE.** Branche correcte, working tree propre, P2C-4 applicatif **et** documentaire présents. → Il n'y a **pas** de NO-GO précondition. Le blocage vient de la **baseline** (étape suivante).
+**Aucun** en P2C-GLOBAL. Les lectures d'affichage restantes sont volontairement conservées et
+justifiées ; leur extraction vers des *query use cases* (retournant des **DTO applicatifs**, jamais
+des entités EF suivies) constitue le cœur de **P2D** (roadmap dédiée créée).
 
-## 3. Baseline (§5 du brief)
+## 8. ViewModels modifiés
 
-Baseline exécutée intégralement **avant toute modification** (aucune modification n'a d'ailleurs été faite ensuite).
+`SupplierFormViewModel`, `SuppliersViewModel`, `SuppliersListViewModel`, `UserFormViewModel`,
+`UsersListViewModel`, `UsersViewModel`, `ProductFormViewModel`, `ProductsListViewModel`,
+`ProductsViewModel`, `InventoryViewModel`, `NotificationsListViewModel`, `NotificationsViewModel`,
+`MainWindowViewModel`, `OrderKanbanViewModel`, `OrdersViewModel`, `CustomersViewModel`,
+`CustomerDetailViewModel` (**17 ViewModels**).
 
-| Contrôle | Attendu | Obtenu | Statut |
+## 9. Code-behind modifiés / confirmés propres
+
+- `src/MMV.App/Views/MainWindow.axaml.cs` : ne reçoit plus de repositories ; reçoit
+  `IGenerateLowStockNotificationsUseCase`. **Retiré de l'allowlist code-behind.**
+- `src/MMV.App/App.axaml.cs` : **composition root** (seul code-behind autorisé) — résout le use case
+  au lieu des trois ports de persistance pour la fenêtre principale.
+- Tous les autres `*.axaml.cs` : aucun jeton de persistance (garde-fou vert).
+
+## 10. Tests créés / modifiés
+
+- **Créés (Application, vrai SQLite)** : `Suppliers/SupplierUseCasesTests`,
+  `Users/UserUseCasesTests`, `Products/ProductUseCasesTests`,
+  `Notifications/NotificationUseCasesTests` — succès, introuvable, anti-doublon,
+  commande nulle, constructeur null. **+25 tests** (79 → 104).
+- **Créé (App)** : `SupplierFormViewModelDelegationTests` — délégation create/update, constructeur
+  null. **+3 tests** (161 → 164).
+- **Adaptés (App)** : `OrdersViewModelDeleteDelegationTests`, `SaleFormViewModelTransactionTests`
+  (suppression des arguments `IUnitOfWork` retirés).
+
+Total : **491** tests (App 164 · Application 104 · Domain 223) — tous verts.
+
+## 11. Réduction exacte d'allowlist (`AppUiPersistenceGuardrailTests`)
+
+| Allowlist | Avant | Après | Δ |
 |---|---|---|---|
-| `dotnet restore MMV.sln` | OK | **OK** | ✅ |
-| `dotnet build MMV.sln --no-restore -c Debug` | vert | **vert** (0 erreur ; 1 warning pré-existant `OrderFormViewModel` CS1998, hors périmètre) | ✅ |
-| `dotnet test MMV.sln --no-build -c Debug` | ≥ 463 | **463** (App 161 + Application 79 + Domain 223) | ✅ |
-| `dotnet list MMV.sln package --vulnerable --include-transitive` | **0 vulnérabilité** | **1 vulnérabilité HIGH transitive** (voir §4) | ❌ **ÉCHEC** |
-| `dotnet tool restore` | OK | **OK** (`dotnet-ef` 8.0.27) | ✅ |
-| `dotnet ef migrations has-pending-model-changes` | false | **false** (`No changes have been made to the model since the last migration`) | ✅ |
-| `dotnet list src/MMV.Application reference` | Domain seul | **`..\MMV.Domain\MMV.Domain.csproj` seul** | ✅ |
-| `dotnet list src/MMV.Application package` | DI.Abstractions seul | **`Microsoft.Extensions.DependencyInjection.Abstractions 8.0.1` seul** | ✅ |
+| `AllowedViewModelUnitOfWorkConstructorDependencies` | 17 | **0** | −17 (vidée) |
+| `AllowedViewModelRepositoryConstructorDependencies` | 48 | **40** | 9 entrées d'écriture retirées, 1 entrée de lecture ajoutée (`ProductsViewModel -> IStockMovementRepository`), soit **−8 net** |
+| `AllowedPublicPersistenceProperties` | 0 | 0 | inchangé |
+| `AllowedCodeBehindPersistenceFiles` | 2 | **1** (`App.axaml.cs`) | −1 (`MainWindow.axaml.cs`) |
 
-**Baseline = ÉCHEC** sur l'unique critère « 0 vulnérabilité ». Tous les autres critères de baseline sont verts.
+Entrées repository retirées : `InventoryViewModel→IStockMovementRepository`,
+`MainWindowViewModel→INotification/IProduct`, `Notifications*→IProduct`,
+`ProductFormViewModel→IProduct/INotification`, `SupplierFormViewModel→ISupplier`,
+`UserFormViewModel→IUser`. Les 40 entrées restantes sont **exclusivement des lectures** (dette P2D).
 
-## 4. Cause de l'échec — CVE transitive SQLite
+## 12. Fichiers modifiés / créés
 
-### 4.1 Sortie brute (`dotnet list ... --vulnerable --include-transitive`)
+- **Créés (source)** : `UseCases/Suppliers/**`, `UseCases/Users/**`, `UseCases/Products/**`,
+  `UseCases/Notifications/**` (42 fichiers).
+- **Modifiés (source)** : `MMV.Application/DependencyInjection.cs`, 17 ViewModels,
+  `Views/MainWindow.axaml.cs`, `App.axaml.cs`.
+- **Créés (tests)** : 4 classes de tests use cases + 1 classe de délégation VM.
+- **Modifiés (tests)** : `AppUiPersistenceGuardrailTests.cs`, `OrdersViewModelDeleteDelegationTests.cs`,
+  `SaleFormViewModelTransactionTests.cs`.
+- **Docs** : ce rapport + `docs/architecture/P2D-read-application-roadmap.md`.
 
-```
-Le projet spécifié 'MMV.Domain' n'a aucun package vulnérable ...
-Le projet 'MMV.Infrastructure' comporte les packages vulnérables suivants
-   [net8.0]:
-   Package transitif                 Résolu   Gravité   URL d'avertissement
-   > SQLitePCLRaw.lib.e_sqlite3      2.1.6    High      https://github.com/advisories/GHSA-2m69-gcr7-jv3q
-Le projet 'MMV.App' comporte les packages vulnérables suivants
-   > SQLitePCLRaw.lib.e_sqlite3      2.1.6    High      GHSA-2m69-gcr7-jv3q
-Le projet spécifié 'MMV.Application' n'a aucun package vulnérable ...
-Le projet 'MMV.Domain.Tests'      > SQLitePCLRaw.lib.e_sqlite3  2.1.6  High
-Le projet 'MMV.App.Tests'         > SQLitePCLRaw.lib.e_sqlite3  2.1.6  High
-Le projet 'MMV.Application.Tests' > SQLitePCLRaw.lib.e_sqlite3  2.1.6  High
-```
+## 13. Contrôles exécutés
 
-### 4.2 Caractérisation
+`git status --short`, `git diff --stat`, `git diff --check` (propre), `dotnet restore`,
+`dotnet build --no-restore -c Debug`, `dotnet test --no-build -c Debug`,
+`dotnet list … --vulnerable --include-transitive`, `dotnet tool restore`,
+`ef migrations has-pending-model-changes`, `dotnet list …Application… reference`,
+`dotnet list …Application… package`.
 
-| Attribut | Valeur |
-|---|---|
-| Package | `SQLitePCLRaw.lib.e_sqlite3` |
-| Version résolue | `2.1.6` |
-| Gravité | **High** |
-| Avis | `GHSA-2m69-gcr7-jv3q` |
-| Nature | **Transitive** (jamais référencée directement dans le dépôt) |
-| Point d'entrée | `MMV.Infrastructure` → `Microsoft.EntityFrameworkCore.Sqlite 8.0.27` → `Microsoft.Data.Sqlite.Core` → `SQLitePCLRaw.bundle_e_sqlite3 2.1.6` → **`SQLitePCLRaw.lib.e_sqlite3 2.1.6`** |
-| Projets impactés | Infrastructure, App, Domain.Tests, App.Tests, Application.Tests (par transitivité) |
-| Projets **non** impactés | Domain, **Application** (couche Application toujours pure) |
+## 14. Résultats
 
-### 4.3 Pourquoi c'est nouveau (non détecté aux phases précédentes)
+| Contrôle | Attendu | Obtenu |
+|---|---|---|
+| Build | vert | ✅ 0 erreur |
+| Tests | > 463 | ✅ **491** |
+| Vulnérabilités | 0 | ✅ 0 |
+| `has-pending-model-changes` | false | ✅ false |
+| Migration créée | aucune | ✅ aucune |
+| Modèle EF modifié | aucun | ✅ aucun |
+| `MMV.Application` référence | `MMV.Domain` seul | ✅ |
+| `MMV.Application` package | `DI.Abstractions` seul | ✅ |
+| Allowlist UoW | 0 si possible | ✅ **0** |
+| Propriétés publiques persistance | 0 | ✅ 0 |
+| VM avec `SaveChangesAsync`/`Create/Update/DeleteAsync` direct | 0 | ✅ 0 (seulement des commentaires documentaires) |
 
-Le rapport **P2C-4** (baseline datée du 2026-06-16, cf. `docs/implementation/P2C-4-report.md` §3 et §14) a mesuré **0 vulnérabilité**. La baseline P2C-GLOBAL est exécutée le **2026-07-05**. L'avis `GHSA-2m69-gcr7-jv3q` a donc été **publié entre ces deux dates**, sur un package **transitif inchangé** (`SQLitePCLRaw.lib.e_sqlite3 2.1.6`, natif SQLite). **Aucune** modification du dépôt n'a introduit cette vulnérabilité : c'est un événement **externe** (nouvel avis de sécurité amont), pas une régression de code.
+## 15. Migrations créées ou non
 
-## 5. Conflit de contraintes du brief (pourquoi la question a été posée)
+**Aucune migration créée.** Aucune entité Domain / `DbContext` / migration touchée.
+`has-pending-model-changes = false`. Le pin `SQLitePCLRaw.bundle_e_sqlite3` (P2C-SEC-1) est intact.
 
-Le blocage n'est pas résoluble à l'intérieur du périmètre strict de P2C-GLOBAL :
+## 16. Risques résiduels
 
-- **§5 / §16 du brief** — « 0 vulnérabilité » est un **gate dur** de baseline **et** un critère de GO. En échec ⇒ « **STOP, P2C-GLOBAL = NO-GO baseline** ».
-- **§8 du brief** — interdit de modifier `MMV.Infrastructure`, ses packages, et plus généralement de toucher aux dépendances de persistance. Or **le seul endroit** où l'on pourrait épingler/relever `SQLitePCLRaw` est précisément `MMV.Infrastructure` (ou une référence top-level ajoutée dans `MMV.App`), donc **hors périmètre**.
+1. **Alignement du Kanban sur `AdvanceOrderStatusUseCase`** — *changement de comportement assumé*.
+   L'ancien `OrderKanbanViewModel` ne faisait que `UpdateAsync(statut)` + `SaveChanges`. En
+   réutilisant le use case canonique (comme `OrderDetailViewModel`), l'avancement Kanban crée
+   désormais, lors de la transition *À fabriquer → En fabrication*, les mouvements de stock de
+   fabrication et une notification. C'est un **alignement voulu** des deux surfaces UI sur la même
+   orchestration, conforme à la consigne « réutiliser `AdvanceOrderStatusUseCase` ». À valider en
+   recette : ne pas avancer une même commande depuis les deux vues (double décrément possible,
+   déjà vrai avant sur deux avancements successifs).
+2. **Notification « stock bas » à la sauvegarde produit** — *non reportée volontairement*. Dans
+   l'application réelle, `ProductFormViewModel` était toujours construit **sans**
+   `INotificationRepository` (constructeur à 3 arguments) : le bloc de notification à la sauvegarde
+   ne s'exécutait **jamais** (code mort). Il n'a donc pas été porté ; les alertes de stock bas
+   restent générées par le flux Notifications/Tableau de bord (`GenerateLowStockNotifications`).
+3. **CI distante non vérifiée** (`gh` non authentifié) — la baseline locale est verte ; confirmer
+   CI avant merge.
 
-La remédiation (ou l'exception documentée) **sort donc du périmètre strict de P2C-GLOBAL**.
+## 17. Violations restantes éventuelles et justification
 
-## 6. Décision (demandeur)
+- **40 dépendances repository en constructeur de VM** subsistent : ce sont **exclusivement des
+  lectures d'affichage** (chargement de listes / détail), tolérées par la roadmap P2C (§2/§6) et
+  verrouillées par l'allowlist. Elles constituent le périmètre de **P2D** (query use cases + DTO).
+- Aucune écriture directe, aucun `IUnitOfWork`, aucune propriété publique de persistance ne subsiste.
 
-Décision explicite : **STOP — NO-GO baseline.**
+## 18. Verdict
 
-- Ne pas continuer P2C-GLOBAL.
-- Ne pas modifier le code UI.
-- Ne pas contourner la règle « 0 vulnérabilité ».
-- Produire ce rapport NO-GO baseline.
-- La correction (ou l'exception documentée) sera traitée dans une **phase séparée `P2C-SEC-1`**, susceptible de toucher les packages Infrastructure/App, donc hors périmètre P2C-GLOBAL.
-- Après `P2C-SEC-1`, P2C-GLOBAL sera **relancé depuis une baseline propre**.
+**GO (local).** Tous les critères d'acceptation locaux sont satisfaits : écritures UI intégralement
+extraites, lectures restantes justifiées et cadrées pour P2D, aucun VM n'expose ni n'utilise de port
+de persistance en écriture, allowlists fortement réduites (UoW = 0), 491 tests verts, 0 vulnérabilité,
+aucune migration, `MMV.Application` pure. **Réserve unique : confirmation de la CI distante.**
 
-## 7. Actions effectuées / non effectuées
+## 19. Préparation P2D
 
-**Effectué (lecture seule + contrôles) :**
-- Précondition Git (branche / status / log) — vérifiée.
-- Lecture des documents d'architecture et des rapports P2C-1..4 imposés (§4 du brief).
-- Baseline complète (§5) exécutée en lecture seule (restore/build/test/vuln/tool/ef/refs/packages).
-- Identification de la chaîne transitive SQLite.
-- Rédaction de ce rapport.
-
-**NON effectué (par décision NO-GO) :**
-- ❌ Aucun inventaire de modification, aucune sous-phase A/B/C/D.
-- ❌ Aucun use case command créé.
-- ❌ Aucun query use case créé.
-- ❌ Aucun ViewModel modifié.
-- ❌ Aucun code-behind modifié.
-- ❌ Aucune allowlist réduite (`AppUiPersistenceGuardrailTests.cs` **inchangé** : 48 repo + 17 UoW + 0 propriété + 2 code-behind = **67**).
-- ❌ Aucun test créé/modifié.
-- ❌ **`docs/architecture/P2D-read-application-roadmap.md` NON créé** (le brief §15 le conditionne à un P2C-GLOBAL vert — ce n'est pas le cas).
-- ❌ Aucune migration, aucun modèle EF touché, aucun commit, aucun push.
-
-## 8. État de l'allowlist au moment du STOP (inchangé)
-
-Pour mémoire (aucune réduction réalisée par cette mission) :
-
-| Allowlist (`AppUiPersistenceGuardrailTests.cs`) | Entrées |
-|---|---|
-| `AllowedViewModelRepositoryConstructorDependencies` | 48 |
-| `AllowedViewModelUnitOfWorkConstructorDependencies` | 17 |
-| `AllowedPublicPersistenceProperties` | 0 |
-| `AllowedCodeBehindPersistenceFiles` | 2 (`App.axaml.cs`, `Views/MainWindow.axaml.cs`) |
-| **Total** | **67** |
-
-## 9. Contrôles exécutés
-
-```
-git branch --show-current
-git status --short
-git log -10 --oneline
-dotnet restore MMV.sln
-dotnet build MMV.sln --no-restore -c Debug
-dotnet test MMV.sln --no-build -c Debug
-dotnet list MMV.sln package --vulnerable --include-transitive
-dotnet tool restore
-dotnet ef migrations has-pending-model-changes --project src/MMV.Infrastructure --no-build
-dotnet list src/MMV.Application/MMV.Application.csproj reference
-dotnet list src/MMV.Application/MMV.Application.csproj package
-dotnet list src/MMV.Infrastructure/MMV.Infrastructure.csproj package [--include-transitive]
-```
-
-## 10. Verdict
-
-### **P2C-GLOBAL = NO-GO baseline.**
-
-Motif unique : la baseline échoue au gate « 0 vulnérabilité » à cause de la CVE **transitive** `SQLitePCLRaw.lib.e_sqlite3 2.1.6` / `GHSA-2m69-gcr7-jv3q` (High), publiée en amont **après** la baseline verte de P2C-4, et **non corrigeable dans le périmètre strict de P2C-GLOBAL** (§8 interdit de toucher les packages Infrastructure/App).
-
-Tous les autres indicateurs de baseline sont verts (build, 463 tests, EF sans changement pending, Application pure). Le blocage est **exclusivement** sécurité/dépendances, **sans rapport** avec le nettoyage UI/Application visé.
-
-## 11. Prochaine étape recommandée — `P2C-SEC-1`
-
-Phase de sécurité dédiée, **hors P2C-GLOBAL** (autorisée à toucher les packages), au choix :
-
-1. **Remédiation** : épingler une version corrigée de `SQLitePCLRaw` (top-level `PackageReference` sur `SQLitePCLRaw.bundle_e_sqlite3` / `SQLitePCLRaw.lib.e_sqlite3` dans `MMV.Infrastructure`, ou montée de `Microsoft.EntityFrameworkCore.Sqlite`) une fois une version non affectée par `GHSA-2m69-gcr7-jv3q` disponible, puis re-vérifier `has-pending-model-changes = false`.
-2. **Exception documentée** : si aucune version corrigée n'est disponible, formaliser une exception d'audit NuGet (ex. `NuGetAudit` / suppression ciblée dans le workflow CI) avec justification et échéance de revue.
-
-Critère de reprise : `dotnet list MMV.sln package --vulnerable --include-transitive` = **0 vulnérabilité** (ou exception validée). **Après `P2C-SEC-1`, relancer P2C-GLOBAL depuis une baseline propre.**
+`docs/architecture/P2D-read-application-roadmap.md` créé : état final P2C, inventaire des lectures
+restantes, règles DTO applicatifs, interdiction du retour d'entités EF vers l'UI, plan par étapes,
+critères d'entrée/sortie et risques.
