@@ -194,8 +194,8 @@ Entrées repository retirées : `InventoryViewModel→IStockMovementRepository`,
    `INotificationRepository` (constructeur à 3 arguments) : le bloc de notification à la sauvegarde
    ne s'exécutait **jamais** (code mort). Il n'a donc pas été porté ; les alertes de stock bas
    restent générées par le flux Notifications/Tableau de bord (`GenerateLowStockNotifications`).
-3. **CI distante non vérifiée** (`gh` non authentifié) — la baseline locale est verte ; confirmer
-   CI avant merge.
+3. ~~**CI distante non vérifiée**~~ — **levé**. Run [`28759204910`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/28759204910)
+   sur `4c10204` : `completed / success` (491 tests, 0 vulnérabilité, EF pending = false). Voir §20.
 
 ## 17. Violations restantes éventuelles et justification
 
@@ -206,13 +206,32 @@ Entrées repository retirées : `InventoryViewModel→IStockMovementRepository`,
 
 ## 18. Verdict
 
-**GO (local).** Tous les critères d'acceptation locaux sont satisfaits : écritures UI intégralement
+**GO DÉFINITIF.** Tous les critères d'acceptation sont satisfaits : écritures UI intégralement
 extraites, lectures restantes justifiées et cadrées pour P2D, aucun VM n'expose ni n'utilise de port
 de persistance en écriture, allowlists fortement réduites (UoW = 0), 491 tests verts, 0 vulnérabilité,
-aucune migration, `MMV.Application` pure. **Réserve unique : confirmation de la CI distante.**
+aucune migration, `MMV.Application` pure. **CI distante confirmée verte** (run `28759204910`,
+`completed / success`, cf. §20) — plus aucune réserve.
 
 ## 19. Préparation P2D
 
 `docs/architecture/P2D-read-application-roadmap.md` créé : état final P2C, inventaire des lectures
 restantes, règles DTO applicatifs, interdiction du retour d'entités EF vers l'UI, plan par étapes,
 critères d'entrée/sortie et risques.
+
+## 20. Validation CI distante
+
+| Paramètre | Valeur |
+|---|---|
+| Run CI | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/28759204910 |
+| Identifiant du run | `28759204910` |
+| Commit testé | `4c10204` (`feat(P2C-GLOBAL): complete UI persistence cleanup`) |
+| Branche testée | `p2c-ui-cleanup` |
+| Événement | `push` |
+| Workflow / job | `CI` — `Restore / Build / Test / Scan` |
+| Restore | ✅ success |
+| Build | ✅ success |
+| Test | ✅ success (**491** tests) |
+| Audit NuGet (packages vulnérables) | ✅ success — 0 vulnérabilité |
+| Restore .NET tools | ✅ success |
+| Check EF Core pending model changes | ✅ success — `false` |
+| Statut final du workflow | ✅ **completed / success** |
