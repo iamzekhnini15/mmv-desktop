@@ -19,6 +19,13 @@
          EF Core / Microsoft.Extensions.DependencyModel) au-delà des avis High
          GHSA-hh2w-p6rv-4g7w et GHSA-8g4q-xg66-9fp4 (corrigés en 8.0.5). -->
     <PackageReference Include="System.Text.Json" Version="8.0.6" />
+    <!-- Pin de sécurité (P2C-SEC-1) : remonte le natif SQLite transitif au-delà de l'avis
+         High GHSA-2m69-gcr7-jv3q / CVE-2025-6965 (corruption mémoire dans SQLite < 3.50.2).
+         Microsoft.Data.Sqlite.Core 8.0.27 tire SQLitePCLRaw.bundle_e_sqlite3 2.1.6
+         (→ SQLitePCLRaw.lib.e_sqlite3 2.1.6, vulnérable). Le bundle 3.0.0 dépend de
+         SQLitePCLRaw.lib.e_sqlite3 >= 3.50.3 (SQLite 3.50.3, au-dessus du correctif 3.50.2).
+         Correction dépendances uniquement : aucun changement de modèle EF, aucune migration. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.0" />
   </ItemGroup>
 
   <ItemGroup>
