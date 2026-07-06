@@ -2,20 +2,23 @@ using System;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Prescriptions.CreatePrescription;
+using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
-/// ViewModel pour le formulaire de création d'une ordonnance.
+/// ViewModel pour le formulaire de création / modification d'une ordonnance.
 /// </summary>
 public class PrescriptionFormViewModel : BaseViewModel
 {
-    private readonly IPrescriptionRepository _prescriptionRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICreatePrescriptionUseCase _createPrescriptionUseCase;
+    private readonly IUpdatePrescriptionUseCase _updatePrescriptionUseCase;
 
+    // 0 = création ; > 0 = édition d'une ordonnance existante (renseigné par LoadPrescription).
+    private long _prescriptionId;
     private long _customerId;
     private DateTimeOffset _issueDate = DateTimeOffset.Now;
     private string _doctorName = string.Empty;
@@ -390,10 +393,12 @@ public class PrescriptionFormViewModel : BaseViewModel
     /// </summary>
     public event EventHandler? Cancelled;
 
-    public PrescriptionFormViewModel(IPrescriptionRepository prescriptionRepository, IUnitOfWork unitOfWork)
+    public PrescriptionFormViewModel(
+        ICreatePrescriptionUseCase createPrescriptionUseCase,
+        IUpdatePrescriptionUseCase updatePrescriptionUseCase)
     {
-        _prescriptionRepository = prescriptionRepository ?? throw new ArgumentNullException(nameof(prescriptionRepository));
-        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _createPrescriptionUseCase = createPrescriptionUseCase ?? throw new ArgumentNullException(nameof(createPrescriptionUseCase));
+        _updatePrescriptionUseCase = updatePrescriptionUseCase ?? throw new ArgumentNullException(nameof(updatePrescriptionUseCase));
 
         SaveCommand = new RelayCommand(async () => await SavePrescriptionAsync());
         CancelCommand = new RelayCommand(ExecuteCancel);
@@ -409,6 +414,7 @@ public class PrescriptionFormViewModel : BaseViewModel
 
     private void ClearForm()
     {
+        _prescriptionId = 0;
         IssueDate = DateTimeOffset.Now;
         DoctorName = string.Empty;
         OdSphere = null;
@@ -434,6 +440,7 @@ public class PrescriptionFormViewModel : BaseViewModel
     /// </summary>
     public void LoadPrescription(Prescription prescription)
     {
+        _prescriptionId = prescription.PrescriptionId;
         CustomerId = prescription.CustomerId;
         IssueDate = new DateTimeOffset(prescription.IssueDate);
         DoctorName = prescription.DoctorName ?? string.Empty;
@@ -687,16 +694,12 @@ public class PrescriptionFormViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Sauvegarde l'ordonnance dans la base de données.
+    /// Sauvegarde l'ordonnance via la couche Application : création (<see cref="ICreatePrescriptionUseCase"/>) si le
+    /// formulaire est vierge, ou mise à jour (<see cref="IUpdatePrescriptionUseCase"/>) si une ordonnance existante a
+    /// été chargée (<c>_prescriptionId &gt; 0</c>).
     /// </summary>
     private async Task SavePrescriptionAsync()
     {
-        if (_prescriptionRepository == null || _unitOfWork == null)
-        {
-            ErrorMessage = "Impossible de sauvegarder : repository non initialisé";
-            return;
-        }
-
         // Validation du formulaire
         if (!ValidateForm())
         {
@@ -709,30 +712,68 @@ public class PrescriptionFormViewModel : BaseViewModel
 
         try
         {
-            var prescription = new Prescription
-            {
-                CustomerId = CustomerId,
-                IssueDate = IssueDate.UtcDateTime,
-                DoctorName = DoctorName,
-                OdSphere = OdSphere,
-                OdCylinder = OdCylinder,
-                OdAxis = OdAxis,
-                OdAddition = OdAddition,
-                OdPrismValue = OdPrismValue,
-                OdPrismBase = OdPrismBase,
-                OdVisualAcuity = OdVisualAcuity,
-                OgSphere = OgSphere,
-                OgCylinder = OgCylinder,
-                OgAxis = OgAxis,
-                OgAddition = OgAddition,
-                OgPrismValue = OgPrismValue,
-                OgPrismBase = OgPrismBase,
-                OgVisualAcuity = OgVisualAcuity,
-                Notes = Notes
-            };
+            // Entité reconstruite pour la charge utile de l'événement PrescriptionSaved (le parent l'écoute pour
+            // rafraîchir la liste). L'identifiant est complété après l'écriture.
+            var prescription = BuildPrescriptionSnapshot();
 
-            await _prescriptionRepository.CreateAsync(prescription);
-            await _unitOfWork.CommitAsync();
+            if (_prescriptionId > 0)
+            {
+                var result = await _updatePrescriptionUseCase.ExecuteAsync(new UpdatePrescriptionCommand
+                {
+                    PrescriptionId = _prescriptionId,
+                    IssueDate = IssueDate.UtcDateTime,
+                    DoctorName = DoctorName,
+                    OdSphere = OdSphere,
+                    OdCylinder = OdCylinder,
+                    OdAxis = OdAxis,
+                    OdAddition = OdAddition,
+                    OdPrismValue = OdPrismValue,
+                    OdPrismBase = OdPrismBase,
+                    OdVisualAcuity = OdVisualAcuity,
+                    OgSphere = OgSphere,
+                    OgCylinder = OgCylinder,
+                    OgAxis = OgAxis,
+                    OgAddition = OgAddition,
+                    OgPrismValue = OgPrismValue,
+                    OgPrismBase = OgPrismBase,
+                    OgVisualAcuity = OgVisualAcuity,
+                    Notes = Notes
+                });
+
+                if (!result.PrescriptionFound)
+                {
+                    ErrorMessage = "L'ordonnance à modifier est introuvable.";
+                    return;
+                }
+
+                prescription.PrescriptionId = _prescriptionId;
+            }
+            else
+            {
+                var result = await _createPrescriptionUseCase.ExecuteAsync(new CreatePrescriptionCommand
+                {
+                    CustomerId = CustomerId,
+                    IssueDate = IssueDate.UtcDateTime,
+                    DoctorName = DoctorName,
+                    OdSphere = OdSphere,
+                    OdCylinder = OdCylinder,
+                    OdAxis = OdAxis,
+                    OdAddition = OdAddition,
+                    OdPrismValue = OdPrismValue,
+                    OdPrismBase = OdPrismBase,
+                    OdVisualAcuity = OdVisualAcuity,
+                    OgSphere = OgSphere,
+                    OgCylinder = OgCylinder,
+                    OgAxis = OgAxis,
+                    OgAddition = OgAddition,
+                    OgPrismValue = OgPrismValue,
+                    OgPrismBase = OgPrismBase,
+                    OgVisualAcuity = OgVisualAcuity,
+                    Notes = Notes
+                });
+
+                prescription.PrescriptionId = result.PrescriptionId;
+            }
 
             PrescriptionSaved?.Invoke(this, prescription);
             ClearForm();
@@ -746,4 +787,30 @@ public class PrescriptionFormViewModel : BaseViewModel
             IsSaving = false;
         }
     }
+
+    /// <summary>
+    /// Construit une <see cref="Prescription"/> reflétant l'état courant du formulaire (charge utile de l'événement
+    /// <see cref="PrescriptionSaved"/>). N'effectue aucune persistance.
+    /// </summary>
+    private Prescription BuildPrescriptionSnapshot() => new()
+    {
+        CustomerId = CustomerId,
+        IssueDate = IssueDate.UtcDateTime,
+        DoctorName = DoctorName,
+        OdSphere = OdSphere,
+        OdCylinder = OdCylinder,
+        OdAxis = OdAxis,
+        OdAddition = OdAddition,
+        OdPrismValue = OdPrismValue,
+        OdPrismBase = OdPrismBase,
+        OdVisualAcuity = OdVisualAcuity,
+        OgSphere = OgSphere,
+        OgCylinder = OgCylinder,
+        OgAxis = OgAxis,
+        OgAddition = OgAddition,
+        OgPrismValue = OgPrismValue,
+        OgPrismBase = OgPrismBase,
+        OgVisualAcuity = OgVisualAcuity,
+        Notes = Notes
+    };
 }

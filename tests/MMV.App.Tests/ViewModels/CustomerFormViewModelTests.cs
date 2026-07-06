@@ -1,141 +1,136 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
+using MMV.Application.UseCases.Customers.CreateCustomer;
+using MMV.Application.UseCases.Customers.UpdateCustomer;
 using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
 using Xunit;
 using Moq;
 
 namespace MMV.App.Tests.ViewModels;
 
+/// <summary>
+/// P2C-2 — La <see cref="CustomerFormViewModel"/> ne persiste plus directement : elle <b>délègue</b> à
+/// <see cref="ICreateCustomerUseCase"/> (création) et <see cref="IUpdateCustomerUseCase"/> (édition) de la couche
+/// Application. Ces tests vérifient la délégation, le mapping état → commande, les garde-fous (double-submit,
+/// remontée d'erreur) et le comportement d'écran inchangé (validation de surface, événements).
+/// </summary>
 public class CustomerFormViewModelTests
 {
-    private readonly Mock<ICustomerRepository> _mockRepository;
-    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<ICreateCustomerUseCase> _mockCreate;
+    private readonly Mock<IUpdateCustomerUseCase> _mockUpdate;
     private readonly CustomerFormViewModel _viewModel;
 
     public CustomerFormViewModelTests()
     {
-        _mockRepository = new Mock<ICustomerRepository>();
-        _mockUnitOfWork = new Mock<IUnitOfWork>();
-        _viewModel = new CustomerFormViewModel(_mockRepository.Object, _mockUnitOfWork.Object);
+        _mockCreate = new Mock<ICreateCustomerUseCase>();
+        _mockUpdate = new Mock<IUpdateCustomerUseCase>();
+        _viewModel = new CustomerFormViewModel(_mockCreate.Object, _mockUpdate.Object);
     }
 
     [Fact]
     public void Constructor_ShouldInitializeCommands()
     {
-        // Arrange & Act
-        var vm = new CustomerFormViewModel(_mockRepository.Object, _mockUnitOfWork.Object);
+        var vm = new CustomerFormViewModel(_mockCreate.Object, _mockUpdate.Object);
 
-        // Assert
         Assert.NotNull(vm.SaveCommand);
         Assert.NotNull(vm.CancelCommand);
-        Console.WriteLine("✅ TEST PASSED: Constructor initializes commands");
+    }
+
+    [Fact]
+    public void Constructor_NullCreateUseCase_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new CustomerFormViewModel(null!, _mockUpdate.Object));
+    }
+
+    [Fact]
+    public void Constructor_NullUpdateUseCase_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new CustomerFormViewModel(_mockCreate.Object, null!));
     }
 
     [Fact]
     public void InitializeForCreate_ShouldClearForm()
     {
-        // Arrange
         _viewModel.FirstName = "Test";
         _viewModel.LastName = "User";
         _viewModel.Email = "test@example.com";
 
-        // Act
         _viewModel.InitializeForCreate();
 
-        // Assert
         Assert.Equal(string.Empty, _viewModel.FirstName);
         Assert.Equal(string.Empty, _viewModel.LastName);
         Assert.Equal(string.Empty, _viewModel.Email);
         Assert.False(_viewModel.IsEditMode);
-        Console.WriteLine("✅ TEST PASSED: InitializeForCreate clears form");
     }
 
     [Fact]
     public void SaveCommand_CanExecute_ReturnsFalseWhenMissingRequiredFields()
     {
-        // Arrange
         _viewModel.InitializeForCreate();
         _viewModel.FirstName = "";
         _viewModel.LastName = "";
 
-        // Act
-        var canExecute = _viewModel.SaveCommand.CanExecute(null);
-
-        // Assert
-        Assert.False(canExecute);
-        Console.WriteLine("✅ TEST PASSED: SaveCommand.CanExecute returns false when missing required fields");
+        Assert.False(_viewModel.SaveCommand.CanExecute(null));
     }
 
     [Fact]
     public void SaveCommand_CanExecute_ReturnsTrueWhenRequiredFieldsFilled()
     {
-        // Arrange
         _viewModel.InitializeForCreate();
         _viewModel.FirstName = "Jean";
         _viewModel.LastName = "Dupont";
 
-        // Act
-        var canExecute = _viewModel.SaveCommand.CanExecute(null);
-
-        // Assert
-        Assert.True(canExecute);
-        Console.WriteLine("✅ TEST PASSED: SaveCommand.CanExecute returns true when required fields filled");
+        Assert.True(_viewModel.SaveCommand.CanExecute(null));
     }
 
     [Fact]
-    public async Task SaveCommand_Execute_CreatesNewCustomer()
+    public async Task SaveCommand_Execute_DelegatesToCreateUseCase_AndFiresEvent()
     {
-        // Arrange
         _viewModel.InitializeForCreate();
         _viewModel.FirstName = "Jean";
         _viewModel.LastName = "Dupont";
         _viewModel.Email = "jean.dupont@example.com";
         _viewModel.Phone = "0612345678";
 
+        CreateCustomerCommand? captured = null;
+        _mockCreate
+            .Setup(u => u.ExecuteAsync(It.IsAny<CreateCustomerCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<CreateCustomerCommand, CancellationToken>((c, _) => captured = c)
+            .ReturnsAsync(new CreateCustomerResult { CustomerId = 42, DisplayName = "Jean Dupont" });
+
         Customer? savedCustomer = null;
-        _mockRepository.Setup(r => r.CreateAsync(It.IsAny<Customer>(), default))
-            .Callback<Customer, System.Threading.CancellationToken>((c, _) => savedCustomer = c)
-            .ReturnsAsync((Customer c, System.Threading.CancellationToken ct) => c);
+        _viewModel.CustomerSaved += (_, customer) => savedCustomer = customer;
 
-        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(default))
-            .Returns(Task.FromResult(1));
-
-        bool eventFired = false;
-        _viewModel.CustomerSaved += (sender, customer) =>
-        {
-            eventFired = true;
-            Console.WriteLine($"✅ CustomerSaved event fired for {customer.FirstName} {customer.LastName}");
-        };
-
-        // Act
-        Console.WriteLine("🔵 Executing SaveCommand...");
         _viewModel.SaveCommand.Execute(null);
+        await Task.Delay(100);
 
-        // Wait a bit for async operation
-        await Task.Delay(500);
+        // Délégation au bon use case, une seule fois ; aucune écriture côté édition.
+        _mockCreate.Verify(u => u.ExecuteAsync(It.IsAny<CreateCustomerCommand>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockUpdate.Verify(u => u.ExecuteAsync(It.IsAny<UpdateCustomerCommand>(), It.IsAny<CancellationToken>()), Times.Never);
 
-        // Assert
+        // Mapping état → commande.
+        Assert.NotNull(captured);
+        Assert.Equal("Jean", captured!.FirstName);
+        Assert.Equal("Dupont", captured.LastName);
+        Assert.Equal("jean.dupont@example.com", captured.Email);
+        Assert.Equal("0612345678", captured.Phone);
+
+        // Événement de succès avec l'identifiant attribué par le use case.
         Assert.NotNull(savedCustomer);
-        Assert.Equal("Jean", savedCustomer.FirstName);
-        Assert.Equal("Dupont", savedCustomer.LastName);
-        Assert.Equal("jean.dupont@example.com", savedCustomer.Email);
-        Assert.True(eventFired);
-        
-        _mockRepository.Verify(r => r.CreateAsync(It.IsAny<Customer>(), default), Times.Once);
-        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
-        
-        Console.WriteLine("✅ TEST PASSED: SaveCommand creates new customer and fires event");
+        Assert.Equal(42, savedCustomer!.CustomerId);
+        Assert.False(_viewModel.IsSaving);
     }
 
     [Fact]
-    public async Task SaveCommand_Execute_UpdatesExistingCustomer()
+    public async Task SaveCommand_Execute_DelegatesToUpdateUseCase_WhenEditing()
     {
-        // Arrange
         var existingCustomer = new Customer
         {
-            CustomerId = 1,
+            CustomerId = 7,
             FirstName = "Jean",
             LastName = "Dupont",
             Email = "jean@example.com",
@@ -147,107 +142,123 @@ public class CustomerFormViewModelTests
         _viewModel.FirstName = "Jean Updated";
         _viewModel.Email = "jean.updated@example.com";
 
-        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Customer>(), default))
-            .ReturnsAsync((Customer c, System.Threading.CancellationToken ct) => c);
-
-        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(default))
-            .Returns(Task.FromResult(1));
+        UpdateCustomerCommand? captured = null;
+        _mockUpdate
+            .Setup(u => u.ExecuteAsync(It.IsAny<UpdateCustomerCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<UpdateCustomerCommand, CancellationToken>((c, _) => captured = c)
+            .ReturnsAsync(new UpdateCustomerResult { CustomerFound = true, CustomerId = 7, DisplayName = "Jean Updated Dupont" });
 
         bool eventFired = false;
-        _viewModel.CustomerSaved += (sender, customer) =>
-        {
-            eventFired = true;
-            Console.WriteLine($"✅ CustomerSaved event fired for updated {customer.FirstName} {customer.LastName}");
-        };
+        _viewModel.CustomerSaved += (_, _) => eventFired = true;
 
-        // Act
-        Console.WriteLine("🔵 Executing SaveCommand for update...");
         _viewModel.SaveCommand.Execute(null);
+        await Task.Delay(100);
 
-        await Task.Delay(500);
+        _mockUpdate.Verify(u => u.ExecuteAsync(It.IsAny<UpdateCustomerCommand>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockCreate.Verify(u => u.ExecuteAsync(It.IsAny<CreateCustomerCommand>(), It.IsAny<CancellationToken>()), Times.Never);
 
-        // Assert
+        Assert.NotNull(captured);
+        Assert.Equal(7, captured!.CustomerId);
+        Assert.Equal("Jean Updated", captured.FirstName);
+        Assert.Equal("jean.updated@example.com", captured.Email);
         Assert.True(eventFired);
-        Assert.Equal("Jean Updated", existingCustomer.FirstName);
-        Assert.Equal("jean.updated@example.com", existingCustomer.Email);
-        
-        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Customer>(), default), Times.Once);
-        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
-        
-        Console.WriteLine("✅ TEST PASSED: SaveCommand updates existing customer");
+        Assert.False(_viewModel.IsSaving);
+    }
+
+    [Fact]
+    public async Task SaveCommand_Execute_UpdateNotFound_ShowsError_AndDoesNotFireSaved()
+    {
+        var existingCustomer = new Customer { CustomerId = 99, FirstName = "Ghost", LastName = "User" };
+        _viewModel.InitializeForEdit(existingCustomer);
+
+        _mockUpdate
+            .Setup(u => u.ExecuteAsync(It.IsAny<UpdateCustomerCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UpdateCustomerResult { CustomerFound = false, CustomerId = 99 });
+
+        bool eventFired = false;
+        _viewModel.CustomerSaved += (_, _) => eventFired = true;
+
+        _viewModel.SaveCommand.Execute(null);
+        await Task.Delay(100);
+
+        Assert.False(eventFired);
+        Assert.False(string.IsNullOrEmpty(_viewModel.ErrorMessage));
+        Assert.False(_viewModel.IsSaving);
+    }
+
+    [Fact]
+    public async Task SaveCommand_Execute_UseCaseThrows_SetsErrorMessage_AndResetsIsSaving()
+    {
+        _viewModel.InitializeForCreate();
+        _viewModel.FirstName = "Jean";
+        _viewModel.LastName = "Dupont";
+
+        _mockCreate
+            .Setup(u => u.ExecuteAsync(It.IsAny<CreateCustomerCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("boom"));
+
+        _viewModel.SaveCommand.Execute(null);
+        await Task.Delay(100);
+
+        Assert.Contains("boom", _viewModel.ErrorMessage);
+        Assert.False(_viewModel.IsSaving);
+    }
+
+    [Fact]
+    public void SaveCommand_CanExecute_ReturnsFalseWhileSaving_PreventsDoubleSubmit()
+    {
+        _viewModel.InitializeForCreate();
+        _viewModel.FirstName = "Jean";
+        _viewModel.LastName = "Dupont";
+        Assert.True(_viewModel.SaveCommand.CanExecute(null));
+
+        _viewModel.IsSaving = true;
+
+        Assert.False(_viewModel.SaveCommand.CanExecute(null));
     }
 
     [Fact]
     public void CancelCommand_Execute_FiresCancelledEvent()
     {
-        // Arrange
         bool eventFired = false;
-        _viewModel.Cancelled += (sender, e) =>
-        {
-            eventFired = true;
-            Console.WriteLine("✅ Cancelled event fired");
-        };
+        _viewModel.Cancelled += (_, _) => eventFired = true;
 
-        // Act
         _viewModel.CancelCommand.Execute(null);
 
-        // Assert
         Assert.True(eventFired);
-        Console.WriteLine("✅ TEST PASSED: CancelCommand fires Cancelled event");
     }
 
     [Fact]
     public void CancelCommand_CanExecute_ReturnsTrueWhenNotSaving()
     {
-        // Arrange - Le formulaire est vide mais on devrait pouvoir annuler
         _viewModel.InitializeForCreate();
 
-        // Act
-        var canExecute = _viewModel.CancelCommand.CanExecute(null);
-
-        // Assert
-        Assert.True(canExecute);
-        Console.WriteLine("✅ TEST PASSED: CancelCommand.CanExecute returns true when not saving (button should NOT be grayed out)");
+        Assert.True(_viewModel.CancelCommand.CanExecute(null));
     }
 
     [Fact]
     public void SaveCommand_CanExecute_ReturnsFalseWhenFormIsEmpty()
     {
-        // Arrange - Formulaire vide
         _viewModel.InitializeForCreate();
 
-        // Act
-        var canExecute = _viewModel.SaveCommand.CanExecute(null);
-
-        // Assert
-        Assert.False(canExecute);
-        Console.WriteLine("✅ TEST PASSED: SaveCommand.CanExecute returns false when form is empty (button IS grayed out - EXPECTED BEHAVIOR)");
+        Assert.False(_viewModel.SaveCommand.CanExecute(null));
     }
 
     [Fact]
     public void SaveCommand_CanExecute_ChangesWhenFieldsAreFilled()
     {
-        // Arrange
         _viewModel.InitializeForCreate();
-        
-        // Initially should be false
         Assert.False(_viewModel.SaveCommand.CanExecute(null));
-        Console.WriteLine("🔵 Initial state: SaveCommand.CanExecute = false (expected)");
 
-        // Act - Fill required fields
         _viewModel.FirstName = "Jean";
         _viewModel.LastName = "Dupont";
 
-        // Assert - Now should be true
-        var canExecute = _viewModel.SaveCommand.CanExecute(null);
-        Assert.True(canExecute);
-        Console.WriteLine("✅ TEST PASSED: SaveCommand.CanExecute becomes true after filling required fields");
+        Assert.True(_viewModel.SaveCommand.CanExecute(null));
     }
 
     [Fact]
     public void InitializeForEdit_LoadsCustomerData()
     {
-        // Arrange
         var customer = new Customer
         {
             CustomerId = 123,
@@ -260,10 +271,8 @@ public class CustomerFormViewModelTests
             PostalCode = "69000"
         };
 
-        // Act
         _viewModel.InitializeForEdit(customer);
 
-        // Assert
         Assert.Equal(123, _viewModel.CustomerId);
         Assert.Equal("Marie", _viewModel.FirstName);
         Assert.Equal("Martin", _viewModel.LastName);
@@ -273,13 +282,11 @@ public class CustomerFormViewModelTests
         Assert.Equal("Lyon", _viewModel.City);
         Assert.Equal("69000", _viewModel.PostalCode);
         Assert.True(_viewModel.IsEditMode);
-        Console.WriteLine("✅ TEST PASSED: InitializeForEdit loads customer data correctly");
     }
 
     [Fact]
     public void InitializeForEdit_SaveCommandIsEnabled()
     {
-        // Arrange - Un client existant avec des données valides
         var customer = new Customer
         {
             CustomerId = 123,
@@ -287,12 +294,8 @@ public class CustomerFormViewModelTests
             LastName = "Martin"
         };
 
-        // Act
         _viewModel.InitializeForEdit(customer);
-        var canExecute = _viewModel.SaveCommand.CanExecute(null);
 
-        // Assert - SaveCommand devrait être activé car FirstName et LastName sont remplis
-        Assert.True(canExecute);
-        Console.WriteLine("✅ TEST PASSED: SaveCommand is ENABLED after InitializeForEdit with valid data");
+        Assert.True(_viewModel.SaveCommand.CanExecute(null));
     }
 }

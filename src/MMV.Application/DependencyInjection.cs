@@ -1,11 +1,28 @@
 using Microsoft.Extensions.DependencyInjection;
+using MMV.Application.UseCases.Customers.CreateCustomer;
+using MMV.Application.UseCases.Customers.DeleteCustomer;
+using MMV.Application.UseCases.Customers.UpdateCustomer;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Orders.DeleteOrder;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Application.UseCases.Orders.UpdateOrder;
+using MMV.Application.UseCases.Notifications.GenerateLowStockNotifications;
+using MMV.Application.UseCases.Notifications.MarkAllNotificationsRead;
+using MMV.Application.UseCases.Prescriptions.CreatePrescription;
+using MMV.Application.UseCases.Prescriptions.DeletePrescription;
+using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
+using MMV.Application.UseCases.Products.CreateProduct;
+using MMV.Application.UseCases.Products.DeleteProduct;
+using MMV.Application.UseCases.Products.UpdateProduct;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
+using MMV.Application.UseCases.Suppliers.CreateSupplier;
+using MMV.Application.UseCases.Suppliers.DeleteSupplier;
+using MMV.Application.UseCases.Suppliers.UpdateSupplier;
+using MMV.Application.UseCases.Users.CreateUser;
+using MMV.Application.UseCases.Users.SetUserActive;
+using MMV.Application.UseCases.Users.UpdateUser;
 
 namespace MMV.Application;
 
@@ -72,6 +89,58 @@ public static class DependencyInjection
         // Mono-écriture (UpdateAsync + SaveChangesAsync unique, reconstruction des lignes incluse via cascades EF),
         // ITransactionRunner non requis.
         services.AddScoped<IUpdateOrderUseCase, UpdateOrderUseCase>();
+
+        // Première réduction de dette P2C (P2C-2) — flux client « create / update ». Portée Scoped : même portée
+        // que OpticDbContext, ICustomerRepository et IUnitOfWork — donc même DbContext (cohérent avec le flux
+        // d'origine porté par CustomerFormViewModel et le code-behind client). Mono-écriture (Create/Update +
+        // SaveChangesAsync unique), ITransactionRunner non requis.
+        services.AddScoped<ICreateCustomerUseCase, CreateCustomerUseCase>();
+        services.AddScoped<IUpdateCustomerUseCase, UpdateCustomerUseCase>();
+
+        // Reliquat client P2C-3 — flux « delete ». Portée Scoped : même portée que OpticDbContext,
+        // ICustomerRepository et IUnitOfWork — donc même DbContext (cohérent avec le flux d'origine porté par
+        // CustomersListViewModel.ExecuteDelete). Mono-écriture (Delete + SaveChangesAsync unique),
+        // ITransactionRunner non requis.
+        services.AddScoped<IDeleteCustomerUseCase, DeleteCustomerUseCase>();
+
+        // Réduction de dette P2C-4 — écritures du module Ordonnances. Portée Scoped : même portée que OpticDbContext,
+        // IPrescriptionRepository et IUnitOfWork — donc même DbContext (cohérent avec le flux d'origine porté par
+        // PrescriptionFormViewModel et CustomerPrescriptionsViewModel). Chaque écriture est mono-écriture
+        // (Create/Update/Delete + SaveChangesAsync unique), ITransactionRunner non requis.
+        services.AddScoped<ICreatePrescriptionUseCase, CreatePrescriptionUseCase>();
+        services.AddScoped<IUpdatePrescriptionUseCase, UpdatePrescriptionUseCase>();
+        services.AddScoped<IDeletePrescriptionUseCase, DeletePrescriptionUseCase>();
+
+        // Reliquat UI P2C-GLOBAL — écritures du module Fournisseurs. Portée Scoped : même portée que OpticDbContext,
+        // ISupplierRepository et IUnitOfWork — donc même DbContext (cohérent avec le flux d'origine porté par
+        // SupplierFormViewModel et SuppliersViewModel). Chaque écriture est mono-écriture (Create/Update/Delete +
+        // SaveChangesAsync unique), ITransactionRunner non requis.
+        services.AddScoped<ICreateSupplierUseCase, CreateSupplierUseCase>();
+        services.AddScoped<IUpdateSupplierUseCase, UpdateSupplierUseCase>();
+        services.AddScoped<IDeleteSupplierUseCase, DeleteSupplierUseCase>();
+
+        // Reliquat UI P2C-GLOBAL — écritures du module Utilisateurs. Portée Scoped : même portée que OpticDbContext,
+        // IUserRepository, IUnitOfWork et IAuthenticationService (hachage BCrypt) — donc même DbContext (cohérent
+        // avec le flux d'origine porté par UserFormViewModel et UsersListViewModel). Chaque écriture est mono-écriture
+        // (Create/Update + SaveChangesAsync unique), ITransactionRunner non requis.
+        services.AddScoped<ICreateUserUseCase, CreateUserUseCase>();
+        services.AddScoped<IUpdateUserUseCase, UpdateUserUseCase>();
+        services.AddScoped<ISetUserActiveUseCase, SetUserActiveUseCase>();
+
+        // Reliquat UI P2C-GLOBAL — écritures du module Produits. Portée Scoped : même portée que OpticDbContext,
+        // IProductRepository et IUnitOfWork — donc même DbContext (cohérent avec le flux d'origine porté par
+        // ProductFormViewModel et ProductsListViewModel). Chaque écriture est mono-écriture (Create/Update/Delete +
+        // SaveChangesAsync unique), ITransactionRunner non requis.
+        services.AddScoped<ICreateProductUseCase, CreateProductUseCase>();
+        services.AddScoped<IUpdateProductUseCase, UpdateProductUseCase>();
+        services.AddScoped<IDeleteProductUseCase, DeleteProductUseCase>();
+
+        // Reliquat UI P2C-GLOBAL — écritures du module Notifications (marquage global + génération stock bas). Portée
+        // Scoped : même portée que OpticDbContext, INotificationRepository, IProductRepository et IUnitOfWork — donc
+        // même DbContext. Écriture unique (SaveChangesAsync final), ITransactionRunner non requis. La génération de
+        // stock bas était dupliquée entre NotificationsListViewModel et MainWindowViewModel : elle est unifiée ici.
+        services.AddScoped<IMarkAllNotificationsReadUseCase, MarkAllNotificationsReadUseCase>();
+        services.AddScoped<IGenerateLowStockNotificationsUseCase, GenerateLowStockNotificationsUseCase>();
         return services;
     }
 }

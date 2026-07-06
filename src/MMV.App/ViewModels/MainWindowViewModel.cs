@@ -3,14 +3,19 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Notifications.GenerateLowStockNotifications;
 using MMV.Domain.Enums;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel de la fenêtre principale.
 /// Gère la navigation, l'état global, l'affichage utilisateur et les permissions.
+/// <para>
+/// P2C-GLOBAL : la génération des notifications de stock bas et le comptage des non lues sont désormais assurés par
+/// <see cref="IGenerateLowStockNotificationsUseCase"/> (couche Application). Les dépendances de persistance directes
+/// (<c>INotificationRepository</c>, <c>IProductRepository</c>, <c>IUnitOfWork</c>) ont été retirées.
+/// </para>
 /// </summary>
 public class MainWindowViewModel : BaseViewModel
 {
@@ -18,9 +23,7 @@ public class MainWindowViewModel : BaseViewModel
     private readonly INavigationService _navigationService;
     private readonly ISessionService _sessionService;
     private readonly IPermissionService _permissionService;
-    private readonly INotificationRepository? _notificationRepository;
-    private readonly IProductRepository? _productRepository;
-    private readonly IUnitOfWork? _unitOfWork;
+    private readonly IGenerateLowStockNotificationsUseCase? _generateLowStockNotificationsUseCase;
     private int _unreadNotificationsCount;
     private bool _isUserMenuOpen;
 
@@ -134,16 +137,12 @@ public class MainWindowViewModel : BaseViewModel
         INavigationService navigationService,
         ISessionService sessionService,
         IPermissionService permissionService,
-        INotificationRepository? notificationRepository = null,
-        IProductRepository? productRepository = null,
-        IUnitOfWork? unitOfWork = null)
+        IGenerateLowStockNotificationsUseCase? generateLowStockNotificationsUseCase = null)
     {
         _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
         _permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
-        _notificationRepository = notificationRepository;
-        _productRepository = productRepository;
-        _unitOfWork = unitOfWork;
+        _generateLowStockNotificationsUseCase = generateLowStockNotificationsUseCase;
         Title = "ManageMyVision";
         
         NavigateCommand = new RelayCommand<string>(ExecuteNavigate, CanNavigate);
@@ -355,43 +354,13 @@ public class MainWindowViewModel : BaseViewModel
     /// </summary>
     private async Task LoadUnreadNotificationsCountAsync()
     {
-        if (_notificationRepository != null && _productRepository != null && _unitOfWork != null)
+        if (_generateLowStockNotificationsUseCase != null)
         {
             try
             {
-                // Générer les notifications de stock bas
-                var products = await _productRepository.GetAllAsync();
-                var lowStockProducts = products.Where(p => p.StockQuantity <= p.StockAlertThreshold).ToList();
-
-                foreach (var product in lowStockProducts)
-                {
-                    var notifications = await _notificationRepository.GetAllAsync();
-                    var exists = notifications.Any(n => 
-                        n.Type == "LowStock" && 
-                        n.EntityId == product.ProductId && 
-                        !n.IsRead);
-
-                    if (!exists)
-                    {
-                        var notification = new Domain.Entities.Notification
-                        {
-                            Type = "LowStock",
-                            Title = $"Stock bas : {product.Name}",
-                            Message = $"Le produit {product.Reference} - {product.Name} est en stock bas ({product.StockQuantity}/{product.StockAlertThreshold})",
-                            EntityId = product.ProductId,
-                            EntityType = "Product",
-                            IsRead = false,
-                            CreatedAt = DateTime.Now
-                        };
-
-                        await _notificationRepository.CreateAsync(notification);
-                    }
-                }
-
-                await _unitOfWork.SaveChangesAsync();
-
-                // Charger le compteur
-                UnreadNotificationsCount = await _notificationRepository.CountUnreadAsync();
+                // Génération des notifications de stock bas + comptage des non lues, désormais portés par le use case.
+                var result = await _generateLowStockNotificationsUseCase.ExecuteAsync();
+                UnreadNotificationsCount = result.UnreadCount;
             }
             catch (Exception ex)
             {

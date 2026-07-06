@@ -60,49 +60,6 @@ public partial class CustomersView : UserControl
         }
     }
 
-    private async void ButtonEnregistrer_Click(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is CustomersViewModel vm)
-        {
-            var customer = vm.CustomersListViewModel.SelectedCustomer;
-            
-            if (customer == null)
-            {
-                // Nouveau client - créer une nouvelle instance
-                customer = new Customer();
-            }
-            
-            // Sauvegarder le client
-            try
-            {
-                if (customer.CustomerId == 0)
-                {
-                    // Nouveau client - ajouter via le repository
-                    await vm.CustomersListViewModel.Repository.CreateAsync(customer);
-                }
-                else
-                {
-                    // Client existant - mettre à jour
-                    await vm.CustomersListViewModel.Repository.UpdateAsync(customer);
-                }
-                
-                await vm.CustomersListViewModel.UnitOfWork.SaveChangesAsync();
-                
-                // Recharger la liste
-                await vm.CustomersListViewModel.LoadCustomersAsync();
-                
-                // Retour à la liste
-                vm.IsInEditMode = false;
-                vm.IsCreatingNew = false;
-                vm.CustomersListViewModel.SelectedCustomer = null;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Erreur lors de l'enregistrement: {ex.Message}");
-            }
-        }
-    }
-
     private void ButtonNouvelleOrdonnance_Click(object? sender, RoutedEventArgs e)
     {
         // TODO: Ouvrir le formulaire de nouvelle ordonnance

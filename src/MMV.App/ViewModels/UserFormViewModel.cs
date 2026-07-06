@@ -1,23 +1,26 @@
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Users.CreateUser;
+using MMV.Application.UseCases.Users.UpdateUser;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
-using MMV.Domain.Interfaces.Repositories;
-using MMV.Domain.Services;
 using MMV.Domain.Validators;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour le formulaire de création/édition d'un utilisateur.
-/// Inclut validation des champs et hachage BCrypt du mot de passe.
+/// Inclut validation des champs (le hachage BCrypt et la persistance sont assurés par la couche Application).
+/// <para>
+/// P2C-GLOBAL : la persistance directe (repository + <c>IUnitOfWork</c> + hachage + <c>SaveChangesAsync</c>) a été
+/// déplacée vers <see cref="ICreateUserUseCase"/> / <see cref="IUpdateUserUseCase"/>.
+/// </para>
 /// </summary>
 public class UserFormViewModel : BaseViewModel
 {
-    private readonly IUserRepository _userRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IAuthenticationService _authenticationService;
-    
+    private readonly ICreateUserUseCase _createUserUseCase;
+    private readonly IUpdateUserUseCase _updateUserUseCase;
+
     private bool _isEditMode;
     private long _userId;
     private string _username = string.Empty;
@@ -233,13 +236,11 @@ public class UserFormViewModel : BaseViewModel
     #endregion
 
     public UserFormViewModel(
-        IUserRepository userRepository,
-        IUnitOfWork unitOfWork,
-        IAuthenticationService authenticationService)
+        ICreateUserUseCase createUserUseCase,
+        IUpdateUserUseCase updateUserUseCase)
     {
-        _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
-        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-        _authenticationService = authenticationService ?? throw new ArgumentNullException(nameof(authenticationService));
+        _createUserUseCase = createUserUseCase ?? throw new ArgumentNullException(nameof(createUserUseCase));
+        _updateUserUseCase = updateUserUseCase ?? throw new ArgumentNullException(nameof(updateUserUseCase));
 
         SaveCommand = new RelayCommand(async () => await ExecuteSaveAsync(), CanSave);
         CancelCommand = new RelayCommand(() => Cancelled?.Invoke(this, EventArgs.Empty));
@@ -300,63 +301,47 @@ public class UserFormViewModel : BaseViewModel
         {
             if (IsEditMode)
             {
-                var user = await _userRepository.GetByIdAsync(_userId);
-                if (user == null)
+                var result = await _updateUserUseCase.ExecuteAsync(new UpdateUserCommand
+                {
+                    UserId = _userId,
+                    Username = Username.Trim(),
+                    FirstName = FirstName.Trim(),
+                    LastName = LastName.Trim(),
+                    Role = SelectedRole,
+                    IsActive = IsActive,
+                    Password = string.IsNullOrWhiteSpace(Password) ? null : Password
+                });
+
+                if (!result.UserFound)
                 {
                     ErrorMessage = "Utilisateur introuvable.";
                     return;
                 }
-
-                // Vérifier unicité du username si changé
-                if (user.Username != Username.Trim())
-                {
-                    var existing = await _userRepository.GetByUsernameAsync(Username.Trim());
-                    if (existing != null)
-                    {
-                        UsernameError = "Ce nom d'utilisateur est déjà utilisé.";
-                        return;
-                    }
-                }
-
-                user.Username = Username.Trim();
-                user.FirstName = FirstName.Trim();
-                user.LastName = LastName.Trim();
-                user.Role = SelectedRole;
-                user.IsActive = IsActive;
-
-                // Si un nouveau mot de passe est fourni, le hasher
-                if (!string.IsNullOrWhiteSpace(Password))
-                {
-                    user.PasswordHash = _authenticationService.HashPassword(Password);
-                }
-
-                await _userRepository.UpdateAsync(user);
-            }
-            else
-            {
-                // Vérifier unicité du username
-                var existing = await _userRepository.GetByUsernameAsync(Username.Trim());
-                if (existing != null)
+                if (result.UsernameTaken)
                 {
                     UsernameError = "Ce nom d'utilisateur est déjà utilisé.";
                     return;
                 }
-
-                var newUser = new User
+            }
+            else
+            {
+                var result = await _createUserUseCase.ExecuteAsync(new CreateUserCommand
                 {
                     Username = Username.Trim(),
                     FirstName = FirstName.Trim(),
                     LastName = LastName.Trim(),
                     Role = SelectedRole,
                     IsActive = IsActive,
-                    PasswordHash = _authenticationService.HashPassword(Password),
-                    CreatedAt = DateTime.UtcNow
-                };
+                    Password = Password
+                });
 
-                await _userRepository.CreateAsync(newUser);
+                if (result.UsernameTaken)
+                {
+                    UsernameError = "Ce nom d'utilisateur est déjà utilisé.";
+                    return;
+                }
             }
 
-            await _unitOfWork.SaveChangesAsync();
             UserSaved?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)

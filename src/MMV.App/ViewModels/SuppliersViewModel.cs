@@ -2,6 +2,9 @@ using System;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Suppliers.CreateSupplier;
+using MMV.Application.UseCases.Suppliers.DeleteSupplier;
+using MMV.Application.UseCases.Suppliers.UpdateSupplier;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
 
@@ -9,11 +12,18 @@ namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel principal pour la gestion des fournisseurs.
+/// <para>
+/// P2C-GLOBAL : les écritures (suppression, ainsi que création/édition déléguées au formulaire) passent par la
+/// couche Application. <see cref="ISupplierRepository"/> n'est conservé que pour les lectures d'affichage
+/// (<c>GetWithProductsAsync</c> et alimentation de la liste). <c>IUnitOfWork</c> a été retiré.
+/// </para>
 /// </summary>
 public class SuppliersViewModel : BaseViewModel
 {
     private readonly ISupplierRepository _supplierRepository;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICreateSupplierUseCase _createSupplierUseCase;
+    private readonly IUpdateSupplierUseCase _updateSupplierUseCase;
+    private readonly IDeleteSupplierUseCase _deleteSupplierUseCase;
     private readonly IDialogService _dialogService;
 
     private SuppliersListViewModel _suppliersListViewModel;
@@ -76,14 +86,18 @@ public class SuppliersViewModel : BaseViewModel
 
     public SuppliersViewModel(
         ISupplierRepository supplierRepository,
-        IUnitOfWork unitOfWork,
+        ICreateSupplierUseCase createSupplierUseCase,
+        IUpdateSupplierUseCase updateSupplierUseCase,
+        IDeleteSupplierUseCase deleteSupplierUseCase,
         IDialogService dialogService)
     {
         _supplierRepository = supplierRepository;
-        _unitOfWork = unitOfWork;
+        _createSupplierUseCase = createSupplierUseCase ?? throw new ArgumentNullException(nameof(createSupplierUseCase));
+        _updateSupplierUseCase = updateSupplierUseCase ?? throw new ArgumentNullException(nameof(updateSupplierUseCase));
+        _deleteSupplierUseCase = deleteSupplierUseCase ?? throw new ArgumentNullException(nameof(deleteSupplierUseCase));
         _dialogService = dialogService;
 
-        _suppliersListViewModel = new SuppliersListViewModel(supplierRepository, unitOfWork);
+        _suppliersListViewModel = new SuppliersListViewModel(supplierRepository);
         _suppliersListViewModel.CreateSupplierRequested += OnCreateSupplierRequested;
         _suppliersListViewModel.ViewSupplierDetailsRequested += OnViewSupplierDetailsRequested;
 
@@ -97,7 +111,7 @@ public class SuppliersViewModel : BaseViewModel
 
     private void OnCreateSupplierRequested(object? sender, EventArgs e)
     {
-        SupplierFormViewModel = new SupplierFormViewModel(_supplierRepository, _unitOfWork);
+        SupplierFormViewModel = new SupplierFormViewModel(_createSupplierUseCase, _updateSupplierUseCase);
         SupplierFormViewModel.InitializeForCreate();
         SupplierFormViewModel.SupplierSaved += OnSupplierSaved;
         SupplierFormViewModel.Cancelled += OnSupplierFormCancelled;
@@ -129,7 +143,7 @@ public class SuppliersViewModel : BaseViewModel
     {
         CloseDetail();
 
-        SupplierFormViewModel = new SupplierFormViewModel(_supplierRepository, _unitOfWork);
+        SupplierFormViewModel = new SupplierFormViewModel(_createSupplierUseCase, _updateSupplierUseCase);
         SupplierFormViewModel.InitializeForEdit(supplier);
         SupplierFormViewModel.SupplierSaved += OnSupplierSaved;
         SupplierFormViewModel.Cancelled += OnSupplierFormCancelled;
@@ -156,8 +170,7 @@ public class SuppliersViewModel : BaseViewModel
 
             if (confirmed)
             {
-                await _supplierRepository.DeleteAsync(supplier.SupplierId);
-                await _unitOfWork.SaveChangesAsync();
+                await _deleteSupplierUseCase.ExecuteAsync(new DeleteSupplierCommand { SupplierId = supplier.SupplierId });
                 await SuppliersListViewModel.LoadSuppliersAsync();
                 CloseDetail();
             }

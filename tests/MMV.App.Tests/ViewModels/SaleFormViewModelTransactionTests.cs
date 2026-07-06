@@ -4,6 +4,9 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
+using MMV.Application.UseCases.Prescriptions.CreatePrescription;
+using MMV.Application.UseCases.Prescriptions.DeletePrescription;
+using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
@@ -280,8 +283,10 @@ public class SaleFormViewModelTransactionTests
         // Reproduit la construction de production : CustomerDetailViewModel reçoit le use case par DI (via
         // CustomersViewModel) et DOIT le transmettre à SaleFormViewModel.
         var detail = new CustomerDetailViewModel(
-            customerRepo.Object, unitOfWork.Object, prescriptionRepo.Object,
-            productRepo.Object, saleRepo.Object, spy);
+            customerRepo.Object, prescriptionRepo.Object,
+            productRepo.Object, saleRepo.Object, spy,
+            Mock.Of<ICreatePrescriptionUseCase>(), Mock.Of<IUpdatePrescriptionUseCase>(),
+            Mock.Of<IDeletePrescriptionUseCase>());
 
         await detail.InitializeAsync(new Customer { CustomerId = 7, FirstName = "Prod", LastName = "Chain" });
 
