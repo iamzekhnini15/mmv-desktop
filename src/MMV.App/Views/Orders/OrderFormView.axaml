@@ -5,7 +5,7 @@
              xmlns:vm="using:MMV.App.ViewModels"
              xmlns:converters="using:MMV.App.Converters"
              xmlns:controls="using:MMV.App.Controls"
-             xmlns:entities="using:MMV.Domain.Entities"
+             xmlns:pickers="using:MMV.Application.UseCases.Products.ListProductsForOrderPicker"
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="MMV.App.Views.Orders.OrderFormView"
              x:DataType="vm:OrderFormViewModel"
@@ -272,7 +272,7 @@
                                             <ScrollViewer>
                                                 <ItemsControl ItemsSource="{Binding FilteredProducts}">
                                                     <ItemsControl.ItemTemplate>
-                                                        <DataTemplate x:DataType="entities:Product">
+                                                        <DataTemplate x:DataType="pickers:OrderProductPickerDto">
                                                             <Button Background="Transparent" BorderThickness="0"
                                                                     HorizontalContentAlignment="Stretch"
                                                                     HorizontalAlignment="Stretch"

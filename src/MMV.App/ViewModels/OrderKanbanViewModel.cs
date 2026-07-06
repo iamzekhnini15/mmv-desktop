@@ -5,9 +5,8 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Orders.ListOrders;
 using MMV.Domain.Enums;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -17,55 +16,59 @@ namespace MMV.App.ViewModels;
 /// <para>
 /// P2C-GLOBAL : l'avancement de statut passe désormais par <see cref="IAdvanceOrderStatusUseCase"/> (comme
 /// <c>OrderDetailViewModel</c>), alignant les deux surfaces UI sur la même orchestration applicative.
-/// <see cref="IOrderRepository"/> n'est conservé que pour les lectures d'affichage (répartition des colonnes) ;
-/// <c>IUnitOfWork</c> a été retiré.
+/// </para>
+/// <para>
+/// P2D-6 : la lecture directe <c>IOrderRepository.GetAllWithItemsAsync</c> (répartition des colonnes) est remplacée
+/// par le query use case <see cref="IListOrdersUseCase"/> renvoyant des <see cref="OrderListItemDto"/> plats
+/// (réutilisé par <c>OrdersListViewModel</c>). Aucune entité EF suivie ne franchit plus la frontière UI pour cet
+/// écran ; la répartition par statut et les tris restent en présentation (iso-fonctionnel).
 /// </para>
 /// </summary>
 public class OrderKanbanViewModel : BaseViewModel
 {
-    private readonly IOrderRepository _orderRepository;
+    private readonly IListOrdersUseCase _listOrdersUseCase;
     private readonly IAdvanceOrderStatusUseCase _advanceOrderStatusUseCase;
 
-    private ObservableCollection<Order> _newOrders = new();
-    private ObservableCollection<Order> _toFabricateOrders = new();
-    private ObservableCollection<Order> _inProgressOrders = new();
-    private ObservableCollection<Order> _qualityCheckOrders = new();
-    private ObservableCollection<Order> _readyOrders = new();
-    private ObservableCollection<Order> _deliveredOrders = new();
+    private ObservableCollection<OrderListItemDto> _newOrders = new();
+    private ObservableCollection<OrderListItemDto> _toFabricateOrders = new();
+    private ObservableCollection<OrderListItemDto> _inProgressOrders = new();
+    private ObservableCollection<OrderListItemDto> _qualityCheckOrders = new();
+    private ObservableCollection<OrderListItemDto> _readyOrders = new();
+    private ObservableCollection<OrderListItemDto> _deliveredOrders = new();
 
     #region Properties
 
-    public ObservableCollection<Order> NewOrders
+    public ObservableCollection<OrderListItemDto> NewOrders
     {
         get => _newOrders;
         set => SetProperty(ref _newOrders, value);
     }
 
-    public ObservableCollection<Order> ToFabricateOrders
+    public ObservableCollection<OrderListItemDto> ToFabricateOrders
     {
         get => _toFabricateOrders;
         set => SetProperty(ref _toFabricateOrders, value);
     }
 
-    public ObservableCollection<Order> InProgressOrders
+    public ObservableCollection<OrderListItemDto> InProgressOrders
     {
         get => _inProgressOrders;
         set => SetProperty(ref _inProgressOrders, value);
     }
 
-    public ObservableCollection<Order> QualityCheckOrders
+    public ObservableCollection<OrderListItemDto> QualityCheckOrders
     {
         get => _qualityCheckOrders;
         set => SetProperty(ref _qualityCheckOrders, value);
     }
 
-    public ObservableCollection<Order> ReadyOrders
+    public ObservableCollection<OrderListItemDto> ReadyOrders
     {
         get => _readyOrders;
         set => SetProperty(ref _readyOrders, value);
     }
 
-    public ObservableCollection<Order> DeliveredOrders
+    public ObservableCollection<OrderListItemDto> DeliveredOrders
     {
         get => _deliveredOrders;
         set => SetProperty(ref _deliveredOrders, value);
@@ -91,18 +94,18 @@ public class OrderKanbanViewModel : BaseViewModel
 
     #region Events
 
-    public event EventHandler<Order>? ViewOrderDetailRequested;
+    public event EventHandler<OrderListItemDto>? ViewOrderDetailRequested;
     public event EventHandler? BackToListRequested;
 
     #endregion
 
-    public OrderKanbanViewModel(IOrderRepository orderRepository, IAdvanceOrderStatusUseCase advanceOrderStatusUseCase)
+    public OrderKanbanViewModel(IListOrdersUseCase listOrdersUseCase, IAdvanceOrderStatusUseCase advanceOrderStatusUseCase)
     {
-        _orderRepository = orderRepository;
+        _listOrdersUseCase = listOrdersUseCase ?? throw new ArgumentNullException(nameof(listOrdersUseCase));
         _advanceOrderStatusUseCase = advanceOrderStatusUseCase ?? throw new ArgumentNullException(nameof(advanceOrderStatusUseCase));
 
-        AdvanceStatusCommand = new RelayCommand<Order>(async (o) => await AdvanceStatusAsync(o));
-        ViewDetailCommand = new RelayCommand<Order>(o =>
+        AdvanceStatusCommand = new RelayCommand<OrderListItemDto>(async (o) => await AdvanceStatusAsync(o));
+        ViewDetailCommand = new RelayCommand<OrderListItemDto>(o =>
         {
             if (o != null) ViewOrderDetailRequested?.Invoke(this, o);
         });
@@ -122,19 +125,19 @@ public class OrderKanbanViewModel : BaseViewModel
 
         try
         {
-            var orders = await _orderRepository.GetAllWithItemsAsync();
+            var orders = await _listOrdersUseCase.ExecuteAsync(new ListOrdersQuery());
 
-            NewOrders = new ObservableCollection<Order>(
+            NewOrders = new ObservableCollection<OrderListItemDto>(
                 orders.Where(o => o.Status == OrderStatus.New).OrderByDescending(o => o.OrderDate));
-            ToFabricateOrders = new ObservableCollection<Order>(
+            ToFabricateOrders = new ObservableCollection<OrderListItemDto>(
                 orders.Where(o => o.Status == OrderStatus.ToFabricate).OrderByDescending(o => o.OrderDate));
-            InProgressOrders = new ObservableCollection<Order>(
+            InProgressOrders = new ObservableCollection<OrderListItemDto>(
                 orders.Where(o => o.Status == OrderStatus.InProgress).OrderByDescending(o => o.OrderDate));
-            QualityCheckOrders = new ObservableCollection<Order>(
+            QualityCheckOrders = new ObservableCollection<OrderListItemDto>(
                 orders.Where(o => o.Status == OrderStatus.QualityCheck).OrderByDescending(o => o.OrderDate));
-            ReadyOrders = new ObservableCollection<Order>(
+            ReadyOrders = new ObservableCollection<OrderListItemDto>(
                 orders.Where(o => o.Status == OrderStatus.Ready).OrderByDescending(o => o.OrderDate));
-            DeliveredOrders = new ObservableCollection<Order>(
+            DeliveredOrders = new ObservableCollection<OrderListItemDto>(
                 orders.Where(o => o.Status == OrderStatus.Delivered).OrderByDescending(o => o.OrderDate).Take(10));
 
             NotifyCounts();
@@ -153,7 +156,7 @@ public class OrderKanbanViewModel : BaseViewModel
     /// <summary>
     /// Fait avancer le statut d'une commande d'un cran.
     /// </summary>
-    private async Task AdvanceStatusAsync(Order? order)
+    private async Task AdvanceStatusAsync(OrderListItemDto? order)
     {
         if (order == null) return;
 

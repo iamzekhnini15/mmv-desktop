@@ -89,21 +89,34 @@ public sealed class AppUiPersistenceGuardrailTests
         // réalisable en iso-fonctionnel sans exécution UI de recette) ; CustomerDetailViewModel / CustomersViewModel
         // conservent IProductRepository + IPrescriptionRepository uniquement pour construire SaleFormViewModel (lectures de
         // référence du formulaire de vente, à migrer en P2D-6 / Ventes).
+        //
+        // P2D-6 (Commandes / Ventes) — GO PARTIEL (cf. docs/implementation/P2D-6-report.md). Migrées vers des query use
+        // cases Application (IListOrdersUseCase, IListCustomersForPickerUseCase, IListProductsForOrderPickerUseCase ;
+        // ordonnances du formulaire = IListPrescriptionsByCustomerUseCase réutilisé, P2D-5) : la liste des commandes
+        // (OrdersListViewModel), la vue Kanban (OrderKanbanViewModel) et les données de référence du formulaire de
+        // commande (OrderFormViewModel : clients + produits + ordonnances). 8 entrées retirées :
+        // "OrderFormViewModel -> ICustomerRepository", "OrderFormViewModel -> IProductRepository",
+        // "OrderFormViewModel -> IPrescriptionRepository", "OrderKanbanViewModel -> IOrderRepository",
+        // "OrdersListViewModel -> IOrderRepository", "OrdersViewModel -> ICustomerRepository",
+        // "OrdersViewModel -> IProductRepository", "OrdersViewModel -> IPrescriptionRepository".
+        //
+        // Reliquat P2D-6 justifié (verrouillé par cette allowlist qui ne fait que diminuer) :
+        //   - "OrdersViewModel -> IOrderRepository" : rechargement de la fiche détaillée (GetWithItemsAsync), qui
+        //     alimente OrderDetailViewModel puis le formulaire d'ÉDITION avec une entité Order complète (threading vers
+        //     un chemin d'écriture) — migration non réalisable en iso-fonctionnel sans exécution UI de recette.
+        //   - "SaleFormViewModel -> IProductRepository" / "-> IPrescriptionRepository" et les pass-through
+        //     "CustomerDetailViewModel/CustomersViewModel -> IProductRepository / -> IPrescriptionRepository" :
+        //     le formulaire de VENTE lit un catalogue à graphe (Product.GlassDetail, filtrage de compatibilité) et son
+        //     panier est composé d'entités OrderItem portant la navigation Product (liaisons Product.Name/Reference) —
+        //     écran composite non migrable en iso-fonctionnel sans exécution UI de recette (même clause que la liste
+        //     clients P2D-5 / la liste produit P2D-4). À solder en clôture P2D (P2D-7) avec recette UI.
         "CustomerDetailViewModel -> IPrescriptionRepository",
         "CustomerDetailViewModel -> IProductRepository",
         "CustomersListViewModel -> ICustomerRepository",
         "CustomersViewModel -> ICustomerRepository",
         "CustomersViewModel -> IPrescriptionRepository",
         "CustomersViewModel -> IProductRepository",
-        "OrderFormViewModel -> ICustomerRepository",
-        "OrderFormViewModel -> IPrescriptionRepository",
-        "OrderFormViewModel -> IProductRepository",
-        "OrderKanbanViewModel -> IOrderRepository",
-        "OrdersListViewModel -> IOrderRepository",
-        "OrdersViewModel -> ICustomerRepository",
         "OrdersViewModel -> IOrderRepository",
-        "OrdersViewModel -> IPrescriptionRepository",
-        "OrdersViewModel -> IProductRepository",
         "ProductsListViewModel -> IProductRepository",
         "ProductsViewModel -> IProductRepository",
         "SaleFormViewModel -> IPrescriptionRepository",

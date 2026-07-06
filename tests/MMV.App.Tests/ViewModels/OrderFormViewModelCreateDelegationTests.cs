@@ -4,13 +4,14 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
+using MMV.Application.UseCases.Customers.ListCustomersForPicker;
 using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Orders.UpdateOrder;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
+using MMV.Application.UseCases.Products.ListProductsForOrderPicker;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
 using MMV.Domain.Interfaces.Persistence;
-using MMV.Domain.Interfaces.Repositories;
 using Moq;
 using Xunit;
 
@@ -65,7 +66,7 @@ public class OrderFormViewModelCreateDelegationTests
         };
     }
 
-    private static readonly Product FrameProduct = new()
+    private static readonly OrderProductPickerDto FrameProduct = new()
     {
         ProductId = 1,
         Reference = "MON-001",
@@ -80,28 +81,28 @@ public class OrderFormViewModelCreateDelegationTests
     /// </summary>
     private static async Task<OrderFormViewModel> BuildReadyToSaveViewModelAsync(ICreateOrderUseCase useCase)
     {
-        var customerRepo = new Mock<ICustomerRepository>();
-        var productRepo = new Mock<IProductRepository>();
-        var prescriptionRepo = new Mock<IPrescriptionRepository>();
+        var customersUseCase = new Mock<IListCustomersForPickerUseCase>();
+        var productsUseCase = new Mock<IListProductsForOrderPickerUseCase>();
+        var prescriptionsUseCase = new Mock<IListPrescriptionsByCustomerUseCase>();
         var numberSequence = new Mock<INumberSequenceService>();
         var updateOrderUseCase = new Mock<IUpdateOrderUseCase>();
 
-        customerRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Customer> { new() { CustomerId = 7, FirstName = "Cli", LastName = "Ent" } });
-        productRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Product> { FrameProduct });
-        prescriptionRepo.Setup(r => r.GetByCustomerIdAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Prescription>());
+        customersUseCase.Setup(u => u.ExecuteAsync(It.IsAny<ListCustomersForPickerQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<CustomerPickerItemDto> { new() { CustomerId = 7, FirstName = "Cli", LastName = "Ent" } });
+        productsUseCase.Setup(u => u.ExecuteAsync(It.IsAny<ListProductsForOrderPickerQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<OrderProductPickerDto> { FrameProduct });
+        prescriptionsUseCase.Setup(u => u.ExecuteAsync(It.IsAny<ListPrescriptionsByCustomerQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<PrescriptionListItemDto>());
         numberSequence.Setup(s => s.NextNumberAsync(DocumentSequenceNames.Order, It.IsAny<CancellationToken>()))
             .ReturnsAsync("CMD-000001");
 
         var viewModel = new OrderFormViewModel(
-            customerRepo.Object, productRepo.Object, prescriptionRepo.Object,
+            customersUseCase.Object, productsUseCase.Object, prescriptionsUseCase.Object,
             numberSequence.Object, useCase, updateOrderUseCase.Object);
 
         await viewModel.InitializeAsync();
 
-        viewModel.SelectedCustomer = new Customer { CustomerId = 7, FirstName = "Cli", LastName = "Ent" };
+        viewModel.SelectedCustomer = new CustomerPickerItemDto { CustomerId = 7, FirstName = "Cli", LastName = "Ent" };
         viewModel.AddFrameCommand.Execute(null);
         viewModel.OrderItems[0].SelectedProduct = FrameProduct; // fixe UnitPrice = SalePrice (20) → ligne valide
 
@@ -209,18 +210,20 @@ public class OrderFormViewModelCreateDelegationTests
     {
         var spy = new SpyCreateOrderUseCase();
 
-        var customerRepo = new Mock<ICustomerRepository>();
-        var productRepo = new Mock<IProductRepository>();
-        var prescriptionRepo = new Mock<IPrescriptionRepository>();
+        var customersUseCase = new Mock<IListCustomersForPickerUseCase>();
+        var productsUseCase = new Mock<IListProductsForOrderPickerUseCase>();
+        var prescriptionsUseCase = new Mock<IListPrescriptionsByCustomerUseCase>();
         var numberSequence = new Mock<INumberSequenceService>();
         var updateOrderUseCase = new Mock<IUpdateOrderUseCase>();
-        customerRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<Customer>());
-        productRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<Product>());
+        customersUseCase.Setup(u => u.ExecuteAsync(It.IsAny<ListCustomersForPickerQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<CustomerPickerItemDto>());
+        productsUseCase.Setup(u => u.ExecuteAsync(It.IsAny<ListProductsForOrderPickerQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<OrderProductPickerDto>());
         numberSequence.Setup(s => s.NextNumberAsync(DocumentSequenceNames.Order, It.IsAny<CancellationToken>()))
             .ReturnsAsync("CMD-000001");
 
         var viewModel = new OrderFormViewModel(
-            customerRepo.Object, productRepo.Object, prescriptionRepo.Object,
+            customersUseCase.Object, productsUseCase.Object, prescriptionsUseCase.Object,
             numberSequence.Object, spy, updateOrderUseCase.Object);
         await viewModel.InitializeAsync();
 
@@ -237,14 +240,14 @@ public class OrderFormViewModelCreateDelegationTests
     [Fact]
     public void Constructor_WithoutCreateOrderUseCase_Throws()
     {
-        var customerRepo = new Mock<ICustomerRepository>();
-        var productRepo = new Mock<IProductRepository>();
-        var prescriptionRepo = new Mock<IPrescriptionRepository>();
+        var customersUseCase = new Mock<IListCustomersForPickerUseCase>();
+        var productsUseCase = new Mock<IListProductsForOrderPickerUseCase>();
+        var prescriptionsUseCase = new Mock<IListPrescriptionsByCustomerUseCase>();
         var numberSequence = new Mock<INumberSequenceService>();
         var updateOrderUseCase = new Mock<IUpdateOrderUseCase>();
 
         Assert.Throws<ArgumentNullException>(() => new OrderFormViewModel(
-            customerRepo.Object, productRepo.Object, prescriptionRepo.Object,
+            customersUseCase.Object, productsUseCase.Object, prescriptionsUseCase.Object,
             numberSequence.Object, createOrderUseCase: null!, updateOrderUseCase.Object));
     }
 

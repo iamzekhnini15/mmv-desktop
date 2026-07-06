@@ -1,10 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using MMV.Application.UseCases.Customers.CreateCustomer;
 using MMV.Application.UseCases.Customers.DeleteCustomer;
+using MMV.Application.UseCases.Customers.ListCustomersForPicker;
 using MMV.Application.UseCases.Customers.UpdateCustomer;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Orders.DeleteOrder;
+using MMV.Application.UseCases.Orders.ListOrders;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Application.UseCases.Orders.UpdateOrder;
 using MMV.Application.UseCases.Notifications.CountUnreadNotifications;
@@ -18,6 +20,7 @@ using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Application.UseCases.Products.CreateProduct;
 using MMV.Application.UseCases.Products.DeleteProduct;
 using MMV.Application.UseCases.Products.GetInventoryOverview;
+using MMV.Application.UseCases.Products.ListProductsForOrderPicker;
 using MMV.Application.UseCases.Products.ListProductsForPicker;
 using MMV.Application.UseCases.Products.UpdateProduct;
 using MMV.Application.UseCases.Sales.GetCustomerPurchaseHistory;
@@ -189,6 +192,19 @@ public static class DependencyInjection
         // entité EF suivie ne franchit la frontière UI.
         services.AddScoped<IGetCustomerPurchaseHistoryUseCase, GetCustomerPurchaseHistoryUseCase>();
         services.AddScoped<IListPrescriptionsByCustomerUseCase, ListPrescriptionsByCustomerUseCase>();
+
+        // P2D-6 — module Commandes (lectures). Remplacent les lectures directes I…Repository restantes des ViewModels
+        // de lecture Commandes : la liste + le Kanban (IOrderRepository.GetAllWithItemsAsync, consommé par
+        // OrdersListViewModel et OrderKanbanViewModel → IListOrdersUseCase), et les données de référence du formulaire
+        // de commande (ICustomerRepository.GetAllAsync → IListCustomersForPickerUseCase ; IProductRepository.GetAllAsync
+        // → IListProductsForOrderPickerUseCase ; les ordonnances du client réutilisent IListPrescriptionsByCustomerUseCase,
+        // P2D-5). Portée Scoped (même portée qu'OpticDbContext / repositories). Chaque query projette vers des DTO plats :
+        // aucune entité EF suivie ne franchit la frontière UI. Les lectures de référence du formulaire de VENTE
+        // (SaleFormViewModel : catalogue à graphe GlassDetail + panier d'entités OrderItem) restent en reliquat justifié
+        // (cf. docs/implementation/P2D-6-report.md).
+        services.AddScoped<IListOrdersUseCase, ListOrdersUseCase>();
+        services.AddScoped<IListCustomersForPickerUseCase, ListCustomersForPickerUseCase>();
+        services.AddScoped<IListProductsForOrderPickerUseCase, ListProductsForOrderPickerUseCase>();
         return services;
     }
 }
