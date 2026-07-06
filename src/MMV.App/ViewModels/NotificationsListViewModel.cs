@@ -1,13 +1,12 @@
 using System;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Notifications.CountUnreadNotifications;
 using MMV.Application.UseCases.Notifications.GenerateLowStockNotifications;
+using MMV.Application.UseCases.Notifications.ListNotifications;
 using MMV.Application.UseCases.Notifications.MarkAllNotificationsRead;
-using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -15,22 +14,25 @@ namespace MMV.App.ViewModels;
 /// ViewModel pour la liste des notifications.
 /// <para>
 /// P2C-GLOBAL : le marquage global et la génération de notifications de stock bas passent par les use cases
-/// Application. <see cref="INotificationRepository"/> n'est conservé que pour les lectures d'affichage
-/// (<c>GetAllAsync</c>, <c>CountUnreadAsync</c>) ; <c>IProductRepository</c> et <c>IUnitOfWork</c> ont été retirés.
+/// Application.
+/// P2D-3 : les lectures passent par <see cref="IListNotificationsUseCase"/> et
+/// <see cref="ICountUnreadNotificationsUseCase"/> (renvoyant des DTO / un scalaire) ; plus aucune dépendance
+/// <c>INotificationRepository</c>.
 /// </para>
 /// </summary>
 public class NotificationsListViewModel : BaseViewModel
 {
-    private readonly INotificationRepository _notificationRepository;
+    private readonly IListNotificationsUseCase _listNotificationsUseCase;
+    private readonly ICountUnreadNotificationsUseCase _countUnreadNotificationsUseCase;
     private readonly IMarkAllNotificationsReadUseCase _markAllNotificationsReadUseCase;
     private readonly IGenerateLowStockNotificationsUseCase _generateLowStockNotificationsUseCase;
 
-    private ObservableCollection<Notification> _notifications;
+    private ObservableCollection<NotificationListItemDto> _notifications;
     private int _unreadCount;
     private ICommand? _refreshCommand;
     private ICommand? _markAllAsReadCommand;
 
-    public ObservableCollection<Notification> Notifications
+    public ObservableCollection<NotificationListItemDto> Notifications
     {
         get => _notifications;
         set => SetProperty(ref _notifications, value);
@@ -47,15 +49,17 @@ public class NotificationsListViewModel : BaseViewModel
     public ICommand MarkAllAsReadCommand => _markAllAsReadCommand ??= new RelayCommand(async () => await MarkAllAsReadAsync());
 
     public NotificationsListViewModel(
-        INotificationRepository notificationRepository,
+        IListNotificationsUseCase listNotificationsUseCase,
+        ICountUnreadNotificationsUseCase countUnreadNotificationsUseCase,
         IMarkAllNotificationsReadUseCase markAllNotificationsReadUseCase,
         IGenerateLowStockNotificationsUseCase generateLowStockNotificationsUseCase)
     {
-        _notificationRepository = notificationRepository;
+        _listNotificationsUseCase = listNotificationsUseCase ?? throw new ArgumentNullException(nameof(listNotificationsUseCase));
+        _countUnreadNotificationsUseCase = countUnreadNotificationsUseCase ?? throw new ArgumentNullException(nameof(countUnreadNotificationsUseCase));
         _markAllNotificationsReadUseCase = markAllNotificationsReadUseCase ?? throw new ArgumentNullException(nameof(markAllNotificationsReadUseCase));
         _generateLowStockNotificationsUseCase = generateLowStockNotificationsUseCase ?? throw new ArgumentNullException(nameof(generateLowStockNotificationsUseCase));
 
-        _notifications = new ObservableCollection<Notification>();
+        _notifications = new ObservableCollection<NotificationListItemDto>();
 
         _ = LoadNotificationsAsync();
     }
@@ -67,15 +71,15 @@ public class NotificationsListViewModel : BaseViewModel
 
         try
         {
-            var notifications = await _notificationRepository.GetAllAsync();
+            var notifications = await _listNotificationsUseCase.ExecuteAsync(new ListNotificationsQuery());
             Notifications.Clear();
-            
-            foreach (var notification in notifications.OrderByDescending(n => n.CreatedAt))
+
+            foreach (var notification in notifications)
             {
                 Notifications.Add(notification);
             }
 
-            UnreadCount = await _notificationRepository.CountUnreadAsync();
+            UnreadCount = await _countUnreadNotificationsUseCase.ExecuteAsync(new CountUnreadNotificationsQuery());
         }
         catch (Exception ex)
         {

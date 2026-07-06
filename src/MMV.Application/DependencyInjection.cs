@@ -7,7 +7,9 @@ using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Orders.DeleteOrder;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Application.UseCases.Orders.UpdateOrder;
+using MMV.Application.UseCases.Notifications.CountUnreadNotifications;
 using MMV.Application.UseCases.Notifications.GenerateLowStockNotifications;
+using MMV.Application.UseCases.Notifications.ListNotifications;
 using MMV.Application.UseCases.Notifications.MarkAllNotificationsRead;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Prescriptions.DeletePrescription;
@@ -19,8 +21,11 @@ using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
 using MMV.Application.UseCases.Suppliers.CreateSupplier;
 using MMV.Application.UseCases.Suppliers.DeleteSupplier;
+using MMV.Application.UseCases.Suppliers.GetSupplierWithProducts;
+using MMV.Application.UseCases.Suppliers.ListSuppliers;
 using MMV.Application.UseCases.Suppliers.UpdateSupplier;
 using MMV.Application.UseCases.Users.CreateUser;
+using MMV.Application.UseCases.Users.ListUsers;
 using MMV.Application.UseCases.Users.SetUserActive;
 using MMV.Application.UseCases.Users.UpdateUser;
 
@@ -141,6 +146,26 @@ public static class DependencyInjection
         // stock bas était dupliquée entre NotificationsListViewModel et MainWindowViewModel : elle est unifiée ici.
         services.AddScoped<IMarkAllNotificationsReadUseCase, MarkAllNotificationsReadUseCase>();
         services.AddScoped<IGenerateLowStockNotificationsUseCase, GenerateLowStockNotificationsUseCase>();
+
+        // ---------------------------------------------------------------------------------------------------------
+        // P2D — Query use cases (LECTURES). Première famille de use cases *query* de la solution : ils remplacent les
+        // lectures directes I…Repository qui subsistaient dans les ViewModels (dette ouverte à l'issue de P2C-GLOBAL).
+        // Chaque query use case projette les entités vers des DTO applicatifs plats (lecture seule) : aucune entité EF
+        // suivie ne franchit la frontière UI. Portée Scoped (même portée qu'OpticDbContext / repositories).
+        // ---------------------------------------------------------------------------------------------------------
+
+        // P2D-1 — module Utilisateurs : « Lister les utilisateurs » (remplace IUserRepository.GetAllAsync côté UI).
+        services.AddScoped<IListUsersUseCase, ListUsersUseCase>();
+
+        // P2D-2 — module Fournisseurs : liste + fiche détaillée (remplacent ISupplierRepository.GetAllAsync /
+        // GetWithProductsAsync côté UI, dans SuppliersListViewModel, SuppliersViewModel et SupplierDetailViewModel).
+        services.AddScoped<IListSuppliersUseCase, ListSuppliersUseCase>();
+        services.AddScoped<IGetSupplierWithProductsUseCase, GetSupplierWithProductsUseCase>();
+
+        // P2D-3 — module Notifications : liste + compteur non lus (remplacent INotificationRepository.GetAllAsync /
+        // CountUnreadAsync côté UI, dans NotificationsListViewModel et NotificationsViewModel).
+        services.AddScoped<IListNotificationsUseCase, ListNotificationsUseCase>();
+        services.AddScoped<ICountUnreadNotificationsUseCase, CountUnreadNotificationsUseCase>();
         return services;
     }
 }

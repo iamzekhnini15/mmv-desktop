@@ -4,21 +4,24 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
-using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
+using MMV.Application.UseCases.Suppliers.ListSuppliers;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour la liste des fournisseurs.
+/// <para>
+/// P2D-2 : la lecture passe par <see cref="IListSuppliersUseCase"/> (query use case renvoyant des
+/// <see cref="SupplierListItemDto"/> applicatifs) ; plus aucune dépendance <c>ISupplierRepository</c>.
+/// </para>
 /// </summary>
 public class SuppliersListViewModel : BaseViewModel
 {
-    private readonly ISupplierRepository _supplierRepository;
+    private readonly IListSuppliersUseCase _listSuppliersUseCase;
 
-    private ObservableCollection<Supplier> _suppliers;
-    private ObservableCollection<Supplier> _filteredSuppliers;
-    private Supplier? _selectedSupplier;
+    private ObservableCollection<SupplierListItemDto> _suppliers;
+    private ObservableCollection<SupplierListItemDto> _filteredSuppliers;
+    private SupplierListItemDto? _selectedSupplier;
     private string _searchText = string.Empty;
     private int _currentPage = 1;
     private int _pageSize = 20;
@@ -30,19 +33,19 @@ public class SuppliersListViewModel : BaseViewModel
     private ICommand? _nextPageCommand;
     private ICommand? _previousPageCommand;
 
-    public ObservableCollection<Supplier> Suppliers
+    public ObservableCollection<SupplierListItemDto> Suppliers
     {
         get => _suppliers;
         set => SetProperty(ref _suppliers, value);
     }
 
-    public ObservableCollection<Supplier> FilteredSuppliers
+    public ObservableCollection<SupplierListItemDto> FilteredSuppliers
     {
         get => _filteredSuppliers;
         set => SetProperty(ref _filteredSuppliers, value);
     }
 
-    public Supplier? SelectedSupplier
+    public SupplierListItemDto? SelectedSupplier
     {
         get => _selectedSupplier;
         set
@@ -108,16 +111,16 @@ public class SuppliersListViewModel : BaseViewModel
     public ICommand PreviousPageCommand => _previousPageCommand ??= new RelayCommand(ExecutePreviousPage, () => CanGoToPreviousPage);
 
     public event EventHandler? CreateSupplierRequested;
-    public event EventHandler<Supplier>? ViewSupplierDetailsRequested;
+    public event EventHandler<SupplierListItemDto>? ViewSupplierDetailsRequested;
 
-    // P2C-GLOBAL : la liste ne consomme que ISupplierRepository (lectures d'affichage). Le paramètre IUnitOfWork
-    // historiquement injecté n'était jamais utilisé (dépendance morte) et a été supprimé.
-    public SuppliersListViewModel(ISupplierRepository supplierRepository)
+    // P2D-2 : la liste consomme un query use case Application (IListSuppliersUseCase) renvoyant des DTO ;
+    // plus aucune dépendance ISupplierRepository (ni IUnitOfWork, retiré en P2C-GLOBAL comme dépendance morte).
+    public SuppliersListViewModel(IListSuppliersUseCase listSuppliersUseCase)
     {
-        _supplierRepository = supplierRepository;
+        _listSuppliersUseCase = listSuppliersUseCase ?? throw new ArgumentNullException(nameof(listSuppliersUseCase));
 
-        _suppliers = new ObservableCollection<Supplier>();
-        _filteredSuppliers = new ObservableCollection<Supplier>();
+        _suppliers = new ObservableCollection<SupplierListItemDto>();
+        _filteredSuppliers = new ObservableCollection<SupplierListItemDto>();
 
         _ = LoadSuppliersAsync();
     }
@@ -129,7 +132,7 @@ public class SuppliersListViewModel : BaseViewModel
 
         try
         {
-            var suppliers = await _supplierRepository.GetAllAsync() ?? Array.Empty<Supplier>();
+            var suppliers = await _listSuppliersUseCase.ExecuteAsync(new ListSuppliersQuery());
             Suppliers.Clear();
             foreach (var supplier in suppliers)
             {

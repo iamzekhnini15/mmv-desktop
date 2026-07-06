@@ -1,8 +1,8 @@
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Users.CreateUser;
+using MMV.Application.UseCases.Users.ListUsers;
 using MMV.Application.UseCases.Users.UpdateUser;
-using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Validators;
 
@@ -263,7 +263,7 @@ public class UserFormViewModel : BaseViewModel
         ClearErrors();
     }
 
-    public void InitializeForEdit(User user)
+    public void InitializeForEdit(UserListItemDto user)
     {
         ArgumentNullException.ThrowIfNull(user);
 

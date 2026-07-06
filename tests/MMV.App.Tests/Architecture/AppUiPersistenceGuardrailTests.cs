@@ -50,16 +50,22 @@ public sealed class AppUiPersistenceGuardrailTests
     {
         // P2C-GLOBAL : après extraction de TOUTES les écritures restantes vers la couche Application, les entrées
         // ci-dessous ne correspondent plus qu'à des LECTURES d'affichage (chargement de listes / détail). Elles
-        // constituent la dette ouverte adressée par P2D (query use cases + DTO applicatifs). Les entrées d'écriture
-        // suivantes ont été retirées en P2C-GLOBAL :
-        //   - "InventoryViewModel -> IStockMovementRepository" (ajustement porté par ICreateStockMovementUseCase) ;
-        //   - "MainWindowViewModel -> INotificationRepository/IProductRepository" (IGenerateLowStockNotificationsUseCase) ;
-        //   - "NotificationsListViewModel/NotificationsViewModel -> IProductRepository" (génération stock bas = use case) ;
-        //   - "ProductFormViewModel -> IProductRepository/INotificationRepository" (ICreate/IUpdateProductUseCase) ;
-        //   - "SupplierFormViewModel -> ISupplierRepository" (ICreate/IUpdateSupplierUseCase) ;
-        //   - "UserFormViewModel -> IUserRepository" (ICreate/IUpdateUserUseCase).
-        // "ProductsViewModel -> IStockMovementRepository" est AJOUTÉ : lecture de composition, remplace l'accès
-        // IUnitOfWork.StockMovements pour alimenter StockMovementsViewModel (aucune écriture depuis la VM).
+        // constituent la dette ouverte adressée par P2D (query use cases + DTO applicatifs).
+        //
+        // P2D (LECTURES → query use cases). Les entrées suivantes ont été RETIRÉES au fil des étapes P2D, la lecture
+        // étant désormais portée par un query use case Application renvoyant des DTO plats (jamais d'entité EF) :
+        //   - P2D-1 Utilisateurs : "UsersListViewModel -> IUserRepository", "UsersViewModel -> IUserRepository"
+        //     (IListUsersUseCase) ;
+        //   - P2D-2 Fournisseurs : "SuppliersListViewModel -> ISupplierRepository",
+        //     "SuppliersViewModel -> ISupplierRepository" (IListSuppliersUseCase + IGetSupplierWithProductsUseCase) ;
+        //   - P2D-3 Notifications : "NotificationsListViewModel -> INotificationRepository",
+        //     "NotificationsViewModel -> INotificationRepository" (IListNotificationsUseCase +
+        //     ICountUnreadNotificationsUseCase).
+        //
+        // RELIQUAT P2D (documenté dans docs/implementation/P2D-GLOBAL-report.md §17) : les lectures des modules
+        // Produits/Stock, Clients et Commandes/Ventes restent portées par des repositories injectés (écrans composites
+        // à graphes d'entités : fiches détaillées, données de référence de formulaires, Kanban). Elles seront migrées
+        // en P2D-4/5/6. Cette allowlist ne doit toujours que DIMINUER.
         "CustomerDetailViewModel -> ICustomerRepository",
         "CustomerDetailViewModel -> IPrescriptionRepository",
         "CustomerDetailViewModel -> IProductRepository",
@@ -73,8 +79,6 @@ public sealed class AppUiPersistenceGuardrailTests
         "CustomersViewModel -> IProductRepository",
         "CustomersViewModel -> ISaleRepository",
         "InventoryViewModel -> IProductRepository",
-        "NotificationsListViewModel -> INotificationRepository",
-        "NotificationsViewModel -> INotificationRepository",
         "OrderFormViewModel -> ICustomerRepository",
         "OrderFormViewModel -> IPrescriptionRepository",
         "OrderFormViewModel -> IProductRepository",
@@ -96,10 +100,6 @@ public sealed class AppUiPersistenceGuardrailTests
         "StockMovementsListViewModel -> IStockMovementRepository",
         "StockMovementsViewModel -> IProductRepository",
         "StockMovementsViewModel -> IStockMovementRepository",
-        "SuppliersListViewModel -> ISupplierRepository",
-        "SuppliersViewModel -> ISupplierRepository",
-        "UsersListViewModel -> IUserRepository",
-        "UsersViewModel -> IUserRepository",
     };
 
     /// <summary>

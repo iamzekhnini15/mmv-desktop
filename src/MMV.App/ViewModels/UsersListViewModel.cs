@@ -2,24 +2,23 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Users.ListUsers;
 using MMV.Application.UseCases.Users.SetUserActive;
-using MMV.Domain.Entities;
 using MMV.Domain.Enums;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour la liste des utilisateurs avec recherche, filtrage et pagination.
 /// <para>
-/// P2C-GLOBAL : le basculement d'activation passe désormais par <see cref="ISetUserActiveUseCase"/>.
-/// <see cref="IUserRepository"/> n'est conservé que pour les lectures d'affichage (<c>GetAllAsync</c>) ;
-/// <c>IUnitOfWork</c> a été retiré.
+/// P2C-GLOBAL : le basculement d'activation passe par <see cref="ISetUserActiveUseCase"/>.
+/// P2D-1 : la lecture passe désormais par <see cref="IListUsersUseCase"/> (query use case renvoyant des
+/// <see cref="UserListItemDto"/> applicatifs) ; plus aucune dépendance <c>IUserRepository</c>.
 /// </para>
 /// </summary>
 public class UsersListViewModel : BaseViewModel
 {
-    private readonly IUserRepository _userRepository;
+    private readonly IListUsersUseCase _listUsersUseCase;
     private readonly ISetUserActiveUseCase _setUserActiveUseCase;
     private readonly IDialogService _dialogService;
 
@@ -31,8 +30,8 @@ public class UsersListViewModel : BaseViewModel
     private int _totalCount;
     private const int PageSize = 20;
 
-    public ObservableCollection<User> Users { get; } = new();
-    public ObservableCollection<User> FilteredUsers { get; } = new();
+    public ObservableCollection<UserListItemDto> Users { get; } = new();
+    public ObservableCollection<UserListItemDto> FilteredUsers { get; } = new();
     public ObservableCollection<string> RoleFilters { get; } = new() { "Tous", "Admin", "Optician", "Technician" };
 
     public string SearchText
@@ -113,22 +112,22 @@ public class UsersListViewModel : BaseViewModel
     public ICommand PreviousPageCommand { get; }
 
     public event EventHandler? CreateUserRequested;
-    public event EventHandler<User>? EditUserRequested;
+    public event EventHandler<UserListItemDto>? EditUserRequested;
 
     public UsersListViewModel(
-        IUserRepository userRepository,
+        IListUsersUseCase listUsersUseCase,
         ISetUserActiveUseCase setUserActiveUseCase,
         IDialogService dialogService)
     {
-        _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _listUsersUseCase = listUsersUseCase ?? throw new ArgumentNullException(nameof(listUsersUseCase));
         _setUserActiveUseCase = setUserActiveUseCase ?? throw new ArgumentNullException(nameof(setUserActiveUseCase));
         _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
 
         Title = "Liste des Utilisateurs";
 
         CreateCommand = new RelayCommand(() => CreateUserRequested?.Invoke(this, EventArgs.Empty));
-        EditCommand = new RelayCommand<User>(user => { if (user != null) EditUserRequested?.Invoke(this, user); });
-        ToggleActiveCommand = new RelayCommand<User>(async user => { if (user != null) await ToggleActiveAsync(user); });
+        EditCommand = new RelayCommand<UserListItemDto>(user => { if (user != null) EditUserRequested?.Invoke(this, user); });
+        ToggleActiveCommand = new RelayCommand<UserListItemDto>(async user => { if (user != null) await ToggleActiveAsync(user); });
         RefreshCommand = new RelayCommand(async () => await LoadUsersAsync());
         NextPageCommand = new RelayCommand(
             () => CurrentPage++,
@@ -147,7 +146,7 @@ public class UsersListViewModel : BaseViewModel
 
         try
         {
-            var allUsers = await _userRepository.GetAllAsync();
+            var allUsers = await _listUsersUseCase.ExecuteAsync(new ListUsersQuery());
             Users.Clear();
             foreach (var user in allUsers)
                 Users.Add(user);
@@ -212,7 +211,7 @@ public class UsersListViewModel : BaseViewModel
         ((RelayCommand)PreviousPageCommand).RaiseCanExecuteChanged();
     }
 
-    private async Task ToggleActiveAsync(User user)
+    private async Task ToggleActiveAsync(UserListItemDto user)
     {
         var action = user.IsActive ? "désactiver" : "activer";
         var confirm = await _dialogService.ShowConfirmationAsync(
@@ -232,8 +231,9 @@ public class UsersListViewModel : BaseViewModel
 
             if (result.UserFound)
             {
-                // Refléter l'état appliqué sur l'entité affichée (comportement d'affichage inchangé).
-                user.IsActive = targetState;
+                // Le DTO applicatif est en lecture seule : on remplace l'élément par une projection à jour
+                // (comportement d'affichage inchangé — l'état basculé reste reflété dans la liste et les filtres).
+                ReplaceUser(user, targetState);
             }
             ApplyFilter();
         }
@@ -241,5 +241,23 @@ public class UsersListViewModel : BaseViewModel
         {
             await _dialogService.ShowErrorAsync("Erreur", $"Impossible de {action} l'utilisateur : {ex.Message}");
         }
+    }
+
+    private void ReplaceUser(UserListItemDto user, bool isActive)
+    {
+        var index = Users.IndexOf(user);
+        if (index < 0) return;
+
+        Users[index] = new UserListItemDto
+        {
+            UserId = user.UserId,
+            Username = user.Username,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Role = user.Role,
+            IsActive = isActive,
+            LastLogin = user.LastLogin,
+            CreatedAt = user.CreatedAt,
+        };
     }
 }

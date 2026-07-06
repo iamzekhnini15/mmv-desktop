@@ -2,10 +2,9 @@ using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
 using MMV.Application.UseCases.Users.CreateUser;
+using MMV.Application.UseCases.Users.ListUsers;
 using MMV.Application.UseCases.Users.SetUserActive;
 using MMV.Application.UseCases.Users.UpdateUser;
-using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -15,13 +14,13 @@ namespace MMV.App.ViewModels;
 /// Accessible uniquement aux ADMIN.
 /// <para>
 /// P2C-GLOBAL : les écritures sont déléguées aux use cases Application (create / update / activation).
-/// <see cref="IUserRepository"/> n'est conservé que pour les lectures de la liste ; <c>IUnitOfWork</c> et
-/// <c>IAuthenticationService</c> ont été retirés (le hachage vit désormais dans les use cases).
+/// P2D-1 : la lecture de la liste passe par <see cref="IListUsersUseCase"/> ; plus aucune dépendance
+/// <c>IUserRepository</c> (le hachage et la persistance vivent dans les use cases).
 /// </para>
 /// </summary>
 public class UsersViewModel : BaseViewModel
 {
-    private readonly IUserRepository _userRepository;
+    private readonly IListUsersUseCase _listUsersUseCase;
     private readonly ICreateUserUseCase _createUserUseCase;
     private readonly IUpdateUserUseCase _updateUserUseCase;
     private readonly ISetUserActiveUseCase _setUserActiveUseCase;
@@ -58,7 +57,7 @@ public class UsersViewModel : BaseViewModel
     public bool ShowList => !IsInEditMode;
 
     public UsersViewModel(
-        IUserRepository userRepository,
+        IListUsersUseCase listUsersUseCase,
         ICreateUserUseCase createUserUseCase,
         IUpdateUserUseCase updateUserUseCase,
         ISetUserActiveUseCase setUserActiveUseCase,
@@ -66,7 +65,7 @@ public class UsersViewModel : BaseViewModel
         IPermissionService permissionService,
         IDialogService dialogService)
     {
-        _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _listUsersUseCase = listUsersUseCase ?? throw new ArgumentNullException(nameof(listUsersUseCase));
         _createUserUseCase = createUserUseCase ?? throw new ArgumentNullException(nameof(createUserUseCase));
         _updateUserUseCase = updateUserUseCase ?? throw new ArgumentNullException(nameof(updateUserUseCase));
         _setUserActiveUseCase = setUserActiveUseCase ?? throw new ArgumentNullException(nameof(setUserActiveUseCase));
@@ -81,7 +80,7 @@ public class UsersViewModel : BaseViewModel
 
     private void InitializeListViewModel()
     {
-        ListViewModel = new UsersListViewModel(_userRepository, _setUserActiveUseCase, _dialogService);
+        ListViewModel = new UsersListViewModel(_listUsersUseCase, _setUserActiveUseCase, _dialogService);
         ListViewModel.CreateUserRequested += OnCreateUserRequested;
         ListViewModel.EditUserRequested += OnEditUserRequested;
     }
@@ -95,7 +94,7 @@ public class UsersViewModel : BaseViewModel
         IsInEditMode = true;
     }
 
-    private void OnEditUserRequested(object? sender, User user)
+    private void OnEditUserRequested(object? sender, UserListItemDto user)
     {
         FormViewModel = new UserFormViewModel(_createUserUseCase, _updateUserUseCase);
         FormViewModel.InitializeForEdit(user);

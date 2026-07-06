@@ -7,6 +7,8 @@ using MMV.Application.UseCases.Products.UpdateProduct;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
 using MMV.Application.UseCases.Suppliers.CreateSupplier;
 using MMV.Application.UseCases.Suppliers.DeleteSupplier;
+using MMV.Application.UseCases.Suppliers.GetSupplierWithProducts;
+using MMV.Application.UseCases.Suppliers.ListSuppliers;
 using MMV.Application.UseCases.Suppliers.UpdateSupplier;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
@@ -45,6 +47,8 @@ public class ProductsViewModel : BaseViewModel
     private readonly ICreateProductUseCase _createProductUseCase;
     private readonly IUpdateProductUseCase _updateProductUseCase;
     private readonly IDeleteProductUseCase _deleteProductUseCase;
+    private readonly IListSuppliersUseCase _listSuppliersUseCase;
+    private readonly IGetSupplierWithProductsUseCase _getSupplierWithProductsUseCase;
     private readonly ICreateSupplierUseCase _createSupplierUseCase;
     private readonly IUpdateSupplierUseCase _updateSupplierUseCase;
     private readonly IDeleteSupplierUseCase _deleteSupplierUseCase;
@@ -201,6 +205,8 @@ public class ProductsViewModel : BaseViewModel
         ICreateProductUseCase createProductUseCase,
         IUpdateProductUseCase updateProductUseCase,
         IDeleteProductUseCase deleteProductUseCase,
+        IListSuppliersUseCase listSuppliersUseCase,
+        IGetSupplierWithProductsUseCase getSupplierWithProductsUseCase,
         ICreateSupplierUseCase createSupplierUseCase,
         IUpdateSupplierUseCase updateSupplierUseCase,
         IDeleteSupplierUseCase deleteSupplierUseCase)
@@ -214,6 +220,9 @@ public class ProductsViewModel : BaseViewModel
         _createProductUseCase = createProductUseCase ?? throw new ArgumentNullException(nameof(createProductUseCase));
         _updateProductUseCase = updateProductUseCase ?? throw new ArgumentNullException(nameof(updateProductUseCase));
         _deleteProductUseCase = deleteProductUseCase ?? throw new ArgumentNullException(nameof(deleteProductUseCase));
+        // P2D-2 : lectures fournisseur (liste + fiche) transmises à SuppliersViewModel via query use cases.
+        _listSuppliersUseCase = listSuppliersUseCase ?? throw new ArgumentNullException(nameof(listSuppliersUseCase));
+        _getSupplierWithProductsUseCase = getSupplierWithProductsUseCase ?? throw new ArgumentNullException(nameof(getSupplierWithProductsUseCase));
         _createSupplierUseCase = createSupplierUseCase ?? throw new ArgumentNullException(nameof(createSupplierUseCase));
         _updateSupplierUseCase = updateSupplierUseCase ?? throw new ArgumentNullException(nameof(updateSupplierUseCase));
         _deleteSupplierUseCase = deleteSupplierUseCase ?? throw new ArgumentNullException(nameof(deleteSupplierUseCase));
@@ -311,7 +320,7 @@ public class ProductsViewModel : BaseViewModel
     {
         if (SuppliersViewModel == null)
         {
-            SuppliersViewModel = new SuppliersViewModel(_supplierRepository, _createSupplierUseCase, _updateSupplierUseCase, _deleteSupplierUseCase, _dialogService);
+            SuppliersViewModel = new SuppliersViewModel(_listSuppliersUseCase, _getSupplierWithProductsUseCase, _createSupplierUseCase, _updateSupplierUseCase, _deleteSupplierUseCase, _dialogService);
             SuppliersViewModel.BackToProductsRequested += OnSuppliersBackRequested;
         }
 

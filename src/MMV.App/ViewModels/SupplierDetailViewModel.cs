@@ -3,27 +3,31 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
 using MMV.App.Commands;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Suppliers.GetSupplierWithProducts;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour la fiche détaillée d'un fournisseur.
+/// <para>
+/// P2D-2 : consomme un <see cref="SupplierDetailsDto"/> applicatif (et ses <see cref="SupplierProductItemDto"/>)
+/// au lieu de l'entité EF <c>Supplier</c> et de sa navigation <c>Products</c>.
+/// </para>
 /// </summary>
 public class SupplierDetailViewModel : BaseViewModel
 {
-    private Supplier? _supplier;
-    private ObservableCollection<Product> _products = new();
+    private SupplierDetailsDto? _supplier;
+    private ObservableCollection<SupplierProductItemDto> _products = new();
     private RelayCommand? _editCommand;
     private RelayCommand? _deleteCommand;
 
-    public Supplier? Supplier
+    public SupplierDetailsDto? Supplier
     {
         get => _supplier;
         set => SetProperty(ref _supplier, value);
     }
 
-    public ObservableCollection<Product> Products
+    public ObservableCollection<SupplierProductItemDto> Products
     {
         get => _products;
         set => SetProperty(ref _products, value);
@@ -36,8 +40,8 @@ public class SupplierDetailViewModel : BaseViewModel
     public ICommand DeleteCommand => _deleteCommand ??= new RelayCommand(ExecuteDelete, CanEditOrDelete);
 
     public event EventHandler? BackRequested;
-    public event EventHandler<Supplier>? EditRequested;
-    public event EventHandler<Supplier>? DeleteRequested;
+    public event EventHandler<SupplierDetailsDto>? EditRequested;
+    public event EventHandler<SupplierDetailsDto>? DeleteRequested;
 
     public SupplierDetailViewModel()
     {
@@ -45,7 +49,7 @@ public class SupplierDetailViewModel : BaseViewModel
         Title = "Fiche Fournisseur";
     }
 
-    public void Initialize(Supplier supplier)
+    public void Initialize(SupplierDetailsDto supplier)
     {
         Supplier = supplier;
         Title = $"Fiche - {supplier.Name}";
