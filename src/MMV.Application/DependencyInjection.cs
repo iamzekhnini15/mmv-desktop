@@ -13,12 +13,14 @@ using MMV.Application.UseCases.Notifications.ListNotifications;
 using MMV.Application.UseCases.Notifications.MarkAllNotificationsRead;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Prescriptions.DeletePrescription;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Application.UseCases.Products.CreateProduct;
 using MMV.Application.UseCases.Products.DeleteProduct;
 using MMV.Application.UseCases.Products.GetInventoryOverview;
 using MMV.Application.UseCases.Products.ListProductsForPicker;
 using MMV.Application.UseCases.Products.UpdateProduct;
+using MMV.Application.UseCases.Sales.GetCustomerPurchaseHistory;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
 using MMV.Application.UseCases.Stock.ListStockMovements;
@@ -178,6 +180,15 @@ public static class DependencyInjection
         services.AddScoped<IListStockMovementsUseCase, ListStockMovementsUseCase>();
         services.AddScoped<IListProductsForPickerUseCase, ListProductsForPickerUseCase>();
         services.AddScoped<IGetInventoryOverviewUseCase, GetInventoryOverviewUseCase>();
+
+        // P2D-5 — module Clients / Ordonnances (lectures). Remplacent les lectures directes I…Repository des
+        // ViewModels de lecture clients : historique d'achats (ISaleRepository.GetByCustomerIdAsync, consommé par
+        // CustomerPurchaseHistoryViewModel et l'onglet Infos de CustomerInfoViewModel) et liste des ordonnances d'un
+        // client (IPrescriptionRepository.GetByCustomerIdAsync, consommé par CustomerPrescriptionsViewModel). Portée
+        // Scoped (même portée qu'OpticDbContext / repositories). Chaque query projette vers des DTO plats : aucune
+        // entité EF suivie ne franchit la frontière UI.
+        services.AddScoped<IGetCustomerPurchaseHistoryUseCase, GetCustomerPurchaseHistoryUseCase>();
+        services.AddScoped<IListPrescriptionsByCustomerUseCase, ListPrescriptionsByCustomerUseCase>();
         return services;
     }
 }

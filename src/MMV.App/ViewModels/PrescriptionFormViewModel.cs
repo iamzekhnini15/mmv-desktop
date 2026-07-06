@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
@@ -438,7 +439,10 @@ public class PrescriptionFormViewModel : BaseViewModel
     /// <summary>
     /// Charge les données d'une ordonnance existante pour modification.
     /// </summary>
-    public void LoadPrescription(Prescription prescription)
+    // P2D-5 : le pré-remplissage consomme un DTO applicatif plat (PrescriptionListItemDto) au lieu de l'entité EF
+    // Prescription. Simple recopie de champs identiques ; le flux de sauvegarde (reconstruction d'un snapshot à partir
+    // des propriétés du formulaire) reste inchangé.
+    public void LoadPrescription(PrescriptionListItemDto prescription)
     {
         _prescriptionId = prescription.PrescriptionId;
         CustomerId = prescription.CustomerId;

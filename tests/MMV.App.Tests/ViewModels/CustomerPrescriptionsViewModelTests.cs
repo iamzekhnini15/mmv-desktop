@@ -6,22 +6,21 @@ using System.Threading.Tasks;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Prescriptions.DeletePrescription;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
-using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
 using Moq;
 using Xunit;
 
 namespace MMV.App.Tests.ViewModels;
 
 /// <summary>
-/// P2C-4 — Comportement de présentation de <see cref="CustomerPrescriptionsViewModel"/> après extraction de la
-/// <b>suppression d'ordonnance</b> vers <see cref="IDeletePrescriptionUseCase"/>.
+/// P2C-4 / P2D-5 — Comportement de présentation de <see cref="CustomerPrescriptionsViewModel"/> après extraction de la
+/// <b>suppression d'ordonnance</b> vers <see cref="IDeletePrescriptionUseCase"/> (P2C-4) puis de la <b>lecture de la
+/// liste</b> vers <see cref="IListPrescriptionsByCustomerUseCase"/> (P2D-5).
 ///
-/// La VM ne supprime plus directement (plus de <c>IPrescriptionRepository.DeleteAsync</c> ni
-/// <c>IUnitOfWork.CommitAsync</c>, et ne dépend plus de <c>IUnitOfWork</c>) : elle construit une
-/// <see cref="DeletePrescriptionCommand"/> et <b>délègue</b>. Elle conserve <c>IPrescriptionRepository</c>
-/// uniquement pour les lectures d'affichage (chargement de la liste).
+/// La VM ne supprime plus directement (elle construit une <see cref="DeletePrescriptionCommand"/> et <b>délègue</b>)
+/// et ne lit plus via <c>IPrescriptionRepository</c> : le chargement de la liste passe par le query use case
+/// Application, qui renvoie des DTO plats (<see cref="PrescriptionListItemDto"/>).
 /// </summary>
 public class CustomerPrescriptionsViewModelTests
 {
@@ -42,17 +41,17 @@ public class CustomerPrescriptionsViewModelTests
         }
     }
 
-    private static Mock<IPrescriptionRepository> RepositoryReturning(params Prescription[] prescriptions)
+    private static Mock<IListPrescriptionsByCustomerUseCase> ListUseCaseReturning(params PrescriptionListItemDto[] prescriptions)
     {
-        var repo = new Mock<IPrescriptionRepository>();
-        repo.Setup(r => r.GetByCustomerIdAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+        var useCase = new Mock<IListPrescriptionsByCustomerUseCase>();
+        useCase.Setup(u => u.ExecuteAsync(It.IsAny<ListPrescriptionsByCustomerQuery>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(prescriptions);
-        return repo;
+        return useCase;
     }
 
     private static CustomerPrescriptionsViewModel Build(
-        Mock<IPrescriptionRepository> repo, IDeletePrescriptionUseCase delete)
-        => new(repo.Object, Mock.Of<ICreatePrescriptionUseCase>(), Mock.Of<IUpdatePrescriptionUseCase>(), delete);
+        Mock<IListPrescriptionsByCustomerUseCase> list, IDeletePrescriptionUseCase delete)
+        => new(list.Object, Mock.Of<ICreatePrescriptionUseCase>(), Mock.Of<IUpdatePrescriptionUseCase>(), delete);
 
     private static async Task WaitUntilAsync(Func<bool> condition, int timeoutMs = 3000)
     {
@@ -62,7 +61,7 @@ public class CustomerPrescriptionsViewModelTests
         Assert.True(condition(), "La condition attendue n'a pas été atteinte dans le délai imparti.");
     }
 
-    private static Prescription NewPrescription(long id = 42) =>
+    private static PrescriptionListItemDto NewPrescription(long id = 42) =>
         new() { PrescriptionId = id, CustomerId = 7, DoctorName = "Dr House" };
 
     // ------------------------------------------------------------------
@@ -73,7 +72,7 @@ public class CustomerPrescriptionsViewModelTests
     public async Task Delete_DelegatesToUseCase_WithSelectedPrescriptionId()
     {
         var prescription = NewPrescription(99);
-        var repo = RepositoryReturning(prescription);
+        var repo = ListUseCaseReturning(prescription);
         var spy = new SpyDeletePrescriptionUseCase();
         var vm = Build(repo, spy);
         await vm.InitializeAsync(7);
@@ -94,7 +93,7 @@ public class CustomerPrescriptionsViewModelTests
     public async Task Delete_WhenNotFound_ShowsError()
     {
         var prescription = NewPrescription();
-        var repo = RepositoryReturning(prescription);
+        var repo = ListUseCaseReturning(prescription);
         var spy = new SpyDeletePrescriptionUseCase(
             cmd => Task.FromResult(new DeletePrescriptionResult { PrescriptionFound = false, PrescriptionId = cmd.PrescriptionId }));
         var vm = Build(repo, spy);
@@ -115,7 +114,7 @@ public class CustomerPrescriptionsViewModelTests
     public async Task Delete_WhenUseCaseThrows_ShowsErrorMessage()
     {
         var prescription = NewPrescription();
-        var repo = RepositoryReturning(prescription);
+        var repo = ListUseCaseReturning(prescription);
         var spy = new SpyDeletePrescriptionUseCase(
             _ => Task.FromException<DeletePrescriptionResult>(new InvalidOperationException("boom")));
         var vm = Build(repo, spy);
@@ -135,7 +134,7 @@ public class CustomerPrescriptionsViewModelTests
     public void Constructor_WithoutRepository_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => new CustomerPrescriptionsViewModel(
-            prescriptionRepository: null!, Mock.Of<ICreatePrescriptionUseCase>(),
+            listPrescriptionsUseCase: null!, Mock.Of<ICreatePrescriptionUseCase>(),
             Mock.Of<IUpdatePrescriptionUseCase>(), new SpyDeletePrescriptionUseCase()));
     }
 
@@ -143,7 +142,7 @@ public class CustomerPrescriptionsViewModelTests
     public void Constructor_WithoutCreateUseCase_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => new CustomerPrescriptionsViewModel(
-            RepositoryReturning().Object, createPrescriptionUseCase: null!,
+            ListUseCaseReturning().Object, createPrescriptionUseCase: null!,
             Mock.Of<IUpdatePrescriptionUseCase>(), new SpyDeletePrescriptionUseCase()));
     }
 
@@ -151,7 +150,7 @@ public class CustomerPrescriptionsViewModelTests
     public void Constructor_WithoutUpdateUseCase_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => new CustomerPrescriptionsViewModel(
-            RepositoryReturning().Object, Mock.Of<ICreatePrescriptionUseCase>(),
+            ListUseCaseReturning().Object, Mock.Of<ICreatePrescriptionUseCase>(),
             updatePrescriptionUseCase: null!, new SpyDeletePrescriptionUseCase()));
     }
 
@@ -159,7 +158,7 @@ public class CustomerPrescriptionsViewModelTests
     public void Constructor_WithoutDeleteUseCase_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => new CustomerPrescriptionsViewModel(
-            RepositoryReturning().Object, Mock.Of<ICreatePrescriptionUseCase>(),
+            ListUseCaseReturning().Object, Mock.Of<ICreatePrescriptionUseCase>(),
             Mock.Of<IUpdatePrescriptionUseCase>(), deletePrescriptionUseCase: null!));
     }
 }

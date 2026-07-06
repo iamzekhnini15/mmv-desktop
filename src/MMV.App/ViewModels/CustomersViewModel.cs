@@ -5,7 +5,9 @@ using MMV.Application.UseCases.Customers.DeleteCustomer;
 using MMV.Application.UseCases.Customers.UpdateCustomer;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Prescriptions.DeletePrescription;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
+using MMV.Application.UseCases.Sales.GetCustomerPurchaseHistory;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
@@ -24,10 +26,15 @@ public class CustomersViewModel : BaseViewModel
     private bool _isInEditMode;
     private bool _isCreatingNew;
     private bool _isShowingDetail;
+    // P2D-5 : ISaleRepository retiré. Les lectures d'historique d'achats et d'ordonnances de la fiche détaillée passent
+    // désormais par des query use cases Application (transmis à CustomerDetailViewModel). ICustomerRepository subsiste
+    // pour la liste clients (CustomersListViewModel, non migrée — reliquat P2D-5 justifié) ; IProductRepository /
+    // IPrescriptionRepository subsistent pour construire SaleFormViewModel via la fiche (formulaire de vente, P2D-6).
     private readonly ICustomerRepository _customerRepository;
     private readonly IPrescriptionRepository _prescriptionRepository;
     private readonly IProductRepository _productRepository;
-    private readonly ISaleRepository _saleRepository;
+    private readonly IGetCustomerPurchaseHistoryUseCase _getPurchaseHistoryUseCase;
+    private readonly IListPrescriptionsByCustomerUseCase _listPrescriptionsUseCase;
     private readonly IRegisterSaleUseCase _registerSaleUseCase;
     private readonly ICreateCustomerUseCase _createCustomerUseCase;
     private readonly IUpdateCustomerUseCase _updateCustomerUseCase;
@@ -114,13 +121,15 @@ public class CustomersViewModel : BaseViewModel
     /// </summary>
     // P2C-GLOBAL : le paramètre IUnitOfWork (jusque-là uniquement transmis à CustomerDetailViewModel, où il était
     // une dépendance morte) a été supprimé. Plus aucune écriture directe ni transaction n'est portée par cette VM.
-    public CustomersViewModel(ICustomerRepository customerRepository, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, ISaleRepository saleRepository, IRegisterSaleUseCase registerSaleUseCase, ICreateCustomerUseCase createCustomerUseCase, IUpdateCustomerUseCase updateCustomerUseCase, IDeleteCustomerUseCase deleteCustomerUseCase, ICreatePrescriptionUseCase createPrescriptionUseCase, IUpdatePrescriptionUseCase updatePrescriptionUseCase, IDeletePrescriptionUseCase deletePrescriptionUseCase)
+    public CustomersViewModel(ICustomerRepository customerRepository, IPrescriptionRepository prescriptionRepository, IProductRepository productRepository, IGetCustomerPurchaseHistoryUseCase getPurchaseHistoryUseCase, IListPrescriptionsByCustomerUseCase listPrescriptionsUseCase, IRegisterSaleUseCase registerSaleUseCase, ICreateCustomerUseCase createCustomerUseCase, IUpdateCustomerUseCase updateCustomerUseCase, IDeleteCustomerUseCase deleteCustomerUseCase, ICreatePrescriptionUseCase createPrescriptionUseCase, IUpdatePrescriptionUseCase updatePrescriptionUseCase, IDeletePrescriptionUseCase deletePrescriptionUseCase)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersViewModel] Constructor called");
         _customerRepository = customerRepository;
         _prescriptionRepository = prescriptionRepository;
         _productRepository = productRepository;
-        _saleRepository = saleRepository;
+        // P2D-5 : query use cases de lecture (historique d'achats + ordonnances), transmis à CustomerDetailViewModel.
+        _getPurchaseHistoryUseCase = getPurchaseHistoryUseCase ?? throw new ArgumentNullException(nameof(getPurchaseHistoryUseCase));
+        _listPrescriptionsUseCase = listPrescriptionsUseCase ?? throw new ArgumentNullException(nameof(listPrescriptionsUseCase));
         // Use case de sauvegarde de vente obligatoire (P2B-2C) : injecté par DI, transmis jusqu'à SaleFormViewModel.
         _registerSaleUseCase = registerSaleUseCase ?? throw new ArgumentNullException(nameof(registerSaleUseCase));
         // P2C-2 : use cases client (create/update) injectés par DI, transmis au CustomerFormViewModel.
@@ -218,7 +227,7 @@ public class CustomersViewModel : BaseViewModel
         if (customer != null)
         {
             // Créer une nouvelle instance du CustomerDetailViewModel
-            CustomerDetailViewModel = new CustomerDetailViewModel(_customerRepository, _prescriptionRepository, _productRepository, _saleRepository, _registerSaleUseCase, _createPrescriptionUseCase, _updatePrescriptionUseCase, _deletePrescriptionUseCase);
+            CustomerDetailViewModel = new CustomerDetailViewModel(_prescriptionRepository, _productRepository, _registerSaleUseCase, _getPurchaseHistoryUseCase, _listPrescriptionsUseCase, _createPrescriptionUseCase, _updatePrescriptionUseCase, _deletePrescriptionUseCase);
             
             // Initialiser avec le client sélectionné
             await CustomerDetailViewModel.InitializeAsync(customer);

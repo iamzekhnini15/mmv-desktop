@@ -76,18 +76,25 @@ public sealed class AppUiPersistenceGuardrailTests
         // pour la liste produit à graphe d'entités (Product) qui alimente la fiche détaillée (ProductDetailViewModel,
         // historique de commandes) et le formulaire d'édition (détails Verre/Lentille/Accessoire) via de nombreux
         // événements typés entité — migration non réalisable en iso-fonctionnel sans exécution UI de recette.
-        "CustomerDetailViewModel -> ICustomerRepository",
+        //
+        // P2D-5 (Clients / Ordonnances) — GO PARTIEL (cf. docs/implementation/P2D-5-report.md). Migrées vers des query
+        // use cases Application (IGetCustomerPurchaseHistoryUseCase, IListPrescriptionsByCustomerUseCase) : l'historique
+        // d'achats (CustomerPurchaseHistoryViewModel, onglet Infos de CustomerInfoViewModel) et la liste des ordonnances
+        // du client (CustomerPrescriptionsViewModel). 6 entrées retirées : "CustomerDetailViewModel -> ICustomerRepository"
+        // (dépendance morte), "CustomerDetailViewModel -> ISaleRepository", "CustomerInfoViewModel -> ISaleRepository",
+        // "CustomerPrescriptionsViewModel -> IPrescriptionRepository", "CustomerPurchaseHistoryViewModel -> ISaleRepository",
+        // "CustomersViewModel -> ISaleRepository". Reliquat P2D-5 justifié (verrouillé par cette allowlist qui ne fait que
+        // diminuer) : CustomersListViewModel / CustomersViewModel conservent ICustomerRepository pour la liste clients
+        // (entité Customer threadée vers le formulaire d'ÉDITION CustomerFormViewModel et la fiche détail — migration non
+        // réalisable en iso-fonctionnel sans exécution UI de recette) ; CustomerDetailViewModel / CustomersViewModel
+        // conservent IProductRepository + IPrescriptionRepository uniquement pour construire SaleFormViewModel (lectures de
+        // référence du formulaire de vente, à migrer en P2D-6 / Ventes).
         "CustomerDetailViewModel -> IPrescriptionRepository",
         "CustomerDetailViewModel -> IProductRepository",
-        "CustomerDetailViewModel -> ISaleRepository",
-        "CustomerInfoViewModel -> ISaleRepository",
-        "CustomerPrescriptionsViewModel -> IPrescriptionRepository",
-        "CustomerPurchaseHistoryViewModel -> ISaleRepository",
         "CustomersListViewModel -> ICustomerRepository",
         "CustomersViewModel -> ICustomerRepository",
         "CustomersViewModel -> IPrescriptionRepository",
         "CustomersViewModel -> IProductRepository",
-        "CustomersViewModel -> ISaleRepository",
         "OrderFormViewModel -> ICustomerRepository",
         "OrderFormViewModel -> IPrescriptionRepository",
         "OrderFormViewModel -> IProductRepository",

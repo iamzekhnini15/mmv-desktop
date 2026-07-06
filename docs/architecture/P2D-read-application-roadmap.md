@@ -31,6 +31,8 @@ P2C a créé uniquement des use cases *command* (écritures) ; P2D a introduit l
   `ListNotificationsQuery`, `CountUnreadNotificationsQuery`.
 - **P2D-4** : `ListStockMovementsQuery`, `ListProductsForPickerQuery`, `GetInventoryOverviewQuery`
   (le sélecteur fournisseur du formulaire produit réutilise `ListSuppliersQuery`).
+- **P2D-5** : `GetCustomerPurchaseHistoryQuery`, `ListPrescriptionsByCustomerQuery`
+  (reliquat : liste clients reportée en P2D-7 ; lectures de référence `SaleFormViewModel` reportées en P2D-6).
 
 ## 3. Inventaire des lectures restantes à extraire (cible P2D)
 
@@ -78,7 +80,7 @@ P2C a créé uniquement des use cases *command* (écritures) ; P2D a introduit l
 | **P2D-2** | **Fournisseurs** | `ListSuppliersQuery`, `GetSupplierWithProductsQuery` |
 | **P2D-3** | **Notifications** | `ListNotificationsQuery`, `CountUnreadNotificationsQuery` |
 | **P2D-4** | **Produits / Stock** — *GO PARTIEL (cf. `docs/implementation/P2D-4-report.md`)* : Stock/Inventaire/sélecteurs migrés (`ListStockMovementsQuery`, `ListProductsForPickerQuery`, `GetInventoryOverviewQuery` ; sélecteur fournisseur = `ListSuppliersQuery` réutilisé). Reliquat : liste produit à graphe (`ProductsListViewModel`/`ProductsViewModel→IProductRepository`) + `GetProductDetailsQuery`, à solder en P2D-7 avec recette UI. | `ListProductsQuery`, `GetProductDetailsQuery`, `ListSuppliersForPickerQuery`, `GetInventoryOverviewQuery`, `ListStockMovementsQuery` |
-| **P2D-5** | **Clients** | `SearchCustomersQuery`, `GetCustomerDetailsQuery`, `ListPrescriptionsByCustomerQuery`, `GetCustomerPurchaseHistoryQuery` |
+| **P2D-5** | **Clients / Ordonnances** — *GO PARTIEL (cf. `docs/implementation/P2D-5-report.md`)* : historique d'achats (`GetCustomerPurchaseHistoryQuery` — réutilisé par l'onglet Infos) et liste des ordonnances d'un client (`ListPrescriptionsByCustomerQuery`) migrés. Reliquat : liste clients (`CustomersListViewModel`/`CustomersViewModel→ICustomerRepository`, entité `Customer` threadée vers le formulaire d'ÉDITION) à solder en P2D-7 ; lectures de référence `SaleFormViewModel` (`IProductRepository`/`IPrescriptionRepository`) reportées en P2D-6. | `GetCustomerPurchaseHistoryQuery`, `ListPrescriptionsByCustomerQuery` |
 | **P2D-6** | **Commandes / Ventes** | `ListOrdersQuery`, `GetOrdersKanbanQuery`, `GetOrderFormReferenceDataQuery`, `GetSaleFormReferenceDataQuery` |
 | **P2D-7** | **Bilan** : allowlist repository = 0, garde-fou anti-entités-EF verrouillé, dette de lecture soldée | rapport de clôture P2D |
 
