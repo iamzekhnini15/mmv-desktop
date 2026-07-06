@@ -1,4 +1,4 @@
-# Rapport P2D-GLOBAL — VERDICT : **GO PARTIEL (local)**
+# Rapport P2D-GLOBAL — VERDICT : **GO PARTIEL (local + CI distante ✅)**
 
 > Extraction des **lectures** UI restantes vers des *query use cases* Application (première famille de
 > use cases *query* de la solution), renvoyant des **DTO applicatifs plats** (jamais d'entité EF suivie).
@@ -234,3 +234,28 @@ reste la cible de clôture P2D-7.
 migrant `ProductsListViewModel`, `ProductDetailViewModel`, `InventoryViewModel` et les VM de mouvements,
 **une étape = un module = un commit** (protocole P2B/P2C, avec exécution UI de recette pour valider
 l'iso-fonctionnalité des écrans composites). Ne pas ouvrir P3 / SaaS / Organization / Store / Subscription.
+
+## 20. Validation CI distante (P2D-GLOBAL-PARTIAL)
+
+Commit applicatif poussé sur `p2d-query-cleanup` (aucun merge, aucun push sur `main`), CI déclenchée par
+l'événement `push` et validée verte.
+
+| Élément | Valeur |
+|---|---|
+| Run CI | [28761185048](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/28761185048) |
+| Identifiant du run | `28761185048` |
+| Commit testé | `e81f99b77e298039b5a56445850ed5dbb67fa926` (`feat(P2D): migrate simple read modules to query use cases`) |
+| Branche testée | `p2d-query-cleanup` |
+| Événement | `push` |
+| Workflow | `CI` |
+| Restore | ✅ succès |
+| Build | ✅ succès (0 erreur) |
+| Test | ✅ succès — **512** tests (App 170 · Application 119 · Domain 223) |
+| Nombre de tests CI | **512** |
+| Audit NuGet | ✅ 0 vulnérabilité High/Critical (« Aucune vulnerabilite High/Critical detectee. ») |
+| Restore .NET tools | ✅ succès (`dotnet-ef` 8.0.27 restauré) |
+| Check EF Core pending model changes | ✅ `false` (« No changes have been made to the model since the last migration. ») |
+| Statut final du workflow | ✅ `completed` / `success` |
+
+**Verdict CI applicative : VERT.** Reste à confirmer la CI du commit documentaire (§ ci-dessous) pour le
+verdict `P2D-GLOBAL-PARTIAL = GO DÉFINITIF COMPLET`.
