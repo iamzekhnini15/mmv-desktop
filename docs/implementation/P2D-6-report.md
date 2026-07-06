@@ -260,7 +260,26 @@ UI = 0, aucune écriture directe UI. Le module **Ventes** (`SaleFormViewModel`, 
 d'entités `OrderItem`) et le **rechargement de la fiche détaillée** (threading vers le formulaire d'ÉDITION) sont
 **documentés en reliquat justifié**, conformément aux clauses §19/§20.
 
-## 19. Prochaine étape candidate
+## 19. Validation CI distante (commit applicatif)
+
+Commit `0da5eca` poussé sur `p2d-query-cleanup` ; workflow **CI** déclenché sur `push`, **terminé avec succès**.
+
+| Élément | Valeur |
+|---|---|
+| Run CI | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/28815010751 |
+| Identifiant du run | `28815010751` |
+| Commit testé | `0da5eca296f2adda296ad376ece41f815d5b1879` |
+| Branche testée | `p2d-query-cleanup` |
+| Event | `push` |
+| Restore | ✅ success |
+| Build | ✅ success |
+| Test | ✅ success — **564** (App 192 · Application 149 · Domain 223) |
+| Audit NuGet | ✅ success — 0 vulnérabilité |
+| Restore .NET tools | ✅ success |
+| Check EF Core pending model changes | ✅ success — « No changes have been made to the model since the last migration. » |
+| Statut final du workflow | ✅ **completed / success** (`2m49s`) |
+
+## 20. Prochaine étape candidate
 
 **P2D-7 — Clôture P2D** : solder les reliquats à surface d'exécution UI — liste clients (P2D-5), liste/fiche produit
 (P2D-4), fiche détaillée commande + formulaire d'ÉDITION (`GetOrderDetailsUseCase`), et formulaire de **vente**
