@@ -223,7 +223,26 @@ touché, `MMV.Application` toujours pure, `IUnitOfWork` UI = 0, aucune écriture
 d'entités** (fiche + formulaire d'édition) est **documentée en reliquat justifié** (allowlist minimale : 2 entrées),
 conformément aux clauses §17/§19.
 
-## 19. Prochaine étape candidate
+## 19. Validation CI distante (commit applicatif)
+
+Commit `6592d46` poussé sur `p2d-query-cleanup` ; workflow **CI** déclenché sur `push`, **terminé avec succès**.
+
+| Élément | Valeur |
+|---|---|
+| Run CI | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/28794824116 |
+| Identifiant du run | `28794824116` |
+| Commit testé | `6592d461230f4293160f8fcda76c67e6c30845ef` |
+| Branche testée | `p2d-query-cleanup` |
+| Event | `push` |
+| Restore | ✅ success |
+| Build | ✅ success |
+| Test | ✅ success — **529** (App 177 · Application 129 · Domain 223) |
+| Audit NuGet | ✅ success — « Aucune vulnerabilite High/Critical detectee. » |
+| Restore .NET tools | ✅ success |
+| Check EF Core pending model changes | ✅ success — « No changes have been made to the model since the last migration. » |
+| Statut final du workflow | ✅ **completed / success** (`3m14s`) |
+
+## 20. Prochaine étape candidate
 
 **P2D-5 — Clients / Ordonnances** : `SearchCustomersQuery`, `GetCustomerDetailsQuery`,
 `ListPrescriptionsByCustomerQuery`, `GetCustomerPurchaseHistoryQuery` + DTO dédiés. Le reliquat **liste produit /
