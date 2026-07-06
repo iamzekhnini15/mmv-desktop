@@ -2,19 +2,25 @@ using System;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Products.ListProductsForPicker;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
-using MMV.Domain.Interfaces.Repositories;
+using MMV.Application.UseCases.Stock.ListStockMovements;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel principal pour la gestion des mouvements de stock.
 /// Orchestre la navigation entre liste et formulaire.
+/// <para>
+/// P2D-4 : ne détient plus de repository. Les query use cases de lecture
+/// (<see cref="IListStockMovementsUseCase"/>, <see cref="IListProductsForPickerUseCase"/>) sont injectés puis
+/// transmis à la liste et au formulaire enfants.
+/// </para>
 /// </summary>
 public class StockMovementsViewModel : BaseViewModel
 {
-    private readonly IStockMovementRepository _stockMovementRepository;
-    private readonly IProductRepository _productRepository;
+    private readonly IListStockMovementsUseCase _listStockMovementsUseCase;
+    private readonly IListProductsForPickerUseCase _listProductsForPickerUseCase;
     private readonly IDialogService _dialogService;
     private readonly ICreateStockMovementUseCase _createStockMovementUseCase;
 
@@ -43,13 +49,13 @@ public class StockMovementsViewModel : BaseViewModel
     public event EventHandler? BackToProductsRequested;
 
     public StockMovementsViewModel(
-        IStockMovementRepository stockMovementRepository,
-        IProductRepository productRepository,
+        IListStockMovementsUseCase listStockMovementsUseCase,
+        IListProductsForPickerUseCase listProductsForPickerUseCase,
         IDialogService dialogService,
         ICreateStockMovementUseCase createStockMovementUseCase)
     {
-        _stockMovementRepository = stockMovementRepository;
-        _productRepository = productRepository;
+        _listStockMovementsUseCase = listStockMovementsUseCase ?? throw new ArgumentNullException(nameof(listStockMovementsUseCase));
+        _listProductsForPickerUseCase = listProductsForPickerUseCase ?? throw new ArgumentNullException(nameof(listProductsForPickerUseCase));
         _dialogService = dialogService;
         // P2B-2F : transmis au formulaire pour déléguer la création de mouvement manuel au use case applicatif.
         _createStockMovementUseCase = createStockMovementUseCase ?? throw new ArgumentNullException(nameof(createStockMovementUseCase));
@@ -63,14 +69,14 @@ public class StockMovementsViewModel : BaseViewModel
     private StockMovementsListViewModel CreateListViewModel()
     {
         return new StockMovementsListViewModel(
-            _stockMovementRepository,
-            _productRepository);
+            _listStockMovementsUseCase,
+            _listProductsForPickerUseCase);
     }
 
     private void OnCreateMovementRequested(object? sender, EventArgs e)
     {
         FormViewModel = new StockMovementFormViewModel(
-            _productRepository,
+            _listProductsForPickerUseCase,
             _dialogService,
             _createStockMovementUseCase);
 

@@ -24,8 +24,13 @@
 
 ## 2. Query use cases déjà créés
 
-**Aucun à ce jour.** P2C a créé uniquement des use cases *command* (écritures). P2D introduit la
-**première** famille de *query use cases* de la solution.
+P2C a créé uniquement des use cases *command* (écritures) ; P2D a introduit la **première** famille de
+*query use cases* de la solution. Créés à ce jour :
+
+- **P2D-GLOBAL (partiel)** : `ListUsersQuery`, `ListSuppliersQuery`, `GetSupplierWithProductsQuery`,
+  `ListNotificationsQuery`, `CountUnreadNotificationsQuery`.
+- **P2D-4** : `ListStockMovementsQuery`, `ListProductsForPickerQuery`, `GetInventoryOverviewQuery`
+  (le sélecteur fournisseur du formulaire produit réutilise `ListSuppliersQuery`).
 
 ## 3. Inventaire des lectures restantes à extraire (cible P2D)
 
@@ -72,7 +77,7 @@
 | **P2D-1** | *Query use cases* : socle + conventions + 1er module pilote (**Utilisateurs**) | `ListUsersQuery` |
 | **P2D-2** | **Fournisseurs** | `ListSuppliersQuery`, `GetSupplierWithProductsQuery` |
 | **P2D-3** | **Notifications** | `ListNotificationsQuery`, `CountUnreadNotificationsQuery` |
-| **P2D-4** | **Produits / Stock** | `ListProductsQuery`, `GetProductDetailsQuery`, `ListSuppliersForPickerQuery`, `GetInventoryOverviewQuery`, `ListStockMovementsQuery` |
+| **P2D-4** | **Produits / Stock** — *GO PARTIEL (cf. `docs/implementation/P2D-4-report.md`)* : Stock/Inventaire/sélecteurs migrés (`ListStockMovementsQuery`, `ListProductsForPickerQuery`, `GetInventoryOverviewQuery` ; sélecteur fournisseur = `ListSuppliersQuery` réutilisé). Reliquat : liste produit à graphe (`ProductsListViewModel`/`ProductsViewModel→IProductRepository`) + `GetProductDetailsQuery`, à solder en P2D-7 avec recette UI. | `ListProductsQuery`, `GetProductDetailsQuery`, `ListSuppliersForPickerQuery`, `GetInventoryOverviewQuery`, `ListStockMovementsQuery` |
 | **P2D-5** | **Clients** | `SearchCustomersQuery`, `GetCustomerDetailsQuery`, `ListPrescriptionsByCustomerQuery`, `GetCustomerPurchaseHistoryQuery` |
 | **P2D-6** | **Commandes / Ventes** | `ListOrdersQuery`, `GetOrdersKanbanQuery`, `GetOrderFormReferenceDataQuery`, `GetSaleFormReferenceDataQuery` |
 | **P2D-7** | **Bilan** : allowlist repository = 0, garde-fou anti-entités-EF verrouillé, dette de lecture soldée | rapport de clôture P2D |

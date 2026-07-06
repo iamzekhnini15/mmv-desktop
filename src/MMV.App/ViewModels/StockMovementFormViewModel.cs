@@ -1,42 +1,46 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Products.ListProductsForPicker;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
-using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// Représente une ligne de mouvement de stock dans le formulaire multi-produits.
+/// <para>
+/// P2D-4 : le sélecteur produit manipule désormais des <see cref="ProductPickerItemDto"/> plats (issus du query use
+/// case <see cref="IListProductsForPickerUseCase"/>), plus l'entité EF <c>Product</c>.
+/// </para>
 /// </summary>
 public class ProductMovementLine : BaseViewModel
 {
-    private readonly IEnumerable<Product> _allProducts;
+    private readonly IEnumerable<ProductPickerItemDto> _allProducts;
 
-    private Product? _product;
+    private ProductPickerItemDto? _product;
     private string _movementType = "In";
     private int _quantity = 1;
     private string _notes = string.Empty;
     private string _searchText = string.Empty;
 
-    private ObservableCollection<Product> _filteredProducts = new();
+    private ObservableCollection<ProductPickerItemDto> _filteredProducts = new();
     private bool _isPopupOpen;
 
-    public ProductMovementLine(IEnumerable<Product> allProducts)
+    public ProductMovementLine(IEnumerable<ProductPickerItemDto> allProducts)
     {
-        _allProducts = allProducts ?? Array.Empty<Product>();
-        _filteredProducts = new ObservableCollection<Product>(_allProducts);
+        _allProducts = allProducts ?? Array.Empty<ProductPickerItemDto>();
+        _filteredProducts = new ObservableCollection<ProductPickerItemDto>(_allProducts);
         _isPopupOpen = false;
     }
 
-    public Product? Product
+    public ProductPickerItemDto? Product
     {
         get => _product;
         set
@@ -96,7 +100,7 @@ public class ProductMovementLine : BaseViewModel
         }
     }
 
-    public ObservableCollection<Product> FilteredProducts
+    public ObservableCollection<ProductPickerItemDto> FilteredProducts
     {
         get => _filteredProducts;
         private set => SetProperty(ref _filteredProducts, value);
@@ -111,7 +115,7 @@ public class ProductMovementLine : BaseViewModel
     private void UpdateFilter()
     {
         var q = (SearchText ?? string.Empty).Trim();
-        IEnumerable<Product> result;
+        IEnumerable<ProductPickerItemDto> result;
 
         if (string.IsNullOrWhiteSpace(q))
         {
@@ -123,13 +127,13 @@ public class ProductMovementLine : BaseViewModel
             result = _allProducts.Where(p =>
                 (!string.IsNullOrEmpty(p.Reference) && p.Reference.ToLowerInvariant().Contains(q)) ||
                 (!string.IsNullOrEmpty(p.Name) && p.Name.ToLowerInvariant().Contains(q)) ||
-                (p.Supplier != null && !string.IsNullOrEmpty(p.Supplier.Name) && p.Supplier.Name.ToLowerInvariant().Contains(q)) ||
+                (!string.IsNullOrEmpty(p.SupplierName) && p.SupplierName.ToLowerInvariant().Contains(q)) ||
                 (!string.IsNullOrEmpty(p.Description) && p.Description.ToLowerInvariant().Contains(q))
             );
         }
 
         // Refresh collection
-        FilteredProducts = new ObservableCollection<Product>(result);
+        FilteredProducts = new ObservableCollection<ProductPickerItemDto>(result);
     }
 
     public bool IsValid => Product != null && Quantity > 0;
@@ -140,7 +144,7 @@ public class ProductMovementLine : BaseViewModel
 /// </summary>
 public class StockMovementFormViewModel : BaseViewModel
 {
-    private readonly IProductRepository _productRepository;
+    private readonly IListProductsForPickerUseCase _listProductsForPickerUseCase;
     private readonly IDialogService _dialogService;
 
     /// <summary>
@@ -150,11 +154,11 @@ public class StockMovementFormViewModel : BaseViewModel
     /// </summary>
     private readonly ICreateStockMovementUseCase _createStockMovementUseCase;
 
-    private ObservableCollection<Product> _products = new();
+    private ObservableCollection<ProductPickerItemDto> _products = new();
     private ObservableCollection<ProductMovementLine> _movementLines = new();
     private bool _isSaving;
 
-    public ObservableCollection<Product> Products
+    public ObservableCollection<ProductPickerItemDto> Products
     {
         get => _products;
         set => SetProperty(ref _products, value);
@@ -188,11 +192,13 @@ public class StockMovementFormViewModel : BaseViewModel
     public event EventHandler? CancelRequested;
 
     public StockMovementFormViewModel(
-        IProductRepository productRepository,
+        IListProductsForPickerUseCase listProductsForPickerUseCase,
         IDialogService dialogService,
         ICreateStockMovementUseCase createStockMovementUseCase)
     {
-        _productRepository = productRepository;
+        // P2D-4 : la lecture du sélecteur produit passe par un query use case Application (DTO plats), plus par
+        // IProductRepository.
+        _listProductsForPickerUseCase = listProductsForPickerUseCase ?? throw new ArgumentNullException(nameof(listProductsForPickerUseCase));
         _dialogService = dialogService;
         // P2B-2F : la création de mouvement manuel (frontière transactionnelle + décrément sûr P2A-1D-R2) est
         // déléguée au use case applicatif, désormais obligatoire.
@@ -218,8 +224,8 @@ public class StockMovementFormViewModel : BaseViewModel
     {
         try
         {
-            var products = await _productRepository.GetAllAsync();
-            Products = new ObservableCollection<Product>(products.OrderBy(p => p.Name));
+            var products = await _listProductsForPickerUseCase.ExecuteAsync(new ListProductsForPickerQuery());
+            Products = new ObservableCollection<ProductPickerItemDto>(products);
         }
         catch (Exception ex)
         {

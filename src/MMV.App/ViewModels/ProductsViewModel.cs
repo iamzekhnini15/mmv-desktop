@@ -3,8 +3,10 @@ using MMV.App.Commands;
 using MMV.App.Services;
 using MMV.Application.UseCases.Products.CreateProduct;
 using MMV.Application.UseCases.Products.DeleteProduct;
+using MMV.Application.UseCases.Products.ListProductsForPicker;
 using MMV.Application.UseCases.Products.UpdateProduct;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
+using MMV.Application.UseCases.Stock.ListStockMovements;
 using MMV.Application.UseCases.Suppliers.CreateSupplier;
 using MMV.Application.UseCases.Suppliers.DeleteSupplier;
 using MMV.Application.UseCases.Suppliers.GetSupplierWithProducts;
@@ -20,10 +22,14 @@ namespace MMV.App.ViewModels;
 /// Coordonne l'affichage entre la liste, le formulaire et les détails des produits.
 /// <para>
 /// P2C-GLOBAL : les écritures produits/fournisseurs/stock sont déléguées aux use cases Application, transmis aux
-/// ViewModels enfants. <see cref="IProductRepository"/>, <see cref="ISupplierRepository"/> et
-/// <see cref="IStockMovementRepository"/> ne sont conservés que pour les lectures d'affichage ; <c>IUnitOfWork</c>
-/// a été retiré (son seul usage résiduel, l'accès à <c>UnitOfWork.StockMovements</c>, est remplacé par l'injection
-/// directe de <see cref="IStockMovementRepository"/>).
+/// ViewModels enfants.
+/// </para>
+/// <para>
+/// P2D-4 : les lectures fournisseur (formulaire produit → <see cref="IListSuppliersUseCase"/>) et stock (mouvements →
+/// <see cref="IListStockMovementsUseCase"/> / <see cref="IListProductsForPickerUseCase"/>) passent par des query use
+/// cases. <c>ISupplierRepository</c> et <c>IStockMovementRepository</c> ont été retirés. Reliquat P2D : seul
+/// <see cref="IProductRepository"/> subsiste, pour construire <c>ProductsListViewModel</c> (liste produit à graphe
+/// d'entités feeding la fiche / le formulaire d'édition), non migré dans cette étape.
 /// </para>
 /// </summary>
 public class ProductsViewModel : BaseViewModel
@@ -40,8 +46,6 @@ public class ProductsViewModel : BaseViewModel
     private string _errorMessage = string.Empty;
     private ICommand? _viewDetailCommand;
     private readonly IProductRepository _productRepository;
-    private readonly ISupplierRepository _supplierRepository;
-    private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IDialogService _dialogService;
     private readonly ICreateStockMovementUseCase _createStockMovementUseCase;
     private readonly ICreateProductUseCase _createProductUseCase;
@@ -52,6 +56,8 @@ public class ProductsViewModel : BaseViewModel
     private readonly ICreateSupplierUseCase _createSupplierUseCase;
     private readonly IUpdateSupplierUseCase _updateSupplierUseCase;
     private readonly IDeleteSupplierUseCase _deleteSupplierUseCase;
+    private readonly IListStockMovementsUseCase _listStockMovementsUseCase;
+    private readonly IListProductsForPickerUseCase _listProductsForPickerUseCase;
 
     /// <summary>
     /// ViewModel pour la liste des produits.
@@ -198,8 +204,6 @@ public class ProductsViewModel : BaseViewModel
     /// </summary>
     public ProductsViewModel(
         IProductRepository productRepository,
-        ISupplierRepository supplierRepository,
-        IStockMovementRepository stockMovementRepository,
         IDialogService dialogService,
         ICreateStockMovementUseCase createStockMovementUseCase,
         ICreateProductUseCase createProductUseCase,
@@ -209,23 +213,28 @@ public class ProductsViewModel : BaseViewModel
         IGetSupplierWithProductsUseCase getSupplierWithProductsUseCase,
         ICreateSupplierUseCase createSupplierUseCase,
         IUpdateSupplierUseCase updateSupplierUseCase,
-        IDeleteSupplierUseCase deleteSupplierUseCase)
+        IDeleteSupplierUseCase deleteSupplierUseCase,
+        IListStockMovementsUseCase listStockMovementsUseCase,
+        IListProductsForPickerUseCase listProductsForPickerUseCase)
     {
         _productRepository = productRepository;
-        _supplierRepository = supplierRepository;
-        _stockMovementRepository = stockMovementRepository;
         _dialogService = dialogService;
         // P2B-2F : transmis à StockMovementsViewModel → formulaire pour déléguer la création de mouvement manuel.
         _createStockMovementUseCase = createStockMovementUseCase ?? throw new ArgumentNullException(nameof(createStockMovementUseCase));
         _createProductUseCase = createProductUseCase ?? throw new ArgumentNullException(nameof(createProductUseCase));
         _updateProductUseCase = updateProductUseCase ?? throw new ArgumentNullException(nameof(updateProductUseCase));
         _deleteProductUseCase = deleteProductUseCase ?? throw new ArgumentNullException(nameof(deleteProductUseCase));
-        // P2D-2 : lectures fournisseur (liste + fiche) transmises à SuppliersViewModel via query use cases.
+        // P2D-2 : lectures fournisseur (liste + fiche) transmises à SuppliersViewModel via query use cases ;
+        // P2D-4 : la liste fournisseur alimente aussi le sélecteur du formulaire produit (ProductFormViewModel).
         _listSuppliersUseCase = listSuppliersUseCase ?? throw new ArgumentNullException(nameof(listSuppliersUseCase));
         _getSupplierWithProductsUseCase = getSupplierWithProductsUseCase ?? throw new ArgumentNullException(nameof(getSupplierWithProductsUseCase));
         _createSupplierUseCase = createSupplierUseCase ?? throw new ArgumentNullException(nameof(createSupplierUseCase));
         _updateSupplierUseCase = updateSupplierUseCase ?? throw new ArgumentNullException(nameof(updateSupplierUseCase));
         _deleteSupplierUseCase = deleteSupplierUseCase ?? throw new ArgumentNullException(nameof(deleteSupplierUseCase));
+        // P2D-4 : lectures stock (liste des mouvements + sélecteur produit) transmises à StockMovementsViewModel via
+        // query use cases (plus de IStockMovementRepository / IProductRepository côté mouvements).
+        _listStockMovementsUseCase = listStockMovementsUseCase ?? throw new ArgumentNullException(nameof(listStockMovementsUseCase));
+        _listProductsForPickerUseCase = listProductsForPickerUseCase ?? throw new ArgumentNullException(nameof(listProductsForPickerUseCase));
 
         // Initialiser le ViewModel de la liste
         _productsListViewModel = new ProductsListViewModel(productRepository, deleteProductUseCase);
@@ -249,7 +258,7 @@ public class ProductsViewModel : BaseViewModel
         {
             IsCreatingNew = true;
             ErrorMessage = string.Empty;
-            ProductFormViewModel = new ProductFormViewModel(_supplierRepository, _createProductUseCase, _updateProductUseCase);
+            ProductFormViewModel = new ProductFormViewModel(_listSuppliersUseCase, _createProductUseCase, _updateProductUseCase);
             ProductFormViewModel.ProductSaved += OnProductSaved;
             ProductFormViewModel.Cancelled += OnFormCancelled;
             
@@ -276,7 +285,7 @@ public class ProductsViewModel : BaseViewModel
         {
             IsCreatingNew = false;
             ErrorMessage = string.Empty;
-            ProductFormViewModel = new ProductFormViewModel(_supplierRepository, _createProductUseCase, _updateProductUseCase, product);
+            ProductFormViewModel = new ProductFormViewModel(_listSuppliersUseCase, _createProductUseCase, _updateProductUseCase, product);
             ProductFormViewModel.ProductSaved += OnProductSaved;
             ProductFormViewModel.Cancelled += OnFormCancelled;
             
@@ -339,8 +348,8 @@ public class ProductsViewModel : BaseViewModel
         if (StockMovementsViewModel == null)
         {
             StockMovementsViewModel = new StockMovementsViewModel(
-                _stockMovementRepository,
-                _productRepository,
+                _listStockMovementsUseCase,
+                _listProductsForPickerUseCase,
                 _dialogService,
                 _createStockMovementUseCase);
 

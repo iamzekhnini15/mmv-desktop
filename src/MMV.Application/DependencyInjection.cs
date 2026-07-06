@@ -16,9 +16,12 @@ using MMV.Application.UseCases.Prescriptions.DeletePrescription;
 using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Application.UseCases.Products.CreateProduct;
 using MMV.Application.UseCases.Products.DeleteProduct;
+using MMV.Application.UseCases.Products.GetInventoryOverview;
+using MMV.Application.UseCases.Products.ListProductsForPicker;
 using MMV.Application.UseCases.Products.UpdateProduct;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
+using MMV.Application.UseCases.Stock.ListStockMovements;
 using MMV.Application.UseCases.Suppliers.CreateSupplier;
 using MMV.Application.UseCases.Suppliers.DeleteSupplier;
 using MMV.Application.UseCases.Suppliers.GetSupplierWithProducts;
@@ -166,6 +169,15 @@ public static class DependencyInjection
         // CountUnreadAsync côté UI, dans NotificationsListViewModel et NotificationsViewModel).
         services.AddScoped<IListNotificationsUseCase, ListNotificationsUseCase>();
         services.AddScoped<ICountUnreadNotificationsUseCase, CountUnreadNotificationsUseCase>();
+
+        // P2D-4 — module Produits / Stock (lectures). Remplacent les lectures directes I…Repository restantes des
+        // ViewModels de mouvements de stock, d'inventaire et des sélecteurs produit (StockMovementsListViewModel,
+        // StockMovementFormViewModel, StockMovementsViewModel, InventoryViewModel). La lecture fournisseur du
+        // formulaire produit (ProductFormViewModel) réutilise IListSuppliersUseCase (P2D-2). Portée Scoped (même
+        // portée qu'OpticDbContext / repositories).
+        services.AddScoped<IListStockMovementsUseCase, ListStockMovementsUseCase>();
+        services.AddScoped<IListProductsForPickerUseCase, ListProductsForPickerUseCase>();
+        services.AddScoped<IGetInventoryOverviewUseCase, GetInventoryOverviewUseCase>();
         return services;
     }
 }

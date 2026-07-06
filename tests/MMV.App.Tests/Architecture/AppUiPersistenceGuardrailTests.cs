@@ -62,10 +62,20 @@ public sealed class AppUiPersistenceGuardrailTests
         //     "NotificationsViewModel -> INotificationRepository" (IListNotificationsUseCase +
         //     ICountUnreadNotificationsUseCase).
         //
-        // RELIQUAT P2D (documenté dans docs/implementation/P2D-GLOBAL-report.md §17) : les lectures des modules
-        // Produits/Stock, Clients et Commandes/Ventes restent portées par des repositories injectés (écrans composites
-        // à graphes d'entités : fiches détaillées, données de référence de formulaires, Kanban). Elles seront migrées
-        // en P2D-4/5/6. Cette allowlist ne doit toujours que DIMINUER.
+        // RELIQUAT P2D (documenté dans docs/implementation/P2D-4-report.md et docs/implementation/P2D-GLOBAL-report.md
+        // §17) : les lectures des modules Clients et Commandes/Ventes restent portées par des repositories injectés
+        // (écrans composites à graphes d'entités : fiches détaillées, données de référence de formulaires, Kanban).
+        // Elles seront migrées en P2D-5/6. Cette allowlist ne doit toujours que DIMINUER.
+        //
+        // P2D-4 (Produits / Stock) : les lectures des sélecteurs produit (StockMovementsListViewModel,
+        // StockMovementFormViewModel), de l'inventaire (InventoryViewModel), des mouvements de stock
+        // (StockMovementsViewModel) et du sélecteur fournisseur du formulaire produit (ProductFormViewModel) ont été
+        // migrées vers des query use cases Application (IListStockMovementsUseCase, IListProductsForPickerUseCase,
+        // IGetInventoryOverviewUseCase, IListSuppliersUseCase réutilisé). Les 9 entrées correspondantes ont été
+        // retirées. Reliquat P2D-4 justifié : ProductsListViewModel / ProductsViewModel conservent IProductRepository
+        // pour la liste produit à graphe d'entités (Product) qui alimente la fiche détaillée (ProductDetailViewModel,
+        // historique de commandes) et le formulaire d'édition (détails Verre/Lentille/Accessoire) via de nombreux
+        // événements typés entité — migration non réalisable en iso-fonctionnel sans exécution UI de recette.
         "CustomerDetailViewModel -> ICustomerRepository",
         "CustomerDetailViewModel -> IPrescriptionRepository",
         "CustomerDetailViewModel -> IProductRepository",
@@ -78,7 +88,6 @@ public sealed class AppUiPersistenceGuardrailTests
         "CustomersViewModel -> IPrescriptionRepository",
         "CustomersViewModel -> IProductRepository",
         "CustomersViewModel -> ISaleRepository",
-        "InventoryViewModel -> IProductRepository",
         "OrderFormViewModel -> ICustomerRepository",
         "OrderFormViewModel -> IPrescriptionRepository",
         "OrderFormViewModel -> IProductRepository",
@@ -88,18 +97,10 @@ public sealed class AppUiPersistenceGuardrailTests
         "OrdersViewModel -> IOrderRepository",
         "OrdersViewModel -> IPrescriptionRepository",
         "OrdersViewModel -> IProductRepository",
-        "ProductFormViewModel -> ISupplierRepository",
         "ProductsListViewModel -> IProductRepository",
         "ProductsViewModel -> IProductRepository",
-        "ProductsViewModel -> IStockMovementRepository",
-        "ProductsViewModel -> ISupplierRepository",
         "SaleFormViewModel -> IPrescriptionRepository",
         "SaleFormViewModel -> IProductRepository",
-        "StockMovementFormViewModel -> IProductRepository",
-        "StockMovementsListViewModel -> IProductRepository",
-        "StockMovementsListViewModel -> IStockMovementRepository",
-        "StockMovementsViewModel -> IProductRepository",
-        "StockMovementsViewModel -> IStockMovementRepository",
     };
 
     /// <summary>
