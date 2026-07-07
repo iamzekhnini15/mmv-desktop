@@ -48,79 +48,22 @@ public sealed class AppUiPersistenceGuardrailTests
     /// </summary>
     private static readonly HashSet<string> AllowedViewModelRepositoryConstructorDependencies = new()
     {
-        // P2C-GLOBAL : après extraction de TOUTES les écritures restantes vers la couche Application, les entrées
-        // ci-dessous ne correspondent plus qu'à des LECTURES d'affichage (chargement de listes / détail). Elles
-        // constituent la dette ouverte adressée par P2D (query use cases + DTO applicatifs).
-        //
-        // P2D (LECTURES → query use cases). Les entrées suivantes ont été RETIRÉES au fil des étapes P2D, la lecture
-        // étant désormais portée par un query use case Application renvoyant des DTO plats (jamais d'entité EF) :
-        //   - P2D-1 Utilisateurs : "UsersListViewModel -> IUserRepository", "UsersViewModel -> IUserRepository"
-        //     (IListUsersUseCase) ;
-        //   - P2D-2 Fournisseurs : "SuppliersListViewModel -> ISupplierRepository",
-        //     "SuppliersViewModel -> ISupplierRepository" (IListSuppliersUseCase + IGetSupplierWithProductsUseCase) ;
-        //   - P2D-3 Notifications : "NotificationsListViewModel -> INotificationRepository",
-        //     "NotificationsViewModel -> INotificationRepository" (IListNotificationsUseCase +
-        //     ICountUnreadNotificationsUseCase).
-        //
-        // RELIQUAT P2D (documenté dans docs/implementation/P2D-4-report.md et docs/implementation/P2D-GLOBAL-report.md
-        // §17) : les lectures des modules Clients et Commandes/Ventes restent portées par des repositories injectés
-        // (écrans composites à graphes d'entités : fiches détaillées, données de référence de formulaires, Kanban).
-        // Elles seront migrées en P2D-5/6. Cette allowlist ne doit toujours que DIMINUER.
-        //
-        // P2D-4 (Produits / Stock) : les lectures des sélecteurs produit (StockMovementsListViewModel,
-        // StockMovementFormViewModel), de l'inventaire (InventoryViewModel), des mouvements de stock
-        // (StockMovementsViewModel) et du sélecteur fournisseur du formulaire produit (ProductFormViewModel) ont été
-        // migrées vers des query use cases Application (IListStockMovementsUseCase, IListProductsForPickerUseCase,
-        // IGetInventoryOverviewUseCase, IListSuppliersUseCase réutilisé). Les 9 entrées correspondantes ont été
-        // retirées. Reliquat P2D-4 justifié : ProductsListViewModel / ProductsViewModel conservent IProductRepository
-        // pour la liste produit à graphe d'entités (Product) qui alimente la fiche détaillée (ProductDetailViewModel,
-        // historique de commandes) et le formulaire d'édition (détails Verre/Lentille/Accessoire) via de nombreux
-        // événements typés entité — migration non réalisable en iso-fonctionnel sans exécution UI de recette.
-        //
-        // P2D-5 (Clients / Ordonnances) — GO PARTIEL (cf. docs/implementation/P2D-5-report.md). Migrées vers des query
-        // use cases Application (IGetCustomerPurchaseHistoryUseCase, IListPrescriptionsByCustomerUseCase) : l'historique
-        // d'achats (CustomerPurchaseHistoryViewModel, onglet Infos de CustomerInfoViewModel) et la liste des ordonnances
-        // du client (CustomerPrescriptionsViewModel). 6 entrées retirées : "CustomerDetailViewModel -> ICustomerRepository"
-        // (dépendance morte), "CustomerDetailViewModel -> ISaleRepository", "CustomerInfoViewModel -> ISaleRepository",
-        // "CustomerPrescriptionsViewModel -> IPrescriptionRepository", "CustomerPurchaseHistoryViewModel -> ISaleRepository",
-        // "CustomersViewModel -> ISaleRepository". Reliquat P2D-5 justifié (verrouillé par cette allowlist qui ne fait que
-        // diminuer) : CustomersListViewModel / CustomersViewModel conservent ICustomerRepository pour la liste clients
-        // (entité Customer threadée vers le formulaire d'ÉDITION CustomerFormViewModel et la fiche détail — migration non
-        // réalisable en iso-fonctionnel sans exécution UI de recette) ; CustomerDetailViewModel / CustomersViewModel
-        // conservent IProductRepository + IPrescriptionRepository uniquement pour construire SaleFormViewModel (lectures de
-        // référence du formulaire de vente, à migrer en P2D-6 / Ventes).
-        //
-        // P2D-6 (Commandes / Ventes) — GO PARTIEL (cf. docs/implementation/P2D-6-report.md). Migrées vers des query use
-        // cases Application (IListOrdersUseCase, IListCustomersForPickerUseCase, IListProductsForOrderPickerUseCase ;
-        // ordonnances du formulaire = IListPrescriptionsByCustomerUseCase réutilisé, P2D-5) : la liste des commandes
-        // (OrdersListViewModel), la vue Kanban (OrderKanbanViewModel) et les données de référence du formulaire de
-        // commande (OrderFormViewModel : clients + produits + ordonnances). 8 entrées retirées :
-        // "OrderFormViewModel -> ICustomerRepository", "OrderFormViewModel -> IProductRepository",
-        // "OrderFormViewModel -> IPrescriptionRepository", "OrderKanbanViewModel -> IOrderRepository",
-        // "OrdersListViewModel -> IOrderRepository", "OrdersViewModel -> ICustomerRepository",
-        // "OrdersViewModel -> IProductRepository", "OrdersViewModel -> IPrescriptionRepository".
-        //
-        // Reliquat P2D-6 justifié (verrouillé par cette allowlist qui ne fait que diminuer) :
-        //   - "OrdersViewModel -> IOrderRepository" : rechargement de la fiche détaillée (GetWithItemsAsync), qui
-        //     alimente OrderDetailViewModel puis le formulaire d'ÉDITION avec une entité Order complète (threading vers
-        //     un chemin d'écriture) — migration non réalisable en iso-fonctionnel sans exécution UI de recette.
-        //   - "SaleFormViewModel -> IProductRepository" / "-> IPrescriptionRepository" et les pass-through
-        //     "CustomerDetailViewModel/CustomersViewModel -> IProductRepository / -> IPrescriptionRepository" :
-        //     le formulaire de VENTE lit un catalogue à graphe (Product.GlassDetail, filtrage de compatibilité) et son
-        //     panier est composé d'entités OrderItem portant la navigation Product (liaisons Product.Name/Reference) —
-        //     écran composite non migrable en iso-fonctionnel sans exécution UI de recette (même clause que la liste
-        //     clients P2D-5 / la liste produit P2D-4). À solder en clôture P2D (P2D-7) avec recette UI.
-        "CustomerDetailViewModel -> IPrescriptionRepository",
-        "CustomerDetailViewModel -> IProductRepository",
-        "CustomersListViewModel -> ICustomerRepository",
-        "CustomersViewModel -> ICustomerRepository",
-        "CustomersViewModel -> IPrescriptionRepository",
-        "CustomersViewModel -> IProductRepository",
-        "OrdersViewModel -> IOrderRepository",
-        "ProductsListViewModel -> IProductRepository",
-        "ProductsViewModel -> IProductRepository",
-        "SaleFormViewModel -> IPrescriptionRepository",
-        "SaleFormViewModel -> IProductRepository",
+        // P2D-7 (CLÔTURE P2D) : allowlist VIDÉE. Plus AUCUN ViewModel de MMV.App ne dépend d'un *Repository du Domain
+        // par constructeur — toutes les lectures d'affichage passent désormais par des query use cases Application
+        // renvoyant des DTO plats (jamais d'entité EF). Les 11 dernières entrées (héritées de P2D-4/5/6) ont été
+        // retirées lors des sous-étapes de P2D-7 :
+        //   - P2D-7A/6 (Ventes) : "SaleFormViewModel -> IProductRepository", "SaleFormViewModel -> IPrescriptionRepository"
+        //     et les pass-through "CustomerDetailViewModel -> IProductRepository / -> IPrescriptionRepository",
+        //     "CustomersViewModel -> IProductRepository / -> IPrescriptionRepository"
+        //     → IGetSaleFormReferenceDataUseCase (référence du formulaire de vente : ordonnance active + catalogue projeté).
+        //   - P2D-7B (Commandes) : "OrdersViewModel -> IOrderRepository" → IGetOrderDetailsUseCase (fiche détaillée /
+        //     formulaire d'édition alimentés par OrderDetailsDto).
+        //   - P2D-7C (Clients) : "CustomersListViewModel -> ICustomerRepository", "CustomersViewModel -> ICustomerRepository"
+        //     → IListCustomersUseCase (liste / détail / édition sur CustomerListItemDto).
+        //   - P2D-7D (Produits) : "ProductsListViewModel -> IProductRepository", "ProductsViewModel -> IProductRepository"
+        //     → IListProductsUseCase (liste / fiche détaillée + historique de commandes / formulaire d'édition sur
+        //     ProductListItemDto).
+        // RÈGLE INCHANGÉE : cette allowlist ne doit que DIMINUER. Elle est désormais à zéro et doit le rester.
     };
 
     /// <summary>

@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
 using MMV.App.Commands;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Orders.GetOrderDetails;
 using MMV.Domain.Enums;
 
 namespace MMV.App.ViewModels;
@@ -13,12 +13,12 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class FabricationSheetViewModel : BaseViewModel
 {
-    private Order? _order;
-    private ObservableCollection<OrderItem> _items = new();
+    private OrderDetailsDto? _order;
+    private ObservableCollection<OrderDetailsItemDto> _items = new();
 
     #region Properties
 
-    public Order? Order
+    public OrderDetailsDto? Order
     {
         get => _order;
         set
@@ -45,7 +45,7 @@ public class FabricationSheetViewModel : BaseViewModel
         }
     }
 
-    public ObservableCollection<OrderItem> Items
+    public ObservableCollection<OrderDetailsItemDto> Items
     {
         get => _items;
         set => SetProperty(ref _items, value);
@@ -66,11 +66,11 @@ public class FabricationSheetViewModel : BaseViewModel
     public string CustomerPhone => Order?.Sale?.Customer?.Phone ?? "—";
 
     // Articles par type
-    public OrderItem? FrameItem => Order?.OrderItems?.FirstOrDefault(i => i.ItemType == OrderItemType.Frame);
-    public OrderItem? LensOdItem => Order?.OrderItems?.FirstOrDefault(i => i.ItemType == OrderItemType.LensOd);
-    public OrderItem? LensOgItem => Order?.OrderItems?.FirstOrDefault(i => i.ItemType == OrderItemType.LensOg);
-    public OrderItem[] Accessories => Order?.OrderItems?.Where(i => i.ItemType == OrderItemType.Accessory).ToArray()
-                                      ?? Array.Empty<OrderItem>();
+    public OrderDetailsItemDto? FrameItem => Order?.Items?.FirstOrDefault(i => i.ItemType == OrderItemType.Frame);
+    public OrderDetailsItemDto? LensOdItem => Order?.Items?.FirstOrDefault(i => i.ItemType == OrderItemType.LensOd);
+    public OrderDetailsItemDto? LensOgItem => Order?.Items?.FirstOrDefault(i => i.ItemType == OrderItemType.LensOg);
+    public OrderDetailsItemDto[] Accessories => Order?.Items?.Where(i => i.ItemType == OrderItemType.Accessory).ToArray()
+                                      ?? Array.Empty<OrderDetailsItemDto>();
 
     public bool HasFrame => FrameItem != null;
     public bool HasLensOd => LensOdItem != null;
@@ -100,9 +100,9 @@ public class FabricationSheetViewModel : BaseViewModel
     /// <summary>
     /// Initialise la fiche avec une commande.
     /// </summary>
-    public void Initialize(Order order)
+    public void Initialize(OrderDetailsDto order)
     {
         Order = order;
-        Items = new ObservableCollection<OrderItem>(order.OrderItems ?? Array.Empty<OrderItem>());
+        Items = new ObservableCollection<OrderDetailsItemDto>(order.Items);
     }
 }

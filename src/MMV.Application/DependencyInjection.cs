@@ -1,11 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using MMV.Application.UseCases.Customers.CreateCustomer;
 using MMV.Application.UseCases.Customers.DeleteCustomer;
+using MMV.Application.UseCases.Customers.ListCustomers;
 using MMV.Application.UseCases.Customers.ListCustomersForPicker;
 using MMV.Application.UseCases.Customers.UpdateCustomer;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Orders.DeleteOrder;
+using MMV.Application.UseCases.Orders.GetOrderDetails;
 using MMV.Application.UseCases.Orders.ListOrders;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Application.UseCases.Orders.UpdateOrder;
@@ -20,10 +22,12 @@ using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Application.UseCases.Products.CreateProduct;
 using MMV.Application.UseCases.Products.DeleteProduct;
 using MMV.Application.UseCases.Products.GetInventoryOverview;
+using MMV.Application.UseCases.Products.ListProducts;
 using MMV.Application.UseCases.Products.ListProductsForOrderPicker;
 using MMV.Application.UseCases.Products.ListProductsForPicker;
 using MMV.Application.UseCases.Products.UpdateProduct;
 using MMV.Application.UseCases.Sales.GetCustomerPurchaseHistory;
+using MMV.Application.UseCases.Sales.GetSaleFormReferenceData;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
 using MMV.Application.UseCases.Stock.ListStockMovements;
@@ -205,6 +209,17 @@ public static class DependencyInjection
         services.AddScoped<IListOrdersUseCase, ListOrdersUseCase>();
         services.AddScoped<IListCustomersForPickerUseCase, ListCustomersForPickerUseCase>();
         services.AddScoped<IListProductsForOrderPickerUseCase, ListProductsForOrderPickerUseCase>();
+
+        // P2D-7 — Clôture P2D (lectures restantes). Soldent les 11 dernières dépendances I…Repository de l'UI :
+        // données de référence du formulaire de vente (catalogue + ordonnance active), fiche détaillée de commande
+        // (threading vers le formulaire d'ÉDITION), liste clients (threading vers fiche + formulaire d'ÉDITION) et
+        // liste produit à graphe (threading vers fiche + formulaire d'ÉDITION). Portée Scoped (même portée
+        // qu'OpticDbContext / repositories). Chaque query projette vers des DTO plats/composites : aucune entité EF
+        // suivie ne franchit la frontière UI.
+        services.AddScoped<IGetSaleFormReferenceDataUseCase, GetSaleFormReferenceDataUseCase>();
+        services.AddScoped<IGetOrderDetailsUseCase, GetOrderDetailsUseCase>();
+        services.AddScoped<IListCustomersUseCase, ListCustomersUseCase>();
+        services.AddScoped<IListProductsUseCase, ListProductsUseCase>();
         return services;
     }
 }

@@ -5,11 +5,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
+using MMV.Application.UseCases.Sales.GetSaleFormReferenceData;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -20,11 +21,11 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class SaleFormViewModel : BaseViewModel
 {
-    // Repositories conservés UNIQUEMENT pour le chargement d'écran (InitializeForCustomerAsync) :
-    // ordonnance active du client et catalogue produits. Ils ne participent plus à la sauvegarde de la
-    // vente (migrée vers RegisterSaleUseCase, P2B-2C).
-    private readonly IProductRepository? _productRepository;
-    private readonly IPrescriptionRepository? _prescriptionRepository;
+    // P2D-7A : le chargement d'écran (InitializeForCustomerAsync) — ordonnance active du client et catalogue
+    // produits — passe désormais par le query use case Application ci-dessous, qui renvoie des DTO plats (jamais
+    // les entités EF Prescription/Product). Il ne participe pas à la sauvegarde de la vente (RegisterSaleUseCase,
+    // P2B-2C).
+    private readonly IGetSaleFormReferenceDataUseCase? _getSaleFormReferenceDataUseCase;
 
     /// <summary>
     /// Use case applicatif « Enregistrer une vente en magasin » (P2B-2C) : <b>obligatoire</b>. La ViewModel
@@ -49,19 +50,19 @@ public class SaleFormViewModel : BaseViewModel
     private ObservableCollection<OrderItem> _orderItems = new();
 
     // Prescription
-    private Prescription? _activePrescription;
+    private PrescriptionListItemDto? _activePrescription;
     private bool _hasPrescription;
     private string _prescriptionSummary = string.Empty;
     private string _suggestedGlassType = string.Empty;
 
     // Produits
-    private ObservableCollection<Product> _allProducts = new();
-    private ObservableCollection<Product> _filteredProducts = new();
-    private ObservableCollection<Product> _suggestedGlasses = new();
-    private ObservableCollection<Product> _compatibleFrames = new();
+    private ObservableCollection<SaleProductPickerItemDto> _allProducts = new();
+    private ObservableCollection<SaleProductPickerItemDto> _filteredProducts = new();
+    private ObservableCollection<SaleProductPickerItemDto> _suggestedGlasses = new();
+    private ObservableCollection<SaleProductPickerItemDto> _compatibleFrames = new();
     private string _productSearchText = string.Empty;
     private string _selectedCategoryFilter = "Tous";
-    private Product? _selectedProduct;
+    private SaleProductPickerItemDto? _selectedProduct;
     private int _addQuantity = 1;
 
     #region Properties - Vente
@@ -201,7 +202,7 @@ public class SaleFormViewModel : BaseViewModel
     /// <summary>
     /// Ordonnance active du client (la plus récente).
     /// </summary>
-    public Prescription? ActivePrescription
+    public PrescriptionListItemDto? ActivePrescription
     {
         get => _activePrescription;
         set
@@ -248,7 +249,7 @@ public class SaleFormViewModel : BaseViewModel
     /// <summary>
     /// Tous les produits actifs.
     /// </summary>
-    public ObservableCollection<Product> AllProducts
+    public ObservableCollection<SaleProductPickerItemDto> AllProducts
     {
         get => _allProducts;
         set => SetProperty(ref _allProducts, value);
@@ -257,7 +258,7 @@ public class SaleFormViewModel : BaseViewModel
     /// <summary>
     /// Produits filtrés par recherche et catégorie.
     /// </summary>
-    public ObservableCollection<Product> FilteredProducts
+    public ObservableCollection<SaleProductPickerItemDto> FilteredProducts
     {
         get => _filteredProducts;
         set => SetProperty(ref _filteredProducts, value);
@@ -266,7 +267,7 @@ public class SaleFormViewModel : BaseViewModel
     /// <summary>
     /// Verres suggérés compatibles avec l'ordonnance.
     /// </summary>
-    public ObservableCollection<Product> SuggestedGlasses
+    public ObservableCollection<SaleProductPickerItemDto> SuggestedGlasses
     {
         get => _suggestedGlasses;
         set => SetProperty(ref _suggestedGlasses, value);
@@ -275,7 +276,7 @@ public class SaleFormViewModel : BaseViewModel
     /// <summary>
     /// Montures compatibles.
     /// </summary>
-    public ObservableCollection<Product> CompatibleFrames
+    public ObservableCollection<SaleProductPickerItemDto> CompatibleFrames
     {
         get => _compatibleFrames;
         set => SetProperty(ref _compatibleFrames, value);
@@ -314,7 +315,7 @@ public class SaleFormViewModel : BaseViewModel
     /// <summary>
     /// Produit sélectionné dans la liste pour ajout.
     /// </summary>
-    public Product? SelectedProduct
+    public SaleProductPickerItemDto? SelectedProduct
     {
         get => _selectedProduct;
         set => SetProperty(ref _selectedProduct, value);
@@ -378,19 +379,17 @@ public class SaleFormViewModel : BaseViewModel
     #endregion
 
     public SaleFormViewModel(
-        IProductRepository? productRepository,
-        IPrescriptionRepository? prescriptionRepository,
+        IGetSaleFormReferenceDataUseCase? getSaleFormReferenceDataUseCase,
         IRegisterSaleUseCase registerSaleUseCase)
     {
-        _productRepository = productRepository;
-        _prescriptionRepository = prescriptionRepository;
+        _getSaleFormReferenceDataUseCase = getSaleFormReferenceDataUseCase;
         // Use case de sauvegarde obligatoire (P2B-2C) : la ViewModel n'orchestre plus la persistance
         // (transaction, numérotation, décrément de stock, mouvements) — elle délègue intégralement.
         _registerSaleUseCase = registerSaleUseCase ?? throw new ArgumentNullException(nameof(registerSaleUseCase));
 
         SaveCommand = new RelayCommand(ExecuteSave);
         CancelCommand = new RelayCommand(ExecuteCancel);
-        AddToCartCommand = new RelayCommand<Product>(ExecuteAddToCart);
+        AddToCartCommand = new RelayCommand<SaleProductPickerItemDto>(ExecuteAddToCart);
         RemoveFromCartCommand = new RelayCommand<OrderItem>(ExecuteRemoveFromCart);
 
         Title = "Nouvelle Vente";
@@ -407,17 +406,17 @@ public class SaleFormViewModel : BaseViewModel
 
         try
         {
-            // Charger l'ordonnance la plus récente du client
-            if (_prescriptionRepository != null)
+            if (_getSaleFormReferenceDataUseCase != null)
             {
-                ActivePrescription = await _prescriptionRepository.GetLatestByCustomerIdAsync(customerId);
-            }
+                var referenceData = await _getSaleFormReferenceDataUseCase.ExecuteAsync(
+                    new GetSaleFormReferenceDataQuery { CustomerId = customerId });
 
-            // Charger tous les produits actifs
-            if (_productRepository != null)
-            {
-                var products = await _productRepository.GetAllAsync();
-                AllProducts = new ObservableCollection<Product>(products.Where(p => p.IsActive));
+                // Charger l'ordonnance la plus récente du client
+                ActivePrescription = referenceData.ActivePrescription;
+
+                // Charger tous les produits actifs
+                AllProducts = new ObservableCollection<SaleProductPickerItemDto>(
+                    referenceData.Products.Where(p => p.IsActive));
 
                 // Filtrer les verres compatibles avec l'ordonnance
                 if (ActivePrescription != null)
@@ -426,7 +425,7 @@ public class SaleFormViewModel : BaseViewModel
                 }
 
                 // Charger les montures
-                CompatibleFrames = new ObservableCollection<Product>(
+                CompatibleFrames = new ObservableCollection<SaleProductPickerItemDto>(
                     AllProducts.Where(p => p.Category == ProductCategoryEnum.MONTURE && p.StockQuantity > 0)
                     .OrderBy(p => p.Name));
 
@@ -453,7 +452,7 @@ public class SaleFormViewModel : BaseViewModel
         if (ActivePrescription == null) return;
 
         var glasses = AllProducts.Where(p => p.Category == ProductCategoryEnum.VERRE && p.GlassDetail != null).ToList();
-        var compatible = new List<Product>();
+        var compatible = new List<SaleProductPickerItemDto>();
 
         // Déterminer le type de verre nécessaire
         var suggestedType = DetermineSuggestedGlassType(ActivePrescription);
@@ -521,7 +520,7 @@ public class SaleFormViewModel : BaseViewModel
             }
         }
 
-        SuggestedGlasses = new ObservableCollection<Product>(compatible.OrderBy(p => p.SalePrice));
+        SuggestedGlasses = new ObservableCollection<SaleProductPickerItemDto>(compatible.OrderBy(p => p.SalePrice));
     }
 
     /// <summary>
@@ -529,7 +528,7 @@ public class SaleFormViewModel : BaseViewModel
     /// - Pas d'addition → SF (Simple Foyer)
     /// - Addition présente → MF (Progressif) ou DF (Double Foyer)
     /// </summary>
-    private GlassType? DetermineSuggestedGlassType(Prescription prescription)
+    private GlassType? DetermineSuggestedGlassType(PrescriptionListItemDto prescription)
     {
         bool hasAddition = (prescription.OdAddition.HasValue && prescription.OdAddition.Value > 0)
                         || (prescription.OgAddition.HasValue && prescription.OgAddition.Value > 0);
@@ -551,7 +550,7 @@ public class SaleFormViewModel : BaseViewModel
     /// <summary>
     /// Calcule la puissance maximale requise par l'ordonnance.
     /// </summary>
-    private double GetMaxRequiredPower(Prescription prescription)
+    private double GetMaxRequiredPower(PrescriptionListItemDto prescription)
     {
         double max = 0;
 
@@ -622,7 +621,7 @@ public class SaleFormViewModel : BaseViewModel
     /// </summary>
     private void ApplyProductFilter()
     {
-        IEnumerable<Product> source;
+        IEnumerable<SaleProductPickerItemDto> source;
 
         switch (SelectedCategoryFilter)
         {
@@ -665,14 +664,30 @@ public class SaleFormViewModel : BaseViewModel
             p.Category == ProductCategoryEnum.VERRE || 
             p.Category == ProductCategoryEnum.LENTILLE);
 
-        FilteredProducts = new ObservableCollection<Product>(source.OrderBy(p => p.Name));
+        FilteredProducts = new ObservableCollection<SaleProductPickerItemDto>(source.OrderBy(p => p.Name));
     }
+
+    /// <summary>
+    /// Construit un porteur d'affichage <see cref="Product"/> transitoire (jamais chargé depuis un repository, jamais
+    /// suivi/persisté) à partir d'un <see cref="SaleProductPickerItemDto"/>, uniquement pour alimenter la navigation
+    /// <see cref="OrderItem.Product"/> consommée par les liaisons d'affichage du panier (<c>Product.Name</c> /
+    /// <c>Product.Reference</c>). Le panier reste, comme avant P2D-7A, composé d'entités <see cref="OrderItem"/> non
+    /// suivies : seule la source du catalogue (avant migration, l'entité EF chargée par repository) devient un DTO.
+    /// </summary>
+    private static Product BuildCartDisplayProduct(SaleProductPickerItemDto product) => new()
+    {
+        ProductId = product.ProductId,
+        Reference = product.Reference,
+        Name = product.Name,
+        Category = product.Category,
+        SalePrice = product.SalePrice,
+    };
 
     /// <summary>
     /// Ajoute le produit sélectionné au panier.
     /// Pour les verres : crée automatiquement 2 articles (OD + OG) avec les paramètres de l'ordonnance.
     /// </summary>
-    private void ExecuteAddToCart(Product? product)
+    private void ExecuteAddToCart(SaleProductPickerItemDto? product)
     {
         if (product == null) return;
 
@@ -692,7 +707,7 @@ public class SaleFormViewModel : BaseViewModel
             var orderItemOd = new OrderItem
             {
                 ProductId = product.ProductId,
-                Product = product,
+                Product = BuildCartDisplayProduct(product),
                 ItemType = OrderItemType.LensOd,
                 Quantity = AddQuantity,
                 UnitPrice = product.SalePrice,
@@ -710,7 +725,7 @@ public class SaleFormViewModel : BaseViewModel
             var orderItemOg = new OrderItem
             {
                 ProductId = product.ProductId,
-                Product = product,
+                Product = BuildCartDisplayProduct(product),
                 ItemType = OrderItemType.LensOg,
                 Quantity = AddQuantity,
                 UnitPrice = product.SalePrice,
@@ -745,7 +760,7 @@ public class SaleFormViewModel : BaseViewModel
                 var orderItem = new OrderItem
                 {
                     ProductId = product.ProductId,
-                    Product = product,
+                    Product = BuildCartDisplayProduct(product),
                     ItemType = DetermineOrderItemType(product),
                     Quantity = AddQuantity,
                     UnitPrice = product.SalePrice
@@ -931,7 +946,7 @@ public class SaleFormViewModel : BaseViewModel
     /// <summary>
     /// Détermine le type d'OrderItem en fonction de la catégorie du produit.
     /// </summary>
-    private OrderItemType DetermineOrderItemType(Product product)
+    private OrderItemType DetermineOrderItemType(SaleProductPickerItemDto product)
     {
         return product.Category switch
         {

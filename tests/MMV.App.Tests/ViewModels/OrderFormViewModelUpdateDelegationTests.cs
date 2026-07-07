@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Customers.ListCustomersForPicker;
 using MMV.Application.UseCases.Orders.CreateOrder;
+using MMV.Application.UseCases.Orders.GetOrderDetails;
 using MMV.Application.UseCases.Orders.UpdateOrder;
 using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using MMV.Application.UseCases.Products.ListProductsForOrderPicker;
@@ -94,7 +95,7 @@ public class OrderFormViewModelUpdateDelegationTests
     };
 
     /// <summary>Construit une commande existante (avec vente/client et une ligne valide) à éditer.</summary>
-    private static Order BuildExistingOrder() => new()
+    private static OrderDetailsDto BuildExistingOrder() => GetOrderDetailsUseCase.MapToDto(new Order
     {
         OrderId = OrderId,
         OrderNumber = "CMD-000100",
@@ -107,7 +108,7 @@ public class OrderFormViewModelUpdateDelegationTests
         {
             new() { OrderItemId = 1, ProductId = ProductId, ItemType = OrderItemType.Frame, Quantity = 1, UnitPrice = 20m }
         }
-    };
+    });
 
     /// <summary>
     /// Construit une ViewModel en mode <b>édition</b>, initialisée (clients/produits chargés, commande existante

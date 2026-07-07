@@ -2,7 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using MMV.App.ViewModels;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Customers.ListCustomers;
 
 namespace MMV.App.Views.Clients;
 
@@ -18,7 +18,7 @@ public partial class CustomersView : UserControl
         if (DataContext is CustomersViewModel vm)
         {
             // Créer un nouveau client vide avec les propriétés de base
-            vm.CustomersListViewModel.SelectedCustomer = new Customer
+            vm.CustomersListViewModel.SelectedCustomer = new CustomerListItemDto
             {
                 FirstName = string.Empty,
                 LastName = string.Empty,
@@ -71,7 +71,7 @@ public partial class CustomersView : UserControl
 
     private void Border_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is Border border && border.DataContext is Customer customer)
+        if (sender is Border border && border.DataContext is CustomerListItemDto customer)
         {
             if (DataContext is CustomersViewModel vm)
             {

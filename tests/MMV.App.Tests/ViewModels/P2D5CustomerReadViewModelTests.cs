@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
+using MMV.Application.UseCases.Customers.ListCustomers;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Prescriptions.DeletePrescription;
 using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Application.UseCases.Sales.GetCustomerPurchaseHistory;
-using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using Moq;
 using Xunit;
@@ -75,7 +75,7 @@ public sealed class P2D5CustomerReadViewModelTests
     [Fact]
     public async Task CustomerInfo_LoadsSales_FromQueryUseCase_AndKeepsCustomer()
     {
-        var customer = new Customer { CustomerId = 7, FirstName = "Alice", LastName = "Martin" };
+        var customer = new CustomerListItemDto { CustomerId = 7, FirstName = "Alice", LastName = "Martin" };
         var useCase = PurchaseHistoryReturning(
             new CustomerSaleItemDto { SaleId = 1, SaleNumber = "VTE-1", SaleDate = new DateTime(2026, 6, 1), FinalAmount = 250m, Status = SaleStatus.Delivered });
 
@@ -91,7 +91,7 @@ public sealed class P2D5CustomerReadViewModelTests
     [Fact]
     public async Task CustomerInfo_WithoutUseCase_DoesNotLoad()
     {
-        var customer = new Customer { CustomerId = 7, FirstName = "Alice", LastName = "Martin" };
+        var customer = new CustomerListItemDto { CustomerId = 7, FirstName = "Alice", LastName = "Martin" };
         var vm = new CustomerInfoViewModel(customer);
 
         await vm.LoadSalesAsync();

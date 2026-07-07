@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Products.CreateProduct;
+using MMV.Application.UseCases.Products.ListProducts;
 using MMV.Application.UseCases.Products.UpdateProduct;
 using MMV.Application.UseCases.Suppliers.ListSuppliers;
-using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 
 namespace MMV.App.ViewModels;
@@ -23,13 +23,18 @@ namespace MMV.App.ViewModels;
 /// <see cref="IListSuppliersUseCase"/> (réutilisé de P2D-2), qui renvoie des <see cref="SupplierListItemDto"/> plats
 /// (jamais l'entité EF <c>Supplier</c>). <c>ISupplierRepository</c> a été retiré.
 /// </para>
+/// <para>
+/// P2D-7D : le pré-remplissage en édition reçoit un <see cref="ProductListItemDto"/> (projeté par
+/// <c>IListProductsUseCase</c>) au lieu de l'entité EF <c>Product</c> ; la persistance reste portée par les
+/// use cases de création/mise à jour.
+/// </para>
 /// </summary>
 public class ProductFormViewModel : BaseViewModel
 {
     private readonly IListSuppliersUseCase _listSuppliersUseCase;
     private readonly ICreateProductUseCase _createProductUseCase;
     private readonly IUpdateProductUseCase _updateProductUseCase;
-    private readonly Product? _existingProduct;
+    private readonly ProductListItemDto? _existingProduct;
 
     private long _productId;
     private string _reference = string.Empty;
@@ -449,7 +454,7 @@ public class ProductFormViewModel : BaseViewModel
         IListSuppliersUseCase listSuppliersUseCase,
         ICreateProductUseCase createProductUseCase,
         IUpdateProductUseCase updateProductUseCase,
-        Product product) : this(listSuppliersUseCase, createProductUseCase, updateProductUseCase)
+        ProductListItemDto product) : this(listSuppliersUseCase, createProductUseCase, updateProductUseCase)
     {
         _existingProduct = product;
         Title = "Modifier produit";
@@ -474,7 +479,7 @@ public class ProductFormViewModel : BaseViewModel
     /// <summary>
     /// Charge les détails spécifiques (Glass, Lens, Accessory) du produit dans les propriétés du formulaire.
     /// </summary>
-    private void LoadCategorySpecificDetails(Product product)
+    private void LoadCategorySpecificDetails(ProductListItemDto product)
     {
         switch (product.Category)
         {

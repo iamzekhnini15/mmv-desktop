@@ -3,23 +3,27 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
 using MMV.App.Commands;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Products.ListProducts;
 using MMV.Domain.Enums;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour la fiche détaillée d'un produit.
+/// <para>
+/// P2D-7D : consomme un <see cref="ProductListItemDto"/> (projeté par <c>IListProductsUseCase</c>) au lieu de
+/// l'entité EF <c>Product</c> ; l'historique de commandes est porté par <see cref="ProductOrderHistoryItemDto"/>.
+/// </para>
 /// </summary>
 public class ProductDetailViewModel : BaseViewModel
 {
-    private Product? _product;
-    private ObservableCollection<OrderItem> _orderHistory = new();
+    private ProductListItemDto? _product;
+    private ObservableCollection<ProductOrderHistoryItemDto> _orderHistory = new();
 
     /// <summary>
     /// Produit en cours de consultation.
     /// </summary>
-    public Product? Product
+    public ProductListItemDto? Product
     {
         get => _product;
         set => SetProperty(ref _product, value);
@@ -48,7 +52,7 @@ public class ProductDetailViewModel : BaseViewModel
     /// <summary>
     /// Historique des commandes contenant ce produit.
     /// </summary>
-    public ObservableCollection<OrderItem> OrderHistory
+    public ObservableCollection<ProductOrderHistoryItemDto> OrderHistory
     {
         get => _orderHistory;
         set => SetProperty(ref _orderHistory, value);
@@ -104,8 +108,8 @@ public class ProductDetailViewModel : BaseViewModel
     public ICommand DeleteCommand => _deleteCommand ??= new RelayCommand(ExecuteDelete, CanEditOrDelete);
 
     public event EventHandler? BackRequested;
-    public event EventHandler<Product>? EditRequested;
-    public event EventHandler<Product>? DeleteRequested;
+    public event EventHandler<ProductListItemDto>? EditRequested;
+    public event EventHandler<ProductListItemDto>? DeleteRequested;
 
     public ProductDetailViewModel()
     {
@@ -113,7 +117,7 @@ public class ProductDetailViewModel : BaseViewModel
         Title = "Fiche Produit";
     }
 
-    public void Initialize(Product product)
+    public void Initialize(ProductListItemDto product)
     {
         Product = product;
         Title = $"Fiche - {product.Name}";
@@ -149,12 +153,13 @@ public class ProductDetailViewModel : BaseViewModel
 
     private void LoadOrderHistory()
     {
-        if (Product?.OrderItems != null)
+        if (Product?.OrderHistory != null)
         {
-            var sortedOrders = Product.OrderItems
+            // L'historique est déjà trié (récent → ancien) par le query use case ; on conserve le tri par sécurité.
+            var sortedOrders = Product.OrderHistory
                 .OrderByDescending(oi => oi.Order?.OrderDate ?? DateTime.MinValue)
                 .ToList();
-            
+
             OrderHistory.Clear();
             foreach (var item in sortedOrders)
             {

@@ -9,6 +9,7 @@ using MMV.Application.UseCases.Customers.ListCustomersForPicker;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Orders.DeleteOrder;
+using MMV.Application.UseCases.Orders.GetOrderDetails;
 using MMV.Application.UseCases.Orders.ListOrders;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Application.UseCases.Orders.UpdateOrder;
@@ -17,7 +18,6 @@ using MMV.Application.UseCases.Products.ListProductsForOrderPicker;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Persistence;
-using MMV.Domain.Interfaces.Repositories;
 using Moq;
 using Xunit;
 
@@ -80,10 +80,10 @@ public class OrdersViewModelDeleteDelegationTests
     {
         var spy = new SpyDeleteOrderUseCase(behavior);
 
-        var orderRepo = new Mock<IOrderRepository>();
-        // GetWithItemsAsync est appelé par OnViewOrderDetail pour charger le détail (reliquat P2D-6 justifié).
-        orderRepo.Setup(r => r.GetWithItemsAsync(TestOrder.OrderId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(TestOrder);
+        var getOrderDetailsUseCase = new Mock<IGetOrderDetailsUseCase>();
+        // GetOrderDetailsUseCase est appelé par OnViewOrderDetail pour charger le détail (P2D-7B).
+        getOrderDetailsUseCase.Setup(u => u.ExecuteAsync(It.Is<GetOrderDetailsQuery>(q => q.OrderId == TestOrder.OrderId), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(GetOrderDetailsUseCase.MapToDto(TestOrder));
 
         // P2D-6 : la liste et le formulaire consomment désormais des query use cases (DTO), plus de repositories.
         var listOrdersUseCase = new Mock<IListOrdersUseCase>();
@@ -105,7 +105,7 @@ public class OrdersViewModelDeleteDelegationTests
             .Returns(Task.CompletedTask);
 
         var vm = new OrdersViewModel(
-            orderRepo.Object,
+            getOrderDetailsUseCase.Object,
             listOrdersUseCase.Object,
             listCustomersUseCase.Object,
             listProductsUseCase.Object,
@@ -225,7 +225,7 @@ public class OrdersViewModelDeleteDelegationTests
     [Fact]
     public void Constructor_WithoutDeleteOrderUseCase_Throws()
     {
-        var orderRepo = new Mock<IOrderRepository>();
+        var getOrderDetailsUseCase = new Mock<IGetOrderDetailsUseCase>();
 
         var listOrdersUseCase = new Mock<IListOrdersUseCase>();
         listOrdersUseCase.Setup(u => u.ExecuteAsync(It.IsAny<ListOrdersQuery>(), It.IsAny<CancellationToken>()))
@@ -241,7 +241,7 @@ public class OrdersViewModelDeleteDelegationTests
         var dialogService = new Mock<IDialogService>();
 
         Assert.Throws<ArgumentNullException>(() => new OrdersViewModel(
-            orderRepo.Object,
+            getOrderDetailsUseCase.Object,
             listOrdersUseCase.Object,
             listCustomersUseCase.Object,
             listProductsUseCase.Object,

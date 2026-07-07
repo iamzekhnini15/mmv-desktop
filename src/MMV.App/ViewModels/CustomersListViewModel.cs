@@ -5,8 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Customers.DeleteCustomer;
-using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
+using MMV.Application.UseCases.Customers.ListCustomers;
 
 namespace MMV.App.ViewModels;
 
@@ -15,12 +14,12 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class CustomersListViewModel : BaseViewModel
 {
-    private readonly ICustomerRepository _customerRepository;
+    private readonly IListCustomersUseCase _listCustomersUseCase;
     private readonly IDeleteCustomerUseCase _deleteCustomerUseCase;
 
-    private ObservableCollection<Customer> _customers;
-    private ObservableCollection<Customer> _filteredCustomers;
-    private Customer? _selectedCustomer;
+    private ObservableCollection<CustomerListItemDto> _customers;
+    private ObservableCollection<CustomerListItemDto> _filteredCustomers;
+    private CustomerListItemDto? _selectedCustomer;
     private string _searchText = string.Empty;
     private int _currentPage = 1;
     private int _pageSize = 20;
@@ -29,7 +28,7 @@ public class CustomersListViewModel : BaseViewModel
     /// <summary>
     /// Liste complète des clients.
     /// </summary>
-    public ObservableCollection<Customer> Customers
+    public ObservableCollection<CustomerListItemDto> Customers
     {
         get => _customers;
         set => SetProperty(ref _customers, value);
@@ -38,7 +37,7 @@ public class CustomersListViewModel : BaseViewModel
     /// <summary>
     /// Liste filtrée des clients (après recherche).
     /// </summary>
-    public ObservableCollection<Customer> FilteredCustomers
+    public ObservableCollection<CustomerListItemDto> FilteredCustomers
     {
         get => _filteredCustomers;
         set => SetProperty(ref _filteredCustomers, value);
@@ -47,7 +46,7 @@ public class CustomersListViewModel : BaseViewModel
     /// <summary>
     /// Client sélectionné dans la liste.
     /// </summary>
-    public Customer? SelectedCustomer
+    public CustomerListItemDto? SelectedCustomer
     {
         get => _selectedCustomer;
         set
@@ -131,24 +130,24 @@ public class CustomersListViewModel : BaseViewModel
     /// <summary>
     /// Événement déclenché quand on veut éditer un client.
     /// </summary>
-    public event EventHandler<Customer>? EditCustomerRequested;
+    public event EventHandler<CustomerListItemDto>? EditCustomerRequested;
 
     /// <summary>
     /// Événement déclenché quand on veut voir les détails d'un client.
     /// </summary>
-    public event EventHandler<Customer>? ViewCustomerDetailsRequested;
+    public event EventHandler<CustomerListItemDto>? ViewCustomerDetailsRequested;
 
-    public CustomersListViewModel(ICustomerRepository customerRepository, IDeleteCustomerUseCase deleteCustomerUseCase)
+    public CustomersListViewModel(IListCustomersUseCase listCustomersUseCase, IDeleteCustomerUseCase deleteCustomerUseCase)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersListViewModel] Constructor called");
-        // ICustomerRepository conservé pour les lectures d'affichage (LoadCustomersAsync) — dette P2C reportée
-        // vers des query use cases (cf. roadmap §6). La persistance (suppression) est désormais déléguée au
-        // IDeleteCustomerUseCase de la couche Application : plus aucun IUnitOfWork ni SaveChangesAsync ici.
-        _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
+        // P2D-7C : ICustomerRepository remplacé par IListCustomersUseCase (lectures d'affichage, LoadCustomersAsync).
+        // La persistance (suppression) reste déléguée à IDeleteCustomerUseCase de la couche Application : plus aucun
+        // IUnitOfWork ni SaveChangesAsync ici.
+        _listCustomersUseCase = listCustomersUseCase ?? throw new ArgumentNullException(nameof(listCustomersUseCase));
         _deleteCustomerUseCase = deleteCustomerUseCase ?? throw new ArgumentNullException(nameof(deleteCustomerUseCase));
 
-        _customers = new ObservableCollection<Customer>();
-        _filteredCustomers = new ObservableCollection<Customer>();
+        _customers = new ObservableCollection<CustomerListItemDto>();
+        _filteredCustomers = new ObservableCollection<CustomerListItemDto>();
         
         Title = "Gestion des Clients";
         
@@ -177,10 +176,10 @@ public class CustomersListViewModel : BaseViewModel
         try
         {
             // Récupérer tous les clients
-            var allCustomers = await _customerRepository.GetAllAsync();
+            var allCustomers = await _listCustomersUseCase.ExecuteAsync(new ListCustomersQuery());
             System.Diagnostics.Debug.WriteLine($"[CustomersListViewModel] Loaded {allCustomers.Count()} customers from database");
-            
-            Customers = new ObservableCollection<Customer>(allCustomers);
+
+            Customers = new ObservableCollection<CustomerListItemDto>(allCustomers);
             TotalCustomers = Customers.Count;
             System.Diagnostics.Debug.WriteLine($"[CustomersListViewModel] Total customers: {TotalCustomers}");
             
@@ -204,7 +203,7 @@ public class CustomersListViewModel : BaseViewModel
     {
         if (string.IsNullOrWhiteSpace(SearchText))
         {
-            FilteredCustomers = new ObservableCollection<Customer>(Customers);
+            FilteredCustomers = new ObservableCollection<CustomerListItemDto>(Customers);
             System.Diagnostics.Debug.WriteLine($"[CustomersListViewModel] ApplyFilter: showing all {FilteredCustomers.Count} customers");
         }
         else
@@ -216,8 +215,8 @@ public class CustomersListViewModel : BaseViewModel
                 (!string.IsNullOrEmpty(c.Email) && c.Email.ToLower().Contains(searchLower)) ||
                 (!string.IsNullOrEmpty(c.Phone) && c.Phone.Contains(SearchText))
             ).ToList();
-            
-            FilteredCustomers = new ObservableCollection<Customer>(filtered);
+
+            FilteredCustomers = new ObservableCollection<CustomerListItemDto>(filtered);
             System.Diagnostics.Debug.WriteLine($"[CustomersListViewModel] ApplyFilter with search '{SearchText}': found {FilteredCustomers.Count} customers");
         }
     }

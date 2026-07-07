@@ -1,8 +1,8 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using MMV.Application.UseCases.Customers.ListCustomers;
 using MMV.Application.UseCases.Sales.GetCustomerPurchaseHistory;
-using MMV.Domain.Entities;
 
 namespace MMV.App.ViewModels;
 
@@ -15,12 +15,13 @@ public class CustomerInfoViewModel : BaseViewModel
     // qui renvoie des DTO plats (CustomerSaleItemDto). Reste optionnel (null) pour préserver le comportement d'origine
     // (aucun chargement de ventes si non fourni).
     private readonly IGetCustomerPurchaseHistoryUseCase? _getPurchaseHistoryUseCase;
-    private Customer? _customer;
+    private CustomerListItemDto? _customer;
 
     /// <summary>
     /// Client dont on affiche les informations.
     /// </summary>
-    public Customer? Customer
+    /// <remarks>P2D-7C : entité EF <c>Customer</c> remplacée par le DTO applicatif <see cref="CustomerListItemDto"/>.</remarks>
+    public CustomerListItemDto? Customer
     {
         get => _customer;
         set => SetProperty(ref _customer, value);
@@ -36,7 +37,7 @@ public class CustomerInfoViewModel : BaseViewModel
     /// </summary>
     public bool HasSales => Sales.Count > 0;
 
-    public CustomerInfoViewModel(Customer customer, IGetCustomerPurchaseHistoryUseCase? getPurchaseHistoryUseCase = null)
+    public CustomerInfoViewModel(CustomerListItemDto customer, IGetCustomerPurchaseHistoryUseCase? getPurchaseHistoryUseCase = null)
     {
         Customer = customer;
         _getPurchaseHistoryUseCase = getPurchaseHistoryUseCase;

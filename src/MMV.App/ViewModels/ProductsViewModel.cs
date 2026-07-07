@@ -3,6 +3,7 @@ using MMV.App.Commands;
 using MMV.App.Services;
 using MMV.Application.UseCases.Products.CreateProduct;
 using MMV.Application.UseCases.Products.DeleteProduct;
+using MMV.Application.UseCases.Products.ListProducts;
 using MMV.Application.UseCases.Products.ListProductsForPicker;
 using MMV.Application.UseCases.Products.UpdateProduct;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
@@ -12,8 +13,6 @@ using MMV.Application.UseCases.Suppliers.DeleteSupplier;
 using MMV.Application.UseCases.Suppliers.GetSupplierWithProducts;
 using MMV.Application.UseCases.Suppliers.ListSuppliers;
 using MMV.Application.UseCases.Suppliers.UpdateSupplier;
-using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -27,9 +26,12 @@ namespace MMV.App.ViewModels;
 /// <para>
 /// P2D-4 : les lectures fournisseur (formulaire produit → <see cref="IListSuppliersUseCase"/>) et stock (mouvements →
 /// <see cref="IListStockMovementsUseCase"/> / <see cref="IListProductsForPickerUseCase"/>) passent par des query use
-/// cases. <c>ISupplierRepository</c> et <c>IStockMovementRepository</c> ont été retirés. Reliquat P2D : seul
-/// <see cref="IProductRepository"/> subsiste, pour construire <c>ProductsListViewModel</c> (liste produit à graphe
-/// d'entités feeding la fiche / le formulaire d'édition), non migré dans cette étape.
+/// cases. <c>ISupplierRepository</c> et <c>IStockMovementRepository</c> ont été retirés.
+/// </para>
+/// <para>
+/// P2D-7D : la lecture d'affichage des produits (liste → fiche → formulaire d'édition) passe par
+/// <see cref="IListProductsUseCase"/>, transmis à <c>ProductsListViewModel</c> ; les écrans manipulent des
+/// <see cref="ProductListItemDto"/> plats (plus d'entité EF <c>Product</c>). <c>IProductRepository</c> a été retiré.
 /// </para>
 /// </summary>
 public class ProductsViewModel : BaseViewModel
@@ -45,7 +47,7 @@ public class ProductsViewModel : BaseViewModel
     private bool _isShowingDetail;
     private string _errorMessage = string.Empty;
     private ICommand? _viewDetailCommand;
-    private readonly IProductRepository _productRepository;
+    private readonly IListProductsUseCase _listProductsUseCase;
     private readonly IDialogService _dialogService;
     private readonly ICreateStockMovementUseCase _createStockMovementUseCase;
     private readonly ICreateProductUseCase _createProductUseCase;
@@ -197,13 +199,13 @@ public class ProductsViewModel : BaseViewModel
     /// <summary>
     /// Commande pour afficher la fiche détaillée d'un produit.
     /// </summary>
-    public ICommand ViewDetailCommand => _viewDetailCommand ??= new RelayCommand<Product>(ExecuteViewDetail, CanViewDetail);
+    public ICommand ViewDetailCommand => _viewDetailCommand ??= new RelayCommand<ProductListItemDto>(ExecuteViewDetail, CanViewDetail);
 
     /// <summary>
     /// Initialise le ViewModel avec injection de dépendances.
     /// </summary>
     public ProductsViewModel(
-        IProductRepository productRepository,
+        IListProductsUseCase listProductsUseCase,
         IDialogService dialogService,
         ICreateStockMovementUseCase createStockMovementUseCase,
         ICreateProductUseCase createProductUseCase,
@@ -217,7 +219,7 @@ public class ProductsViewModel : BaseViewModel
         IListStockMovementsUseCase listStockMovementsUseCase,
         IListProductsForPickerUseCase listProductsForPickerUseCase)
     {
-        _productRepository = productRepository;
+        _listProductsUseCase = listProductsUseCase ?? throw new ArgumentNullException(nameof(listProductsUseCase));
         _dialogService = dialogService;
         // P2B-2F : transmis à StockMovementsViewModel → formulaire pour déléguer la création de mouvement manuel.
         _createStockMovementUseCase = createStockMovementUseCase ?? throw new ArgumentNullException(nameof(createStockMovementUseCase));
@@ -237,7 +239,7 @@ public class ProductsViewModel : BaseViewModel
         _listProductsForPickerUseCase = listProductsForPickerUseCase ?? throw new ArgumentNullException(nameof(listProductsForPickerUseCase));
 
         // Initialiser le ViewModel de la liste
-        _productsListViewModel = new ProductsListViewModel(productRepository, deleteProductUseCase);
+        _productsListViewModel = new ProductsListViewModel(listProductsUseCase, deleteProductUseCase);
 
         // S'abonner aux événements de la liste
         _productsListViewModel.CreateProductRequested += OnCreateProductRequested;
@@ -279,7 +281,7 @@ public class ProductsViewModel : BaseViewModel
     /// <summary>
     /// Gère la demande d'édition d'un produit existant.
     /// </summary>
-    private async void OnEditProductRequested(object? sender, Product product)
+    private async void OnEditProductRequested(object? sender, ProductListItemDto product)
     {
         try
         {
@@ -367,12 +369,12 @@ public class ProductsViewModel : BaseViewModel
         IsShowingStockMovements = false;
     }
 
-    private bool CanViewDetail(Product? product)
+    private bool CanViewDetail(ProductListItemDto? product)
     {
         return product != null && product.ProductId > 0;
     }
 
-    private void ExecuteViewDetail(Product? product)
+    private void ExecuteViewDetail(ProductListItemDto? product)
     {
         if (product == null) return;
 
@@ -391,13 +393,13 @@ public class ProductsViewModel : BaseViewModel
         CloseDetail();
     }
 
-    private void OnDetailEditRequested(object? sender, Product product)
+    private void OnDetailEditRequested(object? sender, ProductListItemDto product)
     {
         CloseDetail();
         OnEditProductRequested(this, product);
     }
 
-    private void OnDetailDeleteRequested(object? sender, Product product)
+    private void OnDetailDeleteRequested(object? sender, ProductListItemDto product)
     {
         ProductsListViewModel.SelectedProduct = product;
         if (ProductsListViewModel.DeleteCommand.CanExecute(null))
@@ -410,7 +412,7 @@ public class ProductsViewModel : BaseViewModel
     /// <summary>
     /// Gère la demande de suppression avec confirmation.
     /// </summary>
-    private async void OnDeleteProductRequested(object? sender, Product product)
+    private async void OnDeleteProductRequested(object? sender, ProductListItemDto product)
     {
         if (product == null) return;
 

@@ -3,8 +3,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Customers.CreateCustomer;
+using MMV.Application.UseCases.Customers.ListCustomers;
 using MMV.Application.UseCases.Customers.UpdateCustomer;
-using MMV.Domain.Entities;
 using Xunit;
 using Moq;
 
@@ -102,7 +102,7 @@ public class CustomerFormViewModelTests
             .Callback<CreateCustomerCommand, CancellationToken>((c, _) => captured = c)
             .ReturnsAsync(new CreateCustomerResult { CustomerId = 42, DisplayName = "Jean Dupont" });
 
-        Customer? savedCustomer = null;
+        CustomerListItemDto? savedCustomer = null;
         _viewModel.CustomerSaved += (_, customer) => savedCustomer = customer;
 
         _viewModel.SaveCommand.Execute(null);
@@ -128,14 +128,13 @@ public class CustomerFormViewModelTests
     [Fact]
     public async Task SaveCommand_Execute_DelegatesToUpdateUseCase_WhenEditing()
     {
-        var existingCustomer = new Customer
+        var existingCustomer = new CustomerListItemDto
         {
             CustomerId = 7,
             FirstName = "Jean",
             LastName = "Dupont",
             Email = "jean@example.com",
             CreatedAt = DateTime.UtcNow.AddDays(-10),
-            UpdatedAt = DateTime.UtcNow.AddDays(-10)
         };
 
         _viewModel.InitializeForEdit(existingCustomer);
@@ -168,7 +167,7 @@ public class CustomerFormViewModelTests
     [Fact]
     public async Task SaveCommand_Execute_UpdateNotFound_ShowsError_AndDoesNotFireSaved()
     {
-        var existingCustomer = new Customer { CustomerId = 99, FirstName = "Ghost", LastName = "User" };
+        var existingCustomer = new CustomerListItemDto { CustomerId = 99, FirstName = "Ghost", LastName = "User" };
         _viewModel.InitializeForEdit(existingCustomer);
 
         _mockUpdate
@@ -259,7 +258,7 @@ public class CustomerFormViewModelTests
     [Fact]
     public void InitializeForEdit_LoadsCustomerData()
     {
-        var customer = new Customer
+        var customer = new CustomerListItemDto
         {
             CustomerId = 123,
             FirstName = "Marie",
@@ -287,7 +286,7 @@ public class CustomerFormViewModelTests
     [Fact]
     public void InitializeForEdit_SaveCommandIsEnabled()
     {
-        var customer = new Customer
+        var customer = new CustomerListItemDto
         {
             CustomerId = 123,
             FirstName = "Marie",

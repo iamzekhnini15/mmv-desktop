@@ -4,16 +4,17 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
+using MMV.Application.UseCases.Customers.ListCustomers;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Prescriptions.DeletePrescription;
 using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Application.UseCases.Sales.GetCustomerPurchaseHistory;
+using MMV.Application.UseCases.Sales.GetSaleFormReferenceData;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
-using MMV.Domain.Interfaces.Repositories;
 using Moq;
 using Xunit;
 
@@ -72,7 +73,7 @@ public class SaleFormViewModelTransactionTests
     }
 
     private static SaleFormViewModel BuildViewModel(IRegisterSaleUseCase useCase)
-        => new(productRepository: null, prescriptionRepository: null, useCase);
+        => new(getSaleFormReferenceDataUseCase: null, useCase);
 
     private static OrderItem FrameItem() => new()
     {
@@ -226,7 +227,7 @@ public class SaleFormViewModelTransactionTests
     public void Constructor_WithoutRegisterSaleUseCase_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => new SaleFormViewModel(
-            productRepository: null, prescriptionRepository: null, registerSaleUseCase: null!));
+            getSaleFormReferenceDataUseCase: null, registerSaleUseCase: null!));
     }
 
     // ------------------------------------------------------------------
@@ -265,35 +266,23 @@ public class SaleFormViewModelTransactionTests
     [Fact]
     public async Task ProductionChain_CustomerDetail_TransmitsUseCaseToSaleForm()
     {
-        var customerRepo = new Mock<ICustomerRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
-        var prescriptionRepo = new Mock<IPrescriptionRepository>();
-        var productRepo = new Mock<IProductRepository>();
-        var saleRepo = new Mock<ISaleRepository>();
-
-        prescriptionRepo.Setup(r => r.GetLatestByCustomerIdAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Prescription?)null);
-        prescriptionRepo.Setup(r => r.GetByCustomerIdAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Prescription>());
-        productRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Product>());
-        saleRepo.Setup(r => r.GetByCustomerIdAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Sale>());
+        var getSaleFormReferenceDataUseCase = new Mock<IGetSaleFormReferenceDataUseCase>();
+        getSaleFormReferenceDataUseCase.Setup(u => u.ExecuteAsync(It.IsAny<GetSaleFormReferenceDataQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SaleFormReferenceDataDto());
 
         var spy = new SpyRegisterSaleUseCase();
 
         // Reproduit la construction de production : CustomerDetailViewModel reçoit le use case par DI (via
         // CustomersViewModel) et DOIT le transmettre à SaleFormViewModel.
-        // P2D-5 : la fiche détail ne dépend plus d'ICustomerRepository / ISaleRepository ; les lectures d'affichage
-        // passent par IGetCustomerPurchaseHistoryUseCase / IListPrescriptionsByCustomerUseCase. IPrescriptionRepository
-        // et IProductRepository subsistent uniquement pour construire SaleFormViewModel (formulaire de vente, P2D-6).
+        // P2D-7A : la fiche détail ne dépend plus d'IPrescriptionRepository / IProductRepository ; le chargement de
+        // référence du formulaire de vente passe par IGetSaleFormReferenceDataUseCase.
         var detail = new CustomerDetailViewModel(
-            prescriptionRepo.Object, productRepo.Object, spy,
+            getSaleFormReferenceDataUseCase.Object, spy,
             Mock.Of<IGetCustomerPurchaseHistoryUseCase>(), Mock.Of<IListPrescriptionsByCustomerUseCase>(),
             Mock.Of<ICreatePrescriptionUseCase>(), Mock.Of<IUpdatePrescriptionUseCase>(),
             Mock.Of<IDeletePrescriptionUseCase>());
 
-        await detail.InitializeAsync(new Customer { CustomerId = 7, FirstName = "Prod", LastName = "Chain" });
+        await detail.InitializeAsync(new CustomerListItemDto { CustomerId = 7, FirstName = "Prod", LastName = "Chain" });
 
         Assert.NotNull(detail.SaleFormViewModel);
 

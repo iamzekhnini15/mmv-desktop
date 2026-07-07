@@ -4,8 +4,8 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
+using MMV.Application.UseCases.Orders.GetOrderDetails;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
-using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 
 namespace MMV.App.ViewModels;
@@ -19,8 +19,8 @@ public class OrderDetailViewModel : BaseViewModel
     private readonly IAdvanceOrderStatusUseCase _advanceOrderStatusUseCase;
     private readonly ISettleOrderBalanceUseCase _settleOrderBalanceUseCase;
 
-    private Order? _order;
-    private ObservableCollection<OrderItem> _items = new();
+    private OrderDetailsDto? _order;
+    private ObservableCollection<OrderDetailsItemDto> _items = new();
 
     // Workflow
     private bool _canAdvanceStatus;
@@ -36,7 +36,7 @@ public class OrderDetailViewModel : BaseViewModel
 
     #region Properties
 
-    public Order? Order
+    public OrderDetailsDto? Order
     {
         get => _order;
         set
@@ -62,7 +62,7 @@ public class OrderDetailViewModel : BaseViewModel
         }
     }
 
-    public ObservableCollection<OrderItem> Items
+    public ObservableCollection<OrderDetailsItemDto> Items
     {
         get => _items;
         set => SetProperty(ref _items, value);
@@ -220,10 +220,10 @@ public class OrderDetailViewModel : BaseViewModel
     #region Events
 
     public event EventHandler? BackRequested;
-    public event EventHandler<Order>? EditRequested;
-    public event EventHandler<Order>? DeleteRequested;
-    public event EventHandler<Order>? PrintFabSheetRequested;
-    public event EventHandler<Order>? OrderUpdated;
+    public event EventHandler<OrderDetailsDto>? EditRequested;
+    public event EventHandler<OrderDetailsDto>? DeleteRequested;
+    public event EventHandler<OrderDetailsDto>? PrintFabSheetRequested;
+    public event EventHandler<OrderDetailsDto>? OrderUpdated;
 
     #endregion
 
@@ -262,10 +262,10 @@ public class OrderDetailViewModel : BaseViewModel
     /// <summary>
     /// Initialise le détail avec une commande chargée.
     /// </summary>
-    public void Initialize(Order order)
+    public void Initialize(OrderDetailsDto order)
     {
         Order = order;
-        Items = new ObservableCollection<OrderItem>(order.OrderItems ?? Array.Empty<OrderItem>());
+        Items = new ObservableCollection<OrderDetailsItemDto>(order.Items);
         UpdateWorkflowState();
     }
 
@@ -347,12 +347,14 @@ public class OrderDetailViewModel : BaseViewModel
                 return;
             }
 
-            // Mettre à jour l'état local
-            Order = result.Order;
-            Items = new ObservableCollection<OrderItem>(result.Order.OrderItems);
+            // Mettre à jour l'état local : l'entité rechargée par le use case (inchangé, P2D-7) est projetée vers le
+            // même DTO que la lecture initiale (GetOrderDetailsUseCase.MapToDto), pour garder un état cohérent.
+            var updated = GetOrderDetailsUseCase.MapToDto(result.Order);
+            Order = updated;
+            Items = new ObservableCollection<OrderDetailsItemDto>(updated.Items);
 
             // Signaler que la commande a été mise à jour pour rafraîchir la liste/Kanban
-            OrderUpdated?.Invoke(this, result.Order);
+            OrderUpdated?.Invoke(this, updated);
         }
         catch (Exception ex)
         {
@@ -390,15 +392,16 @@ public class OrderDetailViewModel : BaseViewModel
                 return;
             }
 
-            // Mettre à jour l'état local
-            Order = result.Order;
+            // Mettre à jour l'état local : même projection DTO que la lecture initiale (cf. AdvanceStatusAsync).
+            var updated = GetOrderDetailsUseCase.MapToDto(result.Order);
+            Order = updated;
             OnPropertyChanged(nameof(DepositAmount));
             OnPropertyChanged(nameof(RemainingAmount));
             OnPropertyChanged(nameof(HasRemainingBalance));
             (EncashBalanceCommand as RelayCommand)?.RaiseCanExecuteChanged();
 
             // Signaler que la commande a été mise à jour pour rafraîchir la liste/Kanban
-            OrderUpdated?.Invoke(this, result.Order);
+            OrderUpdated?.Invoke(this, updated);
         }
         catch (Exception ex)
         {

@@ -7,10 +7,10 @@ using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Customers.ListCustomersForPicker;
 using MMV.Application.UseCases.Orders.CreateOrder;
+using MMV.Application.UseCases.Orders.GetOrderDetails;
 using MMV.Application.UseCases.Orders.UpdateOrder;
 using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using MMV.Application.UseCases.Products.ListProductsForOrderPicker;
-using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Persistence;
 
@@ -257,7 +257,7 @@ public class OrderFormViewModel : BaseViewModel
     private string _notes = string.Empty;
     private bool _isSaving;
     private bool _isEditMode;
-    private Order? _existingOrder;
+    private OrderDetailsDto? _existingOrder;
 
     #region Properties
 
@@ -393,7 +393,7 @@ public class OrderFormViewModel : BaseViewModel
         INumberSequenceService numberSequenceService,
         ICreateOrderUseCase createOrderUseCase,
         IUpdateOrderUseCase updateOrderUseCase,
-        Order? existingOrder = null)
+        OrderDetailsDto? existingOrder = null)
     {
         // P2D-6 : les lectures de référence (clients, produits, ordonnances) passent par des query use cases
         // Application renvoyant des DTO plats — plus aucun repository injecté dans ce formulaire.
@@ -467,9 +467,11 @@ public class OrderFormViewModel : BaseViewModel
         }
     }
 
-    private async Task LoadExistingOrderAsync()
+    private Task LoadExistingOrderAsync()
     {
-        if (_existingOrder == null) return;
+        // P2D-7B : la commande à éditer est désormais fournie sous forme d'OrderDetailsDto (déjà chargé par le query
+        // use case) ; le remplissage du formulaire est purement synchrone (plus de lecture repository à awaiter).
+        if (_existingOrder == null) return Task.CompletedTask;
 
         OrderNumber = _existingOrder.OrderNumber;
         Notes = _existingOrder.Notes ?? string.Empty;
@@ -484,7 +486,7 @@ public class OrderFormViewModel : BaseViewModel
             }
         }
 
-        foreach (var item in _existingOrder.OrderItems)
+        foreach (var item in _existingOrder.Items)
         {
             var line = new OrderItemLine(item.ItemType, _allProducts)
             {
@@ -500,6 +502,7 @@ public class OrderFormViewModel : BaseViewModel
         }
 
         OnPropertyChanged(nameof(TotalAmount));
+        return Task.CompletedTask;
     }
 
     /// <summary>
