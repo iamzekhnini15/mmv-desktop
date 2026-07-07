@@ -144,6 +144,121 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
     }
 
     // ------------------------------------------------------------------
+    // (P3-1) Validation de commande — prénom vide → échec, aucune écriture
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_BlankFirstName_FailsValidation_AndDoesNotWrite()
+    {
+        var dbPath = PathFor("no-firstname.db");
+        EnsureSchema(dbPath);
+
+        CreateCustomerResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            result = await useCase.ExecuteAsync(new CreateCustomerCommand
+            {
+                FirstName = "   ",
+                LastName = "Dupont"
+            });
+        }
+
+        result.IsValid.Should().BeFalse();
+        result.CustomerId.Should().Be(0, "une commande invalide ne persiste rien");
+        result.ValidationErrors.Should().Contain(e => e.PropertyName == "FirstName");
+
+        using var verify = CreateContext(dbPath);
+        verify.Customers.AsNoTracking().Should().BeEmpty("aucun client n'est créé quand la commande est invalide");
+    }
+
+    // ------------------------------------------------------------------
+    // (P3-1) Validation de commande — nom vide → échec, aucune écriture
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_BlankLastName_FailsValidation_AndDoesNotWrite()
+    {
+        var dbPath = PathFor("no-lastname.db");
+        EnsureSchema(dbPath);
+
+        CreateCustomerResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            result = await useCase.ExecuteAsync(new CreateCustomerCommand
+            {
+                FirstName = "Jean",
+                LastName = ""
+            });
+        }
+
+        result.IsValid.Should().BeFalse();
+        result.ValidationErrors.Should().Contain(e => e.PropertyName == "LastName");
+
+        using var verify = CreateContext(dbPath);
+        verify.Customers.AsNoTracking().Should().BeEmpty();
+    }
+
+    // ------------------------------------------------------------------
+    // (P3-1) Validation de commande — email renseigné mais invalide → échec
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_InvalidEmail_FailsValidation_AndDoesNotWrite()
+    {
+        var dbPath = PathFor("bad-email.db");
+        EnsureSchema(dbPath);
+
+        CreateCustomerResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            result = await useCase.ExecuteAsync(new CreateCustomerCommand
+            {
+                FirstName = "Jean",
+                LastName = "Dupont",
+                Email = "pas-un-email"
+            });
+        }
+
+        result.IsValid.Should().BeFalse();
+        result.ValidationErrors.Should().Contain(e => e.PropertyName == "Email");
+
+        using var verify = CreateContext(dbPath);
+        verify.Customers.AsNoTracking().Should().BeEmpty();
+    }
+
+    // ------------------------------------------------------------------
+    // (P3-1) Email vide/blanc reste autorisé (comportement existant conservé)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_BlankEmail_RemainsValid_AndPersists()
+    {
+        var dbPath = PathFor("blank-email.db");
+        EnsureSchema(dbPath);
+
+        CreateCustomerResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            result = await useCase.ExecuteAsync(new CreateCustomerCommand
+            {
+                FirstName = "Jean",
+                LastName = "Dupont",
+                Email = "   "
+            });
+        }
+
+        result.IsValid.Should().BeTrue("un email vide reste autorisé — comportement existant conservé");
+        result.CustomerId.Should().BeGreaterThan(0);
+
+        using var verify = CreateContext(dbPath);
+        verify.Customers.AsNoTracking().Single().Email.Should().BeNull();
+    }
+
+    // ------------------------------------------------------------------
     // (3) Commande nulle → ArgumentNullException
     // ------------------------------------------------------------------
 

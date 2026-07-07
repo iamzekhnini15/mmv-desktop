@@ -1,7 +1,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using MMV.Application.Common;
 using MMV.Domain.Interfaces.Repositories;
+using MMV.Domain.Validators;
 
 namespace MMV.Application.UseCases.Customers.UpdateCustomer;
 
@@ -32,6 +34,10 @@ namespace MMV.Application.UseCases.Customers.UpdateCustomer;
 /// </remarks>
 public sealed class UpdateCustomerUseCase : IUpdateCustomerUseCase
 {
+    // Validateur Domain réutilisé (règle métier propriétaire du Domain — aucune duplication, cf. ADR frontières §9).
+    // Stateless et thread-safe : une seule instance partagée suffit.
+    private static readonly CustomerValidator CustomerValidator = new();
+
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -64,6 +70,18 @@ public sealed class UpdateCustomerUseCase : IUpdateCustomerUseCase
         customer.InsuranceName = NullIfBlank(command.InsuranceName);
         customer.Notes = NullIfBlank(command.Notes);
         customer.UpdatedAt = DateTime.UtcNow;
+
+        // P3-1 : validation de commande AVANT persistance. L'entité suivie est mutée mais aucune écriture n'est
+        // demandée si elle est invalide (pas d'UpdateAsync ni de SaveChangesAsync) ⇒ le contexte à portée est
+        // libéré sans persister : la ligne en base reste inchangée.
+        var validationErrors = CommandValidation.Validate(CustomerValidator, customer);
+        if (validationErrors.Count > 0)
+            return new UpdateCustomerResult
+            {
+                CustomerFound = true,
+                CustomerId = command.CustomerId,
+                ValidationErrors = validationErrors
+            };
 
         await _customerRepository.UpdateAsync(customer, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

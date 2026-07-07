@@ -109,6 +109,17 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - **Tests attendus** : validateurs de commande (cas valides/invalides), non-régression des use cases existants.
 - **Risques** : sur-validation dupliquant le Domain ; churn massif. Mitigation : socle + 1 domaine pilote.
 - **Sortie** : convention documentée + appliquée au domaine pilote ; build/tests verts.
+- **Réalisé (cf. [rapport P3-1](../implementation/P3-1-validation-result-report.md)) :**
+  - **Choix validation retenu** : réutiliser les **validateurs FluentValidation du Domain** depuis Application
+    via `Common/CommandValidation` (règle propriétaire du Domain, pas de duplication) ; **aucune** dépendance
+    NuGet ajoutée (FluentValidation transite déjà du Domain, Apache-2.0) ; **pas** de framework maison ni de
+    `*CommandValidator` parallèle.
+  - **Choix `Result` retenu** : conserver le drapeau `*Found` homogène + ajouter `ValidationErrors`/`IsValid`
+    neutres (`Common/ValidationError`) sur les `*Result` d'écriture ; refus de règle **dure** = exception
+    typée Domain (ADR §8) ; **pas** d'`Ardalis.Result`, **pas** de monade `Result<T>`.
+  - **Domaine pilote appliqué** : **Clients** (`CreateCustomerUseCase`, `UpdateCustomerUseCase`) —
+    validation de commande **avant** écriture, aucune persistance si invalide. Base : **592 tests** verts,
+    `MMV.Application` pure.
 
 ### P3-2 — Clients
 

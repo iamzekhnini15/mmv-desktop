@@ -1,8 +1,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using MMV.Application.Common;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
+using MMV.Domain.Validators;
 
 namespace MMV.Application.UseCases.Customers.CreateCustomer;
 
@@ -28,6 +30,10 @@ namespace MMV.Application.UseCases.Customers.CreateCustomer;
 /// </remarks>
 public sealed class CreateCustomerUseCase : ICreateCustomerUseCase
 {
+    // Validateur Domain réutilisé (règle métier propriétaire du Domain — aucune duplication, cf. ADR frontières §9).
+    // Stateless et thread-safe : une seule instance partagée suffit.
+    private static readonly CustomerValidator CustomerValidator = new();
+
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -59,6 +65,12 @@ public sealed class CreateCustomerUseCase : ICreateCustomerUseCase
             CreatedAt = now,
             UpdatedAt = now
         };
+
+        // P3-1 : validation de commande AVANT toute écriture. On valide le candidat normalisé (les blancs → null,
+        // exactement ce qui serait persisté) avec le validateur Domain. Commande invalide ⇒ aucun accès dépôt.
+        var validationErrors = CommandValidation.Validate(CustomerValidator, customer);
+        if (validationErrors.Count > 0)
+            return new CreateCustomerResult { ValidationErrors = validationErrors };
 
         await _customerRepository.CreateAsync(customer, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

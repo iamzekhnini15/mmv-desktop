@@ -193,6 +193,104 @@ public sealed class UpdateCustomerUseCaseTests : IDisposable
     }
 
     // ------------------------------------------------------------------
+    // (P3-1) Validation — prénom vide sur client existant → échec, ligne inchangée
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_BlankFirstName_FailsValidation_AndDoesNotWrite()
+    {
+        var dbPath = PathFor("no-firstname.db");
+        EnsureSchema(dbPath);
+        var customerId = SeedCustomer(dbPath, DateTime.UtcNow.AddDays(-10));
+
+        UpdateCustomerResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            result = await useCase.ExecuteAsync(new UpdateCustomerCommand
+            {
+                CustomerId = customerId,
+                FirstName = "   ",
+                LastName = "Durand"
+            });
+        }
+
+        result.CustomerFound.Should().BeTrue("le client existe : ce n'est pas un NotFound mais une validation refusée");
+        result.IsValid.Should().BeFalse();
+        result.ValidationErrors.Should().Contain(e => e.PropertyName == "FirstName");
+
+        using var verify = CreateContext(dbPath);
+        var customer = verify.Customers.AsNoTracking().Single();
+        customer.FirstName.Should().Be("Jean", "aucune écriture : la ligne conserve ses valeurs initiales");
+        customer.LastName.Should().Be("Dupont");
+    }
+
+    // ------------------------------------------------------------------
+    // (P3-1) Validation — nom vide → échec, ligne inchangée
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_BlankLastName_FailsValidation_AndDoesNotWrite()
+    {
+        var dbPath = PathFor("no-lastname.db");
+        EnsureSchema(dbPath);
+        var customerId = SeedCustomer(dbPath, DateTime.UtcNow.AddDays(-10));
+
+        UpdateCustomerResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            result = await useCase.ExecuteAsync(new UpdateCustomerCommand
+            {
+                CustomerId = customerId,
+                FirstName = "Jean",
+                LastName = ""
+            });
+        }
+
+        result.CustomerFound.Should().BeTrue();
+        result.IsValid.Should().BeFalse();
+        result.ValidationErrors.Should().Contain(e => e.PropertyName == "LastName");
+
+        using var verify = CreateContext(dbPath);
+        verify.Customers.AsNoTracking().Single().LastName.Should().Be("Dupont");
+    }
+
+    // ------------------------------------------------------------------
+    // (P3-1) Validation — email renseigné mais invalide → échec, ligne inchangée
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_InvalidEmail_FailsValidation_AndDoesNotWrite()
+    {
+        var dbPath = PathFor("bad-email.db");
+        EnsureSchema(dbPath);
+        var customerId = SeedCustomer(dbPath, DateTime.UtcNow.AddDays(-10));
+
+        UpdateCustomerResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            result = await useCase.ExecuteAsync(new UpdateCustomerCommand
+            {
+                CustomerId = customerId,
+                FirstName = "Jean",
+                LastName = "Durand",
+                Email = "pas-un-email"
+            });
+        }
+
+        result.CustomerFound.Should().BeTrue();
+        result.IsValid.Should().BeFalse();
+        result.ValidationErrors.Should().Contain(e => e.PropertyName == "Email");
+
+        using var verify = CreateContext(dbPath);
+        var customer = verify.Customers.AsNoTracking().Single();
+        customer.Email.Should().Be("jean@example.com", "aucune écriture : l'email initial est conservé");
+        customer.LastName.Should().Be("Dupont");
+    }
+
+    // ------------------------------------------------------------------
     // (4) Commande nulle → ArgumentNullException
     // ------------------------------------------------------------------
 
