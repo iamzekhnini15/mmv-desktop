@@ -5,11 +5,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.Services;
 using MMV.App.ViewModels;
+using MMV.Application.UseCases.Products.ListProductsForPicker;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
-using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
-using MMV.Domain.Interfaces.Repositories;
 using Moq;
 using Xunit;
 
@@ -80,15 +79,15 @@ public sealed class StockMovementFormViewModelTests
 
     private static StockMovementFormViewModel BuildViewModel(ICreateStockMovementUseCase useCase, IDialogService dialog)
     {
-        var productRepository = new Mock<IProductRepository>();
-        return new StockMovementFormViewModel(productRepository.Object, dialog, useCase);
+        var listProductsForPicker = new Mock<IListProductsForPickerUseCase>();
+        return new StockMovementFormViewModel(listProductsForPicker.Object, dialog, useCase);
     }
 
     private static void AddLine(StockMovementFormViewModel viewModel, long productId, string movementType, int quantity, string notes = "")
     {
-        var line = new ProductMovementLine(new List<Product> { new() { ProductId = productId } })
+        var line = new ProductMovementLine(new List<ProductPickerItemDto> { new() { ProductId = productId } })
         {
-            Product = new Product { ProductId = productId },
+            Product = new ProductPickerItemDto { ProductId = productId },
             MovementType = movementType,
             Quantity = quantity,
             Notes = notes,
@@ -235,11 +234,11 @@ public sealed class StockMovementFormViewModelTests
     [Fact]
     public void Constructor_WithoutCreateStockMovementUseCase_Throws()
     {
-        var productRepository = new Mock<IProductRepository>();
+        var listProductsForPicker = new Mock<IListProductsForPickerUseCase>();
         var dialog = new FakeDialogService();
 
         Assert.Throws<ArgumentNullException>(() => new StockMovementFormViewModel(
-            productRepository.Object, dialog, createStockMovementUseCase: null!));
+            listProductsForPicker.Object, dialog, createStockMovementUseCase: null!));
     }
 
     // ------------------------------------------------------------------

@@ -1,26 +1,43 @@
 using Microsoft.Extensions.DependencyInjection;
 using MMV.Application.UseCases.Customers.CreateCustomer;
 using MMV.Application.UseCases.Customers.DeleteCustomer;
+using MMV.Application.UseCases.Customers.ListCustomers;
+using MMV.Application.UseCases.Customers.ListCustomersForPicker;
 using MMV.Application.UseCases.Customers.UpdateCustomer;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Orders.DeleteOrder;
+using MMV.Application.UseCases.Orders.GetOrderDetails;
+using MMV.Application.UseCases.Orders.ListOrders;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Application.UseCases.Orders.UpdateOrder;
+using MMV.Application.UseCases.Notifications.CountUnreadNotifications;
 using MMV.Application.UseCases.Notifications.GenerateLowStockNotifications;
+using MMV.Application.UseCases.Notifications.ListNotifications;
 using MMV.Application.UseCases.Notifications.MarkAllNotificationsRead;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Prescriptions.DeletePrescription;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Application.UseCases.Products.CreateProduct;
 using MMV.Application.UseCases.Products.DeleteProduct;
+using MMV.Application.UseCases.Products.GetInventoryOverview;
+using MMV.Application.UseCases.Products.ListProducts;
+using MMV.Application.UseCases.Products.ListProductsForOrderPicker;
+using MMV.Application.UseCases.Products.ListProductsForPicker;
 using MMV.Application.UseCases.Products.UpdateProduct;
+using MMV.Application.UseCases.Sales.GetCustomerPurchaseHistory;
+using MMV.Application.UseCases.Sales.GetSaleFormReferenceData;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
+using MMV.Application.UseCases.Stock.ListStockMovements;
 using MMV.Application.UseCases.Suppliers.CreateSupplier;
 using MMV.Application.UseCases.Suppliers.DeleteSupplier;
+using MMV.Application.UseCases.Suppliers.GetSupplierWithProducts;
+using MMV.Application.UseCases.Suppliers.ListSuppliers;
 using MMV.Application.UseCases.Suppliers.UpdateSupplier;
 using MMV.Application.UseCases.Users.CreateUser;
+using MMV.Application.UseCases.Users.ListUsers;
 using MMV.Application.UseCases.Users.SetUserActive;
 using MMV.Application.UseCases.Users.UpdateUser;
 
@@ -141,6 +158,68 @@ public static class DependencyInjection
         // stock bas était dupliquée entre NotificationsListViewModel et MainWindowViewModel : elle est unifiée ici.
         services.AddScoped<IMarkAllNotificationsReadUseCase, MarkAllNotificationsReadUseCase>();
         services.AddScoped<IGenerateLowStockNotificationsUseCase, GenerateLowStockNotificationsUseCase>();
+
+        // ---------------------------------------------------------------------------------------------------------
+        // P2D — Query use cases (LECTURES). Première famille de use cases *query* de la solution : ils remplacent les
+        // lectures directes I…Repository qui subsistaient dans les ViewModels (dette ouverte à l'issue de P2C-GLOBAL).
+        // Chaque query use case projette les entités vers des DTO applicatifs plats (lecture seule) : aucune entité EF
+        // suivie ne franchit la frontière UI. Portée Scoped (même portée qu'OpticDbContext / repositories).
+        // ---------------------------------------------------------------------------------------------------------
+
+        // P2D-1 — module Utilisateurs : « Lister les utilisateurs » (remplace IUserRepository.GetAllAsync côté UI).
+        services.AddScoped<IListUsersUseCase, ListUsersUseCase>();
+
+        // P2D-2 — module Fournisseurs : liste + fiche détaillée (remplacent ISupplierRepository.GetAllAsync /
+        // GetWithProductsAsync côté UI, dans SuppliersListViewModel, SuppliersViewModel et SupplierDetailViewModel).
+        services.AddScoped<IListSuppliersUseCase, ListSuppliersUseCase>();
+        services.AddScoped<IGetSupplierWithProductsUseCase, GetSupplierWithProductsUseCase>();
+
+        // P2D-3 — module Notifications : liste + compteur non lus (remplacent INotificationRepository.GetAllAsync /
+        // CountUnreadAsync côté UI, dans NotificationsListViewModel et NotificationsViewModel).
+        services.AddScoped<IListNotificationsUseCase, ListNotificationsUseCase>();
+        services.AddScoped<ICountUnreadNotificationsUseCase, CountUnreadNotificationsUseCase>();
+
+        // P2D-4 — module Produits / Stock (lectures). Remplacent les lectures directes I…Repository restantes des
+        // ViewModels de mouvements de stock, d'inventaire et des sélecteurs produit (StockMovementsListViewModel,
+        // StockMovementFormViewModel, StockMovementsViewModel, InventoryViewModel). La lecture fournisseur du
+        // formulaire produit (ProductFormViewModel) réutilise IListSuppliersUseCase (P2D-2). Portée Scoped (même
+        // portée qu'OpticDbContext / repositories).
+        services.AddScoped<IListStockMovementsUseCase, ListStockMovementsUseCase>();
+        services.AddScoped<IListProductsForPickerUseCase, ListProductsForPickerUseCase>();
+        services.AddScoped<IGetInventoryOverviewUseCase, GetInventoryOverviewUseCase>();
+
+        // P2D-5 — module Clients / Ordonnances (lectures). Remplacent les lectures directes I…Repository des
+        // ViewModels de lecture clients : historique d'achats (ISaleRepository.GetByCustomerIdAsync, consommé par
+        // CustomerPurchaseHistoryViewModel et l'onglet Infos de CustomerInfoViewModel) et liste des ordonnances d'un
+        // client (IPrescriptionRepository.GetByCustomerIdAsync, consommé par CustomerPrescriptionsViewModel). Portée
+        // Scoped (même portée qu'OpticDbContext / repositories). Chaque query projette vers des DTO plats : aucune
+        // entité EF suivie ne franchit la frontière UI.
+        services.AddScoped<IGetCustomerPurchaseHistoryUseCase, GetCustomerPurchaseHistoryUseCase>();
+        services.AddScoped<IListPrescriptionsByCustomerUseCase, ListPrescriptionsByCustomerUseCase>();
+
+        // P2D-6 — module Commandes (lectures). Remplacent les lectures directes I…Repository restantes des ViewModels
+        // de lecture Commandes : la liste + le Kanban (IOrderRepository.GetAllWithItemsAsync, consommé par
+        // OrdersListViewModel et OrderKanbanViewModel → IListOrdersUseCase), et les données de référence du formulaire
+        // de commande (ICustomerRepository.GetAllAsync → IListCustomersForPickerUseCase ; IProductRepository.GetAllAsync
+        // → IListProductsForOrderPickerUseCase ; les ordonnances du client réutilisent IListPrescriptionsByCustomerUseCase,
+        // P2D-5). Portée Scoped (même portée qu'OpticDbContext / repositories). Chaque query projette vers des DTO plats :
+        // aucune entité EF suivie ne franchit la frontière UI. Les lectures de référence du formulaire de VENTE
+        // (SaleFormViewModel : catalogue à graphe GlassDetail + panier d'entités OrderItem) restent en reliquat justifié
+        // (cf. docs/implementation/P2D-6-report.md).
+        services.AddScoped<IListOrdersUseCase, ListOrdersUseCase>();
+        services.AddScoped<IListCustomersForPickerUseCase, ListCustomersForPickerUseCase>();
+        services.AddScoped<IListProductsForOrderPickerUseCase, ListProductsForOrderPickerUseCase>();
+
+        // P2D-7 — Clôture P2D (lectures restantes). Soldent les 11 dernières dépendances I…Repository de l'UI :
+        // données de référence du formulaire de vente (catalogue + ordonnance active), fiche détaillée de commande
+        // (threading vers le formulaire d'ÉDITION), liste clients (threading vers fiche + formulaire d'ÉDITION) et
+        // liste produit à graphe (threading vers fiche + formulaire d'ÉDITION). Portée Scoped (même portée
+        // qu'OpticDbContext / repositories). Chaque query projette vers des DTO plats/composites : aucune entité EF
+        // suivie ne franchit la frontière UI.
+        services.AddScoped<IGetSaleFormReferenceDataUseCase, GetSaleFormReferenceDataUseCase>();
+        services.AddScoped<IGetOrderDetailsUseCase, GetOrderDetailsUseCase>();
+        services.AddScoped<IListCustomersUseCase, ListCustomersUseCase>();
+        services.AddScoped<IListProductsUseCase, ListProductsUseCase>();
         return services;
     }
 }

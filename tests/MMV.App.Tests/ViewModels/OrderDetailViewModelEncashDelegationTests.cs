@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
+using MMV.Application.UseCases.Orders.GetOrderDetails;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
@@ -88,7 +89,7 @@ public class OrderDetailViewModelEncashDelegationTests
         };
         order.OrderItems.Add(new OrderItem { ItemType = OrderItemType.LensOd, Quantity = 1 });
 
-        viewModel.Initialize(order);
+        viewModel.Initialize(GetOrderDetailsUseCase.MapToDto(order));
         return viewModel;
     }
 
@@ -113,7 +114,7 @@ public class OrderDetailViewModelEncashDelegationTests
         var spy = new SpySettleOrderBalanceUseCase();
         var viewModel = BuildInitializedViewModel(spy);
 
-        Order? updatedWith = null;
+        OrderDetailsDto? updatedWith = null;
         viewModel.OrderUpdated += (_, order) => updatedWith = order;
 
         viewModel.EncashBalanceCommand.Execute(null);
@@ -221,7 +222,7 @@ public class OrderDetailViewModelEncashDelegationTests
             Status = OrderStatus.Delivered,
             Sale = new Sale { FinalAmount = 100m, DepositAmount = 100m, RemainingAmount = 0m },
         };
-        viewModel.Initialize(order);
+        viewModel.Initialize(GetOrderDetailsUseCase.MapToDto(order));
 
         Assert.False(viewModel.HasRemainingBalance);
         Assert.False(viewModel.EncashBalanceCommand.CanExecute(null),

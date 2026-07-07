@@ -3,14 +3,17 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Customers.ListCustomersForPicker;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
 using MMV.Application.UseCases.Orders.DeleteOrder;
+using MMV.Application.UseCases.Orders.GetOrderDetails;
+using MMV.Application.UseCases.Orders.ListOrders;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Application.UseCases.Orders.UpdateOrder;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
+using MMV.Application.UseCases.Products.ListProductsForOrderPicker;
 using MMV.Domain.Interfaces.Persistence;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -20,10 +23,11 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class OrdersViewModel : BaseViewModel
 {
-    private readonly IOrderRepository _orderRepository;
-    private readonly ICustomerRepository _customerRepository;
-    private readonly IProductRepository _productRepository;
-    private readonly IPrescriptionRepository _prescriptionRepository;
+    private readonly IGetOrderDetailsUseCase _getOrderDetailsUseCase;
+    private readonly IListOrdersUseCase _listOrdersUseCase;
+    private readonly IListCustomersForPickerUseCase _listCustomersUseCase;
+    private readonly IListProductsForOrderPickerUseCase _listProductsUseCase;
+    private readonly IListPrescriptionsByCustomerUseCase _listPrescriptionsUseCase;
     private readonly IDialogService _dialogService;
     private readonly INumberSequenceService _numberSequenceService;
     private readonly ICreateOrderUseCase _createOrderUseCase;
@@ -123,13 +127,18 @@ public class OrdersViewModel : BaseViewModel
     #endregion
 
     // P2C-GLOBAL : le paramètre IUnitOfWork a été supprimé — après le passage de l'avancement Kanban à
-    // IAdvanceOrderStatusUseCase, il n'était plus utilisé (dépendance morte). IOrderRepository reste conservé pour
-    // les lectures d'affichage (rechargement du détail / listes).
+    // IAdvanceOrderStatusUseCase, il n'était plus utilisé (dépendance morte).
+    // P2D-6 : les lectures de référence du formulaire de commande (clients, produits, ordonnances) passent par des
+    // query use cases Application (transmis à OrderFormViewModel) — les trois repositories ICustomer/IProduct/
+    // IPrescription ont été retirés.
+    // P2D-7B : IOrderRepository remplacé par IGetOrderDetailsUseCase pour le rechargement de la fiche détaillée, qui
+    // alimente OrderDetailViewModel puis le formulaire d'ÉDITION avec un OrderDetailsDto (jamais l'entité EF Order).
     public OrdersViewModel(
-        IOrderRepository orderRepository,
-        ICustomerRepository customerRepository,
-        IProductRepository productRepository,
-        IPrescriptionRepository prescriptionRepository,
+        IGetOrderDetailsUseCase getOrderDetailsUseCase,
+        IListOrdersUseCase listOrdersUseCase,
+        IListCustomersForPickerUseCase listCustomersUseCase,
+        IListProductsForOrderPickerUseCase listProductsUseCase,
+        IListPrescriptionsByCustomerUseCase listPrescriptionsUseCase,
         IDialogService dialogService,
         INumberSequenceService numberSequenceService,
         ICreateOrderUseCase createOrderUseCase,
@@ -138,10 +147,11 @@ public class OrdersViewModel : BaseViewModel
         ISettleOrderBalanceUseCase settleOrderBalanceUseCase,
         IDeleteOrderUseCase deleteOrderUseCase)
     {
-        _orderRepository = orderRepository;
-        _customerRepository = customerRepository;
-        _productRepository = productRepository;
-        _prescriptionRepository = prescriptionRepository;
+        _getOrderDetailsUseCase = getOrderDetailsUseCase ?? throw new ArgumentNullException(nameof(getOrderDetailsUseCase));
+        _listOrdersUseCase = listOrdersUseCase ?? throw new ArgumentNullException(nameof(listOrdersUseCase));
+        _listCustomersUseCase = listCustomersUseCase ?? throw new ArgumentNullException(nameof(listCustomersUseCase));
+        _listProductsUseCase = listProductsUseCase ?? throw new ArgumentNullException(nameof(listProductsUseCase));
+        _listPrescriptionsUseCase = listPrescriptionsUseCase ?? throw new ArgumentNullException(nameof(listPrescriptionsUseCase));
         _dialogService = dialogService;
         // Numérotation fiable obligatoire (P2A-1E) : injectée par DI, transmise jusqu'à OrderFormViewModel.
         _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
@@ -159,7 +169,7 @@ public class OrdersViewModel : BaseViewModel
         _deleteOrderUseCase = deleteOrderUseCase ?? throw new ArgumentNullException(nameof(deleteOrderUseCase));
 
         // Initialiser la liste
-        _listViewModel = new OrdersListViewModel(orderRepository);
+        _listViewModel = new OrdersListViewModel(_listOrdersUseCase);
         _listViewModel.CreateOrderRequested += OnCreateOrderRequested;
         _listViewModel.ViewOrderDetailRequested += OnViewOrderDetail;
         _listViewModel.ShowKanbanRequested += OnShowKanban;
@@ -178,7 +188,7 @@ public class OrdersViewModel : BaseViewModel
         {
             ErrorMessage = null;
             FormViewModel = new OrderFormViewModel(
-                _customerRepository, _productRepository, _prescriptionRepository,
+                _listCustomersUseCase, _listProductsUseCase, _listPrescriptionsUseCase,
                 _numberSequenceService, _createOrderUseCase, _updateOrderUseCase);
             FormViewModel.OrderSaved += OnOrderSaved;
             FormViewModel.CancelRequested += OnFormCancelled;
@@ -197,7 +207,7 @@ public class OrdersViewModel : BaseViewModel
     /// <summary>
     /// Ouvre le formulaire d'édition pour une commande existante.
     /// </summary>
-    private async void OnEditOrderRequested(object? sender, Order order)
+    private async void OnEditOrderRequested(object? sender, OrderDetailsDto order)
     {
         try
         {
@@ -205,7 +215,7 @@ public class OrdersViewModel : BaseViewModel
             CloseDetail();
 
             FormViewModel = new OrderFormViewModel(
-                _customerRepository, _productRepository, _prescriptionRepository,
+                _listCustomersUseCase, _listProductsUseCase, _listPrescriptionsUseCase,
                 _numberSequenceService, _createOrderUseCase, _updateOrderUseCase, order);
             FormViewModel.OrderSaved += OnOrderSaved;
             FormViewModel.CancelRequested += OnFormCancelled;
@@ -224,12 +234,14 @@ public class OrdersViewModel : BaseViewModel
     /// <summary>
     /// Affiche la fiche détaillée d'une commande.
     /// </summary>
-    private async void OnViewOrderDetail(object? sender, Order order)
+    private async void OnViewOrderDetail(object? sender, OrderListItemDto order)
     {
         try
         {
-            // Recharger la commande avec ses items
-            var fullOrder = await _orderRepository.GetWithItemsAsync(order.OrderId);
+            // Recharger la commande avec ses items. P2D-6 : la liste / le Kanban fournissent un DTO (OrderListItemDto) ;
+            // seul l'identifiant est utilisé pour recharger la fiche détaillée complète. P2D-7B : le rechargement
+            // passe par IGetOrderDetailsUseCase (OrderDetailsDto), plus IOrderRepository direct.
+            var fullOrder = await _getOrderDetailsUseCase.ExecuteAsync(new GetOrderDetailsQuery { OrderId = order.OrderId });
             if (fullOrder == null)
             {
                 ErrorMessage = "Commande introuvable.";
@@ -263,7 +275,7 @@ public class OrdersViewModel : BaseViewModel
         {
             if (KanbanViewModel == null)
             {
-                KanbanViewModel = new OrderKanbanViewModel(_orderRepository, _advanceOrderStatusUseCase);
+                KanbanViewModel = new OrderKanbanViewModel(_listOrdersUseCase, _advanceOrderStatusUseCase);
                 KanbanViewModel.ViewOrderDetailRequested += OnViewOrderDetail;
                 KanbanViewModel.BackToListRequested += OnKanbanBackToList;
             }
@@ -280,7 +292,7 @@ public class OrdersViewModel : BaseViewModel
     /// <summary>
     /// Affiche la fiche de fabrication.
     /// </summary>
-    private void OnPrintFabSheetRequested(object? sender, Order order)
+    private void OnPrintFabSheetRequested(object? sender, OrderDetailsDto order)
     {
         FabricationSheetViewModel = new FabricationSheetViewModel();
         FabricationSheetViewModel.Initialize(order);
@@ -312,7 +324,7 @@ public class OrdersViewModel : BaseViewModel
         CloseDetail();
     }
 
-    private async void OnDeleteOrderRequested(object? sender, Order order)
+    private async void OnDeleteOrderRequested(object? sender, OrderDetailsDto order)
     {
         if (order == null) return;
 
@@ -351,7 +363,7 @@ public class OrdersViewModel : BaseViewModel
     /// <summary>
     /// Rafraîchit discrètement la liste et le Kanban après une mise à jour de commande.
     /// </summary>
-    private async void OnOrderUpdated(object? sender, Order order)
+    private async void OnOrderUpdated(object? sender, OrderDetailsDto order)
     {
         // Rafraîchir la liste en arrière-plan
         await ListViewModel.LoadOrdersAsync();

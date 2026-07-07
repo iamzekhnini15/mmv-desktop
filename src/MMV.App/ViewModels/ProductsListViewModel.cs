@@ -5,28 +5,31 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Products.DeleteProduct;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Products.ListProducts;
 using MMV.Domain.Enums;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour la liste des produits avec recherche et pagination.
 /// <para>
-/// P2C-GLOBAL : la suppression passe par <see cref="IDeleteProductUseCase"/>. <see cref="IProductRepository"/>
-/// n'est conservé que pour les lectures d'affichage (<c>GetAllAsync</c>) ; <c>IUnitOfWork</c> a été retiré.
+/// P2C-GLOBAL : la suppression passe par <see cref="IDeleteProductUseCase"/>.
+/// </para>
+/// <para>
+/// P2D-7D : les lectures d'affichage passent par le query use case <see cref="IListProductsUseCase"/>, qui
+/// renvoie des <see cref="ProductListItemDto"/> plats (jamais l'entité EF <c>Product</c>). <c>IProductRepository</c>
+/// a été retiré ; recherche/filtre/pagination restent en présentation (iso-fonctionnel).
 /// </para>
 /// </summary>
 public class ProductsListViewModel : BaseViewModel
 {
-    private readonly IProductRepository _productRepository;
+    private readonly IListProductsUseCase _listProductsUseCase;
     private readonly IDeleteProductUseCase _deleteProductUseCase;
 
-    private ObservableCollection<Product> _products;
-    private ObservableCollection<Product> _filteredProducts;
+    private ObservableCollection<ProductListItemDto> _products;
+    private ObservableCollection<ProductListItemDto> _filteredProducts;
     private ObservableCollection<string> _categories;
-    private Product? _selectedProduct;
+    private ProductListItemDto? _selectedProduct;
     private string? _selectedCategory;
     private string _searchText = string.Empty;
     private int _currentPage = 1;
@@ -46,7 +49,7 @@ public class ProductsListViewModel : BaseViewModel
     /// <summary>
     /// Collection de tous les produits.
     /// </summary>
-    public ObservableCollection<Product> Products
+    public ObservableCollection<ProductListItemDto> Products
     {
         get => _products;
         set => SetProperty(ref _products, value);
@@ -55,7 +58,7 @@ public class ProductsListViewModel : BaseViewModel
     /// <summary>
     /// Collection des produits filtrés.
     /// </summary>
-    public ObservableCollection<Product> FilteredProducts
+    public ObservableCollection<ProductListItemDto> FilteredProducts
     {
         get => _filteredProducts;
         set => SetProperty(ref _filteredProducts, value);
@@ -73,7 +76,7 @@ public class ProductsListViewModel : BaseViewModel
     /// <summary>
     /// Produit sélectionné dans la liste.
     /// </summary>
-    public Product? SelectedProduct
+    public ProductListItemDto? SelectedProduct
     {
         get => _selectedProduct;
         set
@@ -186,8 +189,8 @@ public class ProductsListViewModel : BaseViewModel
 
     // Événements
     public event EventHandler? CreateProductRequested;
-    public event EventHandler<Product>? EditProductRequested;
-    public event EventHandler<Product>? DeleteProductRequested;
+    public event EventHandler<ProductListItemDto>? EditProductRequested;
+    public event EventHandler<ProductListItemDto>? DeleteProductRequested;
     public event EventHandler? ManageSuppliersRequested;
     public event EventHandler? ManageStockMovementsRequested;
 
@@ -205,14 +208,14 @@ public class ProductsListViewModel : BaseViewModel
     public ICommand ManageStockMovementsCommand => _manageStockMovementsCommand ??= new RelayCommand(ExecuteManageStockMovements);
 
     public ProductsListViewModel(
-        IProductRepository productRepository,
+        IListProductsUseCase listProductsUseCase,
         IDeleteProductUseCase deleteProductUseCase)
     {
-        _productRepository = productRepository;
+        _listProductsUseCase = listProductsUseCase ?? throw new ArgumentNullException(nameof(listProductsUseCase));
         _deleteProductUseCase = deleteProductUseCase ?? throw new ArgumentNullException(nameof(deleteProductUseCase));
 
-        _products = new ObservableCollection<Product>();
-        _filteredProducts = new ObservableCollection<Product>();
+        _products = new ObservableCollection<ProductListItemDto>();
+        _filteredProducts = new ObservableCollection<ProductListItemDto>();
         _categories = new ObservableCollection<string>();
 
         // Charger les données au démarrage
@@ -221,7 +224,7 @@ public class ProductsListViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Charge tous les produits depuis le repository.
+    /// Charge tous les produits depuis le query use case.
     /// </summary>
     public async Task LoadProductsAsync()
     {
@@ -230,9 +233,9 @@ public class ProductsListViewModel : BaseViewModel
 
         try
         {
-            var products = await _productRepository.GetAllAsync() ?? Array.Empty<Product>();
-            System.Diagnostics.Debug.WriteLine($"[ProductsListViewModel] Repo returned {products.Count} products");
-            Console.WriteLine($"[ProductsListViewModel] Repo returned {products.Count} products");
+            var products = await _listProductsUseCase.ExecuteAsync(new ListProductsQuery());
+            System.Diagnostics.Debug.WriteLine($"[ProductsListViewModel] Use case returned {products.Count} products");
+            Console.WriteLine($"[ProductsListViewModel] Use case returned {products.Count} products");
 
             Products.Clear();
             foreach (var product in products)

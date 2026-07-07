@@ -4,34 +4,39 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Orders.ListOrders;
 using MMV.Domain.Enums;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour la liste des commandes avec filtres par statut et recherche.
+/// <para>
+/// P2D-6 : la lecture directe <c>IOrderRepository.GetAllWithItemsAsync</c> est remplacée par le query use case
+/// <see cref="IListOrdersUseCase"/> renvoyant des <see cref="OrderListItemDto"/> plats. Aucune entité EF suivie ne
+/// franchit plus la frontière UI pour cet écran ; les filtres / recherche / pagination restent en présentation
+/// (iso-fonctionnel).
+/// </para>
 /// </summary>
 public class OrdersListViewModel : BaseViewModel
 {
-    private readonly IOrderRepository _orderRepository;
+    private readonly IListOrdersUseCase _listOrdersUseCase;
 
-    private ObservableCollection<Order> _orders = new();
-    private ObservableCollection<Order> _filteredOrders = new();
+    private ObservableCollection<OrderListItemDto> _orders = new();
+    private ObservableCollection<OrderListItemDto> _filteredOrders = new();
     private string _searchText = string.Empty;
     private string _selectedStatus = "Tous les statuts";
     private int _currentPage = 1;
     private int _pageSize = 20;
     private int _totalOrders;
 
-    public ObservableCollection<Order> Orders
+    public ObservableCollection<OrderListItemDto> Orders
     {
         get => _orders;
         set => SetProperty(ref _orders, value);
     }
 
-    public ObservableCollection<Order> FilteredOrders
+    public ObservableCollection<OrderListItemDto> FilteredOrders
     {
         get => _filteredOrders;
         set => SetProperty(ref _filteredOrders, value);
@@ -116,16 +121,16 @@ public class OrdersListViewModel : BaseViewModel
     public ICommand NextPageCommand { get; }
 
     public event EventHandler? CreateOrderRequested;
-    public event EventHandler<Order>? ViewOrderDetailRequested;
+    public event EventHandler<OrderListItemDto>? ViewOrderDetailRequested;
     public event EventHandler? ShowKanbanRequested;
 
-    public OrdersListViewModel(IOrderRepository orderRepository)
+    public OrdersListViewModel(IListOrdersUseCase listOrdersUseCase)
     {
-        _orderRepository = orderRepository;
+        _listOrdersUseCase = listOrdersUseCase ?? throw new ArgumentNullException(nameof(listOrdersUseCase));
 
         CreateCommand = new RelayCommand(() => CreateOrderRequested?.Invoke(this, EventArgs.Empty));
         RefreshCommand = new RelayCommand(async () => await LoadOrdersAsync());
-        ViewDetailCommand = new RelayCommand<Order>(ExecuteViewDetail);
+        ViewDetailCommand = new RelayCommand<OrderListItemDto>(ExecuteViewDetail);
         ShowKanbanCommand = new RelayCommand(() => ShowKanbanRequested?.Invoke(this, EventArgs.Empty));
         PreviousPageCommand = new RelayCommand(() => { if (CanGoToPreviousPage) CurrentPage--; }, () => CanGoToPreviousPage);
         NextPageCommand = new RelayCommand(() => { if (CanGoToNextPage) CurrentPage++; }, () => CanGoToNextPage);
@@ -142,8 +147,8 @@ public class OrdersListViewModel : BaseViewModel
 
         try
         {
-            var orders = await _orderRepository.GetAllWithItemsAsync();
-            Orders = new ObservableCollection<Order>(orders.OrderByDescending(o => o.OrderDate));
+            var orders = await _listOrdersUseCase.ExecuteAsync(new ListOrdersQuery());
+            Orders = new ObservableCollection<OrderListItemDto>(orders);
             ApplyFilter();
         }
         catch (Exception ex)
@@ -193,7 +198,7 @@ public class OrdersListViewModel : BaseViewModel
             .Take(PageSize)
             .ToList();
 
-        FilteredOrders = new ObservableCollection<Order>(paginated);
+        FilteredOrders = new ObservableCollection<OrderListItemDto>(paginated);
 
         OnPropertyChanged(nameof(CanGoToPreviousPage));
         OnPropertyChanged(nameof(CanGoToNextPage));
@@ -201,7 +206,7 @@ public class OrdersListViewModel : BaseViewModel
         (NextPageCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
 
-    private void ExecuteViewDetail(Order? order)
+    private void ExecuteViewDetail(OrderListItemDto? order)
     {
         if (order != null)
             ViewOrderDetailRequested?.Invoke(this, order);

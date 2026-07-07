@@ -3,12 +3,15 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Customers.ListCustomers;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Prescriptions.DeletePrescription;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
+using MMV.Application.UseCases.Sales.GetCustomerPurchaseHistory;
+using MMV.Application.UseCases.Sales.GetSaleFormReferenceData;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -17,17 +20,18 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class CustomerDetailViewModel : BaseViewModel
 {
-    private readonly ICustomerRepository _customerRepository;
-    private readonly IPrescriptionRepository _prescriptionRepository;
-    private readonly IProductRepository _productRepository;
-    private readonly ISaleRepository _saleRepository; // Pour historique uniquement
+    // P2D-7A : IPrescriptionRepository / IProductRepository retirés — le chargement d'écran de SaleFormViewModel
+    // (catalogue + ordonnance active) passe désormais par IGetSaleFormReferenceDataUseCase, transmis tel quel.
+    private readonly IGetSaleFormReferenceDataUseCase _getSaleFormReferenceDataUseCase;
     private readonly IRegisterSaleUseCase _registerSaleUseCase;
+    private readonly IGetCustomerPurchaseHistoryUseCase _getPurchaseHistoryUseCase;
+    private readonly IListPrescriptionsByCustomerUseCase _listPrescriptionsUseCase;
     // P2C-4 : use cases d'écriture des ordonnances, transmis à CustomerPrescriptionsViewModel.
     private readonly ICreatePrescriptionUseCase _createPrescriptionUseCase;
     private readonly IUpdatePrescriptionUseCase _updatePrescriptionUseCase;
     private readonly IDeletePrescriptionUseCase _deletePrescriptionUseCase;
 
-    private Customer? _customer;
+    private CustomerListItemDto? _customer;
     private int _selectedTabIndex = 0;
     private SaleFormViewModel? _saleFormViewModel;
     private CustomerPrescriptionsViewModel? _prescriptionsViewModel;
@@ -37,7 +41,7 @@ public class CustomerDetailViewModel : BaseViewModel
     /// <summary>
     /// Client en cours de consultation.
     /// </summary>
-    public Customer? Customer
+    public CustomerListItemDto? Customer
     {
         get => _customer;
         set => SetProperty(ref _customer, value);
@@ -101,22 +105,24 @@ public class CustomerDetailViewModel : BaseViewModel
     // P2C-GLOBAL : le paramètre IUnitOfWork (historiquement injecté mais jamais stocké ni utilisé — dépendance
     // morte) a été supprimé. La fiche détail ne fait aucune écriture directe : les écritures d'ordonnance passent
     // par les use cases transmis à CustomerPrescriptionsViewModel.
+    // P2D-5 : ICustomerRepository et ISaleRepository retirés ; les lectures passent par IGetCustomerPurchaseHistoryUseCase
+    // et IListPrescriptionsByCustomerUseCase.
+    // P2D-7A : IPrescriptionRepository / IProductRepository retirés au profit d'IGetSaleFormReferenceDataUseCase.
     public CustomerDetailViewModel(
-        ICustomerRepository customerRepository,
-        IPrescriptionRepository prescriptionRepository,
-        IProductRepository productRepository,
-        ISaleRepository saleRepository,
+        IGetSaleFormReferenceDataUseCase getSaleFormReferenceDataUseCase,
         IRegisterSaleUseCase registerSaleUseCase,
+        IGetCustomerPurchaseHistoryUseCase getPurchaseHistoryUseCase,
+        IListPrescriptionsByCustomerUseCase listPrescriptionsUseCase,
         ICreatePrescriptionUseCase createPrescriptionUseCase,
         IUpdatePrescriptionUseCase updatePrescriptionUseCase,
         IDeletePrescriptionUseCase deletePrescriptionUseCase)
     {
-        _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
-        _prescriptionRepository = prescriptionRepository ?? throw new ArgumentNullException(nameof(prescriptionRepository));
-        _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
-        _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
+        _getSaleFormReferenceDataUseCase = getSaleFormReferenceDataUseCase ?? throw new ArgumentNullException(nameof(getSaleFormReferenceDataUseCase));
         // Use case de sauvegarde de vente obligatoire (P2B-2C), transmis à SaleFormViewModel.
         _registerSaleUseCase = registerSaleUseCase ?? throw new ArgumentNullException(nameof(registerSaleUseCase));
+        // P2D-5 : query use cases de lecture (historique d'achats + ordonnances), transmis aux sous-ViewModels.
+        _getPurchaseHistoryUseCase = getPurchaseHistoryUseCase ?? throw new ArgumentNullException(nameof(getPurchaseHistoryUseCase));
+        _listPrescriptionsUseCase = listPrescriptionsUseCase ?? throw new ArgumentNullException(nameof(listPrescriptionsUseCase));
         // P2C-4 : use cases d'écriture des ordonnances, transmis à CustomerPrescriptionsViewModel.
         _createPrescriptionUseCase = createPrescriptionUseCase ?? throw new ArgumentNullException(nameof(createPrescriptionUseCase));
         _updatePrescriptionUseCase = updatePrescriptionUseCase ?? throw new ArgumentNullException(nameof(updatePrescriptionUseCase));
@@ -130,15 +136,15 @@ public class CustomerDetailViewModel : BaseViewModel
     /// <summary>
     /// Initialise la fiche avec un client spécifique.
     /// </summary>
-    public async Task InitializeAsync(Customer customer)
+    public async Task InitializeAsync(CustomerListItemDto customer)
     {
         Customer = customer;
         Title = $"Fiche - {customer.FirstName} {customer.LastName}";
 
-        // Initialiser le ViewModel de vente : repositories nécessaires au chargement d'écran (produits +
+        // Initialiser le ViewModel de vente : query use case nécessaire au chargement d'écran (produits +
         // ordonnance) et use case applicatif pour la sauvegarde (P2B-2C). Plus aucune primitive de
         // transaction / numérotation / stock transmise à la ViewModel.
-        SaleFormViewModel = new SaleFormViewModel(_productRepository, _prescriptionRepository, _registerSaleUseCase)
+        SaleFormViewModel = new SaleFormViewModel(_getSaleFormReferenceDataUseCase, _registerSaleUseCase)
         {
             Title = "Nouvelle Vente"
         };
@@ -150,16 +156,16 @@ public class CustomerDetailViewModel : BaseViewModel
         await SaleFormViewModel.InitializeForCustomerAsync(customer.CustomerId);
 
         PrescriptionsViewModel = new CustomerPrescriptionsViewModel(
-            _prescriptionRepository,
+            _listPrescriptionsUseCase,
             _createPrescriptionUseCase,
             _updatePrescriptionUseCase,
             _deletePrescriptionUseCase);
         await PrescriptionsViewModel.InitializeAsync(customer.CustomerId);
 
-        CustomerInfoViewModel = new CustomerInfoViewModel(customer, _saleRepository);
+        CustomerInfoViewModel = new CustomerInfoViewModel(customer, _getPurchaseHistoryUseCase);
         await CustomerInfoViewModel.LoadSalesAsync();
 
-        PurchaseHistoryViewModel = new CustomerPurchaseHistoryViewModel(_saleRepository);
+        PurchaseHistoryViewModel = new CustomerPurchaseHistoryViewModel(_getPurchaseHistoryUseCase);
         await PurchaseHistoryViewModel.LoadAsync(customer.CustomerId);
 
         SelectedTabIndex = 0; // Commencer par l'onglet Vente

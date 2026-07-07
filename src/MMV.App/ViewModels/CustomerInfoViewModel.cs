@@ -1,8 +1,8 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
-using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
+using MMV.Application.UseCases.Customers.ListCustomers;
+using MMV.Application.UseCases.Sales.GetCustomerPurchaseHistory;
 
 namespace MMV.App.ViewModels;
 
@@ -11,13 +11,17 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class CustomerInfoViewModel : BaseViewModel
 {
-    private readonly ISaleRepository? _saleRepository;
-    private Customer? _customer;
+    // P2D-5 : la lecture directe ISaleRepository.GetByCustomerIdAsync est remplacée par le query use case Application,
+    // qui renvoie des DTO plats (CustomerSaleItemDto). Reste optionnel (null) pour préserver le comportement d'origine
+    // (aucun chargement de ventes si non fourni).
+    private readonly IGetCustomerPurchaseHistoryUseCase? _getPurchaseHistoryUseCase;
+    private CustomerListItemDto? _customer;
 
     /// <summary>
     /// Client dont on affiche les informations.
     /// </summary>
-    public Customer? Customer
+    /// <remarks>P2D-7C : entité EF <c>Customer</c> remplacée par le DTO applicatif <see cref="CustomerListItemDto"/>.</remarks>
+    public CustomerListItemDto? Customer
     {
         get => _customer;
         set => SetProperty(ref _customer, value);
@@ -26,17 +30,17 @@ public class CustomerInfoViewModel : BaseViewModel
     /// <summary>
     /// Liste des ventes du client.
     /// </summary>
-    public ObservableCollection<Sale> Sales { get; } = new();
+    public ObservableCollection<CustomerSaleItemDto> Sales { get; } = new();
 
     /// <summary>
     /// Indique s'il existe des ventes.
     /// </summary>
     public bool HasSales => Sales.Count > 0;
 
-    public CustomerInfoViewModel(Customer customer, ISaleRepository? saleRepository = null)
+    public CustomerInfoViewModel(CustomerListItemDto customer, IGetCustomerPurchaseHistoryUseCase? getPurchaseHistoryUseCase = null)
     {
         Customer = customer;
-        _saleRepository = saleRepository;
+        _getPurchaseHistoryUseCase = getPurchaseHistoryUseCase;
         Title = "Informations Personnelles";
     }
 
@@ -45,7 +49,7 @@ public class CustomerInfoViewModel : BaseViewModel
     /// </summary>
     public async Task LoadSalesAsync()
     {
-        if (_saleRepository == null || Customer == null)
+        if (_getPurchaseHistoryUseCase == null || Customer == null)
             return;
 
         IsLoading = true;
@@ -53,7 +57,8 @@ public class CustomerInfoViewModel : BaseViewModel
 
         try
         {
-            var sales = await _saleRepository.GetByCustomerIdAsync(Customer.CustomerId);
+            var sales = await _getPurchaseHistoryUseCase.ExecuteAsync(
+                new GetCustomerPurchaseHistoryQuery { CustomerId = Customer.CustomerId });
             foreach (var sale in sales)
             {
                 Sales.Add(sale);

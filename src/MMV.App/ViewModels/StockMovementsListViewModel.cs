@@ -4,23 +4,29 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Products.ListProductsForPicker;
+using MMV.Application.UseCases.Stock.ListStockMovements;
 using MMV.Domain.Enums;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour la liste des mouvements de stock avec filtres.
+/// <para>
+/// P2D-4 : les lectures directes (<c>IStockMovementRepository.GetAllAsync</c> et
+/// <c>IProductRepository.GetAllAsync</c>) sont remplacées par les query use cases Application
+/// <see cref="IListStockMovementsUseCase"/> et <see cref="IListProductsForPickerUseCase"/>, qui renvoient des DTO
+/// plats (jamais d'entité EF). Recherche / filtre / tri / pagination restent en présentation (iso-fonctionnel).
+/// </para>
 /// </summary>
 public class StockMovementsListViewModel : BaseViewModel
 {
-    private readonly IStockMovementRepository _stockMovementRepository;
-    private readonly IProductRepository _productRepository;
+    private readonly IListStockMovementsUseCase _listStockMovementsUseCase;
+    private readonly IListProductsForPickerUseCase _listProductsForPickerUseCase;
 
-    private ObservableCollection<StockMovement> _movements;
-    private ObservableCollection<StockMovement> _filteredMovements;
-    private ObservableCollection<Product> _products = new();
+    private ObservableCollection<StockMovementListItemDto> _movements;
+    private ObservableCollection<StockMovementListItemDto> _filteredMovements;
+    private ObservableCollection<ProductPickerItemDto> _products = new();
     private string _searchText = string.Empty;
     private string? _selectedMovementType = "Tous types";
     private long? _selectedProductId = 0;
@@ -35,19 +41,19 @@ public class StockMovementsListViewModel : BaseViewModel
     private ICommand? _previousPageCommand;
     private ICommand? _nextPageCommand;
 
-    public ObservableCollection<StockMovement> Movements
+    public ObservableCollection<StockMovementListItemDto> Movements
     {
         get => _movements;
         set => SetProperty(ref _movements, value);
     }
 
-    public ObservableCollection<StockMovement> FilteredMovements
+    public ObservableCollection<StockMovementListItemDto> FilteredMovements
     {
         get => _filteredMovements;
         set => SetProperty(ref _filteredMovements, value);
     }
 
-    public ObservableCollection<Product> Products
+    public ObservableCollection<ProductPickerItemDto> Products
     {
         get => _products;
         set => SetProperty(ref _products, value);
@@ -140,22 +146,22 @@ public class StockMovementsListViewModel : BaseViewModel
     public ICommand CreateMovementCommand => _createMovementCommand ??= new RelayCommand(ExecuteCreateMovement);
     public ICommand RefreshCommand => _refreshCommand ??= new RelayCommand(async () => await LoadMovementsAsync());
     public ICommand ExportCommand => _exportCommand ??= new RelayCommand(ExecuteExport);
-    public ICommand ShowDetailCommand => _showDetailCommand ??= new RelayCommand<StockMovement>(ExecuteShowDetail);
+    public ICommand ShowDetailCommand => _showDetailCommand ??= new RelayCommand<StockMovementListItemDto>(ExecuteShowDetail);
     public ICommand PreviousPageCommand => _previousPageCommand ??= new RelayCommand(ExecutePreviousPage, () => CanGoToPreviousPage);
     public ICommand NextPageCommand => _nextPageCommand ??= new RelayCommand(ExecuteNextPage, () => CanGoToNextPage);
 
     public event EventHandler? CreateMovementRequested;
-    public event EventHandler<StockMovement>? ShowDetailRequested;
+    public event EventHandler<StockMovementListItemDto>? ShowDetailRequested;
 
     public StockMovementsListViewModel(
-        IStockMovementRepository stockMovementRepository,
-        IProductRepository productRepository)
+        IListStockMovementsUseCase listStockMovementsUseCase,
+        IListProductsForPickerUseCase listProductsForPickerUseCase)
     {
-        _stockMovementRepository = stockMovementRepository;
-        _productRepository = productRepository;
+        _listStockMovementsUseCase = listStockMovementsUseCase ?? throw new ArgumentNullException(nameof(listStockMovementsUseCase));
+        _listProductsForPickerUseCase = listProductsForPickerUseCase ?? throw new ArgumentNullException(nameof(listProductsForPickerUseCase));
 
-        _movements = new ObservableCollection<StockMovement>();
-        _filteredMovements = new ObservableCollection<StockMovement>();
+        _movements = new ObservableCollection<StockMovementListItemDto>();
+        _filteredMovements = new ObservableCollection<StockMovementListItemDto>();
 
         _ = InitializeAsync();
     }
@@ -170,28 +176,22 @@ public class StockMovementsListViewModel : BaseViewModel
     {
         try
         {
-            var products = await _productRepository.GetAllAsync();
-            var productList = new ObservableCollection<Product>();
-            
+            var products = await _listProductsForPickerUseCase.ExecuteAsync(new ListProductsForPickerQuery());
+            var productList = new ObservableCollection<ProductPickerItemDto>();
+
             // Add a dummy product for "All products" option
-            var allProductsItem = new Product
+            productList.Add(new ProductPickerItemDto
             {
                 ProductId = 0,
                 Name = "Tous les produits",
                 Reference = string.Empty,
-                Description = string.Empty,
-                Category = ProductCategoryEnum.MONTURE,
-                SupplierId = 0,
-                PurchasePrice = 0,
-                SalePrice = 0
-            };
-            productList.Add(allProductsItem);
-            
-            foreach (var product in products.OrderBy(p => p.Name))
+            });
+
+            foreach (var product in products)
             {
                 productList.Add(product);
             }
-            
+
             Products = productList;
         }
         catch (Exception ex)
@@ -207,7 +207,7 @@ public class StockMovementsListViewModel : BaseViewModel
 
         try
         {
-            var movements = await _stockMovementRepository.GetAllAsync() ?? Array.Empty<StockMovement>();
+            var movements = await _listStockMovementsUseCase.ExecuteAsync(new ListStockMovementsQuery());
             Movements.Clear();
             foreach (var movement in movements)
             {
@@ -286,7 +286,7 @@ public class StockMovementsListViewModel : BaseViewModel
         System.Diagnostics.Debug.WriteLine("[StockMovementsListViewModel] Export requested");
     }
 
-    private void ExecuteShowDetail(StockMovement? movement)
+    private void ExecuteShowDetail(StockMovementListItemDto? movement)
     {
         if (movement != null)
         {

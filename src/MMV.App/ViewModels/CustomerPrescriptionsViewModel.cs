@@ -6,9 +6,9 @@ using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Prescriptions.DeletePrescription;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -17,17 +17,18 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class CustomerPrescriptionsViewModel : BaseViewModel
 {
-    // Conservé pour les lectures d'affichage (chargement de la liste des ordonnances du client). Les écritures
-    // (create/update/delete) sont déléguées aux use cases Application ci-dessous (P2C-4).
-    private readonly IPrescriptionRepository _prescriptionRepository;
+    // P2D-5 : la lecture d'affichage (liste des ordonnances du client) passe désormais par le query use case
+    // Application, qui renvoie des DTO plats (PrescriptionListItemDto). Les écritures (create/update/delete) restent
+    // déléguées aux use cases Application ci-dessous (P2C-4).
+    private readonly IListPrescriptionsByCustomerUseCase _listPrescriptionsUseCase;
     private readonly ICreatePrescriptionUseCase _createPrescriptionUseCase;
     private readonly IUpdatePrescriptionUseCase _updatePrescriptionUseCase;
     private readonly IDeletePrescriptionUseCase _deletePrescriptionUseCase;
     private long _customerId;
     private bool _isInEditMode;
     private bool _isShowingDetail;
-    private ObservableCollection<Prescription> _prescriptions;
-    private Prescription? _selectedPrescription;
+    private ObservableCollection<PrescriptionListItemDto> _prescriptions;
+    private PrescriptionListItemDto? _selectedPrescription;
     private PrescriptionFormViewModel? _formViewModel;
     private PrescriptionDetailViewModel? _detailViewModel;
 
@@ -43,7 +44,7 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     /// <summary>
     /// Liste des ordonnances du client.
     /// </summary>
-    public ObservableCollection<Prescription> Prescriptions
+    public ObservableCollection<PrescriptionListItemDto> Prescriptions
     {
         get => _prescriptions;
         set => SetProperty(ref _prescriptions, value);
@@ -52,7 +53,7 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     /// <summary>
     /// Ordonnance sélectionnée.
     /// </summary>
-    public Prescription? SelectedPrescription
+    public PrescriptionListItemDto? SelectedPrescription
     {
         get => _selectedPrescription;
         set => SetProperty(ref _selectedPrescription, value);
@@ -147,21 +148,21 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     public ICommand RefreshCommand { get; }
 
     public CustomerPrescriptionsViewModel(
-        IPrescriptionRepository prescriptionRepository,
+        IListPrescriptionsByCustomerUseCase listPrescriptionsUseCase,
         ICreatePrescriptionUseCase createPrescriptionUseCase,
         IUpdatePrescriptionUseCase updatePrescriptionUseCase,
         IDeletePrescriptionUseCase deletePrescriptionUseCase)
     {
-        _prescriptionRepository = prescriptionRepository ?? throw new ArgumentNullException(nameof(prescriptionRepository));
+        _listPrescriptionsUseCase = listPrescriptionsUseCase ?? throw new ArgumentNullException(nameof(listPrescriptionsUseCase));
         _createPrescriptionUseCase = createPrescriptionUseCase ?? throw new ArgumentNullException(nameof(createPrescriptionUseCase));
         _updatePrescriptionUseCase = updatePrescriptionUseCase ?? throw new ArgumentNullException(nameof(updatePrescriptionUseCase));
         _deletePrescriptionUseCase = deletePrescriptionUseCase ?? throw new ArgumentNullException(nameof(deletePrescriptionUseCase));
-        _prescriptions = new ObservableCollection<Prescription>();
+        _prescriptions = new ObservableCollection<PrescriptionListItemDto>();
 
         CreateCommand = new RelayCommand(ExecuteCreate);
-        ViewDetailsCommand = new RelayCommand<Prescription>(ExecuteViewDetails);
-        EditCommand = new RelayCommand<Prescription>(ExecuteEdit);
-        DeleteCommand = new RelayCommand<Prescription>(async (p) => await ExecuteDeleteAsync(p));
+        ViewDetailsCommand = new RelayCommand<PrescriptionListItemDto>(ExecuteViewDetails);
+        EditCommand = new RelayCommand<PrescriptionListItemDto>(ExecuteEdit);
+        DeleteCommand = new RelayCommand<PrescriptionListItemDto>(async (p) => await ExecuteDeleteAsync(p));
         RefreshCommand = new RelayCommand(async () => await LoadPrescriptionsAsync());
 
         Title = "Ordonnances";
@@ -186,8 +187,9 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
             IsLoading = true;
             ErrorMessage = string.Empty;
 
-            var prescriptions = await _prescriptionRepository.GetByCustomerIdAsync(CustomerId);
-            
+            var prescriptions = await _listPrescriptionsUseCase.ExecuteAsync(
+                new ListPrescriptionsByCustomerQuery { CustomerId = CustomerId });
+
             Prescriptions.Clear();
             foreach (var prescription in prescriptions.OrderByDescending(p => p.IssueDate))
             {
@@ -225,7 +227,7 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     /// <summary>
     /// Affiche les détails d'une ordonnance.
     /// </summary>
-    private void ExecuteViewDetails(Prescription? prescription)
+    private void ExecuteViewDetails(PrescriptionListItemDto? prescription)
     {
         if (prescription == null) return;
 
@@ -243,7 +245,7 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     /// <summary>
     /// Modifie une ordonnance existante.
     /// </summary>
-    private void ExecuteEdit(Prescription? prescription)
+    private void ExecuteEdit(PrescriptionListItemDto? prescription)
     {
         if (prescription == null) return;
 
@@ -258,7 +260,7 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     /// <summary>
     /// Supprime une ordonnance.
     /// </summary>
-    private async Task ExecuteDeleteAsync(Prescription? prescription)
+    private async Task ExecuteDeleteAsync(PrescriptionListItemDto? prescription)
     {
         if (prescription == null) return;
 
@@ -295,13 +297,13 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
         FormViewModel = null;
     }
 
-    private void OnEditRequested(object? sender, Prescription prescription)
+    private void OnEditRequested(object? sender, PrescriptionListItemDto prescription)
     {
         IsShowingDetail = false;
         ExecuteEdit(prescription);
     }
 
-    private async void OnDeleteRequested(object? sender, Prescription prescription)
+    private async void OnDeleteRequested(object? sender, PrescriptionListItemDto prescription)
     {
         IsShowingDetail = false;
         DetailViewModel = null;

@@ -5,31 +5,33 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.Application.UseCases.Products.GetInventoryOverview;
 using MMV.Application.UseCases.Stock.CreateStockMovement;
-using MMV.Domain.Entities;
 using MMV.Domain.Enums;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// ViewModel pour la gestion des inventaires.
 /// <para>
-/// P2C-GLOBAL : l'ajustement d'inventaire (mouvement de stock + correction du stock produit) passe désormais par
-/// <see cref="ICreateStockMovementUseCase"/> (branche <c>Adjustment</c>). <see cref="IProductRepository"/> n'est
-/// conservé que pour les lectures d'affichage (chargement de l'inventaire) ; <c>IStockMovementRepository</c> et
-/// <c>IUnitOfWork</c> ont été retirés.
+/// P2C-GLOBAL : l'ajustement d'inventaire (mouvement de stock + correction du stock produit) passe par
+/// <see cref="ICreateStockMovementUseCase"/> (branche <c>Adjustment</c>).
+/// </para>
+/// <para>
+/// P2D-4 : la lecture d'affichage (chargement de l'inventaire) passe désormais par le query use case
+/// <see cref="IGetInventoryOverviewUseCase"/>, qui renvoie des <see cref="InventoryProductItemDto"/> plats (jamais
+/// d'entité EF). <c>IProductRepository</c> a été retiré.
 /// </para>
 /// </summary>
 public class InventoryViewModel : BaseViewModel
 {
-    private readonly IProductRepository _productRepository;
+    private readonly IGetInventoryOverviewUseCase _getInventoryOverviewUseCase;
     private readonly ICreateStockMovementUseCase _createStockMovementUseCase;
     private readonly IDialogService _dialogService;
 
     private ObservableCollection<InventoryItem> _items = new();
     private ObservableCollection<InventoryItem> _filteredItems = new();
-    private ObservableCollection<Product> _products = new();
+    private ObservableCollection<InventoryProductItemDto> _products = new();
     private string _searchText = string.Empty;
     private bool _isProcessing;
     private int _totalItems;
@@ -47,7 +49,7 @@ public class InventoryViewModel : BaseViewModel
         set => SetProperty(ref _filteredItems, value);
     }
 
-    public ObservableCollection<Product> Products
+    public ObservableCollection<InventoryProductItemDto> Products
     {
         get => _products;
         set => SetProperty(ref _products, value);
@@ -88,11 +90,11 @@ public class InventoryViewModel : BaseViewModel
     public ICommand ConfirmItemAdjustmentCommand { get; }
 
     public InventoryViewModel(
-        IProductRepository productRepository,
+        IGetInventoryOverviewUseCase getInventoryOverviewUseCase,
         ICreateStockMovementUseCase createStockMovementUseCase,
         IDialogService dialogService)
     {
-        _productRepository = productRepository;
+        _getInventoryOverviewUseCase = getInventoryOverviewUseCase ?? throw new ArgumentNullException(nameof(getInventoryOverviewUseCase));
         _createStockMovementUseCase = createStockMovementUseCase ?? throw new ArgumentNullException(nameof(createStockMovementUseCase));
         _dialogService = dialogService;
 
@@ -112,8 +114,8 @@ public class InventoryViewModel : BaseViewModel
 
         try
         {
-            var products = await _productRepository.GetAllAsync();
-            Products = new ObservableCollection<Product>(products.OrderBy(p => p.Name));
+            var products = await _getInventoryOverviewUseCase.ExecuteAsync(new GetInventoryOverviewQuery());
+            Products = new ObservableCollection<InventoryProductItemDto>(products);
 
             Items = new ObservableCollection<InventoryItem>(
                 products.Select(p => new InventoryItem
@@ -239,7 +241,7 @@ public class InventoryViewModel : BaseViewModel
 /// </summary>
 public class InventoryItem : BaseViewModel
 {
-    public Product Product { get; set; } = null!;
+    public InventoryProductItemDto Product { get; set; } = null!;
 
     private int _theoreticalStock;
     public int TheoreticalStock

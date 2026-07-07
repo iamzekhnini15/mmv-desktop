@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Domain.Entities;
 using Xunit;
@@ -108,7 +109,7 @@ public class PrescriptionFormViewModelTests
         var update = new SpyUpdatePrescriptionUseCase();
         var vm = new PrescriptionFormViewModel(create, update);
 
-        vm.LoadPrescription(new Prescription
+        vm.LoadPrescription(new PrescriptionListItemDto
         {
             PrescriptionId = 55,
             CustomerId = 7,
@@ -135,7 +136,7 @@ public class PrescriptionFormViewModelTests
         var update = new SpyUpdatePrescriptionUseCase(
             cmd => Task.FromResult(new UpdatePrescriptionResult { PrescriptionFound = false, PrescriptionId = cmd.PrescriptionId }));
         var vm = new PrescriptionFormViewModel(create, update);
-        vm.LoadPrescription(new Prescription { PrescriptionId = 55, CustomerId = 7, IssueDate = new DateTime(2025, 1, 1), DoctorName = "Dr House" });
+        vm.LoadPrescription(new PrescriptionListItemDto { PrescriptionId = 55, CustomerId = 7, IssueDate = new DateTime(2025, 1, 1), DoctorName = "Dr House" });
 
         var raised = false;
         vm.PrescriptionSaved += (_, _) => raised = true;

@@ -5,8 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Customers.DeleteCustomer;
-using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
+using MMV.Application.UseCases.Customers.ListCustomers;
 using Moq;
 using Xunit;
 
@@ -49,12 +48,12 @@ public class CustomersListViewModelTests
         }
     }
 
-    private static Mock<ICustomerRepository> RepositoryReturning(params Customer[] customers)
+    private static Mock<IListCustomersUseCase> UseCaseReturning(params CustomerListItemDto[] customers)
     {
-        var repo = new Mock<ICustomerRepository>();
-        repo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+        var useCase = new Mock<IListCustomersUseCase>();
+        useCase.Setup(u => u.ExecuteAsync(It.IsAny<ListCustomersQuery>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(customers);
-        return repo;
+        return useCase;
     }
 
     /// <summary>
@@ -62,10 +61,10 @@ public class CustomersListViewModelTests
     /// sélectionne le client fourni (la même instance que celle chargée dans la liste).
     /// </summary>
     private static async Task<CustomersListViewModel> BuildWithSelectedAsync(
-        Customer customer, SpyDeleteCustomerUseCase spy)
+        CustomerListItemDto customer, SpyDeleteCustomerUseCase spy)
     {
-        var repo = RepositoryReturning(customer);
-        var vm = new CustomersListViewModel(repo.Object, spy);
+        var useCase = UseCaseReturning(customer);
+        var vm = new CustomersListViewModel(useCase.Object, spy);
         await WaitUntilAsync(() => vm.Customers.Count == 1);
         vm.SelectedCustomer = vm.Customers[0];
         return vm;
@@ -82,7 +81,7 @@ public class CustomersListViewModelTests
         Assert.True(condition(), "La condition attendue n'a pas été atteinte dans le délai imparti.");
     }
 
-    private static Customer NewCustomer(long id = 7) => new()
+    private static CustomerListItemDto NewCustomer(long id = 7) => new()
     {
         CustomerId = id,
         FirstName = "Jean",
@@ -173,8 +172,8 @@ public class CustomersListViewModelTests
     public async Task DeleteCommand_CannotExecute_WhenNoSelection()
     {
         var spy = new SpyDeleteCustomerUseCase();
-        var repo = RepositoryReturning();
-        var vm = new CustomersListViewModel(repo.Object, spy);
+        var useCase = UseCaseReturning();
+        var vm = new CustomersListViewModel(useCase.Object, spy);
         await WaitUntilAsync(() => !vm.IsLoading);
 
         Assert.False(vm.DeleteCommand.CanExecute(null));
@@ -185,17 +184,17 @@ public class CustomersListViewModelTests
     // ------------------------------------------------------------------
 
     [Fact]
-    public void Constructor_WithoutRepository_Throws()
+    public void Constructor_WithoutUseCase_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            new CustomersListViewModel(customerRepository: null!, new SpyDeleteCustomerUseCase()));
+            new CustomersListViewModel(listCustomersUseCase: null!, new SpyDeleteCustomerUseCase()));
     }
 
     [Fact]
     public void Constructor_WithoutDeleteUseCase_Throws()
     {
-        var repo = RepositoryReturning();
+        var useCase = UseCaseReturning();
         Assert.Throws<ArgumentNullException>(() =>
-            new CustomersListViewModel(repo.Object, deleteCustomerUseCase: null!));
+            new CustomersListViewModel(useCase.Object, deleteCustomerUseCase: null!));
     }
 }

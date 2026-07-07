@@ -1,7 +1,7 @@
 using System;
 using System.Windows.Input;
 using MMV.App.Commands;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 
 namespace MMV.App.ViewModels;
 
@@ -10,12 +10,15 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class PrescriptionDetailViewModel : BaseViewModel
 {
-    private Prescription? _currentPrescription;
+    private PrescriptionListItemDto? _currentPrescription;
 
     /// <summary>
     /// Ordonnance actuelle.
     /// </summary>
-    public Prescription? CurrentPrescription
+    // P2D-5 : la fiche détaillée consomme désormais un DTO applicatif plat (PrescriptionListItemDto), plus l'entité EF
+    // Prescription. Les liaisons compilées de PrescriptionDetailView (CurrentPrescription.Od*/Og*/Notes…) restent
+    // valides : les noms et types de propriétés du DTO sont identiques à ceux de l'entité.
+    public PrescriptionListItemDto? CurrentPrescription
     {
         get => _currentPrescription;
         set => SetProperty(ref _currentPrescription, value);
@@ -39,12 +42,12 @@ public class PrescriptionDetailViewModel : BaseViewModel
     /// <summary>
     /// Événement déclenché pour demander l'édition.
     /// </summary>
-    public event EventHandler<Prescription>? EditRequested;
+    public event EventHandler<PrescriptionListItemDto>? EditRequested;
 
     /// <summary>
     /// Événement déclenché pour demander la suppression.
     /// </summary>
-    public event EventHandler<Prescription>? DeleteRequested;
+    public event EventHandler<PrescriptionListItemDto>? DeleteRequested;
 
     /// <summary>
     /// Événement déclenché pour revenir en arrière.

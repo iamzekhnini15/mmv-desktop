@@ -1,10 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Threading.Tasks;
-using MMV.Domain.Entities;
-using MMV.Domain.Enums;
-using MMV.Domain.Interfaces.Repositories;
+using MMV.Application.UseCases.Sales.GetCustomerPurchaseHistory;
 
 namespace MMV.App.ViewModels;
 
@@ -14,7 +11,9 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class CustomerPurchaseHistoryViewModel : BaseViewModel
 {
-    private readonly ISaleRepository _saleRepository;
+    // P2D-5 : la lecture directe ISaleRepository.GetByCustomerIdAsync est remplacée par le query use case
+    // Application, qui renvoie des DTO plats (CustomerSaleItemDto). Aucune entité EF suivie n'atteint plus l'écran.
+    private readonly IGetCustomerPurchaseHistoryUseCase _getPurchaseHistoryUseCase;
     private long _customerId;
 
     /// <summary>
@@ -29,7 +28,7 @@ public class CustomerPurchaseHistoryViewModel : BaseViewModel
     /// <summary>
     /// Liste des ventes du client.
     /// </summary>
-    public ObservableCollection<Sale> Sales { get; } = new();
+    public ObservableCollection<CustomerSaleItemDto> Sales { get; } = new();
 
     /// <summary>
     /// Indique s'il existe des ventes.
@@ -41,9 +40,9 @@ public class CustomerPurchaseHistoryViewModel : BaseViewModel
     /// </summary>
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
 
-    public CustomerPurchaseHistoryViewModel(ISaleRepository saleRepository)
+    public CustomerPurchaseHistoryViewModel(IGetCustomerPurchaseHistoryUseCase getPurchaseHistoryUseCase)
     {
-        _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
+        _getPurchaseHistoryUseCase = getPurchaseHistoryUseCase ?? throw new ArgumentNullException(nameof(getPurchaseHistoryUseCase));
         Title = "Historique d'achats";
 
         Sales.CollectionChanged += (_, _) =>
@@ -65,8 +64,9 @@ public class CustomerPurchaseHistoryViewModel : BaseViewModel
 
         try
         {
-            // Charger toutes les ventes du client
-            var sales = await _saleRepository.GetByCustomerIdAsync(customerId);
+            // Charger toutes les ventes du client (tri décroissant par date hérité du repository via le use case).
+            var sales = await _getPurchaseHistoryUseCase.ExecuteAsync(
+                new GetCustomerPurchaseHistoryQuery { CustomerId = customerId });
             foreach (var sale in sales)
             {
                 Sales.Add(sale);

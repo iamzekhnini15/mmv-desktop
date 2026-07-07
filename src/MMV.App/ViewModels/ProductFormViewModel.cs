@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Products.CreateProduct;
+using MMV.Application.UseCases.Products.ListProducts;
 using MMV.Application.UseCases.Products.UpdateProduct;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Suppliers.ListSuppliers;
 using MMV.Domain.Enums;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -17,15 +17,24 @@ namespace MMV.App.ViewModels;
 /// <para>
 /// P2C-GLOBAL : la persistance directe (repository produit + <c>IUnitOfWork</c> + <c>SaveChangesAsync</c>) a été
 /// déplacée vers <see cref="ICreateProductUseCase"/> / <see cref="IUpdateProductUseCase"/>.
-/// <see cref="ISupplierRepository"/> n'est conservé que pour la lecture d'affichage (liste déroulante fournisseurs).
+/// </para>
+/// <para>
+/// P2D-4 : la liste déroulante fournisseurs est désormais lue via le query use case
+/// <see cref="IListSuppliersUseCase"/> (réutilisé de P2D-2), qui renvoie des <see cref="SupplierListItemDto"/> plats
+/// (jamais l'entité EF <c>Supplier</c>). <c>ISupplierRepository</c> a été retiré.
+/// </para>
+/// <para>
+/// P2D-7D : le pré-remplissage en édition reçoit un <see cref="ProductListItemDto"/> (projeté par
+/// <c>IListProductsUseCase</c>) au lieu de l'entité EF <c>Product</c> ; la persistance reste portée par les
+/// use cases de création/mise à jour.
 /// </para>
 /// </summary>
 public class ProductFormViewModel : BaseViewModel
 {
-    private readonly ISupplierRepository _supplierRepository;
+    private readonly IListSuppliersUseCase _listSuppliersUseCase;
     private readonly ICreateProductUseCase _createProductUseCase;
     private readonly IUpdateProductUseCase _updateProductUseCase;
-    private readonly Product? _existingProduct;
+    private readonly ProductListItemDto? _existingProduct;
 
     private long _productId;
     private string _reference = string.Empty;
@@ -39,8 +48,8 @@ public class ProductFormViewModel : BaseViewModel
     private ProductCategoryEnum _selectedCategory = ProductCategoryEnum.MONTURE;
     private long? _supplierId;
     private ObservableCollection<ProductCategoryEnum> _categories;
-    private ObservableCollection<Supplier> _suppliers;
-    private Supplier? _selectedSupplier;
+    private ObservableCollection<SupplierListItemDto> _suppliers;
+    private SupplierListItemDto? _selectedSupplier;
 
     // Propriétés spécifiques pour GlassDetail
     private string? _glassMaterial;
@@ -194,13 +203,13 @@ public class ProductFormViewModel : BaseViewModel
         set => SetProperty(ref _categories, value);
     }
 
-    public ObservableCollection<Supplier> Suppliers
+    public ObservableCollection<SupplierListItemDto> Suppliers
     {
         get => _suppliers;
         set => SetProperty(ref _suppliers, value);
     }
 
-    public Supplier? SelectedSupplier
+    public SupplierListItemDto? SelectedSupplier
     {
         get => _selectedSupplier;
         set
@@ -421,16 +430,16 @@ public class ProductFormViewModel : BaseViewModel
     /// Constructeur pour création d'un nouveau produit.
     /// </summary>
     public ProductFormViewModel(
-        ISupplierRepository supplierRepository,
+        IListSuppliersUseCase listSuppliersUseCase,
         ICreateProductUseCase createProductUseCase,
         IUpdateProductUseCase updateProductUseCase)
     {
-        _supplierRepository = supplierRepository;
+        _listSuppliersUseCase = listSuppliersUseCase ?? throw new ArgumentNullException(nameof(listSuppliersUseCase));
         _createProductUseCase = createProductUseCase ?? throw new ArgumentNullException(nameof(createProductUseCase));
         _updateProductUseCase = updateProductUseCase ?? throw new ArgumentNullException(nameof(updateProductUseCase));
 
         _categories = new ObservableCollection<ProductCategoryEnum>();
-        _suppliers = new ObservableCollection<Supplier>();
+        _suppliers = new ObservableCollection<SupplierListItemDto>();
         
         // Initialiser avec la première catégorie par défaut
         _selectedCategory = ProductCategoryEnum.MONTURE;
@@ -442,10 +451,10 @@ public class ProductFormViewModel : BaseViewModel
     /// Constructeur pour édition d'un produit existant.
     /// </summary>
     public ProductFormViewModel(
-        ISupplierRepository supplierRepository,
+        IListSuppliersUseCase listSuppliersUseCase,
         ICreateProductUseCase createProductUseCase,
         IUpdateProductUseCase updateProductUseCase,
-        Product product) : this(supplierRepository, createProductUseCase, updateProductUseCase)
+        ProductListItemDto product) : this(listSuppliersUseCase, createProductUseCase, updateProductUseCase)
     {
         _existingProduct = product;
         Title = "Modifier produit";
@@ -470,7 +479,7 @@ public class ProductFormViewModel : BaseViewModel
     /// <summary>
     /// Charge les détails spécifiques (Glass, Lens, Accessory) du produit dans les propriétés du formulaire.
     /// </summary>
-    private void LoadCategorySpecificDetails(Product product)
+    private void LoadCategorySpecificDetails(ProductListItemDto product)
     {
         switch (product.Category)
         {
@@ -536,16 +545,13 @@ public class ProductFormViewModel : BaseViewModel
             System.Diagnostics.Debug.WriteLine($"[ProductFormViewModel] {Categories.Count} catégories chargées");
 
             System.Diagnostics.Debug.WriteLine("[ProductFormViewModel] Début chargement fournisseurs...");
-            var suppliers = await _supplierRepository.GetAllAsync();
-            System.Diagnostics.Debug.WriteLine($"[ProductFormViewModel] {suppliers?.Count ?? 0} fournisseurs chargés");
-            
+            var suppliers = await _listSuppliersUseCase.ExecuteAsync(new ListSuppliersQuery());
+            System.Diagnostics.Debug.WriteLine($"[ProductFormViewModel] {suppliers.Count} fournisseurs chargés");
+
             Suppliers.Clear();
-            if (suppliers != null)
+            foreach (var supplier in suppliers)
             {
-                foreach (var supplier in suppliers)
-                {
-                    Suppliers.Add(supplier);
-                }
+                Suppliers.Add(supplier);
             }
 
             // Sélectionner les éléments correspondants si on est en mode édition

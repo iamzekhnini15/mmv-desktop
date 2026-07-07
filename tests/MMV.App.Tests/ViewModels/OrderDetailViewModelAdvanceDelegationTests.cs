@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
+using MMV.Application.UseCases.Orders.GetOrderDetails;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
@@ -74,7 +75,7 @@ public class OrderDetailViewModelAdvanceDelegationTests
         };
         order.OrderItems.Add(new OrderItem { ProductId = 1, ItemType = OrderItemType.LensOd, Quantity = 1 });
 
-        viewModel.Initialize(order);
+        viewModel.Initialize(GetOrderDetailsUseCase.MapToDto(order));
         return viewModel;
     }
 
@@ -99,7 +100,7 @@ public class OrderDetailViewModelAdvanceDelegationTests
         var spy = new SpyAdvanceOrderStatusUseCase();
         var viewModel = BuildInitializedViewModel(spy);
 
-        Order? updatedWith = null;
+        OrderDetailsDto? updatedWith = null;
         viewModel.OrderUpdated += (_, order) => updatedWith = order;
 
         viewModel.AdvanceStatusCommand.Execute(null);

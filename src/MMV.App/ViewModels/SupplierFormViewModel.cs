@@ -2,8 +2,8 @@ using System;
 using System.Threading.Tasks;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Suppliers.CreateSupplier;
+using MMV.Application.UseCases.Suppliers.GetSupplierWithProducts;
 using MMV.Application.UseCases.Suppliers.UpdateSupplier;
-using MMV.Domain.Entities;
 
 namespace MMV.App.ViewModels;
 
@@ -19,7 +19,7 @@ public class SupplierFormViewModel : BaseViewModel
 {
     private readonly ICreateSupplierUseCase _createSupplierUseCase;
     private readonly IUpdateSupplierUseCase _updateSupplierUseCase;
-    private Supplier? _originalSupplier;
+    private long? _editingSupplierId;
 
     private string _name = string.Empty;
     private string? _contactEmail;
@@ -87,7 +87,7 @@ public class SupplierFormViewModel : BaseViewModel
     public RelayCommand SaveCommand { get; }
     public RelayCommand CancelCommand { get; }
 
-    public event EventHandler<Supplier>? SupplierSaved;
+    public event EventHandler? SupplierSaved;
     public event EventHandler? Cancelled;
 
     public SupplierFormViewModel(ICreateSupplierUseCase createSupplierUseCase, IUpdateSupplierUseCase updateSupplierUseCase)
@@ -103,7 +103,7 @@ public class SupplierFormViewModel : BaseViewModel
 
     public void InitializeForCreate()
     {
-        _originalSupplier = null;
+        _editingSupplierId = null;
         IsEditMode = false;
         Title = "Nouveau Fournisseur";
 
@@ -114,9 +114,11 @@ public class SupplierFormViewModel : BaseViewModel
         ReferenceCode = string.Empty;
     }
 
-    public void InitializeForEdit(Supplier supplier)
+    public void InitializeForEdit(SupplierDetailsDto supplier)
     {
-        _originalSupplier = supplier;
+        ArgumentNullException.ThrowIfNull(supplier);
+
+        _editingSupplierId = supplier.SupplierId;
         IsEditMode = true;
         Title = $"Modifier - {supplier.Name}";
 
@@ -140,30 +142,21 @@ public class SupplierFormViewModel : BaseViewModel
 
         try
         {
-            if (IsEditMode && _originalSupplier != null)
+            if (IsEditMode && _editingSupplierId is { } supplierId)
             {
                 await _updateSupplierUseCase.ExecuteAsync(new UpdateSupplierCommand
                 {
-                    SupplierId = _originalSupplier.SupplierId,
+                    SupplierId = supplierId,
                     Name = Name,
                     ContactEmail = ContactEmail,
                     Phone = Phone,
                     Address = Address,
                     ReferenceCode = ReferenceCode
                 });
-
-                // Refléter les champs saisis sur l'entité d'origine pour l'événement (comportement d'affichage inchangé).
-                _originalSupplier.Name = Name;
-                _originalSupplier.ContactEmail = ContactEmail;
-                _originalSupplier.Phone = Phone;
-                _originalSupplier.Address = Address;
-                _originalSupplier.ReferenceCode = ReferenceCode;
-
-                SupplierSaved?.Invoke(this, _originalSupplier);
             }
             else
             {
-                var result = await _createSupplierUseCase.ExecuteAsync(new CreateSupplierCommand
+                await _createSupplierUseCase.ExecuteAsync(new CreateSupplierCommand
                 {
                     Name = Name,
                     ContactEmail = ContactEmail,
@@ -171,19 +164,11 @@ public class SupplierFormViewModel : BaseViewModel
                     Address = Address,
                     ReferenceCode = ReferenceCode
                 });
-
-                var supplier = new Supplier
-                {
-                    SupplierId = result.SupplierId,
-                    Name = Name,
-                    ContactEmail = ContactEmail,
-                    Phone = Phone,
-                    Address = Address,
-                    ReferenceCode = ReferenceCode
-                };
-
-                SupplierSaved?.Invoke(this, supplier);
             }
+
+            // Le parent (SuppliersViewModel) recharge la liste depuis le query use case : l'événement ne
+            // transporte plus d'entité (aucune entité EF ne franchit la frontière UI).
+            SupplierSaved?.Invoke(this, EventArgs.Empty);
         }
         finally
         {

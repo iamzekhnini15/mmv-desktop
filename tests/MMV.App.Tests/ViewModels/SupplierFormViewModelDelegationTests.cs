@@ -3,8 +3,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Suppliers.CreateSupplier;
+using MMV.Application.UseCases.Suppliers.GetSupplierWithProducts;
 using MMV.Application.UseCases.Suppliers.UpdateSupplier;
-using MMV.Domain.Entities;
 using Moq;
 using Xunit;
 
@@ -35,16 +35,15 @@ public sealed class SupplierFormViewModelDelegationTests
         vm.InitializeForCreate();
         vm.Name = "Neuf";
 
-        Supplier? saved = null;
-        vm.SupplierSaved += (_, s) => saved = s;
+        var savedRaised = false;
+        vm.SupplierSaved += (_, _) => savedRaised = true;
 
         vm.SaveCommand.Execute(null);
-        await WaitUntilAsync(() => saved != null);
+        await WaitUntilAsync(() => savedRaised);
 
         create.Verify(u => u.ExecuteAsync(It.Is<CreateSupplierCommand>(c => c.Name == "Neuf"), It.IsAny<CancellationToken>()), Times.Once);
         update.Verify(u => u.ExecuteAsync(It.IsAny<UpdateSupplierCommand>(), It.IsAny<CancellationToken>()), Times.Never);
-        Assert.NotNull(saved);
-        Assert.Equal(42, saved!.SupplierId);
+        Assert.True(savedRaised);
     }
 
     [Fact]
@@ -56,7 +55,7 @@ public sealed class SupplierFormViewModelDelegationTests
             .ReturnsAsync(new UpdateSupplierResult { SupplierFound = true, SupplierId = 7 });
 
         var vm = new SupplierFormViewModel(create.Object, update.Object);
-        vm.InitializeForEdit(new Supplier { SupplierId = 7, Name = "Ancien" });
+        vm.InitializeForEdit(new SupplierDetailsDto { SupplierId = 7, Name = "Ancien" });
         vm.Name = "Modifié";
 
         var savedRaised = false;

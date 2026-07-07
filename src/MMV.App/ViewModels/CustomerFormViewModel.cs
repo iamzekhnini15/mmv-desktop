@@ -1,8 +1,8 @@
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.Application.UseCases.Customers.CreateCustomer;
+using MMV.Application.UseCases.Customers.ListCustomers;
 using MMV.Application.UseCases.Customers.UpdateCustomer;
-using MMV.Domain.Entities;
 
 namespace MMV.App.ViewModels;
 
@@ -14,12 +14,15 @@ namespace MMV.App.ViewModels;
 /// la couche Application. La ViewModel ne fait plus qu'orchestrer l'écran (état, validation de surface,
 /// construction des commandes) puis déléguer à <see cref="ICreateCustomerUseCase"/> /
 /// <see cref="IUpdateCustomerUseCase"/>.
+/// <para>P2D-7C : le pré-remplissage d'édition (<see cref="InitializeForEdit"/>) et l'événement
+/// <see cref="CustomerSaved"/> portent désormais le DTO applicatif <see cref="CustomerListItemDto"/> (jamais
+/// l'entité EF <c>Customer</c>).</para>
 /// </remarks>
 public class CustomerFormViewModel : BaseViewModel
 {
     private readonly ICreateCustomerUseCase _createCustomerUseCase;
     private readonly IUpdateCustomerUseCase _updateCustomerUseCase;
-    private Customer? _originalCustomer;
+    private CustomerListItemDto? _originalCustomer;
 
     #region Properties
 
@@ -199,7 +202,7 @@ public class CustomerFormViewModel : BaseViewModel
     /// <summary>
     /// Événement déclenché lorsque le formulaire est enregistré avec succès.
     /// </summary>
-    public event EventHandler<Customer>? CustomerSaved;
+    public event EventHandler<CustomerListItemDto>? CustomerSaved;
 
     /// <summary>
     /// Événement déclenché lorsque le formulaire est annulé.
@@ -232,7 +235,7 @@ public class CustomerFormViewModel : BaseViewModel
     /// <summary>
     /// Initialise le formulaire pour éditer un client existant.
     /// </summary>
-    public void InitializeForEdit(Customer customer)
+    public void InitializeForEdit(CustomerListItemDto customer)
     {
         IsEditMode = true;
         Title = $"Modifier {customer.FirstName} {customer.LastName}";
@@ -388,10 +391,10 @@ public class CustomerFormViewModel : BaseViewModel
                     return;
                 }
 
-                // Refléter les champs édités dans l'instance affichée (cohérent avec le flux d'origine qui mutait
+                // Reconstruit un DTO à jour depuis l'état du formulaire (cohérent avec le flux d'origine qui mutait
                 // l'entité chargée) avant de notifier ; la liste est ensuite rechargée par le parent.
-                ApplyFormTo(_originalCustomer);
-                CustomerSaved?.Invoke(this, _originalCustomer);
+                var updated = BuildDtoFromForm(_originalCustomer.CustomerId, _originalCustomer.CreatedAt);
+                CustomerSaved?.Invoke(this, updated);
             }
             else
             {
@@ -410,8 +413,7 @@ public class CustomerFormViewModel : BaseViewModel
                     Notes = Notes
                 });
 
-                var created = new Customer { CustomerId = result.CustomerId };
-                ApplyFormTo(created);
+                var created = BuildDtoFromForm(result.CustomerId, DateTime.UtcNow);
                 CustomerSaved?.Invoke(this, created);
             }
         }
@@ -426,24 +428,27 @@ public class CustomerFormViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Reporte l'état du formulaire (champs optionnels normalisés en null si blancs) sur une entité <see cref="Customer"/>
-    /// destinée uniquement à l'affichage / à la notification <see cref="CustomerSaved"/>. La persistance reste
-    /// assurée par les use cases ; cette copie ne déclenche aucune écriture.
+    /// Construit un <see cref="CustomerListItemDto"/> (champs optionnels normalisés en <c>null</c> si blancs) à
+    /// partir de l'état du formulaire, destiné uniquement à l'affichage / à la notification
+    /// <see cref="CustomerSaved"/>. La persistance reste assurée par les use cases ; cette construction ne déclenche
+    /// aucune écriture.
     /// </summary>
-    private void ApplyFormTo(Customer customer)
+    private CustomerListItemDto BuildDtoFromForm(long customerId, DateTime createdAt) => new()
     {
-        customer.FirstName = FirstName;
-        customer.LastName = LastName;
-        customer.Email = string.IsNullOrWhiteSpace(Email) ? null : Email;
-        customer.Phone = string.IsNullOrWhiteSpace(Phone) ? null : Phone;
-        customer.BirthDate = BirthDate?.UtcDateTime;
-        customer.Address = string.IsNullOrWhiteSpace(Address) ? null : Address;
-        customer.City = string.IsNullOrWhiteSpace(City) ? null : City;
-        customer.PostalCode = string.IsNullOrWhiteSpace(PostalCode) ? null : PostalCode;
-        customer.SocialSecurityNumber = string.IsNullOrWhiteSpace(SocialSecurityNumber) ? null : SocialSecurityNumber;
-        customer.InsuranceName = string.IsNullOrWhiteSpace(InsuranceName) ? null : InsuranceName;
-        customer.Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes;
-    }
+        CustomerId = customerId,
+        FirstName = FirstName,
+        LastName = LastName,
+        Email = string.IsNullOrWhiteSpace(Email) ? null : Email,
+        Phone = string.IsNullOrWhiteSpace(Phone) ? null : Phone,
+        BirthDate = BirthDate?.UtcDateTime,
+        Address = string.IsNullOrWhiteSpace(Address) ? null : Address,
+        City = string.IsNullOrWhiteSpace(City) ? null : City,
+        PostalCode = string.IsNullOrWhiteSpace(PostalCode) ? null : PostalCode,
+        SocialSecurityNumber = string.IsNullOrWhiteSpace(SocialSecurityNumber) ? null : SocialSecurityNumber,
+        InsuranceName = string.IsNullOrWhiteSpace(InsuranceName) ? null : InsuranceName,
+        Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes,
+        CreatedAt = createdAt,
+    };
 
     private bool CanExecuteCancel()
     {

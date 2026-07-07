@@ -5,26 +5,30 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.Application.UseCases.Customers.ListCustomersForPicker;
 using MMV.Application.UseCases.Orders.CreateOrder;
+using MMV.Application.UseCases.Orders.GetOrderDetails;
 using MMV.Application.UseCases.Orders.UpdateOrder;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
+using MMV.Application.UseCases.Products.ListProductsForOrderPicker;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Persistence;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
 /// <summary>
 /// Représente une ligne d'article dans le formulaire de commande.
+/// <para>P2D-6 : le produit sélectionné est un <see cref="OrderProductPickerDto"/> (DTO applicatif plat) et non plus
+/// l'entité EF <c>Product</c>.</para>
 /// </summary>
 public class OrderItemLine : BaseViewModel
 {
-    private readonly IEnumerable<Product> _allProducts;
+    private readonly IEnumerable<OrderProductPickerDto> _allProducts;
 
     private OrderItemType _itemType;
-    private Product? _selectedProduct;
+    private OrderProductPickerDto? _selectedProduct;
     private string _productSearchText = string.Empty;
-    private ObservableCollection<Product> _filteredProducts = new();
+    private ObservableCollection<OrderProductPickerDto> _filteredProducts = new();
     private bool _isProductPopupOpen;
     private int _quantity = 1;
     private decimal _unitPrice;
@@ -36,12 +40,12 @@ public class OrderItemLine : BaseViewModel
     private double? _addition;
     private string _notes = string.Empty;
 
-    public OrderItemLine(OrderItemType itemType, IEnumerable<Product> allProducts)
+    public OrderItemLine(OrderItemType itemType, IEnumerable<OrderProductPickerDto> allProducts)
     {
         _itemType = itemType;
-        _allProducts = allProducts ?? Array.Empty<Product>();
-        _filteredProducts = new ObservableCollection<Product>(GetFilteredByType());
-        SelectProductCommand = new RelayCommand<Product>(p => SelectedProduct = p);
+        _allProducts = allProducts ?? Array.Empty<OrderProductPickerDto>();
+        _filteredProducts = new ObservableCollection<OrderProductPickerDto>(GetFilteredByType());
+        SelectProductCommand = new RelayCommand<OrderProductPickerDto>(p => SelectedProduct = p);
     }
 
     public ICommand SelectProductCommand { get; }
@@ -77,7 +81,7 @@ public class OrderItemLine : BaseViewModel
     /// </summary>
     public bool IsLens => ItemType == OrderItemType.LensOd || ItemType == OrderItemType.LensOg;
 
-    public Product? SelectedProduct
+    public OrderProductPickerDto? SelectedProduct
     {
         get => _selectedProduct;
         set
@@ -109,7 +113,7 @@ public class OrderItemLine : BaseViewModel
         }
     }
 
-    public ObservableCollection<Product> FilteredProducts
+    public ObservableCollection<OrderProductPickerDto> FilteredProducts
     {
         get => _filteredProducts;
         private set => SetProperty(ref _filteredProducts, value);
@@ -187,7 +191,7 @@ public class OrderItemLine : BaseViewModel
         var baseProducts = GetFilteredByType();
         var q = (ProductSearchText ?? string.Empty).Trim().ToLowerInvariant();
 
-        IEnumerable<Product> result;
+        IEnumerable<OrderProductPickerDto> result;
         if (string.IsNullOrWhiteSpace(q))
         {
             result = baseProducts;
@@ -199,13 +203,13 @@ public class OrderItemLine : BaseViewModel
                 (!string.IsNullOrEmpty(p.Name) && p.Name.ToLowerInvariant().Contains(q)));
         }
 
-        FilteredProducts = new ObservableCollection<Product>(result);
+        FilteredProducts = new ObservableCollection<OrderProductPickerDto>(result);
     }
 
     /// <summary>
     /// Filtre les produits disponibles selon le type d'article.
     /// </summary>
-    private IEnumerable<Product> GetFilteredByType()
+    private IEnumerable<OrderProductPickerDto> GetFilteredByType()
     {
         return ItemType switch
         {
@@ -225,27 +229,27 @@ public class OrderItemLine : BaseViewModel
 /// </summary>
 public class OrderFormViewModel : BaseViewModel
 {
-    private readonly ICustomerRepository _customerRepository;
-    private readonly IProductRepository _productRepository;
-    private readonly IPrescriptionRepository _prescriptionRepository;
+    private readonly IListCustomersForPickerUseCase _listCustomersUseCase;
+    private readonly IListProductsForOrderPickerUseCase _listProductsUseCase;
+    private readonly IListPrescriptionsByCustomerUseCase _listPrescriptionsUseCase;
     private readonly INumberSequenceService _numberSequenceService;
     private readonly ICreateOrderUseCase _createOrderUseCase;
     private readonly IUpdateOrderUseCase _updateOrderUseCase;
 
     // Client
-    private ObservableCollection<Customer> _allCustomers = new();
-    private ObservableCollection<Customer> _filteredCustomers = new();
+    private ObservableCollection<CustomerPickerItemDto> _allCustomers = new();
+    private ObservableCollection<CustomerPickerItemDto> _filteredCustomers = new();
     private string _customerSearchText = string.Empty;
-    private Customer? _selectedCustomer;
+    private CustomerPickerItemDto? _selectedCustomer;
     private bool _isCustomerPopupOpen;
 
     // Ordonnance
-    private ObservableCollection<Prescription> _customerPrescriptions = new();
-    private Prescription? _selectedPrescription;
+    private ObservableCollection<PrescriptionListItemDto> _customerPrescriptions = new();
+    private PrescriptionListItemDto? _selectedPrescription;
 
     // Articles
     private ObservableCollection<OrderItemLine> _orderItems = new();
-    private ObservableCollection<Product> _allProducts = new();
+    private ObservableCollection<OrderProductPickerDto> _allProducts = new();
 
     // Commande
     private string _orderNumber = string.Empty;
@@ -253,11 +257,11 @@ public class OrderFormViewModel : BaseViewModel
     private string _notes = string.Empty;
     private bool _isSaving;
     private bool _isEditMode;
-    private Order? _existingOrder;
+    private OrderDetailsDto? _existingOrder;
 
     #region Properties
 
-    public ObservableCollection<Customer> FilteredCustomers
+    public ObservableCollection<CustomerPickerItemDto> FilteredCustomers
     {
         get => _filteredCustomers;
         set => SetProperty(ref _filteredCustomers, value);
@@ -278,7 +282,7 @@ public class OrderFormViewModel : BaseViewModel
         }
     }
 
-    public Customer? SelectedCustomer
+    public CustomerPickerItemDto? SelectedCustomer
     {
         get => _selectedCustomer;
         set
@@ -305,13 +309,13 @@ public class OrderFormViewModel : BaseViewModel
 
     public bool HasSelectedCustomer => SelectedCustomer != null;
 
-    public ObservableCollection<Prescription> CustomerPrescriptions
+    public ObservableCollection<PrescriptionListItemDto> CustomerPrescriptions
     {
         get => _customerPrescriptions;
         set => SetProperty(ref _customerPrescriptions, value);
     }
 
-    public Prescription? SelectedPrescription
+    public PrescriptionListItemDto? SelectedPrescription
     {
         get => _selectedPrescription;
         set => SetProperty(ref _selectedPrescription, value);
@@ -383,17 +387,19 @@ public class OrderFormViewModel : BaseViewModel
     #endregion
 
     public OrderFormViewModel(
-        ICustomerRepository customerRepository,
-        IProductRepository productRepository,
-        IPrescriptionRepository prescriptionRepository,
+        IListCustomersForPickerUseCase listCustomersUseCase,
+        IListProductsForOrderPickerUseCase listProductsUseCase,
+        IListPrescriptionsByCustomerUseCase listPrescriptionsUseCase,
         INumberSequenceService numberSequenceService,
         ICreateOrderUseCase createOrderUseCase,
         IUpdateOrderUseCase updateOrderUseCase,
-        Order? existingOrder = null)
+        OrderDetailsDto? existingOrder = null)
     {
-        _customerRepository = customerRepository;
-        _productRepository = productRepository;
-        _prescriptionRepository = prescriptionRepository;
+        // P2D-6 : les lectures de référence (clients, produits, ordonnances) passent par des query use cases
+        // Application renvoyant des DTO plats — plus aucun repository injecté dans ce formulaire.
+        _listCustomersUseCase = listCustomersUseCase ?? throw new ArgumentNullException(nameof(listCustomersUseCase));
+        _listProductsUseCase = listProductsUseCase ?? throw new ArgumentNullException(nameof(listProductsUseCase));
+        _listPrescriptionsUseCase = listPrescriptionsUseCase ?? throw new ArgumentNullException(nameof(listPrescriptionsUseCase));
         // Numérotation fiable obligatoire (P2A-1E) : remplace le comptage count+1 sujet aux collisions.
         _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
         // Use case de création (P2B-2D) obligatoire : la persistance de la création est déléguée à la couche
@@ -414,7 +420,7 @@ public class OrderFormViewModel : BaseViewModel
         SaveCommand = new RelayCommand(async () => await SaveAsync(), CanSave);
         CancelCommand = new RelayCommand(() => CancelRequested?.Invoke(this, EventArgs.Empty));
         ClearCustomerCommand = new RelayCommand(ClearCustomer);
-        SelectCustomerCommand = new RelayCommand<Customer>(c => { if (c != null) SelectedCustomer = c; });
+        SelectCustomerCommand = new RelayCommand<CustomerPickerItemDto>(c => { if (c != null) SelectedCustomer = c; });
 
         OrderItems.CollectionChanged += (_, _) =>
         {
@@ -434,12 +440,12 @@ public class OrderFormViewModel : BaseViewModel
         IsLoading = true;
         try
         {
-            var customers = await _customerRepository.GetAllAsync();
-            _allCustomers = new ObservableCollection<Customer>(customers.OrderBy(c => c.LastName));
-            FilteredCustomers = new ObservableCollection<Customer>(_allCustomers);
+            var customers = await _listCustomersUseCase.ExecuteAsync(new ListCustomersForPickerQuery());
+            _allCustomers = new ObservableCollection<CustomerPickerItemDto>(customers);
+            FilteredCustomers = new ObservableCollection<CustomerPickerItemDto>(_allCustomers);
 
-            var products = await _productRepository.GetAllAsync();
-            _allProducts = new ObservableCollection<Product>(products.OrderBy(p => p.Name));
+            var products = await _listProductsUseCase.ExecuteAsync(new ListProductsForOrderPickerQuery());
+            _allProducts = new ObservableCollection<OrderProductPickerDto>(products);
 
             if (_isEditMode && _existingOrder != null)
             {
@@ -461,9 +467,11 @@ public class OrderFormViewModel : BaseViewModel
         }
     }
 
-    private async Task LoadExistingOrderAsync()
+    private Task LoadExistingOrderAsync()
     {
-        if (_existingOrder == null) return;
+        // P2D-7B : la commande à éditer est désormais fournie sous forme d'OrderDetailsDto (déjà chargé par le query
+        // use case) ; le remplissage du formulaire est purement synchrone (plus de lecture repository à awaiter).
+        if (_existingOrder == null) return Task.CompletedTask;
 
         OrderNumber = _existingOrder.OrderNumber;
         Notes = _existingOrder.Notes ?? string.Empty;
@@ -478,7 +486,7 @@ public class OrderFormViewModel : BaseViewModel
             }
         }
 
-        foreach (var item in _existingOrder.OrderItems)
+        foreach (var item in _existingOrder.Items)
         {
             var line = new OrderItemLine(item.ItemType, _allProducts)
             {
@@ -494,6 +502,7 @@ public class OrderFormViewModel : BaseViewModel
         }
 
         OnPropertyChanged(nameof(TotalAmount));
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -513,7 +522,7 @@ public class OrderFormViewModel : BaseViewModel
         var q = (CustomerSearchText ?? string.Empty).Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(q))
         {
-            FilteredCustomers = new ObservableCollection<Customer>(_allCustomers);
+            FilteredCustomers = new ObservableCollection<CustomerPickerItemDto>(_allCustomers);
             return;
         }
 
@@ -523,16 +532,18 @@ public class OrderFormViewModel : BaseViewModel
             (!string.IsNullOrEmpty(c.Phone) && c.Phone.Contains(q)) ||
             (!string.IsNullOrEmpty(c.Email) && c.Email.ToLowerInvariant().Contains(q)));
 
-        FilteredCustomers = new ObservableCollection<Customer>(filtered);
+        FilteredCustomers = new ObservableCollection<CustomerPickerItemDto>(filtered);
     }
 
     private async Task LoadCustomerPrescriptionsAsync(long customerId)
     {
         try
         {
-            var prescriptions = await _prescriptionRepository.GetByCustomerIdAsync(customerId);
-            CustomerPrescriptions = new ObservableCollection<Prescription>(
-                prescriptions.OrderByDescending(p => p.IssueDate));
+            // P2D-6 : réutilise le query use case des ordonnances du client (P2D-5), qui hérite déjà du tri décroissant
+            // par date d'émission du repository — comme le formulaire d'origine.
+            var prescriptions = await _listPrescriptionsUseCase.ExecuteAsync(
+                new ListPrescriptionsByCustomerQuery { CustomerId = customerId });
+            CustomerPrescriptions = new ObservableCollection<PrescriptionListItemDto>(prescriptions);
             SelectedPrescription = CustomerPrescriptions.FirstOrDefault();
         }
         catch (Exception ex)

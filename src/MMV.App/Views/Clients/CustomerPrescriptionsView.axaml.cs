@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using MMV.App.ViewModels;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 
 namespace MMV.App.Views.Clients;
 
@@ -14,7 +14,8 @@ public partial class CustomerPrescriptionsView : UserControl
 
     private void OnPrescriptionTapped(object? sender, RoutedEventArgs e)
     {
-        if (sender is Border border && border.DataContext is Prescription prescription)
+        // P2D-5 : la liste porte désormais des DTO applicatifs (PrescriptionListItemDto) au lieu de l'entité EF.
+        if (sender is Border border && border.DataContext is PrescriptionListItemDto prescription)
         {
             if (DataContext is CustomerPrescriptionsViewModel viewModel)
             {

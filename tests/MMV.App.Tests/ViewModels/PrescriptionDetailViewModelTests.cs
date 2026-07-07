@@ -1,14 +1,14 @@
 using MMV.App.ViewModels;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using Xunit;
 
 namespace MMV.App.Tests.ViewModels;
 
 /// <summary>
-/// P2C-4 — <see cref="PrescriptionDetailViewModel"/> est purement présentationnel : il ne déclenche que des
+/// P2C-4 / P2D-5 — <see cref="PrescriptionDetailViewModel"/> est purement présentationnel : il ne déclenche que des
 /// événements (édition / suppression / retour) et ne réalise aucune persistance. Sa dépendance
-/// <c>IPrescriptionRepository</c> (jamais utilisée) a été retirée en P2C-4 ; il se construit désormais sans
-/// dépendance de persistance.
+/// <c>IPrescriptionRepository</c> (jamais utilisée) a été retirée en P2C-4 ; en P2D-5 il consomme un DTO applicatif
+/// plat (<see cref="PrescriptionListItemDto"/>) au lieu de l'entité EF.
 /// </summary>
 public class PrescriptionDetailViewModelTests
 {
@@ -22,10 +22,10 @@ public class PrescriptionDetailViewModelTests
     [Fact]
     public void DeleteCommand_RaisesDeleteRequested_WithCurrentPrescription()
     {
-        var prescription = new Prescription { PrescriptionId = 42 };
+        var prescription = new PrescriptionListItemDto { PrescriptionId = 42 };
         var vm = new PrescriptionDetailViewModel { CurrentPrescription = prescription };
 
-        Prescription? requested = null;
+        PrescriptionListItemDto? requested = null;
         vm.DeleteRequested += (_, p) => requested = p;
 
         vm.DeleteCommand.Execute(null);
@@ -36,10 +36,10 @@ public class PrescriptionDetailViewModelTests
     [Fact]
     public void EditCommand_RaisesEditRequested_WithCurrentPrescription()
     {
-        var prescription = new Prescription { PrescriptionId = 42 };
+        var prescription = new PrescriptionListItemDto { PrescriptionId = 42 };
         var vm = new PrescriptionDetailViewModel { CurrentPrescription = prescription };
 
-        Prescription? requested = null;
+        PrescriptionListItemDto? requested = null;
         vm.EditRequested += (_, p) => requested = p;
 
         vm.EditCommand.Execute(null);

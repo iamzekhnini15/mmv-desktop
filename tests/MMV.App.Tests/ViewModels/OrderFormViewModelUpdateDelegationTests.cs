@@ -4,13 +4,16 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using MMV.App.ViewModels;
+using MMV.Application.UseCases.Customers.ListCustomersForPicker;
 using MMV.Application.UseCases.Orders.CreateOrder;
+using MMV.Application.UseCases.Orders.GetOrderDetails;
 using MMV.Application.UseCases.Orders.UpdateOrder;
+using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
+using MMV.Application.UseCases.Products.ListProductsForOrderPicker;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
 using MMV.Domain.Interfaces.Persistence;
-using MMV.Domain.Interfaces.Repositories;
 using Moq;
 using Xunit;
 
@@ -82,7 +85,7 @@ public class OrderFormViewModelUpdateDelegationTests
     private const long ProductId = 11;
     private const long OrderId = 555;
 
-    private static readonly Product FrameProduct = new()
+    private static readonly OrderProductPickerDto FrameProduct = new()
     {
         ProductId = ProductId,
         Reference = "MON-001",
@@ -92,7 +95,7 @@ public class OrderFormViewModelUpdateDelegationTests
     };
 
     /// <summary>Construit une commande existante (avec vente/client et une ligne valide) à éditer.</summary>
-    private static Order BuildExistingOrder() => new()
+    private static OrderDetailsDto BuildExistingOrder() => GetOrderDetailsUseCase.MapToDto(new Order
     {
         OrderId = OrderId,
         OrderNumber = "CMD-000100",
@@ -105,7 +108,7 @@ public class OrderFormViewModelUpdateDelegationTests
         {
             new() { OrderItemId = 1, ProductId = ProductId, ItemType = OrderItemType.Frame, Quantity = 1, UnitPrice = 20m }
         }
-    };
+    });
 
     /// <summary>
     /// Construit une ViewModel en mode <b>édition</b>, initialisée (clients/produits chargés, commande existante
@@ -114,20 +117,20 @@ public class OrderFormViewModelUpdateDelegationTests
     private static async Task<OrderFormViewModel> BuildReadyToEditViewModelAsync(
         IUpdateOrderUseCase updateUseCase, ICreateOrderUseCase? createUseCase = null)
     {
-        var customerRepo = new Mock<ICustomerRepository>();
-        var productRepo = new Mock<IProductRepository>();
-        var prescriptionRepo = new Mock<IPrescriptionRepository>();
+        var customersUseCase = new Mock<IListCustomersForPickerUseCase>();
+        var productsUseCase = new Mock<IListProductsForOrderPickerUseCase>();
+        var prescriptionsUseCase = new Mock<IListPrescriptionsByCustomerUseCase>();
         var numberSequence = new Mock<INumberSequenceService>();
 
-        customerRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Customer> { new() { CustomerId = CustomerId, FirstName = "Cli", LastName = "Ent" } });
-        productRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Product> { FrameProduct });
-        prescriptionRepo.Setup(r => r.GetByCustomerIdAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Prescription>());
+        customersUseCase.Setup(u => u.ExecuteAsync(It.IsAny<ListCustomersForPickerQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<CustomerPickerItemDto> { new() { CustomerId = CustomerId, FirstName = "Cli", LastName = "Ent" } });
+        productsUseCase.Setup(u => u.ExecuteAsync(It.IsAny<ListProductsForOrderPickerQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<OrderProductPickerDto> { FrameProduct });
+        prescriptionsUseCase.Setup(u => u.ExecuteAsync(It.IsAny<ListPrescriptionsByCustomerQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<PrescriptionListItemDto>());
 
         var viewModel = new OrderFormViewModel(
-            customerRepo.Object, productRepo.Object, prescriptionRepo.Object,
+            customersUseCase.Object, productsUseCase.Object, prescriptionsUseCase.Object,
             numberSequence.Object, createUseCase ?? new SpyCreateOrderUseCase(), updateUseCase,
             BuildExistingOrder());
 
@@ -251,14 +254,14 @@ public class OrderFormViewModelUpdateDelegationTests
     [Fact]
     public void Constructor_WithoutUpdateOrderUseCase_Throws()
     {
-        var customerRepo = new Mock<ICustomerRepository>();
-        var productRepo = new Mock<IProductRepository>();
-        var prescriptionRepo = new Mock<IPrescriptionRepository>();
+        var customersUseCase = new Mock<IListCustomersForPickerUseCase>();
+        var productsUseCase = new Mock<IListProductsForOrderPickerUseCase>();
+        var prescriptionsUseCase = new Mock<IListPrescriptionsByCustomerUseCase>();
         var numberSequence = new Mock<INumberSequenceService>();
         var createOrderUseCase = new Mock<ICreateOrderUseCase>();
 
         Assert.Throws<ArgumentNullException>(() => new OrderFormViewModel(
-            customerRepo.Object, productRepo.Object, prescriptionRepo.Object,
+            customersUseCase.Object, productsUseCase.Object, prescriptionsUseCase.Object,
             numberSequence.Object, createOrderUseCase.Object, updateOrderUseCase: null!));
     }
 

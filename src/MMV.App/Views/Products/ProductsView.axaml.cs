@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using MMV.App.ViewModels;
-using MMV.Domain.Entities;
+using MMV.Application.UseCases.Products.ListProducts;
 
 namespace MMV.App.Views.Products;
 
@@ -14,7 +14,7 @@ public partial class ProductsView : UserControl
 
     private void Border_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is Border border && border.DataContext is Product product)
+        if (sender is Border border && border.DataContext is ProductListItemDto product)
         {
             if (DataContext is ProductsViewModel vm)
             {

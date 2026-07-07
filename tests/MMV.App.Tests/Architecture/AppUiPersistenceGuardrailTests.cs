@@ -48,58 +48,22 @@ public sealed class AppUiPersistenceGuardrailTests
     /// </summary>
     private static readonly HashSet<string> AllowedViewModelRepositoryConstructorDependencies = new()
     {
-        // P2C-GLOBAL : après extraction de TOUTES les écritures restantes vers la couche Application, les entrées
-        // ci-dessous ne correspondent plus qu'à des LECTURES d'affichage (chargement de listes / détail). Elles
-        // constituent la dette ouverte adressée par P2D (query use cases + DTO applicatifs). Les entrées d'écriture
-        // suivantes ont été retirées en P2C-GLOBAL :
-        //   - "InventoryViewModel -> IStockMovementRepository" (ajustement porté par ICreateStockMovementUseCase) ;
-        //   - "MainWindowViewModel -> INotificationRepository/IProductRepository" (IGenerateLowStockNotificationsUseCase) ;
-        //   - "NotificationsListViewModel/NotificationsViewModel -> IProductRepository" (génération stock bas = use case) ;
-        //   - "ProductFormViewModel -> IProductRepository/INotificationRepository" (ICreate/IUpdateProductUseCase) ;
-        //   - "SupplierFormViewModel -> ISupplierRepository" (ICreate/IUpdateSupplierUseCase) ;
-        //   - "UserFormViewModel -> IUserRepository" (ICreate/IUpdateUserUseCase).
-        // "ProductsViewModel -> IStockMovementRepository" est AJOUTÉ : lecture de composition, remplace l'accès
-        // IUnitOfWork.StockMovements pour alimenter StockMovementsViewModel (aucune écriture depuis la VM).
-        "CustomerDetailViewModel -> ICustomerRepository",
-        "CustomerDetailViewModel -> IPrescriptionRepository",
-        "CustomerDetailViewModel -> IProductRepository",
-        "CustomerDetailViewModel -> ISaleRepository",
-        "CustomerInfoViewModel -> ISaleRepository",
-        "CustomerPrescriptionsViewModel -> IPrescriptionRepository",
-        "CustomerPurchaseHistoryViewModel -> ISaleRepository",
-        "CustomersListViewModel -> ICustomerRepository",
-        "CustomersViewModel -> ICustomerRepository",
-        "CustomersViewModel -> IPrescriptionRepository",
-        "CustomersViewModel -> IProductRepository",
-        "CustomersViewModel -> ISaleRepository",
-        "InventoryViewModel -> IProductRepository",
-        "NotificationsListViewModel -> INotificationRepository",
-        "NotificationsViewModel -> INotificationRepository",
-        "OrderFormViewModel -> ICustomerRepository",
-        "OrderFormViewModel -> IPrescriptionRepository",
-        "OrderFormViewModel -> IProductRepository",
-        "OrderKanbanViewModel -> IOrderRepository",
-        "OrdersListViewModel -> IOrderRepository",
-        "OrdersViewModel -> ICustomerRepository",
-        "OrdersViewModel -> IOrderRepository",
-        "OrdersViewModel -> IPrescriptionRepository",
-        "OrdersViewModel -> IProductRepository",
-        "ProductFormViewModel -> ISupplierRepository",
-        "ProductsListViewModel -> IProductRepository",
-        "ProductsViewModel -> IProductRepository",
-        "ProductsViewModel -> IStockMovementRepository",
-        "ProductsViewModel -> ISupplierRepository",
-        "SaleFormViewModel -> IPrescriptionRepository",
-        "SaleFormViewModel -> IProductRepository",
-        "StockMovementFormViewModel -> IProductRepository",
-        "StockMovementsListViewModel -> IProductRepository",
-        "StockMovementsListViewModel -> IStockMovementRepository",
-        "StockMovementsViewModel -> IProductRepository",
-        "StockMovementsViewModel -> IStockMovementRepository",
-        "SuppliersListViewModel -> ISupplierRepository",
-        "SuppliersViewModel -> ISupplierRepository",
-        "UsersListViewModel -> IUserRepository",
-        "UsersViewModel -> IUserRepository",
+        // P2D-7 (CLÔTURE P2D) : allowlist VIDÉE. Plus AUCUN ViewModel de MMV.App ne dépend d'un *Repository du Domain
+        // par constructeur — toutes les lectures d'affichage passent désormais par des query use cases Application
+        // renvoyant des DTO plats (jamais d'entité EF). Les 11 dernières entrées (héritées de P2D-4/5/6) ont été
+        // retirées lors des sous-étapes de P2D-7 :
+        //   - P2D-7A/6 (Ventes) : "SaleFormViewModel -> IProductRepository", "SaleFormViewModel -> IPrescriptionRepository"
+        //     et les pass-through "CustomerDetailViewModel -> IProductRepository / -> IPrescriptionRepository",
+        //     "CustomersViewModel -> IProductRepository / -> IPrescriptionRepository"
+        //     → IGetSaleFormReferenceDataUseCase (référence du formulaire de vente : ordonnance active + catalogue projeté).
+        //   - P2D-7B (Commandes) : "OrdersViewModel -> IOrderRepository" → IGetOrderDetailsUseCase (fiche détaillée /
+        //     formulaire d'édition alimentés par OrderDetailsDto).
+        //   - P2D-7C (Clients) : "CustomersListViewModel -> ICustomerRepository", "CustomersViewModel -> ICustomerRepository"
+        //     → IListCustomersUseCase (liste / détail / édition sur CustomerListItemDto).
+        //   - P2D-7D (Produits) : "ProductsListViewModel -> IProductRepository", "ProductsViewModel -> IProductRepository"
+        //     → IListProductsUseCase (liste / fiche détaillée + historique de commandes / formulaire d'édition sur
+        //     ProductListItemDto).
+        // RÈGLE INCHANGÉE : cette allowlist ne doit que DIMINUER. Elle est désormais à zéro et doit le rester.
     };
 
     /// <summary>

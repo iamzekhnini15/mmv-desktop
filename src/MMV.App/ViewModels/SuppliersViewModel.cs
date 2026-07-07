@@ -4,9 +4,9 @@ using MMV.App.Commands;
 using MMV.App.Services;
 using MMV.Application.UseCases.Suppliers.CreateSupplier;
 using MMV.Application.UseCases.Suppliers.DeleteSupplier;
+using MMV.Application.UseCases.Suppliers.GetSupplierWithProducts;
+using MMV.Application.UseCases.Suppliers.ListSuppliers;
 using MMV.Application.UseCases.Suppliers.UpdateSupplier;
-using MMV.Domain.Entities;
-using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.App.ViewModels;
 
@@ -14,13 +14,15 @@ namespace MMV.App.ViewModels;
 /// ViewModel principal pour la gestion des fournisseurs.
 /// <para>
 /// P2C-GLOBAL : les écritures (suppression, ainsi que création/édition déléguées au formulaire) passent par la
-/// couche Application. <see cref="ISupplierRepository"/> n'est conservé que pour les lectures d'affichage
-/// (<c>GetWithProductsAsync</c> et alimentation de la liste). <c>IUnitOfWork</c> a été retiré.
+/// couche Application.
+/// P2D-2 : les lectures passent par des query use cases (<see cref="IListSuppliersUseCase"/> pour la liste,
+/// <see cref="IGetSupplierWithProductsUseCase"/> pour la fiche) ; plus aucune dépendance <c>ISupplierRepository</c>.
 /// </para>
 /// </summary>
 public class SuppliersViewModel : BaseViewModel
 {
-    private readonly ISupplierRepository _supplierRepository;
+    private readonly IListSuppliersUseCase _listSuppliersUseCase;
+    private readonly IGetSupplierWithProductsUseCase _getSupplierWithProductsUseCase;
     private readonly ICreateSupplierUseCase _createSupplierUseCase;
     private readonly IUpdateSupplierUseCase _updateSupplierUseCase;
     private readonly IDeleteSupplierUseCase _deleteSupplierUseCase;
@@ -85,19 +87,21 @@ public class SuppliersViewModel : BaseViewModel
     public event EventHandler? BackToProductsRequested;
 
     public SuppliersViewModel(
-        ISupplierRepository supplierRepository,
+        IListSuppliersUseCase listSuppliersUseCase,
+        IGetSupplierWithProductsUseCase getSupplierWithProductsUseCase,
         ICreateSupplierUseCase createSupplierUseCase,
         IUpdateSupplierUseCase updateSupplierUseCase,
         IDeleteSupplierUseCase deleteSupplierUseCase,
         IDialogService dialogService)
     {
-        _supplierRepository = supplierRepository;
+        _listSuppliersUseCase = listSuppliersUseCase ?? throw new ArgumentNullException(nameof(listSuppliersUseCase));
+        _getSupplierWithProductsUseCase = getSupplierWithProductsUseCase ?? throw new ArgumentNullException(nameof(getSupplierWithProductsUseCase));
         _createSupplierUseCase = createSupplierUseCase ?? throw new ArgumentNullException(nameof(createSupplierUseCase));
         _updateSupplierUseCase = updateSupplierUseCase ?? throw new ArgumentNullException(nameof(updateSupplierUseCase));
         _deleteSupplierUseCase = deleteSupplierUseCase ?? throw new ArgumentNullException(nameof(deleteSupplierUseCase));
         _dialogService = dialogService;
 
-        _suppliersListViewModel = new SuppliersListViewModel(supplierRepository);
+        _suppliersListViewModel = new SuppliersListViewModel(listSuppliersUseCase);
         _suppliersListViewModel.CreateSupplierRequested += OnCreateSupplierRequested;
         _suppliersListViewModel.ViewSupplierDetailsRequested += OnViewSupplierDetailsRequested;
 
@@ -120,12 +124,24 @@ public class SuppliersViewModel : BaseViewModel
         IsCreatingNew = true;
     }
 
-    private async void OnViewSupplierDetailsRequested(object? sender, Supplier supplier)
+    private async void OnViewSupplierDetailsRequested(object? sender, SupplierListItemDto supplier)
     {
-        var supplierWithProducts = await _supplierRepository.GetWithProductsAsync(supplier.SupplierId) ?? supplier;
+        var details = await _getSupplierWithProductsUseCase.ExecuteAsync(
+            new GetSupplierWithProductsQuery { SupplierId = supplier.SupplierId })
+            // Repli iso-fonctionnel (comme l'ancien « ?? supplier ») : si la fiche est introuvable, afficher les
+            // données déjà connues de la ligne de liste (sans produits).
+            ?? new SupplierDetailsDto
+            {
+                SupplierId = supplier.SupplierId,
+                Name = supplier.Name,
+                ContactEmail = supplier.ContactEmail,
+                Phone = supplier.Phone,
+                Address = supplier.Address,
+                ReferenceCode = supplier.ReferenceCode,
+            };
 
         SupplierDetailViewModel = new SupplierDetailViewModel();
-        SupplierDetailViewModel.Initialize(supplierWithProducts);
+        SupplierDetailViewModel.Initialize(details);
         SupplierDetailViewModel.BackRequested += OnDetailBackRequested;
         SupplierDetailViewModel.EditRequested += OnDetailEditRequested;
         SupplierDetailViewModel.DeleteRequested += OnDetailDeleteRequested;
@@ -139,7 +155,7 @@ public class SuppliersViewModel : BaseViewModel
         CloseDetail();
     }
 
-    private void OnDetailEditRequested(object? sender, Supplier supplier)
+    private void OnDetailEditRequested(object? sender, SupplierDetailsDto supplier)
     {
         CloseDetail();
 
@@ -152,7 +168,7 @@ public class SuppliersViewModel : BaseViewModel
         IsCreatingNew = false;
     }
 
-    private async void OnDetailDeleteRequested(object? sender, Supplier supplier)
+    private async void OnDetailDeleteRequested(object? sender, SupplierDetailsDto supplier)
     {
         if (supplier == null) return;
 
@@ -183,7 +199,7 @@ public class SuppliersViewModel : BaseViewModel
         }
     }
 
-    private async void OnSupplierSaved(object? sender, Supplier supplier)
+    private async void OnSupplierSaved(object? sender, EventArgs e)
     {
         await SuppliersListViewModel.LoadSuppliersAsync();
         CloseForm();
