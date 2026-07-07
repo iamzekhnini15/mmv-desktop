@@ -218,9 +218,28 @@ existants : **conservés, verts**.
 - Domaine pilote **Clients** appliqué (`Create`/`Update`) ✅
 - Build vert · **592 tests** · 0 vulnérabilité · EF vert · `MMV.Application` pure ✅
 
-## 16. Prochaine étape candidate
+## 16. Validation CI
+
+| Élément | Valeur |
+|---|---|
+| Run CI | [actions/runs/28905699337](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/28905699337) |
+| Identifiant run | `28905699337` |
+| Commit testé | `6e39bd27eaa75973b70217f058a117660d14eab8` |
+| Branche testée | `p3-business-rules` |
+| Événement | `push` |
+| Restore | ✅ réussi (tous projets restaurés) |
+| Build | ✅ réussi |
+| Test | ✅ réussi — **592 tests** (App **192** · Application **177** · Domain **223**), 0 échec |
+| Audit NuGet (vulnérabilités) | ✅ **0 vulnérabilité** (7 projets scannés) |
+| Restore .NET tools | ✅ `dotnet-ef` 8.0.27 restauré |
+| Check EF Core pending model changes | ✅ « No changes have been made to the model since the last migration. » |
+| Statut final du workflow | ✅ `completed` / `success` (durée 3m15s) |
+
+**P3-1 = GO DÉFINITIF (commit code).**
+
+## 17. Prochaine étape candidate
 
 **P3-2 — Clients** : garde-fou de suppression avec historique (archivage vs refus documenté, cascade EF à
 trancher), politique de doublon souple. La convention P3-1 (`ValidationErrors`/`IsValid` + `*Found` + exceptions
-métier typées pour les refus durs) y sert de socle. **Ne pas démarrer P3-2 dans ce cycle** : P3-1 s'arrête ici
-(pas de commit, pas de push).
+métier typées pour les refus durs) y sert de socle. **Ne pas démarrer P3-2 avant la CI verte du commit
+documentaire P3-1** (§16 de ce document, second commit).
