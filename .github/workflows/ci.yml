@@ -9,6 +9,7 @@ on:
       - main
       - 'phase*'
       - 'p2*'
+      - 'p3*'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
