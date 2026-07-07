@@ -1,4 +1,4 @@
-# Rapport P2D-7 — Clôture P2D : solder les 11 repositories UI restants — VERDICT : **GO COMPLET (local)**
+# Rapport P2D-7 — Clôture P2D : solder les 11 repositories UI restants — VERDICT : **GO DÉFINITIF COMPLET**
 
 > Élimination des **11 dernières** dépendances `I*Repository` des constructeurs de ViewModels de `src/MMV.App`.
 > Toutes les **lectures d'affichage** des modules **Ventes**, **Commandes**, **Clients** et **Produits** passent
@@ -150,11 +150,43 @@ code-behind = 1).
 | Fichiers `.axaml` modifiés | ✅ **0** |
 | `src/MMV.Domain/**`, `src/MMV.Infrastructure/**`, `migrations/**`, `.github/**` | ✅ intacts |
 
-## 10. Verdict
+## 10. Verdict local
 
 **GO COMPLET (local).** P2D-7 solde les 11 dernières dépendances repository des ViewModels : **P2D est clôturée**
 côté lectures d'affichage — plus aucun ViewModel de `MMV.App` ne dépend d'un `I*Repository` du Domain ni d'
 `IUnitOfWork` par constructeur. Migration iso-fonctionnelle, sans retouche XAML, sans nouvelle migration/table/entité,
-sans règle métier. **Aucun commit, aucun push** (conforme aux paramètres). Reliquat connu hors périmètre P2D : le
-panier d'écriture `SaleFormViewModel.OrderItems` (entités `OrderItem` alimentant `RegisterSaleUseCase`), à traiter
-lors d'une future migration DTO du chemin d'écriture.
+sans règle métier. Reliquat connu hors périmètre P2D : le panier d'écriture `SaleFormViewModel.OrderItems` (entités
+`OrderItem` alimentant `RegisterSaleUseCase`), à traiter lors d'une future migration DTO du chemin d'écriture.
+
+## 11. Commit et push applicatifs
+
+| Paramètre | Valeur |
+|---|---|
+| `EXECUTION_MODE` | COMMIT_AND_VALIDATE |
+| `ALLOW_COMMIT` | true |
+| `ALLOW_PUSH` | true |
+| Commit applicatif | `b0f03c3a41253c4b7e5f550ed1f54def933d34cf` — `feat(P2D-7): complete query cleanup and remove UI repositories` |
+| Branche | `p2d-query-cleanup` |
+| Push | `origin p2d-query-cleanup` (`fc7e461..b0f03c3`) |
+
+## 12. Validation CI distante
+
+| Contrôle | Résultat |
+|---|---|
+| Run CI | [`28866257408`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/28866257408) |
+| Commit testé | `b0f03c3a41253c4b7e5f550ed1f54def933d34cf` |
+| Branche testée | `p2d-query-cleanup` |
+| Événement | `push` |
+| Restore | ✅ succès |
+| Build | ✅ succès |
+| Test | ✅ succès — **585 tests** (App 192 · Application 170 · Domain 223) |
+| Audit des packages vulnérables (JSON + sévérité) | ✅ 0 vulnérabilité |
+| Restore .NET tools | ✅ succès |
+| Check EF Core pending model changes | ✅ `false` — aucune migration en attente |
+| Statut final du workflow | ✅ **completed / success** (durée 3m0s) |
+
+## 13. Verdict définitif
+
+**P2D-7 = GO DÉFINITIF COMPLET.** Commit et push applicatifs effectués, CI distante verte sur `b0f03c3`. **P2D est
+clôturée côté query cleanup.** Prochaine étape : **P2D-8 — Audit final P2D avant merge** (pas de merge vers `main`
+avant P2D-8 ou, a minima, avant la CI documentaire verte du présent commit).
