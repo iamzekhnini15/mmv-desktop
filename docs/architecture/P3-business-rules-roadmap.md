@@ -12,7 +12,14 @@
 > **Hors périmètre absolu P3 (inchangé depuis P2) :** SaaS, `Organization`, `Store`, multi-tenant,
 > `Subscription`, `Plan`, `Payment` avancé / en ligne, `Invoice`, `Quote`, TVA (Belgique/Maroc/France),
 > facturation légale, signature électronique, cloud, email automatique. P3 traite les **règles métier de
-> l'atelier d'optique mono-poste**, pas l'évolution commerciale/fiscale.
+> l'atelier d'optique**, pas l'évolution commerciale/fiscale.
+>
+> **Cadre production V1 (décision P3-0B, [ADR-PROD-DB-001](adr-prod-db-001-multi-poste-database-strategy.md)) :**
+> MMV V1 production est **multi-poste** (plusieurs postes d'un même magasin partagent **une base centrale**).
+> Le multi-poste **n'est pas** du multi-tenant (toujours hors périmètre) : c'est **un magasin, une base**,
+> partagée par plusieurs ordinateurs. **Toute règle métier P3 doit rester compatible multi-poste.** SQLite
+> local reste utile pour dev/test/démo/mono-poste mais **ne doit pas guider** les décisions de production
+> multi-poste ; SQLite sur dossier réseau est **non supporté**.
 
 Base de départ (vérifiée au 2026-07-07, cf. [rapport P3-0](../implementation/P3-0-business-audit-report.md)) :
 branche `p3-business-rules`, build vert, **585 tests**, 0 vulnérabilité, `has-pending-model-changes = false`,
@@ -35,6 +42,10 @@ branche `p3-business-rules`, build vert, **585 tests**, 0 vulnérabilité, `has-
    crée pas de nouveaux.
 5. **Suppression = dernier recours.** Préférer l'archivage/désactivation dès qu'un historique métier existe.
 6. **`MMV.Application` reste pure** ; aucune régression d'architecture P2 (garde-fous `AppUiPersistenceGuardrailTests`).
+7. **MMV V1 production est multi-poste** ([ADR-PROD-DB-001](adr-prod-db-001-multi-poste-database-strategy.md)).
+   Toute règle métier P3 doit rester **compatible avec une base centrale partagée par plusieurs postes** :
+   pas d'hypothèse mono-utilisateur, pas de cache local trompeur, écritures atomiques et concurrence prévue.
+   SQLite local reste utile pour dev/test/démo mais **ne doit pas guider** les décisions production multi-poste.
 
 ---
 
@@ -42,15 +53,16 @@ branche `p3-business-rules`, build vert, **585 tests**, 0 vulnérabilité, `has-
 
 | Étape | Titre | Nature |
 |---|---|---|
-| **P3-0** | Audit métier initial | audit + roadmap (ce cycle) |
+| **P3-0** | Audit métier initial | audit + roadmap |
+| **P3-0B** | ADR multi-poste / stratégie DB production | ADR + roadmap (ce cycle) |
 | **P3-1** | Standardisation des validations / `Result` | socle transverse |
 | **P3-2** | Clients | domaine |
 | **P3-3** | Ordonnances | domaine |
 | **P3-4** | Produits | domaine |
-| **P3-5** | Stock / mouvements | domaine |
-| **P3-6** | Commandes | domaine |
+| **P3-5** | Stock / mouvements **multi-poste safe** | domaine |
+| **P3-6** | Commandes **multi-poste safe** | domaine |
 | **P3-6B** | Fiche atelier de montage / technicien | domaine (nouveau flux) |
-| **P3-7** | Ventes | domaine |
+| **P3-7** | Ventes **multi-poste safe** | domaine |
 | **P3-8** | Notifications métier | domaine |
 | **P3-9** | Fournisseurs | domaine |
 | **P3-10** | Utilisateurs locaux | domaine |
@@ -69,6 +81,19 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 ---
 
 ## 3. Détail des étapes
+
+### P3-0B — ADR multi-poste / stratégie DB production
+
+- **Objectif** : acter, avant toute règle métier, que **MMV V1 production est multi-poste** et fixer la
+  **stratégie base de données de production**. Décision produit **imposée** (indispensable à un vrai magasin
+  d'optique). Livrable : [ADR-PROD-DB-001](adr-prod-db-001-multi-poste-database-strategy.md).
+- **Décision** : production multi-poste ⇒ **base client/serveur obligatoire** (candidat principal
+  **PostgreSQL**, secondaire **SQL Server Express**, choix final différé à un spike). **SQLite local**
+  autorisé pour dev/test/démo/mono-poste ; **SQLite réseau non supporté** ; cloud/API/SaaS reportés.
+- **Périmètre** : ADR + mise à jour de cette roadmap + rapport P3-0B. **Aucun code / test / migration.**
+- **Impact sur P3** : P3-5 (stock), P3-6 (commandes), P3-6B (fiche atelier persistée), P3-7 (ventes) sont
+  **critiques multi-poste** ; toute règle P3 doit rester compatible base centrale partagée (cf. §1.7).
+- **Sortie** : ADR acceptée, roadmap alignée, aucune modification de code ; provider inchangé (SQLite).
 
 ### P3-1 — Standardisation des validations / `Result`
 
@@ -252,6 +277,10 @@ Ces sujets traversent plusieurs étapes ; à trancher explicitement quand l'éta
 5. **Cohérence horloge** (transverse) : mélange `DateTime.Now` / `DateTime.UtcNow` ; une **horloge injectable**
    serait le bon réceptacle (cf. ADR-005 évoqué en P2), mais reste **hors P3** sauf décision explicite.
 6. **Validation Application absente** (P3-1) : socle à poser avant les domaines.
+7. **Contrainte multi-poste** (P3-5/6/6B/7 — [ADR-PROD-DB-001](adr-prod-db-001-multi-poste-database-strategy.md)) :
+   production V1 sur base centrale partagée. Les écritures sensibles (stock, commandes, ventes) doivent rester
+   atomiques et robustes à la concurrence de plusieurs postes ; le décrément direct de stock
+   (`AdvanceOrderStatusUseCase`) est **doublement** à corriger en multi-poste.
 
 ---
 
