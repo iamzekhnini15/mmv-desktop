@@ -209,8 +209,26 @@ pure (Domain + `DI.Abstractions`) ; aucun code source modifié.
 - Aucun code source / test / migration modifié ✅
 - Build vert · 585 tests · 0 vulnérabilité · EF vert · `MMV.Application` pure ✅
 
-## 15. Prochaine étape candidate
+## 15. Validation CI distante
+
+| Élément | Valeur |
+|---|---|
+| Commit testé | `be65134` — docs(P3-0B): define multi-workstation database strategy |
+| Branche testée | `p3-business-rules` |
+| Run CI | [28903769464](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/28903769464) |
+| Workflow | `CI` (événement `push`) |
+| Restore | ✅ OK |
+| Build | ✅ vert — 0 avertissement, 0 erreur |
+| Test | ✅ **585 réussis / 0 échec / 0 ignoré** (App.Tests 192 · Application.Tests 170 · Domain.Tests 223) |
+| Audit NuGet | ✅ 0 vulnérabilité High/Critical (7 projets) |
+| Restore .NET tools | ✅ `dotnet-ef` restauré |
+| EF Core pending model changes | ✅ `false` (*No changes have been made to the model since the last migration*) |
+| Statut final du workflow | ✅ `completed` / `success` |
+
+**P3-0B = GO DÉFINITIF COMPLET.**
+
+## 16. Prochaine étape candidate
 
 **P3-1 — Standardisation des validations / `Result`** : poser le socle de validation **côté Application**
 (aujourd'hui absent) + convention `Result`/exceptions, avec un domaine pilote, **avant** les domaines métier.
-Ne **pas** démarrer P3-1 dans ce cycle : P3-0B s'arrête ici (pas de commit, pas de push).
+Ne **pas** démarrer P3-1 dans ce cycle : P3-0B s'arrête ici.
