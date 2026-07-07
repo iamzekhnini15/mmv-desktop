@@ -203,3 +203,29 @@ créés** ; `git diff --check` propre ; build vert ; **585 tests** ; 0 vulnérab
 **P3-1 — Standardisation des validations / `Result`** : poser le socle de validation **côté Application**
 (aujourd'hui absent) et la convention `Result`/exceptions, avec un domaine pilote, **avant** d'attaquer les
 domaines métier. Ne **pas** démarrer P3-1 dans ce cycle : P3-0 s'arrête ici (pas de commit, pas de push).
+
+## 17. Validation CI distante
+
+**Constat initial** : le premier push du commit docs (`a5a1fe8`) n'a déclenché **aucune** exécution CI — le
+déclencheur `push` de `.github/workflows/ci.yml` ne listait que `main`, `phase*`, `p2*` (pas de motif `p3*`).
+Correctif appliqué et validé avec l'utilisateur : ajout de `p3*` au déclencheur (commit `21bdfb0`,
+`ci(P3): enable CI for p3 branches`), **sans** modification des jobs/étapes/commandes de build ou de test.
+
+| Élément | Valeur |
+|---|---|
+| Lien du run CI | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/28870464178 |
+| Identifiant du run | `28870464178` |
+| Commit testé | `21bdfb07d70387333fabaa931357ab5de4e4e505` (`ci(P3): enable CI for p3 branches`) |
+| Branche testée | `p3-business-rules` |
+| Événement | `push` |
+| Résultat Restore | ✅ réussi |
+| Résultat Build | ✅ réussi — 0 avertissement, 0 erreur |
+| Résultat Test | ✅ réussi |
+| Nombre de tests CI | **585** (App.Tests 192 · Application.Tests 170 · Domain.Tests 223) |
+| Résultat Audit NuGet | ✅ « Aucune vulnérabilité High/Critical détectée » |
+| Résultat Restore .NET tools | ✅ `dotnet-ef` 8.0.27 restauré |
+| Résultat Check EF Core pending model changes | ✅ `false` (*No changes have been made to the model since the last migration*) |
+| Statut final du workflow | ✅ `success` (job unique « Restore / Build / Test / Scan », 3m20s) |
+
+**P3-0 = GO définitif complet** (sous réserve de la CI verte du commit documentaire qui enregistre cette
+validation, cf. §18).
