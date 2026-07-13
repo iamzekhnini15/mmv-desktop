@@ -138,8 +138,19 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   étrangères passent en `Restrict` (la base refuse la suppression d'un client porteur d'historique) et l'archivage
   devient l'alternative non destructive.
 - **Sortie** : suppression sûre (archivage ou refus documenté) ; tests verts.
-- **État** : **P3-2A** (audit) et **P3-2B** (métier + persistance) livrés — cf.
-  [rapport P3-2B](../implementation/P3-2B-customer-archiving-and-deletion-report.md). **P3-2C** (UI) reste à faire.
+- **État** : **P3-2 terminé** — **P3-2A** (audit), **P3-2B** (métier + persistance) et **P3-2C** (UI) livrés.
+  - [rapport P3-2A](../implementation/P3-2A-customer-domain-audit-report.md) — audit.
+  - [rapport P3-2B](../implementation/P3-2B-customer-archiving-and-deletion-report.md) — `IsArchived`,
+    suppression conditionnelle, clés étrangères `Restrict`, `SetCustomerArchivedUseCase`.
+  - [rapport P3-2C](../implementation/P3-2C-customer-ui-archiving-report.md) — UI : confirmation explicite avant
+    suppression physique, refus métier affiché en clair (proposant l'archivage), boutons **Archiver / Réactiver**
+    (état **absolu**, jamais un basculement), filtre **« Afficher les clients archivés »**
+    (`ListCustomersQuery.IncludeArchived`, filtré **en base**), et **rechargement depuis la source après toute
+    mutation** (la collection locale n'est jamais la vérité — multi-poste, ADR-PROD-DB-001).
+- **Risque résiduel reporté (inchangé)** : l'archivage **n'empêche toujours pas** la création d'une ordonnance ou
+  d'une vente pour un client archivé — aucun garde-fou **à l'écriture** n'existe. L'UI P3-2C rend le cas encore plus
+  improbable (archivés hors listes par défaut et **toujours** hors sélecteurs) mais **ne l'empêche pas**. Le refus
+  reste **exigé** de **P3-3** (ordonnances) et **P3-7** (ventes), ci-dessous.
 
 ### P3-3 — Ordonnances
 

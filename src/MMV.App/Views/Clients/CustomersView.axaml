@@ -61,6 +61,13 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
+                    <!-- P3-2C : le filtre actifs/archivés est relu en base (ListCustomersQuery.IncludeArchived),
+                         il ne filtre pas la collection locale. -->
+                    <CheckBox IsChecked="{Binding CustomersListViewModel.IncludeArchived, Mode=TwoWay}"
+                              Content="Afficher les clients archivés"
+                              FontSize="13"
+                              VerticalAlignment="Center"/>
+
                     <Grid ColumnDefinitions="Auto,*">
                         <TextBox Classes="FilterInput"
                                  Text="{Binding CustomersListViewModel.SearchText, Mode=TwoWay}"
@@ -81,12 +88,13 @@
         <Grid Grid.Row="1" RowDefinitions="Auto, *" IsVisible="{Binding ShowList}">
 
             <Border Grid.Row="0" Background="{DynamicResource BackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,10">
-                <Grid ColumnDefinitions="60, 2*, 1.5*, 2*, 1.5*, 1.5*">
+                <Grid ColumnDefinitions="60, 2*, 1.5*, 2*, 1.5*, 1.5*, Auto">
                     <TextBlock Grid.Column="1" Text="NOM COMPLET" Classes="ColHeader"/>
                     <TextBlock Grid.Column="2" Text="CONTACT" Classes="ColHeader"/>
                     <TextBlock Grid.Column="3" Text="ADRESSE" Classes="ColHeader"/>
                     <TextBlock Grid.Column="4" Text="EMAIL" Classes="ColHeader"/>
                     <TextBlock Grid.Column="5" Text="DATE CRÉATION" Classes="ColHeader" HorizontalAlignment="Right"/>
+                    <TextBlock Grid.Column="6" Text="ACTIONS" Classes="ColHeader" HorizontalAlignment="Right" Width="210" TextAlignment="Right"/>
                 </Grid>
             </Border>
 
@@ -96,7 +104,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Classes="DataRow" PointerPressed="Border_PointerPressed">
-                                    <Grid ColumnDefinitions="60, 2*, 1.5*, 2*, 1.5*, 1.5*">
+                                    <Grid ColumnDefinitions="60, 2*, 1.5*, 2*, 1.5*, 1.5*, Auto">
 
                                         <Border Grid.Column="0" Width="36" Height="36" CornerRadius="18" Background="{DynamicResource SurfaceLightBrush}" HorizontalAlignment="Left">
                                             <TextBlock Text="{Binding FirstName[0]}"
@@ -109,6 +117,15 @@
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="5">
                                             <TextBlock Text="{Binding LastName}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                             <TextBlock Text="{Binding FirstName}" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
+
+                                            <!-- P3-2C : distinction visuelle légère d'un client archivé. -->
+                                            <Border Background="{DynamicResource SurfaceLightBrush}"
+                                                    CornerRadius="4" Padding="6,2" VerticalAlignment="Center"
+                                                    IsVisible="{Binding IsArchived}">
+                                                <TextBlock Text="ARCHIVÉ"
+                                                           FontSize="10" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            </Border>
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal" Spacing="6" IsVisible="{Binding Phone, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
@@ -131,6 +148,30 @@
                                                        FontFamily="Consolas, Monospace"
                                                        Foreground="{DynamicResource TextSecondaryBrush}"/>
                                         </Border>
+
+                                        <!-- P3-2C : actions du client. Le clic sur un bouton est traité par le
+                                             bouton (il ne déclenche pas l'ouverture de la fiche, cf. code-behind).
+                                             Archiver et Réactiver sont deux actions distinctes fondées sur l'état
+                                             affiché, jamais un basculement aveugle. -->
+                                        <StackPanel Grid.Column="6" Width="210" Orientation="Horizontal" Spacing="8"
+                                                    HorizontalAlignment="Right" VerticalAlignment="Center">
+
+                                            <Button Content="Archiver"
+                                                    FontSize="12" Padding="10,4"
+                                                    IsVisible="{Binding !IsArchived}"
+                                                    Click="ArchiveButton_Click"/>
+
+                                            <Button Content="Réactiver"
+                                                    FontSize="12" Padding="10,4"
+                                                    IsVisible="{Binding IsArchived}"
+                                                    Click="ReactivateButton_Click"/>
+
+                                            <Button Content="Supprimer"
+                                                    FontSize="12" Padding="10,4"
+                                                    Foreground="{DynamicResource ErrorBrush}"
+                                                    IsVisible="{Binding !IsArchived}"
+                                                    Click="DeleteButton_Click"/>
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

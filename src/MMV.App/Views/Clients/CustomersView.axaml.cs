@@ -1,6 +1,8 @@
+using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Customers.ListCustomers;
 
@@ -71,6 +73,14 @@ public partial class CustomersView : UserControl
 
     private void Border_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        // P3-2C : un clic sur un bouton d'action de la ligne (Archiver / Réactiver / Supprimer) ne doit pas ouvrir
+        // la fiche. Le Button marque déjà l'événement comme traité ; cette garde couvre le cas où l'événement
+        // remonterait tout de même jusqu'à la ligne.
+        if (e.Source is Control source && source.FindAncestorOfType<Button>() != null)
+        {
+            return;
+        }
+
         if (sender is Border border && border.DataContext is CustomerListItemDto customer)
         {
             if (DataContext is CustomersViewModel vm)
@@ -78,6 +88,40 @@ public partial class CustomersView : UserControl
                 // Afficher la fiche détaillée du client sélectionné
                 vm.ViewDetailCommand.Execute(customer);
             }
+        }
+    }
+
+    /// <summary>
+    /// Archive le client de la ligne (état absolu : le client affiché est actif).
+    /// </summary>
+    private void ArchiveButton_Click(object? sender, RoutedEventArgs e)
+        => ExecuteRowCommand(sender, vm => vm.CustomersListViewModel.ArchiveCommand);
+
+    /// <summary>
+    /// Réactive le client de la ligne (état absolu : le client affiché est archivé).
+    /// </summary>
+    private void ReactivateButton_Click(object? sender, RoutedEventArgs e)
+        => ExecuteRowCommand(sender, vm => vm.CustomersListViewModel.ReactivateCommand);
+
+    /// <summary>
+    /// Demande la suppression physique du client de la ligne. La confirmation explicite et le refus métier
+    /// (client porteur d'historique) sont portés par le ViewModel.
+    /// </summary>
+    private void DeleteButton_Click(object? sender, RoutedEventArgs e)
+        => ExecuteRowCommand(sender, vm => vm.CustomersListViewModel.DeleteCommand);
+
+    /// <summary>
+    /// Exécute une commande de liste sur le client porté par la ligne cliquée, en le passant en paramètre :
+    /// l'intention provient de l'état réellement affiché, pas d'une sélection supposée fraîche.
+    /// </summary>
+    private void ExecuteRowCommand(object? sender, Func<CustomersViewModel, ICommand> commandSelector)
+    {
+        if (sender is Control control &&
+            control.DataContext is CustomerListItemDto customer &&
+            DataContext is CustomersViewModel vm)
+        {
+            vm.CustomersListViewModel.SelectedCustomer = customer;
+            commandSelector(vm).Execute(customer);
         }
     }
 }

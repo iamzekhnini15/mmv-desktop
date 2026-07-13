@@ -1,8 +1,10 @@
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.App.Services;
 using MMV.Application.UseCases.Customers.CreateCustomer;
 using MMV.Application.UseCases.Customers.DeleteCustomer;
 using MMV.Application.UseCases.Customers.ListCustomers;
+using MMV.Application.UseCases.Customers.SetCustomerArchived;
 using MMV.Application.UseCases.Customers.UpdateCustomer;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Prescriptions.DeletePrescription;
@@ -37,6 +39,10 @@ public class CustomersViewModel : BaseViewModel
     private readonly ICreateCustomerUseCase _createCustomerUseCase;
     private readonly IUpdateCustomerUseCase _updateCustomerUseCase;
     private readonly IDeleteCustomerUseCase _deleteCustomerUseCase;
+    // P3-2C : archivage/réactivation d'un client + mécanisme de dialogue existant, transmis à CustomersListViewModel
+    // (qui n'est pas résolu par le conteneur : il est construit ici).
+    private readonly ISetCustomerArchivedUseCase _setCustomerArchivedUseCase;
+    private readonly IDialogService _dialogService;
     // P2C-4 : use cases d'écriture des ordonnances, transmis jusqu'à CustomerDetailViewModel (fiche détail).
     private readonly ICreatePrescriptionUseCase _createPrescriptionUseCase;
     private readonly IUpdatePrescriptionUseCase _updatePrescriptionUseCase;
@@ -119,7 +125,7 @@ public class CustomersViewModel : BaseViewModel
     /// </summary>
     // P2C-GLOBAL : le paramètre IUnitOfWork (jusque-là uniquement transmis à CustomerDetailViewModel, où il était
     // une dépendance morte) a été supprimé. Plus aucune écriture directe ni transaction n'est portée par cette VM.
-    public CustomersViewModel(IListCustomersUseCase listCustomersUseCase, IGetSaleFormReferenceDataUseCase getSaleFormReferenceDataUseCase, IGetCustomerPurchaseHistoryUseCase getPurchaseHistoryUseCase, IListPrescriptionsByCustomerUseCase listPrescriptionsUseCase, IRegisterSaleUseCase registerSaleUseCase, ICreateCustomerUseCase createCustomerUseCase, IUpdateCustomerUseCase updateCustomerUseCase, IDeleteCustomerUseCase deleteCustomerUseCase, ICreatePrescriptionUseCase createPrescriptionUseCase, IUpdatePrescriptionUseCase updatePrescriptionUseCase, IDeletePrescriptionUseCase deletePrescriptionUseCase)
+    public CustomersViewModel(IListCustomersUseCase listCustomersUseCase, IGetSaleFormReferenceDataUseCase getSaleFormReferenceDataUseCase, IGetCustomerPurchaseHistoryUseCase getPurchaseHistoryUseCase, IListPrescriptionsByCustomerUseCase listPrescriptionsUseCase, IRegisterSaleUseCase registerSaleUseCase, ICreateCustomerUseCase createCustomerUseCase, IUpdateCustomerUseCase updateCustomerUseCase, IDeleteCustomerUseCase deleteCustomerUseCase, ISetCustomerArchivedUseCase setCustomerArchivedUseCase, ICreatePrescriptionUseCase createPrescriptionUseCase, IUpdatePrescriptionUseCase updatePrescriptionUseCase, IDeletePrescriptionUseCase deletePrescriptionUseCase, IDialogService dialogService)
     {
         System.Diagnostics.Debug.WriteLine("[CustomersViewModel] Constructor called");
         _listCustomersUseCase = listCustomersUseCase ?? throw new ArgumentNullException(nameof(listCustomersUseCase));
@@ -135,6 +141,10 @@ public class CustomersViewModel : BaseViewModel
         // P2C-3 : use case de suppression client injecté par DI, transmis à CustomersListViewModel (qui ne dépend
         // plus de IUnitOfWork). IUnitOfWork reste requis ici pour CustomerDetailViewModel (fiche détail).
         _deleteCustomerUseCase = deleteCustomerUseCase ?? throw new ArgumentNullException(nameof(deleteCustomerUseCase));
+        // P3-2C : use case d'archivage/réactivation (enregistré par AddApplication) et service de dialogue existant,
+        // transmis à CustomersListViewModel. Aucun repository ni IUnitOfWork n'entre dans un ViewModel.
+        _setCustomerArchivedUseCase = setCustomerArchivedUseCase ?? throw new ArgumentNullException(nameof(setCustomerArchivedUseCase));
+        _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
         // P2C-4 : use cases d'écriture des ordonnances, injectés par DI et transmis à CustomerDetailViewModel.
         _createPrescriptionUseCase = createPrescriptionUseCase ?? throw new ArgumentNullException(nameof(createPrescriptionUseCase));
         _updatePrescriptionUseCase = updatePrescriptionUseCase ?? throw new ArgumentNullException(nameof(updatePrescriptionUseCase));
@@ -143,7 +153,8 @@ public class CustomersViewModel : BaseViewModel
         Title = "Clients";
 
         // Initialiser le ViewModel de la liste avec les bonnes dépendances
-        _customersListViewModel = new CustomersListViewModel(_listCustomersUseCase, _deleteCustomerUseCase);
+        _customersListViewModel = new CustomersListViewModel(
+            _listCustomersUseCase, _deleteCustomerUseCase, _setCustomerArchivedUseCase, _dialogService);
         
         // Écouter les événements du ViewModel de la liste
         _customersListViewModel.CreateCustomerRequested += OnCreateCustomerRequested;
