@@ -434,7 +434,32 @@ ce rapport.
 
 ---
 
-## 19. Prochaine étape — P3-2C (UI Clients)
+## 19. Validation CI
+
+> Régularisation documentaire (`P3-2B-CI-DOC`) : enregistrement de la validation CI **réelle** du commit
+> applicatif P3-2B, après coup. **Aucun code, test, package ou migration modifié par cette section.**
+
+| Élément | Valeur |
+|---|---|
+| Commit validé | `8a518eb` (`8a518eb705354c0766c59f2ac1312cfdc61d396e`) — *feat(P3-2B): protect customer history and add archiving* |
+| Branche | `p3-business-rules` |
+| Run CI | `29289419102` |
+| URL | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/29289419102 |
+| Statut | `completed` |
+| Conclusion | `success` |
+| Créé | 2026-07-13T22:17:59Z |
+| Terminé | 2026-07-13T22:21:23Z |
+| Durée | 3m24s |
+| Job exécuté | `Restore / Build / Test / Scan` — `success` (toutes les étapes vertes : Checkout, Setup .NET, Restore, Build, Test, Audit des packages vulnérables, Check EF Core pending model changes) |
+
+Le commit applicatif P3-2B a été validé par la CI distante (workflow `CI`, déclenchement `push`). La CI est
+**terminée avec succès** sur le SHA exact du commit, sur la branche `p3-business-rules`. Cette section est
+une **régularisation documentaire uniquement** : aucun code, test, package ou migration n'est modifié par
+cette mise à jour.
+
+---
+
+## 20. Prochaine étape — P3-2C (UI Clients)
 
 1. **Confirmation** avant suppression (aujourd'hui : suppression immédiate, sans dialogue).
 2. **Message de refus** : afficher `DeleteCustomerUseCase.CustomerHasHistoryMessage` (attraper
