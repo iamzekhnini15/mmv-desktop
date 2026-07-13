@@ -3,6 +3,7 @@ using MMV.Application.UseCases.Customers.CreateCustomer;
 using MMV.Application.UseCases.Customers.DeleteCustomer;
 using MMV.Application.UseCases.Customers.ListCustomers;
 using MMV.Application.UseCases.Customers.ListCustomersForPicker;
+using MMV.Application.UseCases.Customers.SetCustomerArchived;
 using MMV.Application.UseCases.Customers.UpdateCustomer;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.CreateOrder;
@@ -119,6 +120,12 @@ public static class DependencyInjection
         // CustomersListViewModel.ExecuteDelete). Mono-écriture (Delete + SaveChangesAsync unique),
         // ITransactionRunner non requis.
         services.AddScoped<IDeleteCustomerUseCase, DeleteCustomerUseCase>();
+
+        // Sécurisation métier P3-2B — archivage / réactivation client. Alternative non destructive à la
+        // suppression (refusée dès qu'un historique existe). Portée Scoped : même portée que OpticDbContext,
+        // ICustomerRepository et IUnitOfWork. Mono-écriture (Update + SaveChangesAsync unique),
+        // ITransactionRunner non requis.
+        services.AddScoped<ISetCustomerArchivedUseCase, SetCustomerArchivedUseCase>();
 
         // Réduction de dette P2C-4 — écritures du module Ordonnances. Portée Scoped : même portée que OpticDbContext,
         // IPrescriptionRepository et IUnitOfWork — donc même DbContext (cohérent avec le flux d'origine porté par

@@ -8,6 +8,13 @@ namespace MMV.Domain.Interfaces.Repositories;
 public interface ICustomerRepository : IGenericRepository<Customer, long>
 {
     /// <summary>
+    /// Récupère les clients, en excluant les archivés sauf si <paramref name="includeArchived"/> est
+    /// <c>true</c> (P3-2B). Le filtrage est poussé dans la requête SQL : aucun client archivé n'est
+    /// matérialisé quand il est exclu.
+    /// </summary>
+    Task<IList<Customer>> ListAsync(bool includeArchived, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Recherche des clients par nom (partiel).
     /// </summary>
     Task<IList<Customer>> SearchByNameAsync(string searchTerm, CancellationToken cancellationToken = default);

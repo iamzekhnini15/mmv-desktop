@@ -3,25 +3,30 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Customers.DeleteCustomer;
 using MMV.Domain.Entities;
+using MMV.Domain.Enums;
+using MMV.Domain.Exceptions;
+using MMV.Domain.Interfaces.Repositories;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Repositories;
+using Moq;
 using Xunit;
 
 namespace MMV.Application.Tests.UseCases.Customers;
 
 /// <summary>
-/// P2C-3 — Use case « Supprimer un client » (<see cref="DeleteCustomerUseCase"/>), extrait iso-fonctionnellement de
-/// <c>CustomersListViewModel.ExecuteDelete</c> (qui appelait directement <c>ICustomerRepository.DeleteAsync</c> +
-/// <c>IUnitOfWork.SaveChangesAsync</c>).
+/// P2C-3 puis P3-2B — Use case « Supprimer un client » (<see cref="DeleteCustomerUseCase"/>).
 ///
 /// Prouve, sur un <b>vrai SQLite temporaire</b> (jamais le provider InMemory), que le use case :
 /// <list type="number">
-///   <item>supprime un client existant et persiste (CustomerFound = true) ;</item>
+///   <item>supprime un client <b>sans historique</b> et persiste (CustomerFound = true) ;</item>
 ///   <item>client introuvable : renvoie <c>CustomerFound = false</c> sans écrire ;</item>
+///   <item>P3-2B — <b>refuse</b> la suppression d'un client porteur d'une ordonnance
+///         (<see cref="BusinessRuleException"/>, message stable, aucune écriture, ordonnance conservée) ;</item>
+///   <item>P3-2B — <b>refuse</b> la suppression d'un client porteur d'une vente (idem, vente conservée) ;</item>
+///   <item>P3-2B — le refus n'appelle <b>ni</b> <c>DeleteAsync</c> <b>ni</b> <c>SaveChangesAsync</c> (espions) ;</item>
 ///   <item>commande nulle : <see cref="ArgumentNullException"/> ;</item>
 ///   <item>dépendances critiques manquantes : le constructeur rejette <c>null</c>.</item>
 /// </list>
-/// Réutilise les mêmes repositories que le flux d'origine, partageant un unique <see cref="OpticDbContext"/>.
 /// </summary>
 public sealed class DeleteCustomerUseCaseTests : IDisposable
 {
@@ -62,7 +67,11 @@ public sealed class DeleteCustomerUseCaseTests : IDisposable
 
     private static DeleteCustomerUseCase CreateUseCase(OpticDbContext context)
     {
-        return new DeleteCustomerUseCase(new CustomerRepository(context), new UnitOfWork(context));
+        return new DeleteCustomerUseCase(
+            new CustomerRepository(context),
+            new PrescriptionRepository(context),
+            new SaleRepository(context),
+            new UnitOfWork(context));
     }
 
     private static void EnsureSchema(string databasePath)
@@ -89,8 +98,36 @@ public sealed class DeleteCustomerUseCaseTests : IDisposable
         return customer.CustomerId;
     }
 
+    private static void SeedPrescription(string databasePath, long customerId)
+    {
+        using var context = CreateContext(databasePath);
+        context.Prescriptions.Add(new Prescription
+        {
+            CustomerId = customerId,
+            IssueDate = DateTime.UtcNow.AddDays(-5),
+            DoctorName = "Dr Martin"
+        });
+        context.SaveChanges();
+    }
+
+    private static void SeedSale(string databasePath, long customerId)
+    {
+        using var context = CreateContext(databasePath);
+        context.Sales.Add(new Sale
+        {
+            SaleNumber = "VTE-TEST-0001",
+            CustomerId = customerId,
+            SaleDate = DateTime.UtcNow.AddDays(-3),
+            TotalAmount = 100m,
+            FinalAmount = 100m,
+            PaymentMethod = PaymentMethod.Cash,
+            Status = SaleStatus.Delivered
+        });
+        context.SaveChanges();
+    }
+
     // ------------------------------------------------------------------
-    // (1) Suppression nominale : le client existant est supprimé et persisté
+    // (1) Suppression nominale : un client SANS historique est supprimé et persisté
     // ------------------------------------------------------------------
 
     [Fact]
@@ -141,7 +178,111 @@ public sealed class DeleteCustomerUseCaseTests : IDisposable
     }
 
     // ------------------------------------------------------------------
-    // (3) Commande nulle → ArgumentNullException
+    // (3) P3-2B — Client avec ORDONNANCE : suppression refusée, rien n'est détruit
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_CustomerWithPrescription_IsRefused_AndKeepsEverything()
+    {
+        var dbPath = PathFor("has-prescription.db");
+        EnsureSchema(dbPath);
+        var customerId = SeedCustomer(dbPath);
+        SeedPrescription(dbPath, customerId);
+
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+
+            Func<Task> act = () => useCase.ExecuteAsync(new DeleteCustomerCommand { CustomerId = customerId });
+
+            (await act.Should().ThrowAsync<BusinessRuleException>())
+                .WithMessage(DeleteCustomerUseCase.CustomerHasHistoryMessage);
+        }
+
+        using var verify = CreateContext(dbPath);
+        verify.Customers.AsNoTracking().Should().ContainSingle(c => c.CustomerId == customerId,
+            "le client porteur d'un historique n'est jamais supprimé");
+        verify.Prescriptions.AsNoTracking().Should().ContainSingle(p => p.CustomerId == customerId,
+            "l'ordonnance est conservée (plus aucune cascade destructrice)");
+    }
+
+    // ------------------------------------------------------------------
+    // (4) P3-2B — Client avec VENTE : suppression refusée, rien n'est détruit ni anonymisé
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_CustomerWithSale_IsRefused_AndKeepsEverything()
+    {
+        var dbPath = PathFor("has-sale.db");
+        EnsureSchema(dbPath);
+        var customerId = SeedCustomer(dbPath);
+        SeedSale(dbPath, customerId);
+
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+
+            Func<Task> act = () => useCase.ExecuteAsync(new DeleteCustomerCommand { CustomerId = customerId });
+
+            (await act.Should().ThrowAsync<BusinessRuleException>())
+                .WithMessage(DeleteCustomerUseCase.CustomerHasHistoryMessage);
+        }
+
+        using var verify = CreateContext(dbPath);
+        verify.Customers.AsNoTracking().Should().ContainSingle(c => c.CustomerId == customerId,
+            "le client porteur d'un historique n'est jamais supprimé");
+        verify.Sales.AsNoTracking().Should().ContainSingle(s => s.CustomerId == customerId,
+            "la vente est conservée ET reste rattachée à son client (plus de SetNull)");
+    }
+
+    // ------------------------------------------------------------------
+    // (5) P3-2B — Le refus n'écrit rien : ni DeleteAsync, ni SaveChangesAsync
+    // ------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(true, false)]  // historique = ordonnance seule
+    [InlineData(false, true)]  // historique = vente seule
+    [InlineData(true, true)]   // historique = les deux
+    public async Task ExecuteAsync_Refusal_CallsNeitherDeleteNorSaveChanges(bool hasPrescription, bool hasSale)
+    {
+        var customer = new Customer { CustomerId = 7, FirstName = "Jean", LastName = "Dupont" };
+
+        var customerRepository = new Mock<ICustomerRepository>(MockBehavior.Strict);
+        customerRepository
+            .Setup(r => r.GetByIdAsync(customer.CustomerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(customer);
+
+        var prescriptionRepository = new Mock<IPrescriptionRepository>(MockBehavior.Strict);
+        prescriptionRepository
+            .Setup(r => r.ExistsByCustomerIdAsync(customer.CustomerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(hasPrescription);
+
+        var saleRepository = new Mock<ISaleRepository>(MockBehavior.Strict);
+        saleRepository
+            .Setup(r => r.ExistsByCustomerIdAsync(customer.CustomerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(hasSale);
+
+        var unitOfWork = new Mock<IUnitOfWork>(MockBehavior.Strict);
+
+        var useCase = new DeleteCustomerUseCase(
+            customerRepository.Object,
+            prescriptionRepository.Object,
+            saleRepository.Object,
+            unitOfWork.Object);
+
+        Func<Task> act = () => useCase.ExecuteAsync(new DeleteCustomerCommand { CustomerId = customer.CustomerId });
+        await act.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage(DeleteCustomerUseCase.CustomerHasHistoryMessage);
+
+        customerRepository.Verify(r => r.DeleteAsync(It.IsAny<Customer>(), It.IsAny<CancellationToken>()), Times.Never,
+            "un refus métier ne doit jamais marquer l'entité comme supprimée");
+        customerRepository.Verify(r => r.DeleteAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never,
+            "un refus métier ne doit jamais valider de transaction");
+    }
+
+    // ------------------------------------------------------------------
+    // (6) Commande nulle → ArgumentNullException
     // ------------------------------------------------------------------
 
     [Fact]
@@ -158,7 +299,7 @@ public sealed class DeleteCustomerUseCaseTests : IDisposable
     }
 
     // ------------------------------------------------------------------
-    // (4) Dépendance critique manquante → le constructeur rejette null
+    // (7) Dépendance critique manquante → le constructeur rejette null
     // ------------------------------------------------------------------
 
     [Fact]
@@ -169,7 +310,45 @@ public sealed class DeleteCustomerUseCaseTests : IDisposable
 
         using var context = CreateContext(dbPath);
 
-        Action act = () => _ = new DeleteCustomerUseCase(customerRepository: null!, new UnitOfWork(context));
+        Action act = () => _ = new DeleteCustomerUseCase(
+            customerRepository: null!,
+            new PrescriptionRepository(context),
+            new SaleRepository(context),
+            new UnitOfWork(context));
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Constructor_WithoutPrescriptionRepository_Throws()
+    {
+        var dbPath = PathFor("ctor-prescriptions.db");
+        EnsureSchema(dbPath);
+
+        using var context = CreateContext(dbPath);
+
+        Action act = () => _ = new DeleteCustomerUseCase(
+            new CustomerRepository(context),
+            prescriptionRepository: null!,
+            new SaleRepository(context),
+            new UnitOfWork(context));
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Constructor_WithoutSaleRepository_Throws()
+    {
+        var dbPath = PathFor("ctor-sales.db");
+        EnsureSchema(dbPath);
+
+        using var context = CreateContext(dbPath);
+
+        Action act = () => _ = new DeleteCustomerUseCase(
+            new CustomerRepository(context),
+            new PrescriptionRepository(context),
+            saleRepository: null!,
+            new UnitOfWork(context));
 
         act.Should().Throw<ArgumentNullException>();
     }
@@ -182,7 +361,11 @@ public sealed class DeleteCustomerUseCaseTests : IDisposable
 
         using var context = CreateContext(dbPath);
 
-        Action act = () => _ = new DeleteCustomerUseCase(new CustomerRepository(context), unitOfWork: null!);
+        Action act = () => _ = new DeleteCustomerUseCase(
+            new CustomerRepository(context),
+            new PrescriptionRepository(context),
+            new SaleRepository(context),
+            unitOfWork: null!);
 
         act.Should().Throw<ArgumentNullException>();
     }

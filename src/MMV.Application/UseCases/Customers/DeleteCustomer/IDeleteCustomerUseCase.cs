@@ -13,8 +13,12 @@ public interface IDeleteCustomerUseCase
     /// <summary>
     /// Exécute la suppression du client décrit par <paramref name="command"/> et renvoie le résultat
     /// (présence, identifiant). Si le client est introuvable, aucune écriture n'est effectuée
-    /// (<see cref="DeleteCustomerResult.CustomerFound"/> = <c>false</c>). Les erreurs techniques sont propagées
-    /// telles quelles, exactement comme le flux d'origine.
+    /// (<see cref="DeleteCustomerResult.CustomerFound"/> = <c>false</c>).
     /// </summary>
+    /// <exception cref="MMV.Domain.Exceptions.BusinessRuleException">
+    /// P3-2B — le client possède un historique (au moins une ordonnance <b>ou</b> au moins une vente) : la
+    /// suppression physique est refusée sans aucune écriture. Le message est stable
+    /// (<see cref="DeleteCustomerUseCase.CustomerHasHistoryMessage"/>) ; le client doit être archivé.
+    /// </exception>
     Task<DeleteCustomerResult> ExecuteAsync(DeleteCustomerCommand command, CancellationToken cancellationToken = default);
 }

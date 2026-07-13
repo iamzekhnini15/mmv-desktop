@@ -62,11 +62,13 @@ public class SaleConfiguration : IEntityTypeConfiguration<Sale>
         builder.HasIndex(s => s.SaleDate)
             .HasDatabaseName("idx_sales_sale_date");
 
-        // Relations
+        // Relations — P3-2B : SetNull → Restrict. La suppression d'un client porteur de ventes est refusée par
+        // la base elle-même ; la vente n'est plus anonymisée (CustomerId conservé). CustomerId reste nullable
+        // (vente au comptoir sans client), seul le comportement de suppression change.
         builder.HasOne(s => s.Customer)
             .WithMany(c => c.Sales)
             .HasForeignKey(s => s.CustomerId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(s => s.Staff)
             .WithMany(u => u.Sales)

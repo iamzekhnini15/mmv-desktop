@@ -141,4 +141,54 @@ public sealed class ListCustomersUseCaseTests : IDisposable
     {
         ((Action)(() => _ = new ListCustomersUseCase(null!))).Should().Throw<ArgumentNullException>();
     }
+
+    // ------------------------------------------------------------------
+    // P3-2B — Filtrage des clients archivés
+    // ------------------------------------------------------------------
+
+    /// <summary>Sème un client actif (« Active ») et un client archivé (« Archived »).</summary>
+    private void SeedActiveAndArchived(string dbPath)
+    {
+        EnsureSchema(dbPath);
+        using var context = CreateContext(dbPath);
+
+        context.Customers.Add(new Customer { FirstName = "Alice", LastName = "Active" });
+
+        var archived = new Customer { FirstName = "Bob", LastName = "Archived" };
+        archived.Archive();
+        context.Customers.Add(archived);
+
+        context.SaveChanges();
+    }
+
+    [Fact]
+    public async Task ListCustomers_ExcludesArchivedCustomers_ByDefault()
+    {
+        var dbPath = PathFor("archived-excluded.db");
+        SeedActiveAndArchived(dbPath);
+
+        using var context = CreateContext(dbPath);
+        var result = await new ListCustomersUseCase(new CustomerRepository(context))
+            .ExecuteAsync(new ListCustomersQuery());
+
+        result.Should().ContainSingle(c => c.LastName == "Active",
+            "un client archivé est exclu des listes par défaut");
+        result.Should().OnlyContain(c => !c.IsArchived);
+    }
+
+    [Fact]
+    public async Task ListCustomers_IncludeArchived_ReturnsActiveAndArchived()
+    {
+        var dbPath = PathFor("archived-included.db");
+        SeedActiveAndArchived(dbPath);
+
+        using var context = CreateContext(dbPath);
+        var result = await new ListCustomersUseCase(new CustomerRepository(context))
+            .ExecuteAsync(new ListCustomersQuery { IncludeArchived = true });
+
+        result.Should().HaveCount(2);
+        result.Should().ContainSingle(c => c.LastName == "Active" && !c.IsArchived);
+        result.Should().ContainSingle(c => c.LastName == "Archived" && c.IsArchived,
+            "IsArchived est correctement projeté dans le DTO");
+    }
 }

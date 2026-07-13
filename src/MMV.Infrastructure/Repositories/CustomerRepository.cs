@@ -13,6 +13,22 @@ public class CustomerRepository : BaseRepository<Customer, long>, ICustomerRepos
     public CustomerRepository(OpticDbContext context) : base(context) { }
 
     /// <summary>
+    /// Récupère les clients, en excluant les archivés sauf demande explicite (P3-2B). Le filtre
+    /// <c>IsArchived</c> est appliqué en SQL (pas de filtrage en mémoire).
+    /// </summary>
+    public async Task<IList<Customer>> ListAsync(bool includeArchived, CancellationToken cancellationToken = default)
+    {
+        var query = GetQueryable();
+
+        if (!includeArchived)
+        {
+            query = query.Where(c => !c.IsArchived);
+        }
+
+        return await query.ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
     /// Recherche des clients par nom (partiel).
     /// </summary>
     public async Task<IList<Customer>> SearchByNameAsync(string searchTerm, CancellationToken cancellationToken = default)

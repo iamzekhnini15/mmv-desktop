@@ -24,6 +24,16 @@ public class PrescriptionRepository : BaseRepository<Prescription, long>, IPresc
     }
 
     /// <summary>
+    /// Indique si le client possède au moins une ordonnance (P3-2B). <c>AnyAsync</c> : la requête s'arrête à la
+    /// première ligne trouvée et ne matérialise aucune entité.
+    /// </summary>
+    public async Task<bool> ExistsByCustomerIdAsync(long customerId, CancellationToken cancellationToken = default)
+    {
+        return await GetQueryable()
+            .AnyAsync(p => p.CustomerId == customerId, cancellationToken);
+    }
+
+    /// <summary>
     /// Récupère les ordonnances créées entre deux dates.
     /// </summary>
     public async Task<IList<Prescription>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)

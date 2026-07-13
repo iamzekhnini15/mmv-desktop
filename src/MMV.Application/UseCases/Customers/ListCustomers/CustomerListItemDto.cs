@@ -48,4 +48,10 @@ public sealed class CustomerListItemDto
 
     /// <summary>Date de création de la fiche client.</summary>
     public DateTime CreatedAt { get; init; }
+
+    /// <summary>
+    /// Indique si la fiche client est archivée (P3-2B). Toujours <c>false</c> dans une liste par défaut ; utile
+    /// quand <c>ListCustomersQuery.IncludeArchived</c> vaut <c>true</c> (distinguer actifs et archivés à l'écran).
+    /// </summary>
+    public bool IsArchived { get; init; }
 }

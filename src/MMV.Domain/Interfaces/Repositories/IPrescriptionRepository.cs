@@ -21,4 +21,10 @@ public interface IPrescriptionRepository : IGenericRepository<Prescription, long
     /// Récupère la dernière ordonnance d'un client.
     /// </summary>
     Task<Prescription?> GetLatestByCustomerIdAsync(long customerId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Indique si le client possède au moins une ordonnance (P3-2B). Requête d'existence légère : aucune
+    /// ordonnance n'est matérialisée, contrairement à <see cref="GetByCustomerIdAsync"/>.
+    /// </summary>
+    Task<bool> ExistsByCustomerIdAsync(long customerId, CancellationToken cancellationToken = default);
 }

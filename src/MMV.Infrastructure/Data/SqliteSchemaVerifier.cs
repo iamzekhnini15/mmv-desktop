@@ -41,6 +41,20 @@ public sealed class SqliteSchemaVerifier
     private static readonly HashSet<string> AdditiveTablesToleratedWhenAbsent =
         new(StringComparer.OrdinalIgnoreCase) { "DocumentSequences" };
 
+    /// <summary>
+    /// Colonnes <b>purement additives</b> (NOT NULL avec valeur par défaut) introduites par une migration
+    /// récente et qu'aucune base historique antérieure ne peut contenir. Même principe que
+    /// <see cref="AdditiveTablesToleratedWhenAbsent"/>, au niveau colonne : leur absence n'est <b>pas</b> une
+    /// incompatibilité, car la migration qui les ajoute est <b>exécutée</b> (et non baselinée) pendant
+    /// l'adoption (cf. <see cref="SqliteDatabaseManager"/>), qui vérifie ensuite leur présence physique.
+    /// Toute autre colonne manquante reste bloquante (schéma ancien/corrompu).
+    /// <list type="bullet">
+    ///   <item><c>Customers.IsArchived</c> — P3-2B, ajoutée par <c>AddCustomerArchivingAndProtectHistory</c>.</item>
+    /// </list>
+    /// </summary>
+    private static readonly HashSet<string> AdditiveColumnsToleratedWhenAbsent =
+        new(StringComparer.OrdinalIgnoreCase) { "Customers.IsArchived" };
+
     public SchemaCompatibilityResult Verify(OpticDbContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -68,7 +82,13 @@ public sealed class SqliteSchemaVerifier
             {
                 if (!actual.Columns.TryGetValue(column.Name, out var actualColumn))
                 {
-                    differences.Add($"colonne manquante: {expected.Name}.{column.Name}");
+                    // Colonne additive récente (ajoutée par une migration en attente) : l'adoption exécutera
+                    // cette migration, qui la créera physiquement. Non bloquant.
+                    if (!AdditiveColumnsToleratedWhenAbsent.Contains($"{expected.Name}.{column.Name}"))
+                    {
+                        differences.Add($"colonne manquante: {expected.Name}.{column.Name}");
+                    }
+
                     continue;
                 }
 

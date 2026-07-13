@@ -105,4 +105,35 @@ public sealed class ListCustomersForPickerUseCaseTests : IDisposable
     {
         ((Action)(() => _ = new ListCustomersForPickerUseCase(null!))).Should().Throw<ArgumentNullException>();
     }
+
+    // ------------------------------------------------------------------
+    // P3-2B — Un client archivé n'est JAMAIS proposé au rattachement
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Picker_ExcludesArchivedCustomers_AndKeepsActiveOnes()
+    {
+        var dbPath = PathFor("archived-picker.db");
+        EnsureSchema(dbPath);
+
+        using (var seed = CreateContext(dbPath))
+        {
+            seed.Customers.Add(new Customer { FirstName = "Alice", LastName = "Active", Phone = "0304" });
+
+            var archived = new Customer { FirstName = "Bob", LastName = "Archived", Phone = "0506" };
+            archived.Archive();
+            seed.Customers.Add(archived);
+
+            seed.SaveChanges();
+        }
+
+        using var context = CreateContext(dbPath);
+        var result = await new ListCustomersForPickerUseCase(new CustomerRepository(context))
+            .ExecuteAsync(new ListCustomersForPickerQuery());
+
+        result.Should().ContainSingle(c => c.LastName == "Active",
+            "le client actif reste sélectionnable");
+        result.Should().NotContain(c => c.LastName == "Archived",
+            "un sélecteur ne doit jamais permettre de rattacher un document à un client archivé");
+    }
 }

@@ -200,18 +200,19 @@ public sealed class DateTimeDefaultValuesMigrationTests : IDisposable
     {
         var dbPath = PathFor("nondestructive.db");
 
-        DateTime customerCreatedAtBefore;
+        var customerCreatedAtBefore = DateTime.UtcNow;
         using (var context = CreateContext(dbPath))
         {
             // Amène la base à l'état immédiatement AVANT le correctif R-19.
             context.GetService<IMigrator>().Migrate(MigrationBeforeFix);
             context.Database.GetAppliedMigrations().Should().NotContain(FixMigration);
-
-            var customer = new Customer { FirstName = "Avant", LastName = "Correctif" };
-            context.Customers.Add(customer);
-            context.SaveChanges();
-            customerCreatedAtBefore = customer.CreatedAt;
         }
+        SqliteConnection.ClearAllPools();
+
+        // La ligne préexistante est insérée en SQL brut, au schéma DE L'ÉPOQUE : écrire via le modèle EF
+        // courant échouerait dès qu'une migration ultérieure ajoute une colonne (ex. Customers.IsArchived,
+        // P3-2B) que cette base historique ne possède pas encore.
+        InsertHistoricalCustomer(dbPath, "Avant", "Correctif", customerCreatedAtBefore);
         SqliteConnection.ClearAllPools();
 
         // Applique la migration de correction (reconstruction de table SQLite des colonnes de date).
@@ -230,5 +231,24 @@ public sealed class DateTimeDefaultValuesMigrationTests : IDisposable
         preserved.LastName.Should().Be("Correctif");
         preserved.CreatedAt.Should().BeCloseTo(customerCreatedAtBefore, TimeSpan.FromSeconds(1),
             "la reconstruction de table par la migration conserve la valeur d'horodatage existante");
+    }
+
+    /// <summary>
+    /// Insère un client via SQL brut, en n'utilisant que les colonnes qui existaient à l'époque de la migration
+    /// ciblée. Garde le fixture « base historique » indépendant du modèle EF courant.
+    /// </summary>
+    private static void InsertHistoricalCustomer(string dbPath, string firstName, string lastName, DateTime timestamp)
+    {
+        using var connection = new SqliteConnection($"Data Source={dbPath};Pooling=False");
+        connection.Open();
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            "INSERT INTO \"Customers\" (\"FirstName\", \"LastName\", \"CreatedAt\", \"UpdatedAt\") " +
+            "VALUES ($firstName, $lastName, $timestamp, $timestamp)";
+        command.Parameters.AddWithValue("$firstName", firstName);
+        command.Parameters.AddWithValue("$lastName", lastName);
+        command.Parameters.AddWithValue("$timestamp", timestamp);
+        command.ExecuteNonQuery();
     }
 }

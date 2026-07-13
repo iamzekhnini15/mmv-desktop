@@ -28,7 +28,9 @@ public sealed class ListCustomersForPickerUseCase : IListCustomersForPickerUseCa
     {
         if (query is null) throw new ArgumentNullException(nameof(query));
 
-        var customers = await _customerRepository.GetAllAsync(cancellationToken);
+        // P3-2B : un client archivé n'est jamais proposé au rattachement d'un nouveau document. Le sélecteur
+        // n'offre donc aucune option « inclure les archivés » ; le filtre est appliqué en SQL.
+        var customers = await _customerRepository.ListAsync(includeArchived: false, cancellationToken);
 
         return customers
             .OrderBy(c => c.LastName)

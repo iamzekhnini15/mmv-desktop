@@ -11,8 +11,10 @@ namespace MMV.Application.UseCases.Customers.ListCustomersForPicker;
 public interface IListCustomersForPickerUseCase
 {
     /// <summary>
-    /// Renvoie les clients (tri par nom, comme le formulaire d'origine), projetés en
-    /// <see cref="CustomerPickerItemDto"/> plats (jamais l'entité EF <c>Customer</c>).
+    /// Renvoie les clients <b>actifs</b> (tri par nom, comme le formulaire d'origine), projetés en
+    /// <see cref="CustomerPickerItemDto"/> plats (jamais l'entité EF <c>Customer</c>). P3-2B : les clients
+    /// archivés sont <b>toujours</b> exclus — un sélecteur ne doit jamais permettre de rattacher un nouveau
+    /// document à un client archivé.
     /// </summary>
     Task<IReadOnlyList<CustomerPickerItemDto>> ExecuteAsync(ListCustomersForPickerQuery query, CancellationToken cancellationToken = default);
 }

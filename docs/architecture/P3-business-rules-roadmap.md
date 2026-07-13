@@ -130,9 +130,16 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - **Hors périmètre** : fusion de doublons, RGPD/export, sécurité sociale comme identifiant.
 - **Fichiers** : `Customer`, `CustomerValidator`, `Create/Update/DeleteCustomerUseCase`, VM clients.
 - **Tests** : suppression bloquée/adoucie avec historique ; validation ; recherche.
-- **Risques** : `DeleteCustomerUseCase` s'appuie aujourd'hui sur la **cascade EF** → suppression d'un client
-  peut effacer son historique de ventes. **Point dur à trancher en P3-2.**
+- **Risques** *(formulation corrigée en P3-2B — le dépôt réel prime)* : `DeleteCustomerUseCase` s'appuyait sur les
+  **cascades EF**, avec deux effets **distincts** (et non « effacer l'historique de ventes ») :
+  les **ordonnances** étaient **cascade-supprimées** (`Cascade` → perte de données médicales) ; les **ventes**
+  étaient **conservées mais détachées** de leur client (`SetNull` → historique commercial anonymisé). Le risque de
+  perte pure portait donc d'abord sur les **ordonnances**. **Point dur tranché en P3-2B** : les deux clés
+  étrangères passent en `Restrict` (la base refuse la suppression d'un client porteur d'historique) et l'archivage
+  devient l'alternative non destructive.
 - **Sortie** : suppression sûre (archivage ou refus documenté) ; tests verts.
+- **État** : **P3-2A** (audit) et **P3-2B** (métier + persistance) livrés — cf.
+  [rapport P3-2B](../implementation/P3-2B-customer-archiving-and-deletion-report.md). **P3-2C** (UI) reste à faire.
 
 ### P3-3 — Ordonnances
 
@@ -147,6 +154,12 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - **Fichiers** : `Prescription`, `PrescriptionValidator`, `Create/Update/DeletePrescriptionUseCase`.
 - **Tests** : chaque règle croisée (cyl↔axe, prisme↔base) ; ordonnance partielle acceptée.
 - **Risques** : casser des données historiques partielles. Mitigation : règles à la **saisie**, pas rétroactives.
+- **Exigence OBLIGATOIRE héritée de P3-2B** : `CreatePrescriptionUseCase` **ne vérifie pas** que le client visé est
+  actif. P3-2B exclut les clients archivés des listes et des sélecteurs, mais **ne pose aucun garde-fou à
+  l'écriture** : une ordonnance peut donc encore être créée pour un client archivé (identifiant fourni
+  directement, écran resté ouvert, sélection obsolète). **P3-3 doit implémenter le refus au moment de l'écriture**
+  (charger le client, refuser si `IsArchived`, selon la convention P3-1 : refus dur = exception typée). Cf.
+  [rapport P3-2B §10](../implementation/P3-2B-customer-archiving-and-deletion-report.md).
 - **Sortie** : cohérence croisée validée ; ordonnance source restant intangible.
 
 ### P3-4 — Produits
@@ -227,6 +240,12 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - **Fichiers** : `Sale`, `SaleItem`, `SaleStatus`, `RegisterSaleUseCase`, `SaleFormViewModel`.
 - **Tests** (vrai SQLite) : recalculs monétaires ; garde acompte ≤ total ; atomicité vente/stock.
 - **Risques** : la VM validait certaines choses ; ne pas régresser. Mitigation : porter la validation en Application.
+- **Exigence OBLIGATOIRE héritée de P3-2B** : `RegisterSaleUseCase` **ne vérifie pas** que le client rattaché est
+  actif. P3-2B exclut les clients archivés du sélecteur, mais **ne pose aucun garde-fou à l'écriture** : une vente
+  peut donc encore être enregistrée pour un client archivé. **P3-7 doit implémenter le refus au moment de
+  l'écriture**, dans la transaction, quand `CustomerId` est renseigné et que le client est archivé (`CustomerId`
+  reste **nullable** : une vente au comptoir sans client demeure valide). Cf.
+  [rapport P3-2B §10](../implementation/P3-2B-customer-archiving-and-deletion-report.md).
 - **Sortie** : vente cohérente, atomique, aux montants fiables.
 
 ### P3-8 — Notifications métier

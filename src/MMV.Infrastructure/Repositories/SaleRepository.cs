@@ -62,6 +62,16 @@ public class SaleRepository : BaseRepository<Sale, long>, ISaleRepository
     }
 
     /// <summary>
+    /// Indique si le client possède au moins une vente (P3-2B). <c>AnyAsync</c> : la requête s'arrête à la
+    /// première ligne trouvée et ne matérialise aucune entité.
+    /// </summary>
+    public async Task<bool> ExistsByCustomerIdAsync(long customerId, CancellationToken cancellationToken = default)
+    {
+        return await GetQueryable()
+            .AnyAsync(s => s.CustomerId == customerId, cancellationToken);
+    }
+
+    /// <summary>
     /// Récupère les ventes créées entre deux dates.
     /// </summary>
     public async Task<IList<Sale>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)

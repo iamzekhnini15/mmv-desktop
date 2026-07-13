@@ -75,6 +75,25 @@ public class Customer
     /// </summary>
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Indique si la fiche client est archivée (P3-2B). Un client archivé conserve l'intégralité de son
+    /// historique (ordonnances et ventes) mais est exclu par défaut des listes et des sélecteurs.
+    /// L'état ne se modifie que par <see cref="Archive"/> / <see cref="Reactivate"/>.
+    /// </summary>
+    public bool IsArchived { get; private set; }
+
+    /// <summary>
+    /// Archive le client (idempotent). N'altère aucun historique et ne supprime rien.
+    /// L'horodatage <see cref="UpdatedAt"/> reste à la charge de la couche Application (convention du dépôt).
+    /// </summary>
+    public void Archive() => IsArchived = true;
+
+    /// <summary>
+    /// Réactive un client archivé (idempotent).
+    /// L'horodatage <see cref="UpdatedAt"/> reste à la charge de la couche Application (convention du dépôt).
+    /// </summary>
+    public void Reactivate() => IsArchived = false;
+
     // Navigation Properties
     /// <summary>
     /// Prescriptions médicales du client.

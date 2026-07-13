@@ -255,9 +255,13 @@ public sealed class SqliteHistoricalDateTimeDefaultsTests : IDisposable
         using (var context = CreateContext(dbPath))
         {
             context.GetService<IMigrator>().Migrate(MigrationBeforeFix);
-            context.Customers.Add(new Customer { FirstName = firstName, LastName = lastName });
-            context.SaveChanges();
         }
+        SqliteConnection.ClearAllPools();
+
+        // Client inséré en SQL brut, au schéma DE L'ÉPOQUE : écrire via le modèle EF courant échouerait dès
+        // qu'une migration ultérieure ajoute une colonne (ex. Customers.IsArchived, P3-2B) absente de cette
+        // base historique.
+        InsertHistoricalCustomer(dbPath, firstName, lastName);
         SqliteConnection.ClearAllPools();
 
         ExecNonQuery(dbPath, "DROP TABLE \"__EFMigrationsHistory\"");
@@ -270,6 +274,25 @@ public sealed class SqliteHistoricalDateTimeDefaultsTests : IDisposable
         connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText = sql;
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// Insère un client via SQL brut, en n'utilisant que les colonnes qui existaient à l'époque de la migration
+    /// ciblée. Garde le fixture « base historique » indépendant du modèle EF courant.
+    /// </summary>
+    private static void InsertHistoricalCustomer(string dbPath, string firstName, string lastName)
+    {
+        using var connection = new SqliteConnection($"Data Source={dbPath};Pooling=False");
+        connection.Open();
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            "INSERT INTO \"Customers\" (\"FirstName\", \"LastName\", \"CreatedAt\", \"UpdatedAt\") " +
+            "VALUES ($firstName, $lastName, $timestamp, $timestamp)";
+        command.Parameters.AddWithValue("$firstName", firstName);
+        command.Parameters.AddWithValue("$lastName", lastName);
+        command.Parameters.AddWithValue("$timestamp", DateTime.UtcNow);
         command.ExecuteNonQuery();
     }
 

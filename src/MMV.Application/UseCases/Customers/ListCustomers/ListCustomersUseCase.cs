@@ -27,7 +27,9 @@ public sealed class ListCustomersUseCase : IListCustomersUseCase
     {
         if (query is null) throw new ArgumentNullException(nameof(query));
 
-        var customers = await _customerRepository.GetAllAsync(cancellationToken);
+        // P3-2B : le filtre d'archivage est poussé en SQL (aucun client archivé n'est chargé puis écarté en
+        // mémoire). Par défaut, les archivés sont exclus.
+        var customers = await _customerRepository.ListAsync(query.IncludeArchived, cancellationToken);
 
         return customers.Select(c => new CustomerListItemDto
         {
@@ -44,6 +46,7 @@ public sealed class ListCustomersUseCase : IListCustomersUseCase
             InsuranceName = c.InsuranceName,
             Notes = c.Notes,
             CreatedAt = c.CreatedAt,
+            IsArchived = c.IsArchived,
         }).ToList();
     }
 }

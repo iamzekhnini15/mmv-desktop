@@ -332,6 +332,23 @@ public sealed class SqliteDatabaseManager
             }
         }
 
+        // (c) P3-2B : AddCustomerArchivingAndProtectHistory si la colonne Customers.IsArchived est physiquement
+        //     absente (base antérieure à P3-2B). Baseliner cette migration marquerait à tort la colonne comme
+        //     ajoutée ET les clés étrangères Prescriptions/Sales → Customers comme passées en Restrict, alors que
+        //     le schéma historique porte encore Cascade/SetNull : l'historique métier resterait destructible.
+        var customerArchivingMissing = !ColumnExists(context, CustomersTableName, IsArchivedColumnName);
+        if (customerArchivingMissing)
+        {
+            var archivingIndex = allMigrations.FindIndex(IsAddCustomerArchivingMigration);
+            if (archivingIndex >= 0)
+            {
+                firstIndexToExecute = Math.Min(firstIndexToExecute, archivingIndex);
+                _journal.Write(
+                    "ADOPT: Customers.IsArchived column absent (base antérieure à P3-2B) — " +
+                    "AddCustomerArchivingAndProtectHistory will be executed (archiving column + Restrict FKs).");
+            }
+        }
+
         var migrationsToBaseline = allMigrations.Take(firstIndexToExecute).ToList();
 
         // --- Baseline : inscription de l'historique (accès EF encapsulé) ---
@@ -376,6 +393,19 @@ public sealed class SqliteDatabaseManager
                 "schéma réel ; la base et sa sauvegarde sont conservées.");
         }
 
+        // --- P3-2B : vérification physique post-adoption — la colonne d'archivage existe réellement ---
+        // Garantit qu'aucune base n'est marquée « AddCustomerArchivingAndProtectHistory appliquée » sans la
+        // colonne physique (un baseline mensonger laisserait aussi les FK en Cascade/SetNull, donc l'historique
+        // métier destructible).
+        if (!ColumnExists(context, CustomersTableName, IsArchivedColumnName))
+        {
+            _journal.Write("ADOPT INCONSISTENT: Customers.IsArchived column absent after adoption.");
+            throw new DatabaseMigrationException(
+                "Incohérence après adoption : la colonne d'archivage Customers.IsArchived est absente alors " +
+                "que la migration AddCustomerArchivingAndProtectHistory est inscrite. __EFMigrationsHistory ne " +
+                "reflète pas le schéma réel ; la base et sa sauvegarde sont conservées.");
+        }
+
         return new DatabasePreparationResult
         {
             DetectedState = DatabaseState.HistoricalWithoutMigrationsHistory,
@@ -400,6 +430,18 @@ public sealed class SqliteDatabaseManager
 
     private static bool IsAddDocumentSequencesMigration(string migrationId)
         => migrationId.EndsWith(AddDocumentSequencesMigrationSuffix, StringComparison.Ordinal);
+
+    /// <summary>Table des clients.</summary>
+    private const string CustomersTableName = "Customers";
+
+    /// <summary>Colonne d'archivage client (P3-2B).</summary>
+    private const string IsArchivedColumnName = "IsArchived";
+
+    /// <summary>Suffixe de l'identifiant de la migration additive P3-2B (archivage client + FK Restrict).</summary>
+    private const string AddCustomerArchivingMigrationSuffix = "_AddCustomerArchivingAndProtectHistory";
+
+    private static bool IsAddCustomerArchivingMigration(string migrationId)
+        => migrationId.EndsWith(AddCustomerArchivingMigrationSuffix, StringComparison.Ordinal);
 
     /// <summary>
     /// Point UNIQUE d'écriture de <c>__EFMigrationsHistory</c> (encapsule l'accès à l'API
@@ -457,6 +499,44 @@ public sealed class SqliteDatabaseManager
         {
             throw new DatabaseMigrationException(
                 "La base a été préparée mais reste illisible par EF (agrégats principaux inaccessibles).", ex);
+        }
+    }
+
+    /// <summary>
+    /// Indique si une colonne existe physiquement dans la base (PRAGMA table_info). Utilisé pour distinguer une
+    /// migration réellement reflétée par le schéma d'une migration à exécuter (cf. adoption historique).
+    /// </summary>
+    private static bool ColumnExists(OpticDbContext context, string tableName, string columnName)
+    {
+        var connection = context.Database.GetDbConnection();
+        var mustClose = connection.State != ConnectionState.Open;
+        try
+        {
+            if (mustClose)
+            {
+                connection.Open();
+            }
+
+            using var command = connection.CreateCommand();
+            command.CommandText = $"PRAGMA table_info(\"{tableName}\")";
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                // Colonne 1 de PRAGMA table_info = nom de la colonne.
+                if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        finally
+        {
+            if (mustClose && connection.State == ConnectionState.Open)
+            {
+                connection.Close();
+            }
         }
     }
 

@@ -29,6 +29,12 @@ public interface ISaleRepository : IGenericRepository<Sale, long>
     Task<IList<Sale>> GetByCustomerIdAsync(long customerId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Indique si le client possède au moins une vente (P3-2B). Requête d'existence légère : aucune vente
+    /// n'est matérialisée, contrairement à <see cref="GetByCustomerIdAsync"/>.
+    /// </summary>
+    Task<bool> ExistsByCustomerIdAsync(long customerId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Récupère les ventes créées entre deux dates.
     /// </summary>
     Task<IList<Sale>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);

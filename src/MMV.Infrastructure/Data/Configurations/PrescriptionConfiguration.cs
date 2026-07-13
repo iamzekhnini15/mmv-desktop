@@ -71,10 +71,11 @@ public class PrescriptionConfiguration : IEntityTypeConfiguration<Prescription>
         // CreatedAt : horodatage géré par l'application (initialiseur d'entité, futur IClock).
         // Pas de défaut SQL figé au build (R-19 / P2A-1R19).
 
-        // Relations
+        // Relations — P3-2B : Cascade → Restrict. La suppression d'un client porteur d'ordonnances est
+        // refusée par la base elle-même ; l'ordonnance (donnée médicale) n'est plus détruite en cascade.
         builder.HasOne(p => p.Customer)
             .WithMany(c => c.Prescriptions)
             .HasForeignKey(p => p.CustomerId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
