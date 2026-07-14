@@ -588,3 +588,40 @@ autre poste peut archiver le client ; l'ordonnance **passerait** malgré la gard
 > **Hors P3-3** : token de concurrence (**transverse**, ADR-PROD-DB-001) · prisme perdu au pré-remplissage des
 > commandes (**P3-6**) · refus de vente pour client archivé (**P3-7**) · **transposition** (**P3-6B**) · archivage /
 > versionnement d'ordonnance (**dette documentée**).
+
+---
+
+## Validation CI
+
+Le commit applicatif P3-3B a été vérifié sur son run CI distant réel via GitHub CLI
+(`gh run view 29339754133 --json databaseId,url,headSha,headBranch,status,conclusion,createdAt,updatedAt,event,jobs`).
+
+| Élément | Valeur |
+|---|---|
+| Commit court | `8dda9cc` |
+| SHA complet | `8dda9cc5096f7844b0360c9630db42007848b430` |
+| Message du commit | `feat(P3-3B): enforce prescription business validation` |
+| Branche | `p3-business-rules` |
+| Run ID | `29339754133` |
+| URL du run | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/29339754133 |
+| Workflow | `CI` |
+| Événement déclencheur | `push` |
+| Statut | `completed` |
+| Conclusion | ✅ `success` |
+| Créé le | `2026-07-14T14:11:42Z` |
+| Terminé le | `2026-07-14T14:15:01Z` |
+| Durée | **3 min 19 s** (job `Restore / Build / Test / Scan` : 3 min 14 s, `14:11:46Z` → `14:15:00Z`) |
+| Job | `Restore / Build / Test / Scan` |
+| Conclusion du job | ✅ `success` |
+| Avertissements | Node.js 20 déprécié (`actions/checkout@v4`, `actions/setup-dotnet@v4` forcés sur Node.js 24) — **non bloquant** |
+
+**Le commit applicatif P3-3B (`8dda9cc`) est validé par la CI distante** : le workflow `CI` s'est terminé avec
+**succès** sur le SHA, la branche et l'événement attendus. **Cette modification est documentaire uniquement** :
+aucun code, aucun test, aucun package, aucune migration, aucune configuration EF et aucun workflow CI n'est
+modifié ici. L'avertissement Node.js 20 est **non bloquant**.
+
+Le résultat détaillé par étape (`Restore`, `Build`, `Test`, `Audit des packages vulnérables`,
+`Check EF Core pending model changes`) n'affiche pas le décompte des tests exécutés dans les logs consultés via
+`gh run view` ; le chiffre de **723 tests** (App **211** · Application **218** · Domain **294**, **0
+vulnérabilité**, aucune migration en attente) reste donc le **résultat de la validation locale** documentée en
+§18 et §26, réalisée avant ce commit, et non une lecture directe des logs CI.
