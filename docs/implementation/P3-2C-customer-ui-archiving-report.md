@@ -380,12 +380,40 @@ de portée DI** n'est introduite.
 
 ---
 
-## 16. Prochaine étape
+## 16. Validation CI
+
+> Régularisation documentaire (`P3-2C-CI-DOC`) : enregistrement de la validation CI **réelle** du commit
+> applicatif P3-2C, après coup. **Aucun code, test, package, migration ou workflow CI modifié par cette section.**
+
+| Élément | Valeur |
+|---|---|
+| Commit validé | `2f260de` (`2f260de8ea7e9292156c79d540285ee290056fa2`) — *feat(P3-2C): add safe customer archiving UI* |
+| Branche | `p3-business-rules` |
+| Run CI | `29294355274` |
+| URL | https://github.com/iamzekhnini15/mmv-desktop/actions/runs/29294355274 |
+| Workflow | `CI` |
+| Déclenchement | `push` |
+| Statut | `completed` |
+| Conclusion | `success` |
+| Créé | 2026-07-13T23:53:13Z |
+| Terminé | 2026-07-13T23:56:25Z |
+| Durée | 3m12s |
+| Job exécuté | `Restore / Build / Test / Scan` — `success` (toutes les étapes vertes : Checkout, Setup .NET, Diagnostic SDK, Restore, Build, Test, Audit des packages vulnérables, Restore .NET tools, Check EF Core pending model changes) |
+| Avertissement | Node.js 20 déprécié sur les runners GitHub Actions (`actions/checkout@v4`, `actions/setup-dotnet@v4` forcés sur Node.js 24) — **annotation non bloquante**, le job reste `success` |
+
+Le commit applicatif P3-2C a été validé par la CI distante (workflow `CI`, déclenchement `push`). La CI est
+**terminée avec succès** sur le SHA exact du commit, sur la branche `p3-business-rules`. L'avertissement Node.js 20
+est une annotation informative de la plateforme GitHub Actions ; il **n'a pas** fait échouer le run. Cette section
+est une **régularisation documentaire uniquement** : aucun code, test, package, migration ou workflow CI n'est
+modifié par cette mise à jour.
+
+---
+
+## 17. Prochaine étape
 
 **P3-3 — Ordonnances** *(non commencée)*, avec l'**exigence obligatoire** héritée de P3-2B et reconduite ici :
 `CreatePrescriptionUseCase` doit **refuser la création d'une ordonnance pour un client archivé, au moment de
 l'écriture** — l'exclusion des listes et des sélecteurs (P3-2B/P3-2C) est une **commodité d'écran**, pas un
 garde-fou. Idem pour **P3-7 — Ventes** (`RegisterSaleUseCase`).
 
-Préalable de tenue de journal : **commiter P3-2C** puis **journaliser la validation CI** (et régulariser l'écart
-§2.1 relatif à P3-2B).
+P3-2 est **terminé** : P3-2A (audit), P3-2B (métier + persistance), P3-2C (UI) sont **GO local et GO CI**.
