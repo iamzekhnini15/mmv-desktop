@@ -64,7 +64,9 @@ public static class DependencyInjection
         // Services métier
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IProductService, ProductService>();
-        services.AddScoped<IPrescriptionService, PrescriptionService>();
+        // P3-3B : IPrescriptionService / PrescriptionService supprimés — second chemin d'écriture dormant, sans aucun
+        // consommateur runtime, qui court-circuitait les use cases et donc leurs garde-fous (validation, client
+        // archivé). L'écriture des ordonnances passe exclusivement par les use cases Application.
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ISaleService, SaleService>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();

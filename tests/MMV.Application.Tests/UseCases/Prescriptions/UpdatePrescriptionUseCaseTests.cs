@@ -123,6 +123,10 @@ public sealed class UpdatePrescriptionUseCaseTests : IDisposable
                 IssueDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
                 DoctorName = "Dr Modifié",
                 OdSphere = -2.5,
+                // AMENDÉ (P3-3B) : la fixture portait une base prismatique SANS valeur de prisme — la combinaison
+                // « base seule » est désormais incohérente (le prisme n'existe que si sa valeur est positive). La
+                // valeur manquante est ajoutée ; le cas « base seule » est prouvé refusé plus bas.
+                OdPrismValue = 2.0,
                 OdPrismBase = PrismBase.Up,
                 Notes = "après"
             });
@@ -130,12 +134,14 @@ public sealed class UpdatePrescriptionUseCaseTests : IDisposable
 
         result.PrescriptionFound.Should().BeTrue();
         result.PrescriptionId.Should().Be(prescriptionId);
+        result.IsValid.Should().BeTrue();
 
         using var verify = CreateContext(dbPath);
         verify.Prescriptions.AsNoTracking().Should().ContainSingle();
         var stored = verify.Prescriptions.AsNoTracking().Single();
         stored.DoctorName.Should().Be("Dr Modifié");
         stored.OdSphere.Should().Be(-2.5);
+        stored.OdPrismValue.Should().Be(2.0);
         stored.OdPrismBase.Should().Be(PrismBase.Up);
         stored.Notes.Should().Be("après");
         stored.IssueDate.Should().Be(new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc));
@@ -241,5 +247,170 @@ public sealed class UpdatePrescriptionUseCaseTests : IDisposable
 
         Action act = () => _ = new UpdatePrescriptionUseCase(new PrescriptionRepository(context), unitOfWork: null!);
         act.Should().Throw<ArgumentNullException>();
+    }
+
+    // ------------------------------------------------------------------
+    // (6) P3-3B — commande invalide : aucune écriture, entité existante intacte
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_InvalidCommand_ReturnsValidationErrors_AndLeavesEntityUntouched()
+    {
+        var dbPath = PathFor("invalid.db");
+        EnsureSchema(dbPath);
+        var (prescriptionId, _, _) = SeedPrescription(dbPath);
+
+        UpdatePrescriptionResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            result = await CreateUseCase(context).ExecuteAsync(new UpdatePrescriptionCommand
+            {
+                PrescriptionId = prescriptionId,
+                IssueDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                DoctorName = "Dr Modifié",
+                OdSphere = 999,          // hors plage
+                OgPrismBase = PrismBase.In // base sans valeur de prisme
+            });
+        }
+
+        result.PrescriptionFound.Should().BeTrue();
+        result.IsValid.Should().BeFalse();
+        result.ValidationErrors.Should().NotBeEmpty();
+
+        // La validation opère sur un candidat séparé : l'entité suivie n'est pas même partiellement mutée.
+        using var verify = CreateContext(dbPath);
+        var stored = verify.Prescriptions.AsNoTracking().Single();
+        stored.DoctorName.Should().Be("Dr Origine", "une commande invalide ne doit rien écrire");
+        stored.OdSphere.Should().Be(-1.0);
+        stored.Notes.Should().Be("avant");
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public async Task ExecuteAsync_NonFiniteValue_IsRejected_WithoutWriting(double value)
+    {
+        var dbPath = PathFor($"nonfinite-{value}.db");
+        EnsureSchema(dbPath);
+        var (prescriptionId, _, _) = SeedPrescription(dbPath);
+
+        UpdatePrescriptionResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            result = await CreateUseCase(context).ExecuteAsync(new UpdatePrescriptionCommand
+            {
+                PrescriptionId = prescriptionId,
+                IssueDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                OdSphere = value
+            });
+        }
+
+        result.IsValid.Should().BeFalse();
+
+        using var verify = CreateContext(dbPath);
+        verify.Prescriptions.AsNoTracking().Single().OdSphere.Should().Be(-1.0);
+    }
+
+    // ------------------------------------------------------------------
+    // (7) P3-3B — normalisation d'axe (0 → 180) à la mise à jour
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_NormalizesZeroAxis_ToOneHundredEighty()
+    {
+        var dbPath = PathFor("update-axis.db");
+        EnsureSchema(dbPath);
+        var (prescriptionId, _, _) = SeedPrescription(dbPath);
+
+        using (var context = CreateContext(dbPath))
+        {
+            await CreateUseCase(context).ExecuteAsync(new UpdatePrescriptionCommand
+            {
+                PrescriptionId = prescriptionId,
+                IssueDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                OdCylinder = -1.0,
+                OdAxis = 0,
+                OgCylinder = -0.75,
+                OgAxis = 180
+            });
+        }
+
+        using var verify = CreateContext(dbPath);
+        var stored = verify.Prescriptions.AsNoTracking().Single();
+        stored.OdAxis.Should().Be(180, "l'axe 0 est accepté en saisie puis persisté sous sa forme canonique");
+        stored.OgAxis.Should().Be(180);
+    }
+
+    // ------------------------------------------------------------------
+    // (8) P3-3B — client archivé : la CORRECTION reste autorisée
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_ArchivedCustomer_StillAllowsCorrection()
+    {
+        // Politique A (P3-3A) : « archivé » = plus de NOUVELLE activité, pas « données gelées ». Corriger une
+        // ordonnance mal saisie ne doit pas obliger à réactiver puis ré-archiver le client. Ce test rend un
+        // durcissement futur conscient plutôt qu'accidentel.
+        var dbPath = PathFor("archived-update.db");
+        EnsureSchema(dbPath);
+        var (prescriptionId, customerId, _) = SeedPrescription(dbPath);
+
+        using (var context = CreateContext(dbPath))
+        {
+            var customer = context.Customers.Single(c => c.CustomerId == customerId);
+            customer.Archive();
+            context.SaveChanges();
+        }
+
+        UpdatePrescriptionResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            result = await CreateUseCase(context).ExecuteAsync(new UpdatePrescriptionCommand
+            {
+                PrescriptionId = prescriptionId,
+                IssueDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                DoctorName = "Dr Corrigé",
+                OdSphere = -2.0
+            });
+        }
+
+        result.PrescriptionFound.Should().BeTrue();
+        result.IsValid.Should().BeTrue();
+
+        using var verify = CreateContext(dbPath);
+        var stored = verify.Prescriptions.AsNoTracking().Single();
+        stored.DoctorName.Should().Be("Dr Corrigé");
+        stored.OdSphere.Should().Be(-2.0);
+    }
+
+    // ------------------------------------------------------------------
+    // (9) P3-3B — ordonnance partielle : acceptée
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_PartialPrescription_IsAccepted()
+    {
+        var dbPath = PathFor("update-partial.db");
+        EnsureSchema(dbPath);
+        var (prescriptionId, _, _) = SeedPrescription(dbPath);
+
+        UpdatePrescriptionResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            result = await CreateUseCase(context).ExecuteAsync(new UpdatePrescriptionCommand
+            {
+                PrescriptionId = prescriptionId,
+                IssueDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                OgSphere = -0.75 // OD entièrement vidé
+            });
+        }
+
+        result.IsValid.Should().BeTrue();
+
+        using var verify = CreateContext(dbPath);
+        var stored = verify.Prescriptions.AsNoTracking().Single();
+        stored.OgSphere.Should().Be(-0.75);
+        stored.OdSphere.Should().BeNull();
     }
 }

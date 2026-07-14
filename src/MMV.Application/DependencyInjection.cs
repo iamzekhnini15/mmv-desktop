@@ -131,6 +131,8 @@ public static class DependencyInjection
         // IPrescriptionRepository et IUnitOfWork — donc même DbContext (cohérent avec le flux d'origine porté par
         // PrescriptionFormViewModel et CustomerPrescriptionsViewModel). Chaque écriture est mono-écriture
         // (Create/Update/Delete + SaveChangesAsync unique), ITransactionRunner non requis.
+        // P3-3B : CreatePrescriptionUseCase dépend en plus d'ICustomerRepository (garde « client archivé » et refus
+        // explicite du client introuvable) — résolu dans la même portée, donc le même DbContext.
         services.AddScoped<ICreatePrescriptionUseCase, CreatePrescriptionUseCase>();
         services.AddScoped<IUpdatePrescriptionUseCase, UpdatePrescriptionUseCase>();
         services.AddScoped<IDeletePrescriptionUseCase, DeletePrescriptionUseCase>();

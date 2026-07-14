@@ -147,10 +147,10 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
     (état **absolu**, jamais un basculement), filtre **« Afficher les clients archivés »**
     (`ListCustomersQuery.IncludeArchived`, filtré **en base**), et **rechargement depuis la source après toute
     mutation** (la collection locale n'est jamais la vérité — multi-poste, ADR-PROD-DB-001).
-- **Risque résiduel reporté (inchangé)** : l'archivage **n'empêche toujours pas** la création d'une ordonnance ou
-  d'une vente pour un client archivé — aucun garde-fou **à l'écriture** n'existe. L'UI P3-2C rend le cas encore plus
-  improbable (archivés hors listes par défaut et **toujours** hors sélecteurs) mais **ne l'empêche pas**. Le refus
-  reste **exigé** de **P3-3** (ordonnances) et **P3-7** (ventes), ci-dessous.
+- **Risque résiduel reporté — partiellement levé** : l'archivage n'empêchait **ni** la création d'une ordonnance
+  **ni** celle d'une vente pour un client archivé (aucun garde-fou **à l'écriture**). **P3-3B a posé le garde-fou du
+  côté des ordonnances** (chargement du client, refus par `BusinessRuleException` si `IsArchived`). Le refus reste
+  **exigé** de **P3-7** (ventes).
 
 ### P3-3 — Ordonnances
 
@@ -172,6 +172,25 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   (charger le client, refuser si `IsArchived`, selon la convention P3-1 : refus dur = exception typée). Cf.
   [rapport P3-2B §10](../implementation/P3-2B-customer-archiving-and-deletion-report.md).
 - **Sortie** : cohérence croisée validée ; ordonnance source restant intangible.
+- **État** : **P3-3A** (audit) et **P3-3B** (métier + validation) livrés ; **P3-3C** (UI) reste à faire.
+  - [rapport P3-3A](../implementation/P3-3A-prescription-domain-audit-report.md) — audit. **Découverte
+    structurante** : `PrescriptionValidator` était **du code mort** (appelé par aucun use case) — toute la validation
+    optique reposait sur l'UI seule.
+  - [rapport P3-3B](../implementation/P3-3B-prescription-validation-and-archived-customer-report.md) — validateur
+    **réellement câblé** (Create **et** Update via `CommandValidation`), règles croisées cylindre ⇄ axe et
+    prisme ⇄ base (OD/OG), rejet des valeurs `NaN`/infinies, normalisation `Axis 0 → 180` (fonction Domain **pure**,
+    hors validateur), **refus de création pour un client archivé** (`BusinessRuleException`, message constant),
+    **client introuvable** traité explicitement, et **suppression de `PrescriptionService`** (second chemin
+    d'écriture mort qui contournait tous les garde-fous). **Aucune migration, aucune UI.**
+- **Réserve honnête sur la « source intangible »** : l'immutabilité **forte** de `Prescription` n'est **pas**
+  implémentée (ni versionnement, ni verrouillage après usage, ni FK `SaleItem.PrescriptionId` — le lien passé est
+  **irrécupérable**). Les **documents** historiques restent protégés par la **copie par valeur** dans
+  `SaleItem`/`OrderItem`, pas par une règle. La suppression **physique** d'une ordonnance existe toujours ; la
+  confirmation UI arrive en **P3-3C**. Dette **documentée**, non résolue.
+- **P3-3C (UI, à faire)** : `PrismBase` en **`ComboBox`** (l'écran ne permet pas encore de saisir une base valide,
+  alors que la règle est désormais **active**), affichage des `ValidationErrors`, capture de la
+  `BusinessRuleException` « client archivé », confirmation avant suppression, et alignement de `DoctorName`
+  (facultatif dans le Domain, exigé à tort par l'UI).
 
 ### P3-4 — Produits
 
