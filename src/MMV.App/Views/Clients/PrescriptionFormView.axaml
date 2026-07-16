@@ -49,6 +49,20 @@
             <Setter Property="MinHeight" Value="42"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
+
+        <!-- P3-3C : sélecteur de base de prisme, aligné visuellement sur TextBox.OpticInput. -->
+        <Style Selector="ComboBox.OpticSelect">
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto, *, Auto">
@@ -78,18 +92,15 @@
                         <DatePicker SelectedDate="{Binding IssueDate}" HorizontalAlignment="Stretch"/>
                     </StackPanel>
 
+                    <!-- P3-3C : le médecin est facultatif (Domain et Application, P3-3B). Aucune erreur UI ne peut
+                         plus empêcher l'enregistrement d'une ordonnance sans prescripteur. -->
                     <StackPanel Grid.Column="2" Spacing="8">
-                        <TextBlock Text="MÉDECIN PRESCRIPTEUR" Classes="SectionHeader"/>
-                        <TextBox Text="{Binding DoctorName}" Watermark="Dr. Nom Prénom" Classes="TextInput">
+                        <TextBlock Text="MÉDECIN PRESCRIPTEUR (FACULTATIF)" Classes="SectionHeader"/>
+                        <TextBox Text="{Binding DoctorName}" Watermark="Dr. Nom Prénom (facultatif)" Classes="TextInput">
                             <TextBox.InnerLeftContent>
                                 <PathIcon Data="{StaticResource IconUser}" Width="14" Margin="12,0,0,0" Foreground="{DynamicResource TextSecondaryBrush}"/>
                             </TextBox.InnerLeftContent>
                         </TextBox>
-                        <TextBlock Text="{Binding DoctorNameError}" 
-                                   Foreground="{DynamicResource ErrorBrush}" 
-                                   FontSize="11" 
-                                   Margin="4,0,0,0"
-                                   IsVisible="{Binding DoctorNameError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="4" Spacing="8">
@@ -115,50 +126,36 @@
                                 <StackPanel Margin="0,0,12,20">
                                     <TextBlock Text="SPHÈRE" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OdSphere}" Classes="OpticInput" Watermark="±0.00"/>
-                                    <TextBlock Text="{Binding OdSphereError}" 
-                                               Foreground="{DynamicResource ErrorBrush}" 
-                                               FontSize="10" 
-                                               TextAlignment="Center"
-                                               Margin="0,4,0,0"
-                                               IsVisible="{Binding OdSphereError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,20">
                                     <TextBlock Text="CYLINDRE" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OdCylinder}" Classes="OpticInput" Watermark="±0.00"/>
-                                    <TextBlock Text="{Binding OdCylinderError}" 
-                                               Foreground="{DynamicResource ErrorBrush}" 
-                                               FontSize="10" 
-                                               TextAlignment="Center"
-                                               Margin="0,4,0,0"
-                                               IsVisible="{Binding OdCylinderError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,0,20">
                                     <TextBlock Text="AXE" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OdAxis}" Classes="OpticInput" Watermark="0°"/>
-                                    <TextBlock Text="{Binding OdAxisError}" 
-                                               Foreground="{DynamicResource ErrorBrush}" 
-                                               FontSize="10" 
-                                               TextAlignment="Center"
-                                               Margin="0,4,0,0"
-                                               IsVisible="{Binding OdAxisError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,0">
                                     <TextBlock Text="ADDITION" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OdAddition}" Classes="OpticInput" Foreground="{DynamicResource SuccessBrush}" Watermark="+0.00"/>
-                                    <TextBlock Text="{Binding OdAdditionError}" 
-                                               Foreground="{DynamicResource ErrorBrush}" 
-                                               FontSize="10" 
-                                               TextAlignment="Center"
-                                               Margin="0,4,0,0"
-                                               IsVisible="{Binding OdAdditionError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,0">
                                     <TextBlock Text="PRISME" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OdPrismValue}" Classes="OpticInput" Watermark="0.00"/>
                                 </StackPanel>
+                                <!-- P3-3C : base du prisme saisie par sélection. Les seules valeurs proposées sont
+                                     celles de l'enum Domain (In/Out/Up/Down), plus « Aucune » (null). -->
                                 <StackPanel Margin="0,0,0,0">
                                     <TextBlock Text="BASE" Classes="FieldLabel"/>
-                                    <TextBox Text="{Binding OdPrismBase}" Classes="OpticInput" Watermark="H/V/In/Out"/>
+                                    <ComboBox Classes="OpticSelect"
+                                              ItemsSource="{x:Static vm:PrescriptionFormViewModel.PrismBaseOptions}"
+                                              SelectedItem="{Binding SelectedOdPrismBaseOption}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:PrismBaseOption">
+                                                <TextBlock Text="{Binding Label}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
                                 </StackPanel>
                             </UniformGrid>
                         </Border>
@@ -179,50 +176,35 @@
                                 <StackPanel Margin="0,0,12,20">
                                     <TextBlock Text="SPHÈRE" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OgSphere}" Classes="OpticInput" Watermark="±0.00"/>
-                                    <TextBlock Text="{Binding OgSphereError}" 
-                                               Foreground="{DynamicResource ErrorBrush}" 
-                                               FontSize="10" 
-                                               TextAlignment="Center"
-                                               Margin="0,4,0,0"
-                                               IsVisible="{Binding OgSphereError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,20">
                                     <TextBlock Text="CYLINDRE" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OgCylinder}" Classes="OpticInput" Watermark="±0.00"/>
-                                    <TextBlock Text="{Binding OgCylinderError}" 
-                                               Foreground="{DynamicResource ErrorBrush}" 
-                                               FontSize="10" 
-                                               TextAlignment="Center"
-                                               Margin="0,4,0,0"
-                                               IsVisible="{Binding OgCylinderError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,0,20">
                                     <TextBlock Text="AXE" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OgAxis}" Classes="OpticInput" Watermark="0°"/>
-                                    <TextBlock Text="{Binding OgAxisError}" 
-                                               Foreground="{DynamicResource ErrorBrush}" 
-                                               FontSize="10" 
-                                               TextAlignment="Center"
-                                               Margin="0,4,0,0"
-                                               IsVisible="{Binding OgAxisError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,0">
                                     <TextBlock Text="ADDITION" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OgAddition}" Classes="OpticInput" Foreground="{DynamicResource SuccessBrush}" Watermark="+0.00"/>
-                                    <TextBlock Text="{Binding OgAdditionError}" 
-                                               Foreground="{DynamicResource ErrorBrush}" 
-                                               FontSize="10" 
-                                               TextAlignment="Center"
-                                               Margin="0,4,0,0"
-                                               IsVisible="{Binding OgAdditionError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,0">
                                     <TextBlock Text="PRISME" Classes="FieldLabel"/>
                                     <TextBox Text="{Binding OgPrismValue}" Classes="OpticInput" Watermark="0.00"/>
                                 </StackPanel>
+                                <!-- P3-3C : sélecteur identique à l'œil droit ; les deux yeux restent indépendants. -->
                                 <StackPanel Margin="0,0,0,0">
                                     <TextBlock Text="BASE" Classes="FieldLabel"/>
-                                    <TextBox Text="{Binding OgPrismBase}" Classes="OpticInput" Watermark="H/V/In/Out"/>
+                                    <ComboBox Classes="OpticSelect"
+                                              ItemsSource="{x:Static vm:PrescriptionFormViewModel.PrismBaseOptions}"
+                                              SelectedItem="{Binding SelectedOgPrismBaseOption}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:PrismBaseOption">
+                                                <TextBlock Text="{Binding Label}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
                                 </StackPanel>
                             </UniformGrid>
                         </Border>
@@ -243,12 +225,33 @@
             </StackPanel>
         </ScrollViewer>
 
-        <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="24,16" IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
-                <PathIcon Data="M12,2 L2,22 H22 L12,2 Z M12,18 V20 M12,10 V16" Width="16" Foreground="{DynamicResource ErrorBrush}"/>
-                <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}" VerticalAlignment="Center" FontWeight="SemiBold"/>
-            </StackPanel>
-        </Border>
+        <!-- P3-3C : deux canaux disjoints et toujours visibles (pied de formulaire) — le résumé des erreurs de
+             validation renvoyées par le use case, et le message unique (client introuvable, ordonnance introuvable,
+             refus métier « client archivé », erreur inattendue). Le formulaire n'est jamais fermé ni vidé sur refus. -->
+        <StackPanel Grid.Row="2">
+            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="24,16" IsVisible="{Binding HasValidationErrors}">
+                <StackPanel Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <PathIcon Data="M12,2 L2,22 H22 L12,2 Z M12,18 V20 M12,10 V16" Width="16" Foreground="{DynamicResource ErrorBrush}"/>
+                        <TextBlock Text="Corrigez les points suivants :" Foreground="{DynamicResource ErrorBrush}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding ValidationMessages}" Margin="28,0,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <TextBlock Text="{Binding}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="24,16" IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                    <PathIcon Data="M12,2 L2,22 H22 L12,2 Z M12,18 V20 M12,10 V16" Width="16" Foreground="{DynamicResource ErrorBrush}"/>
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}" VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
 
         <Grid Grid.Row="0" Grid.RowSpan="3" Background="#99000000" IsVisible="{Binding IsSaving}">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">

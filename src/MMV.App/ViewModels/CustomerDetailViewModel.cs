@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.App.Services;
 using MMV.Application.UseCases.Customers.ListCustomers;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Prescriptions.DeletePrescription;
@@ -30,6 +31,9 @@ public class CustomerDetailViewModel : BaseViewModel
     private readonly ICreatePrescriptionUseCase _createPrescriptionUseCase;
     private readonly IUpdatePrescriptionUseCase _updatePrescriptionUseCase;
     private readonly IDeletePrescriptionUseCase _deletePrescriptionUseCase;
+    // P3-3C : service de dialogue existant, transmis à CustomerPrescriptionsViewModel (construit manuellement ici,
+    // donc jamais résolu par la DI : la dépendance doit suivre le vrai chemin de composition).
+    private readonly IDialogService _dialogService;
 
     private CustomerListItemDto? _customer;
     private int _selectedTabIndex = 0;
@@ -115,7 +119,8 @@ public class CustomerDetailViewModel : BaseViewModel
         IListPrescriptionsByCustomerUseCase listPrescriptionsUseCase,
         ICreatePrescriptionUseCase createPrescriptionUseCase,
         IUpdatePrescriptionUseCase updatePrescriptionUseCase,
-        IDeletePrescriptionUseCase deletePrescriptionUseCase)
+        IDeletePrescriptionUseCase deletePrescriptionUseCase,
+        IDialogService dialogService)
     {
         _getSaleFormReferenceDataUseCase = getSaleFormReferenceDataUseCase ?? throw new ArgumentNullException(nameof(getSaleFormReferenceDataUseCase));
         // Use case de sauvegarde de vente obligatoire (P2B-2C), transmis à SaleFormViewModel.
@@ -127,6 +132,9 @@ public class CustomerDetailViewModel : BaseViewModel
         _createPrescriptionUseCase = createPrescriptionUseCase ?? throw new ArgumentNullException(nameof(createPrescriptionUseCase));
         _updatePrescriptionUseCase = updatePrescriptionUseCase ?? throw new ArgumentNullException(nameof(updatePrescriptionUseCase));
         _deletePrescriptionUseCase = deletePrescriptionUseCase ?? throw new ArgumentNullException(nameof(deletePrescriptionUseCase));
+        // P3-3C : confirmation avant suppression d'ordonnance et refus « client archivé » (mécanisme de dialogue
+        // existant), transmis à CustomerPrescriptionsViewModel puis à PrescriptionFormViewModel.
+        _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
 
         BackCommand = new RelayCommand(ExecuteBack);
 
@@ -159,7 +167,8 @@ public class CustomerDetailViewModel : BaseViewModel
             _listPrescriptionsUseCase,
             _createPrescriptionUseCase,
             _updatePrescriptionUseCase,
-            _deletePrescriptionUseCase);
+            _deletePrescriptionUseCase,
+            _dialogService);
         await PrescriptionsViewModel.InitializeAsync(customer.CustomerId);
 
         CustomerInfoViewModel = new CustomerInfoViewModel(customer, _getPurchaseHistoryUseCase);

@@ -235,7 +235,9 @@ public class CustomersViewModel : BaseViewModel
         if (customer != null)
         {
             // Créer une nouvelle instance du CustomerDetailViewModel
-            CustomerDetailViewModel = new CustomerDetailViewModel(_getSaleFormReferenceDataUseCase, _registerSaleUseCase, _getPurchaseHistoryUseCase, _listPrescriptionsUseCase, _createPrescriptionUseCase, _updatePrescriptionUseCase, _deletePrescriptionUseCase);
+            // P3-3C : le service de dialogue (déjà injecté ici pour CustomersListViewModel) descend jusqu'à la fiche
+            // détail, qui construit manuellement CustomerPrescriptionsViewModel puis PrescriptionFormViewModel.
+            CustomerDetailViewModel = new CustomerDetailViewModel(_getSaleFormReferenceDataUseCase, _registerSaleUseCase, _getPurchaseHistoryUseCase, _listPrescriptionsUseCase, _createPrescriptionUseCase, _updatePrescriptionUseCase, _deletePrescriptionUseCase, _dialogService);
             
             // Initialiser avec le client sélectionné
             await CustomerDetailViewModel.InitializeAsync(customer);

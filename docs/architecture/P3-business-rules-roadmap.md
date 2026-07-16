@@ -172,7 +172,8 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   (charger le client, refuser si `IsArchived`, selon la convention P3-1 : refus dur = exception typée). Cf.
   [rapport P3-2B §10](../implementation/P3-2B-customer-archiving-and-deletion-report.md).
 - **Sortie** : cohérence croisée validée ; ordonnance source restant intangible.
-- **État** : **P3-3A** (audit) et **P3-3B** (métier + validation) livrés ; **P3-3C** (UI) reste à faire.
+- **État** : **P3-3 TERMINÉ localement** (sous réserve de CI distante) — **P3-3A** (audit), **P3-3B** (métier +
+  validation) et **P3-3C** (UI) livrés.
   - [rapport P3-3A](../implementation/P3-3A-prescription-domain-audit-report.md) — audit. **Découverte
     structurante** : `PrescriptionValidator` était **du code mort** (appelé par aucun use case) — toute la validation
     optique reposait sur l'UI seule.
@@ -182,15 +183,27 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
     hors validateur), **refus de création pour un client archivé** (`BusinessRuleException`, message constant),
     **client introuvable** traité explicitement, et **suppression de `PrescriptionService`** (second chemin
     d'écriture mort qui contournait tous les garde-fous). **Aucune migration, aucune UI.**
-- **Réserve honnête sur la « source intangible »** : l'immutabilité **forte** de `Prescription` n'est **pas**
+  - [rapport P3-3C](../implementation/P3-3C-prescription-ui-validation-report.md) — UI : **`PrismBase` en `ComboBox`**
+    sur les 4 valeurs réelles de l'enum (+ « Aucune » = `null`), watermark erroné « H/V/In/Out » **supprimé** (`H` et
+    `V` n'existent pas) ; **affichage des `ValidationErrors`** (ordre conservé, dédupliquées, sans détail technique) ;
+    **capture spécifique de la `BusinessRuleException`** « client archivé » (message métier exact + modal, `catch`
+    générique séparé) ; **`CustomerFound` / `PrescriptionFound` = false** traités explicitement ; **confirmation avant
+    suppression physique** (le `// TODO` est levé) ; **`DoctorName` aligné** (facultatif, l'obligation UI était une
+    règle sans propriétaire métier) ; **9 validations locales supprimées** (le Domain est propriétaire des règles
+    depuis P3-3B — plus de seconde source de vérité) ; **rechargement depuis la source après toute mutation**
+    (multi-poste). **Aucune modification Domain/Application/Infrastructure, aucune migration, aucun package.**
+- **Réserve honnête sur la « source intangible »** : l'immutabilité **forte** de `Prescription` n'est **toujours pas**
   implémentée (ni versionnement, ni verrouillage après usage, ni FK `SaleItem.PrescriptionId` — le lien passé est
   **irrécupérable**). Les **documents** historiques restent protégés par la **copie par valeur** dans
-  `SaleItem`/`OrderItem`, pas par une règle. La suppression **physique** d'une ordonnance existe toujours ; la
-  confirmation UI arrive en **P3-3C**. Dette **documentée**, non résolue.
-- **P3-3C (UI, à faire)** : `PrismBase` en **`ComboBox`** (l'écran ne permet pas encore de saisir une base valide,
-  alors que la règle est désormais **active**), affichage des `ValidationErrors`, capture de la
-  `BusinessRuleException` « client archivé », confirmation avant suppression, et alignement de `DoctorName`
-  (facultatif dans le Domain, exigé à tort par l'UI).
+  `SaleItem`/`OrderItem`, pas par une règle. La suppression **physique** d'une ordonnance existe toujours : elle est
+  désormais **confirmée** (P3-3C) mais reste **irréversible**. Dette **documentée**, **non résolue**.
+- **Toujours ouvert après P3-3** (rien de tout ceci n'est traité par P3-3C) :
+  - **transposition** sphère/cylindre/axe ⇒ **reportée à P3-6B** (cf. §5) ;
+  - **concurrence multi-poste** (aucun token : deux postes corrigeant des yeux différents d'une même ordonnance ⇒ la
+    première correction est **écrasée en silence**) et **immutabilité forte** ⇒ chantiers **transverses**,
+    ADR-PROD-DB-001 — **non résolus** ;
+  - **prisme perdu** au pré-remplissage des commandes (`OrderFormViewModel.AutoFillFromPrescription()`) ⇒ **P3-6** ;
+  - **refus de vente** pour un client archivé ⇒ **P3-7**.
 
 ### P3-4 — Produits
 

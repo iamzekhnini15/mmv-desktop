@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using MMV.App.Services;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Customers.ListCustomers;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
@@ -280,7 +281,7 @@ public class SaleFormViewModelTransactionTests
             getSaleFormReferenceDataUseCase.Object, spy,
             Mock.Of<IGetCustomerPurchaseHistoryUseCase>(), Mock.Of<IListPrescriptionsByCustomerUseCase>(),
             Mock.Of<ICreatePrescriptionUseCase>(), Mock.Of<IUpdatePrescriptionUseCase>(),
-            Mock.Of<IDeletePrescriptionUseCase>());
+            Mock.Of<IDeletePrescriptionUseCase>(), Mock.Of<IDialogService>());
 
         await detail.InitializeAsync(new CustomerListItemDto { CustomerId = 7, FirstName = "Prod", LastName = "Chain" });
 

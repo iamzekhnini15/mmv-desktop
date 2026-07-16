@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.App.Services;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Prescriptions.DeletePrescription;
 using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
@@ -17,6 +18,19 @@ namespace MMV.App.ViewModels;
 /// </summary>
 public class CustomerPrescriptionsViewModel : BaseViewModel
 {
+    /// <summary>Titre du dialogue de confirmation de suppression (convention du dépôt, patron P3-2C).</summary>
+    public const string DeleteConfirmationTitle = "Confirmation de suppression";
+
+    /// <summary>
+    /// Message de confirmation avant suppression <b>physique</b> d'une ordonnance. La suppression reste physique et
+    /// définitive : ni archivage ni versionnement d'ordonnance n'existe (dette documentée, P3-3B §23).
+    /// </summary>
+    public const string DeleteConfirmationMessage =
+        "Supprimer définitivement cette ordonnance ? Cette action est irréversible.";
+
+    /// <summary>Message affiché quand l'ordonnance visée n'existe plus (supprimée depuis un autre poste).</summary>
+    public const string PrescriptionNotFoundMessage = "L'ordonnance à supprimer est introuvable.";
+
     // P2D-5 : la lecture d'affichage (liste des ordonnances du client) passe désormais par le query use case
     // Application, qui renvoie des DTO plats (PrescriptionListItemDto). Les écritures (create/update/delete) restent
     // déléguées aux use cases Application ci-dessous (P2C-4).
@@ -24,6 +38,9 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     private readonly ICreatePrescriptionUseCase _createPrescriptionUseCase;
     private readonly IUpdatePrescriptionUseCase _updatePrescriptionUseCase;
     private readonly IDeletePrescriptionUseCase _deletePrescriptionUseCase;
+    // P3-3C : confirmation de suppression et refus métier portés par le mécanisme de dialogue existant du dépôt.
+    // Transmis tel quel au PrescriptionFormViewModel, construit ici (aucune résolution DI sur ce chemin).
+    private readonly IDialogService _dialogService;
     private long _customerId;
     private bool _isInEditMode;
     private bool _isShowingDetail;
@@ -151,12 +168,14 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
         IListPrescriptionsByCustomerUseCase listPrescriptionsUseCase,
         ICreatePrescriptionUseCase createPrescriptionUseCase,
         IUpdatePrescriptionUseCase updatePrescriptionUseCase,
-        IDeletePrescriptionUseCase deletePrescriptionUseCase)
+        IDeletePrescriptionUseCase deletePrescriptionUseCase,
+        IDialogService dialogService)
     {
         _listPrescriptionsUseCase = listPrescriptionsUseCase ?? throw new ArgumentNullException(nameof(listPrescriptionsUseCase));
         _createPrescriptionUseCase = createPrescriptionUseCase ?? throw new ArgumentNullException(nameof(createPrescriptionUseCase));
         _updatePrescriptionUseCase = updatePrescriptionUseCase ?? throw new ArgumentNullException(nameof(updatePrescriptionUseCase));
         _deletePrescriptionUseCase = deletePrescriptionUseCase ?? throw new ArgumentNullException(nameof(deletePrescriptionUseCase));
+        _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
         _prescriptions = new ObservableCollection<PrescriptionListItemDto>();
 
         CreateCommand = new RelayCommand(ExecuteCreate);
@@ -214,7 +233,7 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     /// </summary>
     private void ExecuteCreate()
     {
-        FormViewModel = new PrescriptionFormViewModel(_createPrescriptionUseCase, _updatePrescriptionUseCase)
+        FormViewModel = new PrescriptionFormViewModel(_createPrescriptionUseCase, _updatePrescriptionUseCase, _dialogService)
         {
             CustomerId = CustomerId
         };
@@ -249,7 +268,7 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     {
         if (prescription == null) return;
 
-        FormViewModel = new PrescriptionFormViewModel(_createPrescriptionUseCase, _updatePrescriptionUseCase);
+        FormViewModel = new PrescriptionFormViewModel(_createPrescriptionUseCase, _updatePrescriptionUseCase, _dialogService);
         FormViewModel.LoadPrescription(prescription);
         FormViewModel.PrescriptionSaved += OnPrescriptionSaved;
         FormViewModel.Cancelled += OnFormCancelled;
@@ -258,13 +277,26 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Supprime une ordonnance.
+    /// Supprime <b>définitivement</b> l'ordonnance visée, après confirmation explicite.
     /// </summary>
-    private async Task ExecuteDeleteAsync(PrescriptionListItemDto? prescription)
+    /// <remarks>
+    /// Multi-poste (ADR-PROD-DB-001) : après une suppression réussie <b>comme</b> après un constat « introuvable », la
+    /// liste est rechargée depuis la source. Un <c>Remove</c> local mentirait sur l'état réel — un autre poste a pu
+    /// modifier la fiche entre-temps.
+    /// </remarks>
+    public async Task ExecuteDeleteAsync(PrescriptionListItemDto? prescription)
     {
         if (prescription == null) return;
 
-        // TODO: Ajouter confirmation
+        var confirmed = await _dialogService.ShowConfirmationAsync(
+            DeleteConfirmationTitle,
+            DeleteConfirmationMessage);
+
+        // Annulation : aucun appel au use case, aucun rechargement, aucune mutation locale.
+        if (!confirmed) return;
+
+        ErrorMessage = string.Empty;
+
         try
         {
             var result = await _deletePrescriptionUseCase.ExecuteAsync(
@@ -272,7 +304,9 @@ public class CustomerPrescriptionsViewModel : BaseViewModel
 
             if (!result.PrescriptionFound)
             {
-                ErrorMessage = "L'ordonnance à supprimer est introuvable.";
+                // L'ordonnance a pu être supprimée depuis un autre poste : on repart de l'état partagé.
+                await LoadPrescriptionsAsync();
+                ErrorMessage = PrescriptionNotFoundMessage;
                 return;
             }
 

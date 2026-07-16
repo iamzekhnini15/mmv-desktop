@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using MMV.App.Services;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Customers.ListCustomers;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
@@ -117,7 +118,8 @@ public sealed class P2D5CustomerReadViewModelTests
             listUseCase.Object,
             Mock.Of<ICreatePrescriptionUseCase>(),
             Mock.Of<IUpdatePrescriptionUseCase>(),
-            Mock.Of<IDeletePrescriptionUseCase>());
+            Mock.Of<IDeletePrescriptionUseCase>(),
+            Mock.Of<IDialogService>());
 
         await vm.InitializeAsync(7);
 
