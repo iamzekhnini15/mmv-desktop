@@ -3,129 +3,367 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MMV.App.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+             mc:Ignorable="d" d:DesignWidth="1440" d:DesignHeight="900"
              x:Class="MMV.App.Views.LoginView"
-             x:DataType="vm:LoginViewModel"
-             Background="{DynamicResource BackgroundBrush}">
+             x:DataType="vm:LoginViewModel">
 
-    <Grid ColumnDefinitions="1.2*, 1*">
+    <!-- ================================================================================
+         Écran de connexion MMV — implémentation du handoff design-handoff/login.
+         Les ressources MMV sont déclarées LOCALEMENT : elles ne doivent affecter aucun
+         autre écran, et la palette globale (Styles/AppStyles.axaml) reste inchangée.
+         ================================================================================ -->
+    <UserControl.Resources>
+        <FontFamily x:Key="MmvFontHeading">fonts:Inter#Inter</FontFamily>
 
-        <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
-            <Grid RowDefinitions="*,Auto,*" Margin="60">
+        <SolidColorBrush x:Key="MmvAccent" Color="#0066FF"/>
+        <SolidColorBrush x:Key="MmvAccentHover" Color="#3385FF"/>
+        <SolidColorBrush x:Key="MmvAccentPressed" Color="#0B1D3A"/>
+        <!-- Accent atténué pour l'état désactivé (MMV-Login-states.md §9) ; teinte non
+             figée par le handoff. -->
+        <SolidColorBrush x:Key="MmvAccentDisabled" Color="#A8C8F0"/>
 
-                <StackPanel Grid.Row="1" Spacing="20" HorizontalAlignment="Center">
-                    <Grid HorizontalAlignment="Center">
-                        <Border Width="120" Height="120" CornerRadius="60" Background="{DynamicResource AccentFadeBrush}" Opacity="0.5"/>
-                        <PathIcon Data="{StaticResource IconGlasses}" Width="60" Height="60" Foreground="{DynamicResource AccentBrush}"/>
-                    </Grid>
+        <SolidColorBrush x:Key="MmvBlueNight" Color="#0B1D3A"/>
+        <SolidColorBrush x:Key="MmvBlueNightDeep" Color="#0A2350"/>
+        <SolidColorBrush x:Key="MmvBrandTeal" Color="#00C2A8"/>
+        <!-- Pastilles d'arguments : rgba(0,194,168,.22) et son glyphe #3EE0C8. -->
+        <SolidColorBrush x:Key="MmvBrandTealSoft" Color="#3800C2A8"/>
+        <SolidColorBrush x:Key="MmvBrandTealGlyph" Color="#3EE0C8"/>
+        <!-- Texte des arguments : rgba(255,255,255,.9). -->
+        <SolidColorBrush x:Key="MmvOnBrandSoft" Color="#E6FFFFFF"/>
 
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="ManageMyVision" Classes="h1" FontSize="32" HorizontalAlignment="Center" Margin="0"/>
-                        <TextBlock Text="La référence pour les opticiens." FontSize="16" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" FontWeight="Normal"/>
-                    </StackPanel>
-                </StackPanel>
+        <SolidColorBrush x:Key="MmvSurfacePage" Color="#F2F4F7"/>
+        <SolidColorBrush x:Key="MmvSurfaceCard" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="MmvBorder" Color="#E4E8EE"/>
 
-                <StackPanel Grid.Row="2" VerticalAlignment="Bottom" Spacing="15" Opacity="0.8">
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <PathIcon Data="M20 6L9 17L4 12" Width="14" Height="14" Foreground="{DynamicResource SuccessBrush}"/>
-                        <TextBlock Text="Gestion complète des stocks" FontWeight="Medium"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <PathIcon Data="M20 6L9 17L4 12" Width="14" Height="14" Foreground="{DynamicResource SuccessBrush}"/>
-                        <TextBlock Text="Suivi des ordonnances clients" FontWeight="Medium"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <PathIcon Data="M20 6L9 17L4 12" Width="14" Height="14" Foreground="{DynamicResource SuccessBrush}"/>
-                        <TextBlock Text="Rapports de ventes détaillés" FontWeight="Medium"/>
+        <SolidColorBrush x:Key="MmvTextPrimary" Color="#0B1D3A"/>
+        <SolidColorBrush x:Key="MmvTextSecondary" Color="#5B6675"/>
+        <SolidColorBrush x:Key="MmvTextTertiary" Color="#8A95A6"/>
+
+        <SolidColorBrush x:Key="MmvError" Color="#F0384B"/>
+        <SolidColorBrush x:Key="MmvErrorSoft" Color="#FDECEE"/>
+        <SolidColorBrush x:Key="MmvErrorText" Color="#C01427"/>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- Les icônes Lucide sont des tracés à CONTOUR : rendues via Path + Stroke.
+             StrokeThickness 1.5 compense la mise à l'échelle 24 -> 18 px de la grille
+             d'origine (2 px sur 24 px equivaut a 1,5 px sur 18 px). -->
+        <Style Selector="Path.lucide">
+            <Setter Property="Fill" Value="{x:Null}"/>
+            <Setter Property="StrokeThickness" Value="1.5"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
+            <Setter Property="StrokeJoin" Value="Round"/>
+            <Setter Property="Stretch" Value="Uniform"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Boîte de saisie : la bordure et le fond sont portés par ce Border, la TextBox
+             interne est rendue transparente (le style global TextBox d'AppStyles.axaml
+             s'appliquerait sinon : fond gris, rayon 10, padding 12,10). -->
+        <Style Selector="Border.field">
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="Background" Value="{StaticResource MmvSurfaceCard}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource MmvBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="15,0"/>
+        </Style>
+
+        <!-- Anneau de focus : BoxShadow natif Avalonia (spread 3 px), pas d'ombre web simulée. -->
+        <Style Selector="Border.field:focus-within">
+            <Setter Property="BorderBrush" Value="{StaticResource MmvAccent}"/>
+            <Setter Property="BoxShadow" Value="0 0 0 3 #330066FF"/>
+        </Style>
+
+        <Style Selector="TextBox.fieldInput">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="Foreground" Value="{StaticResource MmvTextPrimary}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource MmvAccent}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="TextBox.fieldInput /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.fieldInput:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.fieldInput:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="TextBlock.fieldLabel">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource MmvTextSecondary}"/>
+        </Style>
+
+        <Style Selector="Button.mmvCta">
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Background" Value="{StaticResource MmvAccent}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.mmvCta /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource MmvAccent}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+        </Style>
+        <Style Selector="Button.mmvCta:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource MmvAccentHover}"/>
+        </Style>
+        <Style Selector="Button.mmvCta:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource MmvAccentPressed}"/>
+        </Style>
+        <Style Selector="Button.mmvCta:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource MmvAccentDisabled}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="1.1*,1*">
+
+        <!-- ============================ PANNEAU GAUCHE — MARQUE ============================ -->
+        <Border Grid.Column="0" ClipToBounds="True">
+            <Border.Background>
+                <!-- Référence web : linear-gradient(150deg,#0B1D3A 0%,#0A2350 55%,#0066FF 140%).
+                     Avalonia ne reproduit pas un stop hors cadre (140 %) : le stop final est
+                     donc calculé à la couleur RÉELLEMENT visible à 100 % de la course, soit
+                     l'interpolation #0A2350 -> #0066FF à 52,9 % = #0546AD. Approximation
+                     visuelle assumée, comparée à MMV-Login-1920x1080.png. -->
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="85%,100%">
+                    <GradientStop Offset="0" Color="#0B1D3A"/>
+                    <GradientStop Offset="0.55" Color="#0A2350"/>
+                    <GradientStop Offset="1" Color="#0546AD"/>
+                </LinearGradientBrush>
+            </Border.Background>
+
+            <Grid>
+                <!-- Halo décoratif : cercle 480x480 débordant en haut à droite, clippé par le Border. -->
+                <Ellipse Width="480" Height="480"
+                         HorizontalAlignment="Right" VerticalAlignment="Top"
+                         Margin="0,-160,-160,0"
+                         IsHitTestVisible="False">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Offset="0" Color="#4724B6FF"/>
+                            <GradientStop Offset="0.7" Color="#0024B6FF"/>
+                            <GradientStop Offset="1" Color="#0024B6FF"/>
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+
+                <StackPanel VerticalAlignment="Center" Margin="96,0">
+
+                    <!-- Le rectangle sombre et la ligne blanche font partie de l'asset officiel :
+                         afficher le PNG tel quel, sans recadrage ni agrandissement. -->
+                    <Image Source="avares://MMV.App/Assets/logo-login.png"
+                           Width="300" Height="132"
+                           Stretch="Uniform"
+                           HorizontalAlignment="Left"
+                           Margin="0,0,0,36"/>
+
+                    <TextBlock Text="La gestion intégrée de votre magasin d'optique."
+                               FontFamily="{StaticResource MmvFontHeading}"
+                               FontSize="38"
+                               FontWeight="Bold"
+                               LineHeight="45.6"
+                               LetterSpacing="-0.76"
+                               MaxWidth="540"
+                               HorizontalAlignment="Left"
+                               TextWrapping="Wrap"
+                               Foreground="White"/>
+
+                    <StackPanel Spacing="18" Margin="0,44,0,0">
+
+                        <StackPanel Orientation="Horizontal" Spacing="14">
+                            <Border Width="30" Height="30" CornerRadius="15"
+                                    Background="{StaticResource MmvBrandTealSoft}">
+                                <Path Classes="lucide"
+                                      Data="{StaticResource IconCheck}"
+                                      Width="16" Height="16"
+                                      Stroke="{StaticResource MmvBrandTealGlyph}"/>
+                            </Border>
+                            <TextBlock Text="Dossiers clients &amp; ordonnances"
+                                       FontSize="17"
+                                       Foreground="{StaticResource MmvOnBrandSoft}"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="14">
+                            <Border Width="30" Height="30" CornerRadius="15"
+                                    Background="{StaticResource MmvBrandTealSoft}">
+                                <Path Classes="lucide"
+                                      Data="{StaticResource IconCheck}"
+                                      Width="16" Height="16"
+                                      Stroke="{StaticResource MmvBrandTealGlyph}"/>
+                            </Border>
+                            <TextBlock Text="Ventes, commandes &amp; atelier"
+                                       FontSize="17"
+                                       Foreground="{StaticResource MmvOnBrandSoft}"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="14">
+                            <Border Width="30" Height="30" CornerRadius="15"
+                                    Background="{StaticResource MmvBrandTealSoft}">
+                                <Path Classes="lucide"
+                                      Data="{StaticResource IconCheck}"
+                                      Width="16" Height="16"
+                                      Stroke="{StaticResource MmvBrandTealGlyph}"/>
+                            </Border>
+                            <TextBlock Text="Stock et fournisseurs centralisés"
+                                       FontSize="17"
+                                       Foreground="{StaticResource MmvOnBrandSoft}"/>
+                        </StackPanel>
+
                     </StackPanel>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Grid Grid.Column="1" RowDefinitions="*,Auto,*" Margin="80,0">
+        <!-- ============================ PANNEAU DROIT — FORMULAIRE ============================ -->
+        <Border Grid.Column="1" Background="{StaticResource MmvSurfacePage}" Padding="40">
 
-            <StackPanel Grid.Row="1" Spacing="24">
+            <StackPanel Width="400" Spacing="22"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
 
-                <StackPanel Spacing="8">
-                    <TextBlock Text="Bienvenue," FontSize="28" FontWeight="Bold"/>
-                    <TextBlock Text="Veuillez entrer vos identifiants pour continuer." Classes="caption" FontSize="14"/>
+                <StackPanel>
+                    <TextBlock Text="Bienvenue,"
+                               FontFamily="{StaticResource MmvFontHeading}"
+                               FontSize="30"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource MmvTextPrimary}"/>
+                    <TextBlock Text="Veuillez entrer vos identifiants pour continuer."
+                               FontSize="15"
+                               Margin="0,8,0,0"
+                               TextWrapping="Wrap"
+                               Foreground="{StaticResource MmvTextSecondary}"/>
                 </StackPanel>
 
-                <StackPanel Spacing="16">
-
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Identifiant" Classes="label"/>
-                        <TextBox Text="{Binding Username}"
-                                 Watermark="ex: admin"
-                                 Classes="Input"/>
-                    </StackPanel>
-
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Mot de passe" Classes="label"/>
-                        <TextBox Text="{Binding Password}"
-                                 PasswordChar="•"
-                                 Watermark="••••••••"
-                                 Classes="Input"
-                                 RevealPassword="false"/>
-                </StackPanel>
-
-                    <TextBlock Text="Mot de passe oublié ?"
-                               Foreground="{DynamicResource AccentBrush}"
-                               FontSize="12"
-                               Cursor="Hand"
-                               HorizontalAlignment="Right"
-                               TextDecorations="Underline"/>
-                </StackPanel>
-
-                <Border Background="#26FF453A"
-                        BorderBrush="{DynamicResource ErrorBrush}"
-                        BorderThickness="1"
-                        CornerRadius="{DynamicResource SmallCornerRadius}"
-                        Padding="12"
+                <!-- Erreur GLOBALE uniquement (authentification / technique), source unique :
+                     la propriété LoginError du ViewModel. Converter déjà utilisé dans le projet. -->
+                <Border Background="{StaticResource MmvErrorSoft}"
+                        CornerRadius="8"
+                        Padding="14,12"
                         IsVisible="{Binding LoginError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                     <Grid ColumnDefinitions="Auto,*">
-                        <PathIcon Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"
-                                  Foreground="{DynamicResource ErrorBrush}"
-                                  Width="16"
-                                  VerticalAlignment="Top"
-                                  Margin="0,2,0,0"/>
+                        <Path Classes="lucide"
+                              Data="{StaticResource IconAlertCircle}"
+                              Width="16" Height="16"
+                              Stroke="{StaticResource MmvErrorText}"
+                              VerticalAlignment="Top"
+                              Margin="0,2,0,0"/>
                         <TextBlock Grid.Column="1"
                                    Text="{Binding LoginError}"
-                                   Foreground="{DynamicResource ErrorBrush}"
-                                   TextWrapping="Wrap"
+                                   FontSize="13"
                                    Margin="10,0,0,0"
-                                   FontSize="13"/>
+                                   TextWrapping="Wrap"
+                                   Foreground="{StaticResource MmvErrorText}"/>
                     </Grid>
                 </Border>
 
-                <StackPanel Spacing="12" Margin="0,10,0,0">
-                    <Button Classes="Primary"
-                            Content="Se connecter"
-                            Command="{Binding LoginCommand}"
-                            HorizontalAlignment="Stretch"
-                            IsEnabled="{Binding !IsLoggingIn}"/>
-
-                    <ProgressBar IsIndeterminate="True"
-                                 IsVisible="{Binding IsLoggingIn}"
-                                 Height="2"
-                                 Foreground="{DynamicResource AccentBrush}"
-                                 Background="Transparent"/>
+                <StackPanel Spacing="8">
+                    <TextBlock Classes="fieldLabel" Text="Identifiant"/>
+                    <Border Classes="field">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Path Classes="lucide"
+                                  Data="{StaticResource IconUserOutline}"
+                                  Width="18" Height="18"
+                                  Stroke="{StaticResource MmvTextTertiary}"/>
+                            <TextBox Grid.Column="1"
+                                     x:Name="UsernameBox"
+                                     Classes="fieldInput"
+                                     Margin="10,0,0,0"
+                                     AutomationProperties.Name="Identifiant"
+                                     Text="{Binding Username}"/>
+                        </Grid>
+                    </Border>
                 </StackPanel>
 
-                <Border BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="{DynamicResource SmallCornerRadius}"
-                        Padding="12"
-                        Margin="0,20,0,0"
-                        Background="{DynamicResource SurfaceLightBrush}"
-                        Opacity="0.7">
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Mode Démonstration" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                        <TextBlock Text="User: admin / Pass: admin" FontSize="11" FontFamily="Consolas, Monospace" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                    </StackPanel>
-                </Border>
+                <StackPanel Spacing="8">
+                    <TextBlock Classes="fieldLabel" Text="Mot de passe"/>
+                    <Border Classes="field">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Path Classes="lucide"
+                                  Data="{StaticResource IconLock}"
+                                  Width="18" Height="18"
+                                  Stroke="{StaticResource MmvTextTertiary}"/>
+                            <TextBox Grid.Column="1"
+                                     x:Name="PasswordBox"
+                                     Classes="fieldInput"
+                                     Margin="10,0,0,0"
+                                     AutomationProperties.Name="Mot de passe"
+                                     Text="{Binding Password}"
+                                     PasswordChar="•"
+                                     RevealPassword="False"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- IsDefault : Entrée déclenche le clic depuis n'importe quel champ. Le bouton
+                     reste piloté par CanExecute (LoginCommand/CanLogin), donc Entrée est sans
+                     effet champs vides ou pendant IsLoggingIn. Aucun second mécanisme clavier. -->
+                <!-- Le contenu du bouton est un Panel (deux états superposés) : sans nom explicite,
+                     l'accessibilité annonce « Avalonia.Controls.Panel » au lieu du libellé. -->
+                <Button x:Name="LoginButton"
+                        Classes="mmvCta"
+                        IsDefault="True"
+                        AutomationProperties.Name="Se connecter"
+                        Command="{Binding LoginCommand}">
+                    <Panel>
+                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                    HorizontalAlignment="Center"
+                                    IsVisible="{Binding !IsLoggingIn}">
+                            <TextBlock Text="Se connecter"
+                                       FontSize="15" FontWeight="SemiBold"
+                                       Foreground="White"/>
+                            <Path Classes="lucide"
+                                  Data="{StaticResource IconArrowRight}"
+                                  Width="16" Height="16"
+                                  Stroke="White"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="10"
+                                    HorizontalAlignment="Center"
+                                    IsVisible="{Binding IsLoggingIn}">
+                            <TextBlock Text="Connexion…"
+                                       FontSize="15" FontWeight="SemiBold"
+                                       Foreground="White"/>
+                            <ProgressBar IsIndeterminate="True"
+                                         Width="56" Height="3"
+                                         MinWidth="0" MinHeight="0"
+                                         VerticalAlignment="Center"
+                                         Foreground="White"
+                                         Background="#40FFFFFF"/>
+                        </StackPanel>
+                    </Panel>
+                </Button>
+
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+                    <Path Classes="lucide"
+                          Data="{StaticResource IconShieldCheck}"
+                          Width="16" Height="16"
+                          Stroke="{StaticResource MmvTextTertiary}"/>
+                    <TextBlock Text="Connexion sécurisée à votre espace MMV."
+                               FontSize="12.5"
+                               Foreground="{StaticResource MmvTextTertiary}"/>
+                </StackPanel>
 
             </StackPanel>
-        </Grid>
+        </Border>
     </Grid>
 </UserControl>

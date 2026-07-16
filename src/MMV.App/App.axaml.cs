@@ -59,8 +59,10 @@ public partial class App : Avalonia.Application
         var loginWindow = new Window
         {
             Title = "Connexion - ManageMyVision",
-            Width = 1000,
-            Height = 700,
+            Width = 1440,
+            Height = 900,
+            MinWidth = 1280,
+            MinHeight = 720,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
             Content = new LoginView { DataContext = loginViewModel }
         };
