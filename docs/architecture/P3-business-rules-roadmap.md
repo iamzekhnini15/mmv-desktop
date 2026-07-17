@@ -218,6 +218,17 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - **Risques** : `DeleteProductUseCase` = cascade EF (peut affecter `SaleItem`/`OrderItem`).
 - **Sortie** : catalogue cohérent ; suppression sûre.
 
+#### État (P3-4A — audit terminé)
+
+- **P3-4A audit terminé** — rapport : [`docs/implementation/P3-4A-product-domain-audit-report.md`](../implementation/P3-4A-product-domain-audit-report.md). Verdict : `P3-4A = GO AUDIT`. **P3-4 reste en cours** (aucune règle implémentée).
+- Constats factuels (état actuel du code, non corrigé) :
+  - **Suppression physique destructive** : `StockMovement` supprimé en **cascade** ; `SaleItem.ProductId` et `OrderItem.ProductId` mis à **null** ; `DeleteProductUseCase` ne vérifie aucun usage.
+  - `IsActive` **existe** mais **aucun use case de désactivation** n'existe et `UpdateProductUseCase` ne le mappe pas.
+  - **Cohérence catégorie/détails absente** (détails obsolètes conservés lors d'un changement de catégorie).
+  - **`ProductValidator` non branché** (unicité `Reference` garantie seulement par l'index unique DB, sans normalisation ni vérification applicative).
+- Reports explicites : **écriture directe du stock → P3-5** ; **intégrité fournisseur détaillée → P3-9**.
+- Découpage candidat pour la suite (noms non officiels, à valider) : règles métier Produits + migration FK `Restrict` → UI Produits → doc/CI. Détail dans le rapport P3-4A.
+
 ### P3-5 — Stock / mouvements
 
 - **Objectif** : **unifier la politique de décrément** et la traçabilité.
