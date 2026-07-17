@@ -26,6 +26,7 @@ using MMV.Application.UseCases.Products.GetInventoryOverview;
 using MMV.Application.UseCases.Products.ListProducts;
 using MMV.Application.UseCases.Products.ListProductsForOrderPicker;
 using MMV.Application.UseCases.Products.ListProductsForPicker;
+using MMV.Application.UseCases.Products.SetProductActive;
 using MMV.Application.UseCases.Products.UpdateProduct;
 using MMV.Application.UseCases.Sales.GetCustomerPurchaseHistory;
 using MMV.Application.UseCases.Sales.GetSaleFormReferenceData;
@@ -153,13 +154,17 @@ public static class DependencyInjection
         services.AddScoped<IUpdateUserUseCase, UpdateUserUseCase>();
         services.AddScoped<ISetUserActiveUseCase, SetUserActiveUseCase>();
 
-        // Reliquat UI P2C-GLOBAL — écritures du module Produits. Portée Scoped : même portée que OpticDbContext,
-        // IProductRepository et IUnitOfWork — donc même DbContext (cohérent avec le flux d'origine porté par
-        // ProductFormViewModel et ProductsListViewModel). Chaque écriture est mono-écriture (Create/Update/Delete +
-        // SaveChangesAsync unique), ITransactionRunner non requis.
+        // Écritures du module Produits. Portée Scoped : même portée que OpticDbContext, IProductRepository,
+        // IUnitOfWork et ITransactionRunner — donc même DbContext.
+        // P3-4B : Create/Update enveloppent leur écriture dans ITransactionRunner afin qu'une violation d'unicité
+        // concurrente sur la référence normalisée soit traduite en PersistenceException neutre (jamais un message
+        // SQLite/EF brut) par le mécanisme existant PersistenceErrorMapper. Delete reste mono-écriture (garde
+        // d'usage puis suppression). SetProductActive (désactivation/réactivation) remplace l'absence de
+        // « suppression douce » constatée en P3-4A.
         services.AddScoped<ICreateProductUseCase, CreateProductUseCase>();
         services.AddScoped<IUpdateProductUseCase, UpdateProductUseCase>();
         services.AddScoped<IDeleteProductUseCase, DeleteProductUseCase>();
+        services.AddScoped<ISetProductActiveUseCase, SetProductActiveUseCase>();
 
         // Reliquat UI P2C-GLOBAL — écritures du module Notifications (marquage global + génération stock bas). Portée
         // Scoped : même portée que OpticDbContext, INotificationRepository, IProductRepository et IUnitOfWork — donc

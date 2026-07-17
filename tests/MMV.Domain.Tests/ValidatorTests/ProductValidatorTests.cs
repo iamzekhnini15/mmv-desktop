@@ -75,9 +75,53 @@ public class ProductValidatorTests
             Name = "Produit",
             Reference = "REF001",
             SalePrice = 0m,
-            PurchasePrice = 50m
+            PurchasePrice = 0m
         };
         var result = await _validator.ValidateAsync(product);
         Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public async Task Validate_WithSalePriceBelowPurchasePrice_ShouldFail()
+    {
+        var product = new Product
+        {
+            Name = "Produit",
+            Reference = "REF001",
+            SalePrice = 40m,
+            PurchasePrice = 50m
+        };
+        var result = await _validator.ValidateAsync(product);
+        Assert.False(result.IsValid);
+    }
+
+    [Fact]
+    public async Task Validate_WithNegativeRecommendedPrice_ShouldFail()
+    {
+        var product = new Product
+        {
+            Name = "Produit",
+            Reference = "REF001",
+            SalePrice = 100m,
+            PurchasePrice = 50m,
+            RecommendedPrice = -1m
+        };
+        var result = await _validator.ValidateAsync(product);
+        Assert.False(result.IsValid);
+    }
+
+    [Fact]
+    public async Task Validate_WithNegativeStock_ShouldFail()
+    {
+        var product = new Product
+        {
+            Name = "Produit",
+            Reference = "REF001",
+            SalePrice = 100m,
+            PurchasePrice = 50m,
+            StockQuantity = -5
+        };
+        var result = await _validator.ValidateAsync(product);
+        Assert.False(result.IsValid);
     }
 }

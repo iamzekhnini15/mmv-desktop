@@ -1,35 +1,62 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using MMV.Application.Common;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Exceptions;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
+using MMV.Domain.Validators;
 
 namespace MMV.Application.UseCases.Products.CreateProduct;
 
 /// <summary>
-/// Implémentation du use case « Créer un produit » (P2C-GLOBAL). Déplace, <b>sans changement de comportement
-/// observable</b>, la branche création de <c>ProductFormViewModel.ExecuteSaveAsync</c> (et sa méthode
-/// <c>CreateCategorySpecificDetailsAsync</c>) vers la couche Application.
+/// Implémentation du use case « Créer un produit ». En P3-4B, la validation métier (jusque-là portée par la seule
+/// UI) est réellement appliquée <b>avant</b> toute écriture, et l'unicité de la référence est vérifiée sur sa
+/// représentation normalisée.
 /// </summary>
 /// <remarks>
 /// <para>
-/// La génération de notification « stock bas » présente dans la ViewModel d'origine n'est <b>pas</b> reportée :
-/// dans l'application réelle, <c>ProductFormViewModel</c> était toujours construit sans
-/// <c>INotificationRepository</c> (constructeur à 3 arguments), donc ce bloc ne s'exécutait jamais (code mort).
-/// Les notifications de stock bas restent produites par le flux Notifications/Tableau de bord existant.
+/// <b>Validation (P3-1).</b> Le candidat est validé par le <see cref="ProductValidator"/> Domain (règle propriétaire
+/// du Domain, aucune duplication) via <see cref="CommandValidation"/>. Commande invalide ⇒ aucune écriture.
 /// </para>
-/// <para>Mono-écriture (Create + <c>SaveChangesAsync</c> unique), <c>ITransactionRunner</c> non requis.</para>
+/// <para>
+/// <b>Unicité référence (P3-4B).</b> La référence est nettoyée et normalisée par l'entité
+/// (<see cref="Product.NormalizeReference"/>). Une vérification applicative compacte (<c>AnyAsync</c>) fournit un
+/// message métier clair en cas de doublon. Le filet de sécurité réel reste l'index unique en base sur
+/// <see cref="Product.NormalizedReference"/> : si deux postes écrivent une référence équivalente quasi
+/// simultanément, l'écriture perdante est rejetée par la base et <b>traduite</b> par
+/// <c>PersistenceErrorMapper</c> (via <see cref="ITransactionRunner"/>) en <c>PersistenceException</c> neutre —
+/// jamais un message SQLite/EF brut. C'est pourquoi l'écriture est enveloppée dans le runner transactionnel.
+/// Ce cas concurrent (catégorie <c>UniqueConstraint</c>) est ensuite <b>converti dans le use case</b> en la
+/// <b>même erreur métier stable</b> que la garde pré-écriture (<see cref="DuplicateReferenceMessage"/>) : le
+/// chemin normal et le chemin concurrent produisent un résultat public identique ; aucune
+/// <c>PersistenceException</c> n'échappe de ce cas. Les autres catégories de persistance restent propagées.
+/// </para>
 /// </remarks>
 public sealed class CreateProductUseCase : ICreateProductUseCase
 {
+    /// <summary>
+    /// Message métier stable renvoyé lorsqu'une référence est déjà utilisée par un autre produit. Exposé en
+    /// constante pour que l'UI et les tests s'y réfèrent sans le dupliquer.
+    /// </summary>
+    public const string DuplicateReferenceMessage =
+        "Un produit portant cette référence existe déjà.";
+
+    // Validateur Domain réutilisé (règle métier propriétaire du Domain — aucune duplication). Stateless, partagé.
+    private static readonly ProductValidator ProductValidator = new();
+
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ITransactionRunner _transactionRunner;
 
-    public CreateProductUseCase(IProductRepository productRepository, IUnitOfWork unitOfWork)
+    public CreateProductUseCase(IProductRepository productRepository, IUnitOfWork unitOfWork, ITransactionRunner transactionRunner)
     {
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
     }
 
     /// <inheritdoc />
@@ -39,7 +66,7 @@ public sealed class CreateProductUseCase : ICreateProductUseCase
 
         var product = new Product
         {
-            Reference = command.Reference,
+            Reference = command.Reference, // le setter nettoie (Trim) et calcule NormalizedReference
             Name = command.Name,
             Description = command.Description,
             PurchasePrice = command.PurchasePrice,
@@ -51,17 +78,50 @@ public sealed class CreateProductUseCase : ICreateProductUseCase
             SupplierId = command.SupplierId ?? 0,
         };
 
+        // P3-1 : validation de commande AVANT toute écriture.
+        var validationErrors = CommandValidation.Validate(ProductValidator, product);
+        if (validationErrors.Count > 0)
+            return new CreateProductResult { ValidationErrors = validationErrors };
+
+        // P3-4B : unicité normalisée — message métier clair (le filet DB reste l'index unique).
+        var duplicate = await _productRepository.ExistsByNormalizedReferenceAsync(product.NormalizedReference, 0, cancellationToken);
+        if (duplicate)
+            return new CreateProductResult
+            {
+                ValidationErrors = new List<ValidationError> { new(nameof(Product.Reference), DuplicateReferenceMessage) }
+            };
+
         ApplyCategorySpecificDetails(product, command);
 
-        await _productRepository.CreateAsync(product, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _transactionRunner.RunAsync(async ct =>
+            {
+                await _productRepository.CreateAsync(product, ct);
+                await _unitOfWork.SaveChangesAsync(ct);
+            }, cancellationToken);
+        }
+        catch (PersistenceException ex) when (ex.Category == PersistenceErrorCategory.UniqueConstraint)
+        {
+            // Course concurrente : entre la garde applicative et l'écriture, un autre poste a persisté une
+            // référence équivalente. L'index unique a rejeté l'écriture perdante ; le runner l'a traduite en
+            // PersistenceException neutre. On renvoie EXACTEMENT le même résultat métier stable que la garde
+            // pré-écriture (aucune exception exposée, aucun message provider brut). Seule la catégorie
+            // UniqueConstraint est traitée comme doublon ; toute autre erreur de persistance reste propagée
+            // (filtre when) pour ne pas masquer une panne réelle.
+            return new CreateProductResult
+            {
+                ValidationErrors = new List<ValidationError> { new(nameof(Product.Reference), DuplicateReferenceMessage) }
+            };
+        }
 
         return new CreateProductResult { ProductId = product.ProductId };
     }
 
     /// <summary>
     /// Construit les détails spécifiques à la catégorie (verre / lentille / accessoire) uniquement si au moins un
-    /// champ pertinent est renseigné. Port iso-fonctionnel de <c>CreateCategorySpecificDetailsAsync</c>.
+    /// champ pertinent est renseigné. À la création, seule la catégorie courante peut porter un détail : aucune
+    /// combinaison incompatible n'est possible.
     /// </summary>
     private static void ApplyCategorySpecificDetails(Product product, CreateProductCommand c)
     {

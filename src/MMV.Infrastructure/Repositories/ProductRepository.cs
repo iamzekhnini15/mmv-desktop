@@ -41,6 +41,28 @@ public class ProductRepository : BaseRepository<Product, long>, IProductReposito
     }
 
     /// <summary>
+    /// Indique s'il existe déjà un produit portant la référence normalisée donnée (hors produit exclu).
+    /// </summary>
+    public async Task<bool> ExistsByNormalizedReferenceAsync(string normalizedReference, long excludingProductId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(normalizedReference);
+
+        return await _dbSet
+            .AsNoTracking()
+            .AnyAsync(p => p.NormalizedReference == normalizedReference && p.ProductId != excludingProductId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Indique si le produit est utilisé par au moins une ligne de vente, de commande ou un mouvement de stock.
+    /// </summary>
+    public async Task<bool> IsReferencedByHistoryAsync(long productId, CancellationToken cancellationToken = default)
+    {
+        return await _context.SaleItems.AsNoTracking().AnyAsync(si => si.ProductId == productId, cancellationToken)
+            || await _context.OrderItems.AsNoTracking().AnyAsync(oi => oi.ProductId == productId, cancellationToken)
+            || await _context.StockMovements.AsNoTracking().AnyAsync(sm => sm.ProductId == productId, cancellationToken);
+    }
+
+    /// <summary>
     /// Récupère les produits d'une catégorie.
     /// </summary>
     public async Task<IList<Product>> GetByCategoryAsync(long categoryId, CancellationToken cancellationToken = default)

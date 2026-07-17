@@ -50,10 +50,25 @@ public sealed class SqliteSchemaVerifier
     /// Toute autre colonne manquante reste bloquante (schéma ancien/corrompu).
     /// <list type="bullet">
     ///   <item><c>Customers.IsArchived</c> — P3-2B, ajoutée par <c>AddCustomerArchivingAndProtectHistory</c>.</item>
+    ///   <item><c>Products.NormalizedReference</c> — P3-4B, ajoutée par <c>AddProductNormalizedReferenceAndProtectHistory</c>.</item>
     /// </list>
     /// </summary>
     private static readonly HashSet<string> AdditiveColumnsToleratedWhenAbsent =
-        new(StringComparer.OrdinalIgnoreCase) { "Customers.IsArchived" };
+        new(StringComparer.OrdinalIgnoreCase) { "Customers.IsArchived", "Products.NormalizedReference" };
+
+    /// <summary>
+    /// Index uniques <b>purement additifs</b> introduits par une migration récente et qu'aucune base historique
+    /// antérieure ne peut contenir. Même principe que <see cref="AdditiveColumnsToleratedWhenAbsent"/> : leur
+    /// absence n'est <b>pas</b> une incompatibilité, car la migration qui les crée est <b>exécutée</b> (et non
+    /// baselinée) pendant l'adoption. Clé = <c>Table.Col1,Col2</c> (colonnes triées).
+    /// <list type="bullet">
+    ///   <item><c>Products.NormalizedReference</c> — P3-4B (unicité normalisée), créé par
+    ///   <c>AddProductNormalizedReferenceAndProtectHistory</c>. L'ancien index unique sur <c>Products.Reference</c>
+    ///   subsiste alors en base : c'est un élément supplémentaire, toléré (non attendu par le modèle courant).</item>
+    /// </list>
+    /// </summary>
+    private static readonly HashSet<string> AdditiveUniqueIndexesToleratedWhenAbsent =
+        new(StringComparer.OrdinalIgnoreCase) { "Products.NormalizedReference" };
 
     public SchemaCompatibilityResult Verify(OpticDbContext context)
     {
@@ -131,7 +146,13 @@ public sealed class SqliteSchemaVerifier
                 var matched = actual.UniqueIndexes.Any(actualIndex => SetEquals(actualIndex, uniqueIndex));
                 if (!matched)
                 {
-                    differences.Add($"index unique manquant: {expected.Name}({string.Join(",", uniqueIndex)})");
+                    // Un index unique additif récent (créé par une migration en attente) n'est pas une divergence
+                    // bloquante : l'adoption exécutera la migration qui le crée. Clé sur colonnes triées.
+                    var key = $"{expected.Name}.{string.Join(",", uniqueIndex.OrderBy(c => c, StringComparer.OrdinalIgnoreCase))}";
+                    if (!AdditiveUniqueIndexesToleratedWhenAbsent.Contains(key))
+                    {
+                        differences.Add($"index unique manquant: {expected.Name}({string.Join(",", uniqueIndex)})");
+                    }
                 }
             }
         }

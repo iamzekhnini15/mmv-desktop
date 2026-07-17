@@ -49,10 +49,12 @@ public class SaleItemConfiguration : IEntityTypeConfiguration<SaleItem>
             .HasForeignKey(si => si.SaleId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // P3-4B : la ligne de vente n'est plus orphelinée quand son produit est supprimé — la base refuse la
+        // suppression d'un produit référencé (Restrict). La FK reste nullable (données anciennes).
         builder.HasOne(si => si.Product)
             .WithMany(p => p.SaleItems)
             .HasForeignKey(si => si.ProductId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

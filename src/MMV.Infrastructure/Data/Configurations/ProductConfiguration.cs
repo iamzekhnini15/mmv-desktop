@@ -17,9 +17,16 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .IsRequired()
             .HasMaxLength(50);
 
-        builder.HasIndex(p => p.Reference)
+        // P3-4B : l'unicité stricte porte désormais sur la représentation NORMALISÉE de la référence (Trim +
+        // casse invariante), pas sur la valeur d'affichage brute. Deux références ne différant que par la casse
+        // ou les espaces externes sont donc rejetées par la base (filet multi-poste), y compris entre postes.
+        builder.Property(p => p.NormalizedReference)
+            .IsRequired()
+            .HasMaxLength(50);
+
+        builder.HasIndex(p => p.NormalizedReference)
             .IsUnique()
-            .HasDatabaseName("idx_products_reference_unique");
+            .HasDatabaseName("idx_products_normalized_reference_unique");
 
         builder.Property(p => p.Name)
             .IsRequired()
@@ -70,19 +77,22 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired();
 
+        // P3-4B : la base refuse la suppression d'un produit porteur d'historique (filet multi-poste). Les FK
+        // restent nullables là où elles l'étaient (données anciennes), mais passent de SetNull/Cascade à Restrict :
+        // plus d'orphelinage silencieux des lignes de vente/commande, plus d'effacement en cascade des mouvements.
         builder.HasMany(p => p.OrderItems)
             .WithOne(oi => oi.Product)
             .HasForeignKey(oi => oi.ProductId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(p => p.SaleItems)
             .WithOne(si => si.Product)
             .HasForeignKey(si => si.ProductId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(p => p.StockMovements)
             .WithOne(sm => sm.Product)
             .HasForeignKey(sm => sm.ProductId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

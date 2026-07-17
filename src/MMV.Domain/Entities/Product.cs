@@ -13,10 +13,41 @@ public class Product
     /// </summary>
     public long ProductId { get; set; }
 
+    private string _reference = string.Empty;
+
     /// <summary>
-    /// Référence unique du produit.
+    /// Référence unique du produit (valeur d'affichage). La saisie est <b>nettoyée des espaces externes</b>
+    /// (Trim) mais sa casse est conservée pour l'affichage. Toute écriture recalcule automatiquement
+    /// <see cref="NormalizedReference"/>, garantissant que les deux ne divergent jamais — quel que soit le
+    /// chemin d'écriture (use case, seed de test, matérialisation EF).
     /// </summary>
-    public string Reference { get; set; } = string.Empty;
+    public string Reference
+    {
+        get => _reference;
+        set
+        {
+            _reference = (value ?? string.Empty).Trim();
+            NormalizedReference = NormalizeReference(_reference);
+        }
+    }
+
+    /// <summary>
+    /// Représentation <b>normalisée</b> de la référence, servant de clé d'unicité (index unique en base) et de
+    /// comparaison insensible à la casse et aux espaces externes. Jamais saisie directement : elle est dérivée de
+    /// <see cref="Reference"/> par <see cref="NormalizeReference"/>. Le setter privé reste accessible à EF Core
+    /// pour la matérialisation.
+    /// </summary>
+    public string NormalizedReference { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Fonction de normalisation <b>unique, partagée et déterministe</b> de la référence produit : suppression des
+    /// espaces externes (Trim) puis passage en majuscules <b>invariantes de culture</b>
+    /// (<see cref="string.ToUpperInvariant"/>). Ne dépend jamais de la culture courante de la machine, afin que
+    /// deux postes produisent la même clé d'unicité. Deux références comme <c>"ABC-123"</c>, <c>"abc-123"</c>,
+    /// <c>" ABC-123"</c> et <c>"ABC-123 "</c> convergent vers la même valeur normalisée.
+    /// </summary>
+    public static string NormalizeReference(string? reference)
+        => (reference ?? string.Empty).Trim().ToUpperInvariant();
 
     /// <summary>
     /// Désignation/Nom commercial du produit.

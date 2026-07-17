@@ -31,7 +31,9 @@ public sealed class ListProductsForOrderPickerUseCase : IListProductsForOrderPic
 
         var products = await _productRepository.GetAllAsync(cancellationToken);
 
+        // P3-4B : un sélecteur de nouvelle opération (commande) n'expose pas les produits désactivés.
         return products
+            .Where(p => p.IsActive)
             .OrderBy(p => p.Name)
             .Select(p => new OrderProductPickerDto
             {

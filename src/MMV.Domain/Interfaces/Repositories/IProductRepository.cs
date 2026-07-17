@@ -13,6 +13,22 @@ public interface IProductRepository : IGenericRepository<Product, long>
     Task<Product?> GetByReferenceAsync(string reference, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Indique s'il existe déjà un produit portant la <b>référence normalisée</b> donnée, en excluant
+    /// éventuellement un produit (utile en modification pour ignorer le produit courant). Requête compacte
+    /// (<c>AnyAsync</c>) — aucune collection matérialisée.
+    /// </summary>
+    /// <param name="normalizedReference">Référence déjà normalisée (cf. <see cref="Product.NormalizeReference"/>).</param>
+    /// <param name="excludingProductId">Identifiant à exclure (0 en création : aucun produit exclu).</param>
+    Task<bool> ExistsByNormalizedReferenceAsync(string normalizedReference, long excludingProductId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Indique si le produit est utilisé par au moins une ligne d'historique (vente, commande ou mouvement de
+    /// stock). Garde-fou de suppression (P3-4B) : requête compacte (<c>AnyAsync</c> à court-circuit), aucune
+    /// collection matérialisée.
+    /// </summary>
+    Task<bool> IsReferencedByHistoryAsync(long productId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Récupère les produits d'une catégorie.
     /// </summary>
     Task<IList<Product>> GetByCategoryAsync(long categoryId, CancellationToken cancellationToken = default);

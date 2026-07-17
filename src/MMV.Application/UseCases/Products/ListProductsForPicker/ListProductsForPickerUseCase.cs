@@ -30,7 +30,9 @@ public sealed class ListProductsForPickerUseCase : IListProductsForPickerUseCase
 
         var products = await _productRepository.GetAllAsync(cancellationToken);
 
+        // P3-4B : un sélecteur de nouvelle opération (mouvement de stock) n'expose pas les produits désactivés.
         return products
+            .Where(p => p.IsActive)
             .OrderBy(p => p.Name)
             .Select(p => new ProductPickerItemDto
             {

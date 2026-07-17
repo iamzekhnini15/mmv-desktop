@@ -55,9 +55,11 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
             .HasForeignKey(oi => oi.OrderId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // P3-4B : la ligne de commande n'est plus orphelinée quand son produit est supprimé — la base refuse la
+        // suppression d'un produit référencé (Restrict). La FK reste nullable (données anciennes).
         builder.HasOne(oi => oi.Product)
             .WithMany(p => p.OrderItems)
             .HasForeignKey(oi => oi.ProductId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

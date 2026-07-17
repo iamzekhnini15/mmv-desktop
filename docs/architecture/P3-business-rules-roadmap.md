@@ -229,6 +229,24 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - Reports explicites : **écriture directe du stock → P3-5** ; **intégrité fournisseur détaillée → P3-9**.
 - Découpage candidat pour la suite (noms non officiels, à valider) : règles métier Produits + migration FK `Restrict` → UI Produits → doc/CI. Détail dans le rapport P3-4A.
 
+#### État (P3-4B — implémenté et validé localement)
+
+- **P3-4A terminé** (audit) et **P3-4B implémenté et validé localement** — rapport :
+  [`docs/implementation/P3-4B-product-business-rules-report.md`](../implementation/P3-4B-product-business-rules-report.md).
+  Verdict : `P3-4B = GO LOCAL`.
+- Livré et prouvé par tests sur bases jetables : normalisation `Reference`/`NormalizedReference`
+  (`Trim().ToUpperInvariant()`) + index unique normalisé ; validation Create/Update branchée ; cohérence
+  catégorie/détails ; suppression protégée (`BusinessRuleException`) + FK `SaleItem`/`OrderItem`/`StockMovement`
+  → **`Restrict`** ; `SetProductActiveUseCase` (idempotent) ; filtrage des sélecteurs vente/commande/stock ;
+  migration `AddProductNormalizedReferenceAndProtectHistory` avec **backfill « exact ou échec sûr »** (ASCII
+  reproduit exactement `ToUpperInvariant` ; toute référence non-ASCII avorte la migration sans perte ni
+  modification, migration non enregistrée).
+- **799 tests** verts localement (Domain 297 / Application 263 / App 239), 0 vulnérabilité, aucune migration en
+  attente, frontière `Application → Domain` préservée.
+- **P3-4 n'est pas encore entièrement terminé** : l'**alignement UI Produits** (consommer `IsValid`/
+  `ValidationErrors` dans `ProductFormViewModel`, sur le modèle P3-3C) **reste à faire** — non commencé ici.
+- Reports **inchangés** : **écriture directe du stock → P3-5** ; **règles/intégrité fournisseur → P3-9**.
+
 ### P3-5 — Stock / mouvements
 
 - **Objectif** : **unifier la politique de décrément** et la traçabilité.

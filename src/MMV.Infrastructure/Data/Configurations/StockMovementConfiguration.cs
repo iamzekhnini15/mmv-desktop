@@ -34,10 +34,12 @@ public class StockMovementConfiguration : IEntityTypeConfiguration<StockMovement
             .HasDatabaseName("idx_stock_movements_product_id");
 
         // Relations
+        // P3-4B : l'historique de stock n'est plus effacé en cascade quand le produit est supprimé — la base
+        // refuse la suppression d'un produit référencé (Restrict). La FK ProductId reste non nullable.
         builder.HasOne(sm => sm.Product)
             .WithMany(p => p.StockMovements)
             .HasForeignKey(sm => sm.ProductId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(sm => sm.PerformedByUser)
             .WithMany(u => u.StockMovements)

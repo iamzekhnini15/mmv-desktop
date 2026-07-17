@@ -60,7 +60,9 @@ public sealed class GetSaleFormReferenceDataUseCase : IGetSaleFormReferenceDataU
                     OgVisualAcuity = prescription.OgVisualAcuity,
                     Notes = prescription.Notes,
                 },
-            Products = products.Select(p => new SaleProductPickerItemDto
+            // P3-4B : le sélecteur produit d'une nouvelle vente n'expose pas les produits désactivés (le filtre
+            // vivait jusqu'ici en mémoire dans SaleFormViewModel ; il est désormais appliqué côté lecture backend).
+            Products = products.Where(p => p.IsActive).Select(p => new SaleProductPickerItemDto
             {
                 ProductId = p.ProductId,
                 Reference = p.Reference,

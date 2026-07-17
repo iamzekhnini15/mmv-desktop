@@ -7,6 +7,7 @@ using MMV.Application.UseCases.Products.UpdateProduct;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Infrastructure.Data;
+using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
 using Xunit;
 
@@ -68,7 +69,7 @@ public sealed class ProductUseCasesTests : IDisposable
         CreateProductResult result;
         using (var context = CreateContext(dbPath))
         {
-            var useCase = new CreateProductUseCase(new ProductRepository(context), new UnitOfWork(context));
+            var useCase = new CreateProductUseCase(new ProductRepository(context), new UnitOfWork(context), new EfTransactionRunner(context));
             result = await useCase.ExecuteAsync(new CreateProductCommand
             {
                 Reference = "REF-1", Name = "Monture A", Category = ProductCategoryEnum.MONTURE,
@@ -98,7 +99,7 @@ public sealed class ProductUseCasesTests : IDisposable
         long id;
         using (var context = CreateContext(dbPath))
         {
-            var useCase = new CreateProductUseCase(new ProductRepository(context), new UnitOfWork(context));
+            var useCase = new CreateProductUseCase(new ProductRepository(context), new UnitOfWork(context), new EfTransactionRunner(context));
             var created = await useCase.ExecuteAsync(new CreateProductCommand
             {
                 Reference = "R", Name = "Old", Category = ProductCategoryEnum.MONTURE, SalePrice = 1m, SupplierId = supplierId
@@ -108,7 +109,7 @@ public sealed class ProductUseCasesTests : IDisposable
 
         using (var context = CreateContext(dbPath))
         {
-            var useCase = new UpdateProductUseCase(new ProductRepository(context), new UnitOfWork(context));
+            var useCase = new UpdateProductUseCase(new ProductRepository(context), new UnitOfWork(context), new EfTransactionRunner(context));
             var result = await useCase.ExecuteAsync(new UpdateProductCommand
             {
                 ProductId = id, Reference = "R2", Name = "New", Category = ProductCategoryEnum.MONTURE,
@@ -131,7 +132,7 @@ public sealed class ProductUseCasesTests : IDisposable
         var dbPath = PathFor("update-missing.db");
         EnsureSchema(dbPath);
         using var context = CreateContext(dbPath);
-        var useCase = new UpdateProductUseCase(new ProductRepository(context), new UnitOfWork(context));
+        var useCase = new UpdateProductUseCase(new ProductRepository(context), new UnitOfWork(context), new EfTransactionRunner(context));
         var result = await useCase.ExecuteAsync(new UpdateProductCommand { ProductId = 999, Reference = "x", Name = "x", Category = ProductCategoryEnum.MONTURE });
         result.ProductFound.Should().BeFalse();
     }
@@ -146,7 +147,7 @@ public sealed class ProductUseCasesTests : IDisposable
         long id;
         using (var context = CreateContext(dbPath))
         {
-            var useCase = new CreateProductUseCase(new ProductRepository(context), new UnitOfWork(context));
+            var useCase = new CreateProductUseCase(new ProductRepository(context), new UnitOfWork(context), new EfTransactionRunner(context));
             var created = await useCase.ExecuteAsync(new CreateProductCommand { Reference = "D", Name = "Del", Category = ProductCategoryEnum.MONTURE, SalePrice = 1m, SupplierId = supplierId });
             id = created.ProductId;
         }
@@ -179,8 +180,8 @@ public sealed class ProductUseCasesTests : IDisposable
         var dbPath = PathFor("null.db");
         EnsureSchema(dbPath);
         using var context = CreateContext(dbPath);
-        var create = new CreateProductUseCase(new ProductRepository(context), new UnitOfWork(context));
-        var update = new UpdateProductUseCase(new ProductRepository(context), new UnitOfWork(context));
+        var create = new CreateProductUseCase(new ProductRepository(context), new UnitOfWork(context), new EfTransactionRunner(context));
+        var update = new UpdateProductUseCase(new ProductRepository(context), new UnitOfWork(context), new EfTransactionRunner(context));
         var delete = new DeleteProductUseCase(new ProductRepository(context), new UnitOfWork(context));
 
         await ((Func<Task>)(() => create.ExecuteAsync(null!))).Should().ThrowAsync<ArgumentNullException>();
@@ -191,8 +192,8 @@ public sealed class ProductUseCasesTests : IDisposable
     [Fact]
     public void Constructors_RejectNullDependencies()
     {
-        ((Action)(() => _ = new CreateProductUseCase(null!, null!))).Should().Throw<ArgumentNullException>();
-        ((Action)(() => _ = new UpdateProductUseCase(null!, null!))).Should().Throw<ArgumentNullException>();
+        ((Action)(() => _ = new CreateProductUseCase(null!, null!, null!))).Should().Throw<ArgumentNullException>();
+        ((Action)(() => _ = new UpdateProductUseCase(null!, null!, null!))).Should().Throw<ArgumentNullException>();
         ((Action)(() => _ = new DeleteProductUseCase(null!, null!))).Should().Throw<ArgumentNullException>();
     }
 }
