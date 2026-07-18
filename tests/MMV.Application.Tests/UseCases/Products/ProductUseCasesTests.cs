@@ -123,7 +123,8 @@ public sealed class ProductUseCasesTests : IDisposable
         product.Name.Should().Be("New");
         product.Reference.Should().Be("R2");
         product.SalePrice.Should().Be(99m);
-        product.StockQuantity.Should().Be(7);
+        product.StockQuantity.Should().Be(0,
+            "P3-5 : l'édition catalogue ne réécrit plus le stock (créé sans stock initial) ; command.StockQuantity=7 est ignoré");
     }
 
     [Fact]

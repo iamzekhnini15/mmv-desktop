@@ -41,4 +41,49 @@ public interface IStockMutationService
     /// concurremment) : <b>aucune</b> modification n'est persistée.
     /// </exception>
     Task DecrementStockAsync(long productId, int quantity, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Incrémente atomiquement le stock du produit <paramref name="productId"/> de
+    /// <paramref name="quantity"/> unités (P3-5). Remplace le motif <i>lecture-modification-écriture</i>
+    /// (<c>StockQuantity += quantity</c>) par une mise à jour atomique <c>SET StockQuantity = StockQuantity + q</c> :
+    /// deux entrées concurrentes ne peuvent plus perdre l'une des quantités.
+    /// </summary>
+    /// <param name="productId">Identifiant du produit.</param>
+    /// <param name="quantity">Quantité à ajouter (doit être strictement positive).</param>
+    /// <param name="cancellationToken">Jeton d'annulation.</param>
+    /// <returns>Le stock résultant (valeur relue après incrément).</returns>
+    /// <exception cref="System.ArgumentOutOfRangeException">
+    /// si <paramref name="quantity"/> est inférieure ou égale à zéro (erreur d'appel).
+    /// </exception>
+    /// <exception cref="MMV.Domain.Exceptions.EntityNotFoundException">
+    /// si le produit est introuvable (aucune ligne affectée).
+    /// </exception>
+    Task<int> IncrementStockAsync(long productId, int quantity, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fixe le stock du produit <paramref name="productId"/> à la valeur comptée
+    /// <paramref name="targetQuantity"/> (ajustement d'inventaire, P3-5), de façon <b>concurrent-safe</b> :
+    /// la valeur courante est lue, puis une mise à jour conditionnelle (<c>WHERE StockQuantity = valeur lue</c>)
+    /// est tentée. Si un autre poste a modifié le stock entre la lecture et l'écriture, l'opération échoue
+    /// avec <see cref="MMV.Domain.Exceptions.StockConcurrencyConflictException"/> — jamais de
+    /// <i>last-write-wins</i> silencieux.
+    /// </summary>
+    /// <param name="productId">Identifiant du produit.</param>
+    /// <param name="targetQuantity">Quantité comptée cible (valeur absolue, doit être ≥ 0 ; zéro autorisé).</param>
+    /// <param name="cancellationToken">Jeton d'annulation.</param>
+    /// <returns>
+    /// Un <see cref="StockAdjustmentResult"/> exposant l'ancienne quantité, la nouvelle quantité et le delta
+    /// signé réel (pour tracer le mouvement <c>Adjustment</c>).
+    /// </returns>
+    /// <exception cref="System.ArgumentOutOfRangeException">
+    /// si <paramref name="targetQuantity"/> est strictement négative (erreur d'appel).
+    /// </exception>
+    /// <exception cref="MMV.Domain.Exceptions.EntityNotFoundException">
+    /// si le produit est introuvable au moment de la lecture.
+    /// </exception>
+    /// <exception cref="MMV.Domain.Exceptions.StockConcurrencyConflictException">
+    /// si le stock a été modifié concurremment entre la lecture et l'écriture : <b>aucune</b> modification
+    /// n'est persistée.
+    /// </exception>
+    Task<StockAdjustmentResult> AdjustStockToAsync(long productId, int targetQuantity, CancellationToken cancellationToken = default);
 }

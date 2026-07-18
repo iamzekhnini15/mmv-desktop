@@ -4,32 +4,36 @@ using System.Threading;
 using System.Threading.Tasks;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Exceptions;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 
 /// <summary>
-/// Implémentation du use case « Faire avancer le statut / réception d'une commande » (P2B-2E). Déplace, <b>sans
-/// changement de comportement observable</b>, l'orchestration métier qui vivait dans
-/// <c>OrderDetailViewModel.AdvanceStatusAsync</c> vers la couche Application. Réutilise telles quelles les
-/// interfaces de persistance existantes (<see cref="IOrderRepository"/>, <see cref="IStockMovementRepository"/>,
-/// <see cref="IUnitOfWork"/>, <see cref="INotificationRepository"/>).
+/// Use case « Faire avancer le statut / réception d'une commande ». En P3-5, le flux de <b>fabrication</b>
+/// (<c>ToFabricate → InProgress</c>) devient <b>sûr et idempotent</b> en multi-poste : décrément atomique via
+/// <see cref="IStockMutationService"/> (jamais négatif), prise de statut atomique conditionnelle
+/// (<see cref="IOrderRepository.TryTransitionStatusAsync"/>) et frontière transactionnelle unique
+/// (<see cref="ITransactionRunner"/>).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Pas de <c>ITransactionRunner</c>.</b> Le flux d'origine effectue plusieurs modifications d'entités (mise à
-/// jour du statut, mouvements de stock, décrément du stock produit, notification) mais les valide par un
-/// <b>unique</b> <c>SaveChangesAsync</c> final — déjà atomique (EF enveloppe un <c>SaveChanges</c> dans sa propre
-/// transaction implicite). Aucune séquence multi-<c>SaveChanges</c> à protéger : introduire une transaction
-/// explicite serait une refonte, pas un déplacement. La frontière transactionnelle reste donc le
-/// <c>SaveChangesAsync</c> unique, à l'identique (déplacement iso-fonctionnel).
+/// <b>Transaction.</b> Tout le flux (prise atomique du statut, décréments, mouvements, notification, sauvegarde)
+/// s'exécute dans un unique <see cref="ITransactionRunner"/>. Une erreur de stock
+/// (<see cref="InsufficientStockException"/>) ou un conflit de statut (<see cref="OrderStatusConflictException"/>)
+/// annule <b>tout</b> : statut non avancé, aucun décrément, aucun mouvement, aucune notification.
 /// </para>
 /// <para>
-/// <see cref="INotificationRepository"/> est <b>optionnel</b> (peut être <c>null</c>), reproduisant exactement la
-/// garde <c>if (_notificationRepository != null)</c> du flux d'origine. Le décrément de stock conserve la
-/// sémantique d'origine : mouvement <c>Out</c> de quantité <b>positive</b> et décrément direct de
-/// <c>Product.StockQuantity</c> (aucun <c>IStockMutationService</c> n'était utilisé par ce flux ; ne pas en
-/// introduire).
+/// <b>Idempotence du décrément (garde P3-5, pas la matrice P3-6).</b> Le statut est pris par un
+/// <c>UPDATE … WHERE Status = statut attendu</c> (aucune comparaison en mémoire) : deux postes tentant simultanément
+/// <c>ToFabricate → InProgress</c>, ou une répétition de la même transition, ne produisent qu'<b>un seul</b> ensemble
+/// de décréments et de mouvements ; la seconde tentative est refusée par <see cref="OrderStatusConflictException"/>.
+/// La matrice complète des transitions autorisées reste hors périmètre (P3-6).
+/// </para>
+/// <para>
+/// <see cref="INotificationRepository"/> reste <b>optionnel</b> (peut être <c>null</c>), reproduisant la garde
+/// <c>if (_notificationRepository != null)</c> du flux d'origine.
 /// </para>
 /// </remarks>
 public sealed class AdvanceOrderStatusUseCase : IAdvanceOrderStatusUseCase
@@ -37,17 +41,25 @@ public sealed class AdvanceOrderStatusUseCase : IAdvanceOrderStatusUseCase
     private readonly IOrderRepository _orderRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ITransactionRunner _transactionRunner;
+    private readonly IStockMutationService _stockMutationService;
     private readonly INotificationRepository? _notificationRepository;
 
     public AdvanceOrderStatusUseCase(
         IOrderRepository orderRepository,
         IStockMovementRepository stockMovementRepository,
         IUnitOfWork unitOfWork,
+        ITransactionRunner transactionRunner,
+        IStockMutationService stockMutationService,
         INotificationRepository? notificationRepository = null)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _stockMovementRepository = stockMovementRepository ?? throw new ArgumentNullException(nameof(stockMovementRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        // Frontière transactionnelle obligatoire (P2A-1C, R-23) : statut + décréments + mouvements = tout ou rien.
+        _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
+        // Décrément de stock sûr obligatoire (P2A-1D, R-09) : la fabrication ne peut plus rendre le stock négatif.
+        _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
         // Notification optionnelle (comme le flux d'origine) : si null, aucune notification n'est créée.
         _notificationRepository = notificationRepository;
     }
@@ -60,86 +72,96 @@ public sealed class AdvanceOrderStatusUseCase : IAdvanceOrderStatusUseCase
         var previousStatus = command.CurrentStatus;
         var nextStatus = command.NextStatus;
 
-        // Recharger la commande fraîche pour éviter les conflits EF (iso-fonctionnel).
-        var fresh = await _orderRepository.GetWithItemsAsync(command.OrderId, cancellationToken);
-        if (fresh is null)
+        return await _transactionRunner.RunAsync(async token =>
         {
-            // « Commande introuvable. » côté ViewModel : aucun changement d'état, aucune écriture.
-            return new AdvanceOrderStatusResult { OrderFound = false };
-        }
-
-        fresh.Status = nextStatus;
-        await _orderRepository.UpdateAsync(fresh, cancellationToken);
-
-        // Sortie de stock lors du passage en fabrication (À fabriquer → En fabrication).
-        var stockMovementCount = 0;
-        if (previousStatus == OrderStatus.ToFabricate && nextStatus == OrderStatus.InProgress)
-        {
-            stockMovementCount = await CreateStockMovementsForFabricationAsync(fresh, cancellationToken);
-        }
-
-        // Créer une notification (si le repository est disponible), texte préservé au caractère près.
-        var hasNotification = false;
-        if (_notificationRepository != null)
-        {
-            var notification = new Notification
+            // Recharger la commande fraîche (articles + produits) pour construire les mouvements de fabrication.
+            var fresh = await _orderRepository.GetWithItemsAsync(command.OrderId, token);
+            if (fresh is null)
             {
-                Type = "OrderStatusChanged",
-                Title = $"Commande {fresh.OrderNumber} : {command.NextStatusDisplay}",
-                Message = $"La commande {fresh.OrderNumber} ({command.CustomerDisplayName}) est passée de " +
-                          $"'{command.CurrentStatusDisplay}' à " +
-                          $"'{command.NextStatusDisplay}'.",
-                EntityId = fresh.OrderId,
-                EntityType = "Order",
-                IsRead = false,
-                CreatedAt = DateTime.Now
+                // « Commande introuvable. » côté ViewModel : aucun changement d'état, aucune écriture.
+                return new AdvanceOrderStatusResult { OrderFound = false };
+            }
+
+            // Prise ATOMIQUE du statut : ne réussit que si le statut stocké est encore celui attendu. Empêche le
+            // double décrément (concurrence / répétition) sans implémenter la matrice de transitions (P3-6).
+            var transitionTaken = await _orderRepository.TryTransitionStatusAsync(command.OrderId, previousStatus, nextStatus, token);
+            if (!transitionTaken)
+            {
+                throw new OrderStatusConflictException(command.OrderId, previousStatus);
+            }
+
+            // Sortie de stock lors du passage en fabrication (À fabriquer → En fabrication), désormais via le
+            // décrément atomique sûr (jamais négatif). Stock insuffisant ⇒ InsufficientStockException ⇒ rollback.
+            var stockMovementCount = 0;
+            if (previousStatus == OrderStatus.ToFabricate && nextStatus == OrderStatus.InProgress)
+            {
+                stockMovementCount = await CreateStockMovementsForFabricationAsync(fresh, token);
+            }
+
+            // Créer une notification (si le repository est disponible), texte préservé au caractère près.
+            var hasNotification = false;
+            if (_notificationRepository != null)
+            {
+                var notification = new Notification
+                {
+                    Type = "OrderStatusChanged",
+                    Title = $"Commande {fresh.OrderNumber} : {command.NextStatusDisplay}",
+                    Message = $"La commande {fresh.OrderNumber} ({command.CustomerDisplayName}) est passée de " +
+                              $"'{command.CurrentStatusDisplay}' à " +
+                              $"'{command.NextStatusDisplay}'.",
+                    EntityId = fresh.OrderId,
+                    EntityType = "Order",
+                    IsRead = false,
+                    CreatedAt = DateTime.Now
+                };
+                await _notificationRepository.CreateAsync(notification, token);
+                hasNotification = true;
+            }
+
+            // Écriture des mouvements + notification. Le statut a déjà été pris atomiquement ci-dessus ; le décrément
+            // du stock est appliqué directement en base par le service. Tout est dans la même transaction (runner).
+            await _unitOfWork.SaveChangesAsync(token);
+
+            // Refléter le nouveau statut dans l'entité renvoyée à la ViewModel (post-sauvegarde : non re-persisté).
+            fresh.Status = nextStatus;
+
+            return new AdvanceOrderStatusResult
+            {
+                OrderFound = true,
+                Order = fresh,
+                OldStatus = previousStatus,
+                NewStatus = nextStatus,
+                HasCreatedStockMovements = stockMovementCount > 0,
+                CreatedStockMovementCount = stockMovementCount,
+                HasNotification = hasNotification
             };
-            await _notificationRepository.CreateAsync(notification, cancellationToken);
-            hasNotification = true;
-        }
-
-        // Écriture unique (atomique) : statut + mouvements de stock + décréments + notification.
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        return new AdvanceOrderStatusResult
-        {
-            OrderFound = true,
-            Order = fresh,
-            OldStatus = previousStatus,
-            NewStatus = nextStatus,
-            HasCreatedStockMovements = stockMovementCount > 0,
-            CreatedStockMovementCount = stockMovementCount,
-            HasNotification = hasNotification
-        };
+        }, cancellationToken);
     }
 
     /// <summary>
-    /// Crée un mouvement de stock de type <c>Out</c> pour chaque article de la commande disposant d'un produit,
-    /// et décrémente directement le stock du produit chargé. Port iso-fonctionnel de l'ancien
-    /// <c>CreateStockMovementsForFabrication</c> (l'enregistrement est effectué par l'appelant).
+    /// Décrémente le stock de chaque article lié à un produit via le décrément atomique sûr
+    /// (<see cref="IStockMutationService.DecrementStockAsync"/>) et crée le mouvement <c>Out</c> correspondant
+    /// (<c>Quantity</c> <b>négative</b>, convention de signe P3-5). Un stock insuffisant lève
+    /// <see cref="InsufficientStockException"/> ⇒ rollback complet par le runner (statut non avancé).
     /// </summary>
     private async Task<int> CreateStockMovementsForFabricationAsync(Order order, CancellationToken cancellationToken)
     {
         var count = 0;
         foreach (var item in order.OrderItems.Where(i => i.ProductId.HasValue))
         {
+            // Décrément atomique conditionnel : jamais négatif (contrairement à l'ancien `-=` non borné).
+            await _stockMutationService.DecrementStockAsync(item.ProductId!.Value, item.Quantity, cancellationToken);
+
             var movement = new StockMovement
             {
                 ProductId = item.ProductId!.Value,
                 MovementType = StockMovementType.Out,
-                Quantity = item.Quantity,
+                Quantity = -item.Quantity, // sortie ⇒ delta négatif (convention P3-5).
                 Reason = $"Fabrication commande {order.OrderNumber}",
                 CreatedAt = DateTime.UtcNow,
             };
 
             await _stockMovementRepository.CreateAsync(movement, cancellationToken);
-
-            // Mettre à jour le stock du produit (le SaveChanges est fait au niveau appelant).
-            if (item.Product != null)
-            {
-                item.Product.StockQuantity -= item.Quantity;
-            }
-
             count++;
         }
 

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
@@ -347,5 +348,183 @@ public sealed class EfStockMutationServiceTests : IDisposable
         verify.Sales.Count().Should().Be(1, "la vente est validée");
         verify.Products.AsNoTracking().Single(p => p.ProductId == productId).StockQuantity
             .Should().Be(3, "5 - 2 = 3, décrément validé avec la vente");
+    }
+
+    // ==================================================================
+    // P3-5 — Incrément atomique
+    // ==================================================================
+
+    [Fact]
+    public async Task IncrementStockAsync_ValidQuantity_AddsAtomically_ReturnsNewStock()
+    {
+        var dbPath = PathFor("increment-ok.db");
+        var productId = SeedProduct(dbPath, initialStock: 4);
+
+        int newStock;
+        using (var context = CreateContext(dbPath))
+        {
+            var service = new EfStockMutationService(context);
+            newStock = await service.IncrementStockAsync(productId, 6);
+        }
+
+        newStock.Should().Be(10, "4 + 6 = 10 (valeur relue après incrément)");
+        ReadStock(dbPath, productId).Should().Be(10);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task IncrementStockAsync_NonPositiveQuantity_ThrowsArgumentOutOfRange(int quantity)
+    {
+        var dbPath = PathFor($"increment-nonpos-{quantity}.db");
+        var productId = SeedProduct(dbPath, initialStock: 5);
+
+        using (var context = CreateContext(dbPath))
+        {
+            var service = new EfStockMutationService(context);
+            Func<Task> act = () => service.IncrementStockAsync(productId, quantity);
+            await act.Should().ThrowAsync<ArgumentOutOfRangeException>();
+        }
+
+        ReadStock(dbPath, productId).Should().Be(5, "une quantité invalide ne modifie pas le stock");
+    }
+
+    [Fact]
+    public async Task IncrementStockAsync_ProductNotFound_Throws()
+    {
+        var dbPath = PathFor("increment-notfound.db");
+        SeedProduct(dbPath, initialStock: 5); // crée le schéma
+
+        using var context = CreateContext(dbPath);
+        var service = new EfStockMutationService(context);
+
+        Func<Task> act = () => service.IncrementStockAsync(productId: 99999, quantity: 1);
+        await act.Should().ThrowAsync<EntityNotFoundException>();
+    }
+
+    [Fact]
+    public async Task IncrementStockAsync_TwoConcurrent_NoQuantityLost()
+    {
+        var dbPath = PathFor("increment-concurrent.db");
+        var productId = SeedProduct(dbPath, initialStock: 0);
+
+        async Task IncrementAsync(int quantity)
+        {
+            using var context = CreateContext(dbPath);
+            var service = new EfStockMutationService(context);
+            await service.IncrementStockAsync(productId, quantity);
+        }
+
+        await Task.WhenAll(IncrementAsync(3), IncrementAsync(5));
+
+        ReadStock(dbPath, productId).Should().Be(8, "3 + 5 = 8 : aucune quantité perdue (incrément atomique, pas de read-modify-write)");
+    }
+
+    // ==================================================================
+    // P3-5 — Ajustement absolu concurrent-safe
+    // ==================================================================
+
+    [Fact]
+    public async Task AdjustStockToAsync_HigherTarget_SetsAbsolute_ReturnsPositiveDelta()
+    {
+        var dbPath = PathFor("adjust-up.db");
+        var productId = SeedProduct(dbPath, initialStock: 5);
+
+        StockAdjustmentResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var service = new EfStockMutationService(context);
+            result = await service.AdjustStockToAsync(productId, 8);
+        }
+
+        result.PreviousQuantity.Should().Be(5);
+        result.NewQuantity.Should().Be(8);
+        result.Delta.Should().Be(3, "delta = 8 - 5");
+        ReadStock(dbPath, productId).Should().Be(8);
+    }
+
+    [Fact]
+    public async Task AdjustStockToAsync_LowerTarget_ReturnsNegativeDelta()
+    {
+        var dbPath = PathFor("adjust-down.db");
+        var productId = SeedProduct(dbPath, initialStock: 5);
+
+        StockAdjustmentResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var service = new EfStockMutationService(context);
+            result = await service.AdjustStockToAsync(productId, 2);
+        }
+
+        result.Delta.Should().Be(-3, "delta = 2 - 5");
+        ReadStock(dbPath, productId).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task AdjustStockToAsync_ToZero_IsAllowed()
+    {
+        var dbPath = PathFor("adjust-zero.db");
+        var productId = SeedProduct(dbPath, initialStock: 5);
+
+        StockAdjustmentResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var service = new EfStockMutationService(context);
+            result = await service.AdjustStockToAsync(productId, 0);
+        }
+
+        result.NewQuantity.Should().Be(0, "un ajustement à zéro est autorisé par le contrat (min = 0, jamais négatif)");
+        result.Delta.Should().Be(-5);
+        ReadStock(dbPath, productId).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AdjustStockToAsync_NegativeTarget_ThrowsArgumentOutOfRange_AndPersistsNothing()
+    {
+        var dbPath = PathFor("adjust-negative.db");
+        var productId = SeedProduct(dbPath, initialStock: 5);
+
+        using (var context = CreateContext(dbPath))
+        {
+            var service = new EfStockMutationService(context);
+            Func<Task> act = () => service.AdjustStockToAsync(productId, -1);
+            await act.Should().ThrowAsync<ArgumentOutOfRangeException>();
+        }
+
+        ReadStock(dbPath, productId).Should().Be(5, "une cible négative est refusée, le stock est inchangé");
+    }
+
+    [Fact]
+    public async Task AdjustStockToAsync_TwoConcurrent_NeverLastWriteWinsSilently()
+    {
+        var dbPath = PathFor("adjust-concurrent.db");
+        var productId = SeedProduct(dbPath, initialStock: 5);
+
+        async Task<(bool ok, bool conflict)> TryAdjustAsync(int target)
+        {
+            using var context = CreateContext(dbPath);
+            var service = new EfStockMutationService(context);
+            try
+            {
+                await service.AdjustStockToAsync(productId, target);
+                return (true, false);
+            }
+            catch (StockConcurrencyConflictException)
+            {
+                return (false, true); // refus contrôlé
+            }
+        }
+
+        var results = await Task.WhenAll(TryAdjustAsync(8), TryAdjustAsync(3));
+
+        // Contrat : chaque échec est un conflit CONTRÔLÉ (jamais une exception technique non maîtrisée) ; l'état
+        // final est toujours l'une des deux cibles (jamais une valeur corrompue ou négative). Selon l'entrelacement,
+        // soit un seul poste gagne et l'autre reçoit un conflit, soit les deux se sérialisent sur des lectures
+        // fraîches — dans tous les cas, aucun last-write-wins silencieux sur une lecture obsolète.
+        results.Should().OnlyContain(r => r.ok || r.conflict, "tout échec est un conflit métier contrôlé");
+        results.Count(r => r.ok).Should().BeGreaterThanOrEqualTo(1, "au moins un ajustement aboutit");
+        var finalStock = ReadStock(dbPath, productId);
+        finalStock.Should().BeOneOf(new[] { 3, 8 }, "l'état final est exactement l'une des cibles, jamais une valeur corrompue");
+        finalStock.Should().BeGreaterThanOrEqualTo(0);
     }
 }

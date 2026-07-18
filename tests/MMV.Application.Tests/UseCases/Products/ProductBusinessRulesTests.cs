@@ -631,6 +631,65 @@ public sealed class ProductBusinessRulesTests : IDisposable
         result.ProductFound.Should().BeFalse();
     }
 
+    // ---------------------------------------------------------------------------------------- P3-5 Stock découplé
+
+    [Fact]
+    public async Task Update_CatalogEdit_DoesNotRewriteStock_ButUpdatesOtherFields()
+    {
+        var dbPath = PathFor("p35-catalog.db"); EnsureSchema(dbPath);
+        var supplierId = await SeedSupplierAsync(dbPath);
+        var id = await CreateProductAsync(dbPath, supplierId, "STK"); // stock initial 3 (ValidCreate)
+
+        using (var ctx = CreateContext(dbPath))
+        {
+            var result = await UpdateUseCase(ctx).ExecuteAsync(new UpdateProductCommand
+            {
+                ProductId = id, Reference = "STK", Name = "Nouveau nom", Category = ProductCategoryEnum.MONTURE,
+                PurchasePrice = 10m, SalePrice = 40m, StockQuantity = 999, // valeur volontairement absurde : doit être ignorée
+                SupplierId = supplierId,
+            });
+            result.ProductFound.Should().BeTrue();
+            result.IsValid.Should().BeTrue();
+        }
+
+        using var verify = CreateContext(dbPath);
+        var product = verify.Products.AsNoTracking().Single(p => p.ProductId == id);
+        product.StockQuantity.Should().Be(3, "P3-5 : l'édition catalogue ne réécrit jamais le stock (command.StockQuantity=999 ignoré)");
+        product.Name.Should().Be("Nouveau nom", "les autres champs sont bien mis à jour");
+        product.SalePrice.Should().Be(40m);
+    }
+
+    [Fact]
+    public async Task Update_DoesNotOverwriteConcurrentDecrement()
+    {
+        var dbPath = PathFor("p35-lostupdate.db"); EnsureSchema(dbPath);
+        var supplierId = await SeedSupplierAsync(dbPath);
+        var id = await CreateProductAsync(dbPath, supplierId, "RACE"); // stock initial 3
+
+        // Un autre poste décrémente le stock (3 → 1) APRÈS l'ouverture du formulaire d'édition catalogue.
+        using (var ctx = CreateContext(dbPath))
+        {
+            await new EfStockMutationService(ctx).DecrementStockAsync(id, 2);
+        }
+
+        // Le formulaire (chargé quand le stock valait 3) enregistre une édition catalogue portant encore StockQuantity = 3.
+        using (var ctx = CreateContext(dbPath))
+        {
+            var result = await UpdateUseCase(ctx).ExecuteAsync(new UpdateProductCommand
+            {
+                ProductId = id, Reference = "RACE", Name = "Édité", Category = ProductCategoryEnum.MONTURE,
+                PurchasePrice = 10m, SalePrice = 30m, StockQuantity = 3, // valeur périmée du formulaire
+                SupplierId = supplierId,
+            });
+            result.IsValid.Should().BeTrue();
+        }
+
+        using var verify = CreateContext(dbPath);
+        var product = verify.Products.AsNoTracking().Single(p => p.ProductId == id);
+        product.StockQuantity.Should().Be(1, "le décrément concurrent (→ 1) n'est PAS écrasé par l'édition catalogue (plus de lost update)");
+        product.Name.Should().Be("Édité", "l'édition catalogue est bien appliquée par ailleurs");
+    }
+
     [Fact]
     public async Task SetActive_OnlyChangesIsActive()
     {

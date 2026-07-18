@@ -136,6 +136,22 @@ public class ProductRepository : BaseRepository<Product, long>, IProductReposito
     }
 
     /// <summary>
+    /// Met à jour les champs catalogue d'un produit <b>sans réécrire <see cref="Product.StockQuantity"/></b> (P3-5).
+    /// Marque toutes les colonnes modifiées (comme <see cref="BaseRepository{TEntity,TId}.UpdateAsync"/>) puis
+    /// <b>exclut explicitement</b> <c>StockQuantity</c> de l'ordre <c>UPDATE</c> généré (<c>IsModified = false</c>).
+    /// Ainsi une édition catalogue concurrente n'écrase jamais un décrément survenu entre le chargement du
+    /// formulaire et l'enregistrement (élimination du <i>lost update</i> sur le stock).
+    /// </summary>
+    public async Task UpdateCatalogAsync(Product product, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(product);
+
+        _dbSet.Update(product);
+        _context.Entry(product).Property(p => p.StockQuantity).IsModified = false;
+        await Task.CompletedTask;
+    }
+
+    /// <summary>
     /// Récupère un produit par ID avec tous ses détails et tracking activé pour l'édition.
     /// </summary>
     public async Task<Product?> GetByIdWithDetailsAsync(long id, CancellationToken cancellationToken = default)

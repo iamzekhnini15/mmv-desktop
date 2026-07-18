@@ -64,6 +64,23 @@ public class OrderRepository : BaseRepository<Order, long>, IOrderRepository
     }
 
     /// <summary>
+    /// Prise de statut atomique conditionnelle (P3-5) : un unique <c>UPDATE … WHERE OrderId = @id AND Status = @expected</c>
+    /// via <c>ExecuteUpdateAsync</c>. La base décide en une seule instruction ; <c>rows == 1</c> ⇒ transition prise,
+    /// <c>rows == 0</c> ⇒ statut stocké différent (déjà avancé, rejoué, ou commande introuvable). Contourne le change
+    /// tracker : aucune entité suivie n'est réécrite, donc pas de double avancement.
+    /// </summary>
+    public async Task<bool> TryTransitionStatusAsync(long orderId, OrderStatus expectedStatus, OrderStatus nextStatus, CancellationToken cancellationToken = default)
+    {
+        var rowsAffected = await _context.Orders
+            .Where(o => o.OrderId == orderId && o.Status == expectedStatus)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(o => o.Status, nextStatus),
+                cancellationToken);
+
+        return rowsAffected == 1;
+    }
+
+    /// <summary>
     /// Récupère les commandes par statut.
     /// </summary>
     public async Task<IList<Order>> GetByStatusAsync(OrderStatus status, CancellationToken cancellationToken = default)

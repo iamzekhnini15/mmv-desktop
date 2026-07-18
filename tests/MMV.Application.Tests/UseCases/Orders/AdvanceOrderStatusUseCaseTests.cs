@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Exceptions;
 using MMV.Infrastructure.Data;
+using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
 using Xunit;
 
@@ -77,6 +79,8 @@ public sealed class AdvanceOrderStatusUseCaseTests : IDisposable
             new OrderRepository(context),
             new StockMovementRepository(context),
             new UnitOfWork(context),
+            new EfTransactionRunner(context),
+            new EfStockMutationService(context),
             withNotifications ? new NotificationRepository(context) : null);
     }
 
@@ -243,7 +247,7 @@ public sealed class AdvanceOrderStatusUseCaseTests : IDisposable
         var movement = verify.StockMovements.AsNoTracking().Single();
         movement.ProductId.Should().Be(lensId);
         movement.MovementType.Should().Be(StockMovementType.Out);
-        movement.Quantity.Should().Be(2, "quantité positive, comme le flux d'origine");
+        movement.Quantity.Should().Be(-2, "sortie ⇒ delta négatif (convention de signe P3-5)");
         movement.Reason.Should().Be("Fabrication commande CMD-000200");
 
         verify.Products.AsNoTracking().Single(p => p.ProductId == lensId).StockQuantity
@@ -354,8 +358,141 @@ public sealed class AdvanceOrderStatusUseCaseTests : IDisposable
         Action act = () => _ = new AdvanceOrderStatusUseCase(
             orderRepository: null!,
             new StockMovementRepository(context),
-            new UnitOfWork(context));
+            new UnitOfWork(context),
+            new EfTransactionRunner(context),
+            new EfStockMutationService(context));
 
         act.Should().Throw<ArgumentNullException>();
+    }
+
+    // ------------------------------------------------------------------
+    // (7) P3-5 — Fabrication avec stock insuffisant : erreur contrôlée, rollback TOTAL
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_Fabrication_InsufficientStock_Throws_AndRollsBackEverything()
+    {
+        var dbPath = PathFor("insufficient.db");
+        EnsureSchema(dbPath);
+        var productId = SeedProduct(dbPath, stockQuantity: 1);
+        var orderId = SeedOrder(dbPath, OrderStatus.ToFabricate, "CMD-000400", productId, quantity: 2);
+
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            var command = new AdvanceOrderStatusCommand
+            {
+                OrderId = orderId,
+                CurrentStatus = OrderStatus.ToFabricate,
+                NextStatus = OrderStatus.InProgress,
+                CustomerDisplayName = "Jean Dupont",
+                CurrentStatusDisplay = "À fabriquer",
+                NextStatusDisplay = "En fabrication",
+            };
+
+            Func<Task> act = () => useCase.ExecuteAsync(command);
+            await act.Should().ThrowAsync<InsufficientStockException>();
+        }
+
+        using var verify = CreateContext(dbPath);
+        verify.Orders.AsNoTracking().Single(o => o.OrderId == orderId).Status
+            .Should().Be(OrderStatus.ToFabricate, "statut inchangé : la prise atomique est annulée par le rollback");
+        verify.Products.AsNoTracking().Single(p => p.ProductId == productId).StockQuantity
+            .Should().Be(1, "stock inchangé, jamais négatif");
+        verify.StockMovements.AsNoTracking().Should().BeEmpty("aucun mouvement conservé");
+        verify.Notifications.AsNoTracking().Should().BeEmpty("aucune notification persistée");
+    }
+
+    // ------------------------------------------------------------------
+    // (8) P3-5 — Répétition de la même transition : refus contrôlé, PAS de double décrément
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_RepeatedFabricationTransition_IsRefused_NoDoubleDecrement()
+    {
+        var dbPath = PathFor("repeat.db");
+        EnsureSchema(dbPath);
+        var productId = SeedProduct(dbPath, stockQuantity: 5);
+        var orderId = SeedOrder(dbPath, OrderStatus.ToFabricate, "CMD-000500", productId, quantity: 2);
+
+        AdvanceOrderStatusCommand Command() => new()
+        {
+            OrderId = orderId,
+            CurrentStatus = OrderStatus.ToFabricate,
+            NextStatus = OrderStatus.InProgress,
+            CustomerDisplayName = "Jean Dupont",
+            CurrentStatusDisplay = "À fabriquer",
+            NextStatusDisplay = "En fabrication",
+        };
+
+        // Première exécution : succès (stock 5 → 3, un mouvement).
+        using (var context = CreateContext(dbPath))
+        {
+            await CreateUseCase(context).ExecuteAsync(Command());
+        }
+
+        // Deuxième exécution AVEC LE MÊME statut attendu (ToFabricate) : le statut stocké est désormais InProgress
+        // ⇒ la prise atomique échoue ⇒ conflit contrôlé, aucun re-décrément.
+        using (var context = CreateContext(dbPath))
+        {
+            Func<Task> act = () => CreateUseCase(context).ExecuteAsync(Command());
+            await act.Should().ThrowAsync<OrderStatusConflictException>();
+        }
+
+        using var verify = CreateContext(dbPath);
+        verify.Products.AsNoTracking().Single(p => p.ProductId == productId).StockQuantity
+            .Should().Be(3, "le stock est décrémenté UNE SEULE fois (5 - 2), pas de double décrément");
+        verify.StockMovements.AsNoTracking().Count(m => m.ProductId == productId)
+            .Should().Be(1, "un seul mouvement de fabrication au total");
+        verify.Orders.AsNoTracking().Single(o => o.OrderId == orderId).Status
+            .Should().Be(OrderStatus.InProgress);
+    }
+
+    // ------------------------------------------------------------------
+    // (9) P3-5 — Deux exécutions concurrentes : jamais de double décrément (invariant de sûreté)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_TwoConcurrentFabricationTransitions_NeverDoubleDecrements()
+    {
+        var dbPath = PathFor("concurrent.db");
+        EnsureSchema(dbPath);
+        var productId = SeedProduct(dbPath, stockQuantity: 5);
+        var orderId = SeedOrder(dbPath, OrderStatus.ToFabricate, "CMD-000600", productId, quantity: 2);
+
+        async Task<bool> TryAdvanceAsync()
+        {
+            using var context = CreateContext(dbPath);
+            var command = new AdvanceOrderStatusCommand
+            {
+                OrderId = orderId,
+                CurrentStatus = OrderStatus.ToFabricate,
+                NextStatus = OrderStatus.InProgress,
+                CustomerDisplayName = "Jean Dupont",
+                CurrentStatusDisplay = "À fabriquer",
+                NextStatusDisplay = "En fabrication",
+            };
+            try
+            {
+                await CreateUseCase(context).ExecuteAsync(command);
+                return true;
+            }
+            catch (Exception ex) when (ex is OrderStatusConflictException or InsufficientStockException or PersistenceException)
+            {
+                return false; // refus contrôlé (conflit de statut, stock, ou contention persistante)
+            }
+        }
+
+        var results = await Task.WhenAll(TryAdvanceAsync(), TryAdvanceAsync());
+
+        results.Count(success => success).Should().BeLessThanOrEqualTo(1,
+            "au plus une des deux exécutions concurrentes peut prendre la transition");
+
+        using var verify = CreateContext(dbPath);
+        var finalStock = verify.Products.AsNoTracking().Single(p => p.ProductId == productId).StockQuantity;
+        finalStock.Should().BeOneOf(new[] { 3, 5 },
+            "le stock est décrémenté AU PLUS une fois (jamais 1 = double décrément)");
+        verify.StockMovements.AsNoTracking().Count(m => m.ProductId == productId)
+            .Should().BeLessThanOrEqualTo(1, "au plus un mouvement de fabrication (jamais deux)");
     }
 }

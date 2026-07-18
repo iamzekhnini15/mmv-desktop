@@ -29,6 +29,17 @@ public interface IOrderRepository : IGenericRepository<Order, long>
     Task<IList<Order>> GetBySaleIdAsync(long saleId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Prise de statut <b>atomique conditionnelle</b> (P3-5) : fait passer la commande <paramref name="orderId"/>
+    /// de <paramref name="expectedStatus"/> à <paramref name="nextStatus"/> <b>uniquement si</b> le statut réellement
+    /// stocké est encore <paramref name="expectedStatus"/>. Réalisée par une seule instruction
+    /// <c>UPDATE … WHERE OrderId = @id AND Status = @expected</c> (aucune comparaison en mémoire), afin que deux
+    /// postes tentant simultanément la même transition n'obtiennent qu'<b>une seule</b> réussite.
+    /// </summary>
+    /// <returns><c>true</c> si la transition a été prise (1 ligne affectée) ; <c>false</c> si le statut stocké ne
+    /// correspondait plus (0 ligne : commande déjà avancée, rejouée, ou introuvable).</returns>
+    Task<bool> TryTransitionStatusAsync(long orderId, OrderStatus expectedStatus, OrderStatus nextStatus, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Récupère les commandes par statut.
     /// </summary>
     Task<IList<Order>> GetByStatusAsync(OrderStatus status, CancellationToken cancellationToken = default);

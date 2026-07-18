@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
@@ -320,5 +321,161 @@ public sealed class RegisterSaleUseCaseTests : IDisposable
             new EfNumberSequenceService(context));
 
         act.Should().Throw<ArgumentNullException>();
+    }
+
+    // ------------------------------------------------------------------
+    // (6) P3-5 — Vente FABRICATION avec monture : le NON-VERRE est décrémenté À LA VENTE, le verre non
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_FabricationSale_DecrementsNonLensAtSale_NotTheLens()
+    {
+        var dbPath = PathFor("fab-nonlens.db");
+        EnsureSchema(dbPath);
+        var customerId = SeedCustomer(dbPath);
+        var frameId = SeedProduct(dbPath, ProductCategoryEnum.MONTURE, stock: 4, reference: "MON-010");
+        var lensId = SeedProduct(dbPath, ProductCategoryEnum.VERRE, stock: 2, reference: "VER-010");
+
+        RegisterSaleResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            result = await useCase.ExecuteAsync(new RegisterSaleCommand
+            {
+                CustomerId = customerId,
+                IsCounterSale = false, // vente FABRICATION
+                TotalAmount = 120m,
+                FinalAmount = 120m,
+                RemainingAmount = 120m,
+                PaymentMethod = PaymentMethod.Card,
+                Lines = new[]
+                {
+                    new RegisterSaleLineCommand { ProductId = frameId, ItemType = OrderItemType.Frame, Quantity = 1, UnitPrice = 20m },
+                    new RegisterSaleLineCommand { ProductId = lensId, ItemType = OrderItemType.LensOd, Quantity = 1, UnitPrice = 50m, Sphere = -2.0 },
+                }
+            });
+        }
+
+        result.OrderNumber.Should().NotBeNull("le verre crée une commande fournisseur même en vente fabrication");
+
+        using var verify = CreateContext(dbPath);
+        verify.Products.AsNoTracking().Single(p => p.ProductId == frameId).StockQuantity
+            .Should().Be(3, "la monture (non-verre) est décrémentée à la vente, même en vente fabrication (4 - 1)");
+        verify.Products.AsNoTracking().Single(p => p.ProductId == lensId).StockQuantity
+            .Should().Be(2, "le verre n'est PAS décrémenté à la vente (il le sera à la fabrication)");
+
+        var movements = verify.StockMovements.AsNoTracking().ToList();
+        movements.Should().ContainSingle("un seul mouvement de sortie : celui de la monture");
+        movements[0].ProductId.Should().Be(frameId);
+        movements[0].MovementType.Should().Be(StockMovementType.Out);
+        movements[0].Quantity.Should().Be(-1, "sortie ⇒ delta négatif");
+    }
+
+    // ------------------------------------------------------------------
+    // (7) P3-5 — Plusieurs lignes du même produit non-verre : stock final correct, pas de double comptage
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_MultipleLinesSameNonLensProduct_FinalStockCorrect()
+    {
+        var dbPath = PathFor("multi-line.db");
+        EnsureSchema(dbPath);
+        var customerId = SeedCustomer(dbPath);
+        var frameId = SeedProduct(dbPath, ProductCategoryEnum.MONTURE, stock: 10, reference: "MON-020");
+
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            await useCase.ExecuteAsync(new RegisterSaleCommand
+            {
+                CustomerId = customerId,
+                IsCounterSale = true,
+                TotalAmount = 60m,
+                FinalAmount = 60m,
+                RemainingAmount = 60m,
+                PaymentMethod = PaymentMethod.Cash,
+                Lines = new[]
+                {
+                    new RegisterSaleLineCommand { ProductId = frameId, ItemType = OrderItemType.Frame, Quantity = 2, UnitPrice = 20m },
+                    new RegisterSaleLineCommand { ProductId = frameId, ItemType = OrderItemType.Frame, Quantity = 3, UnitPrice = 20m },
+                }
+            });
+        }
+
+        using var verify = CreateContext(dbPath);
+        verify.Products.AsNoTracking().Single(p => p.ProductId == frameId).StockQuantity
+            .Should().Be(5, "10 - 2 - 3 = 5 : chaque ligne décrémente son propre montant");
+        verify.StockMovements.AsNoTracking().Count(m => m.ProductId == frameId)
+            .Should().Be(2, "un mouvement par ligne");
+    }
+
+    // ------------------------------------------------------------------
+    // (8) P3-5 — Combinaison monture + verre : chacun décrémenté AU BON MOMENT (vente vs fabrication)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task FrameAndLens_EachDecrementedAtTheRightMoment()
+    {
+        var dbPath = PathFor("frame-and-lens.db");
+        EnsureSchema(dbPath);
+        var customerId = SeedCustomer(dbPath);
+        var frameId = SeedProduct(dbPath, ProductCategoryEnum.MONTURE, stock: 4, reference: "MON-030");
+        var lensId = SeedProduct(dbPath, ProductCategoryEnum.VERRE, stock: 2, reference: "VER-030");
+
+        // 1) Vente fabrication : monture décrémentée (4→3), verre non ; une commande fournisseur créée.
+        long orderId;
+        using (var context = CreateContext(dbPath))
+        {
+            var result = await CreateUseCase(context).ExecuteAsync(new RegisterSaleCommand
+            {
+                CustomerId = customerId,
+                IsCounterSale = false,
+                TotalAmount = 100m,
+                FinalAmount = 100m,
+                RemainingAmount = 100m,
+                PaymentMethod = PaymentMethod.Card,
+                Lines = new[]
+                {
+                    new RegisterSaleLineCommand { ProductId = frameId, ItemType = OrderItemType.Frame, Quantity = 1, UnitPrice = 20m },
+                    new RegisterSaleLineCommand { ProductId = lensId, ItemType = OrderItemType.LensOd, Quantity = 1, UnitPrice = 50m, Sphere = -1.5 },
+                }
+            });
+            orderId = result.OrderId!.Value;
+        }
+
+        // 2) Avancement New → ToFabricate (aucun décrément), puis ToFabricate → En fabrication (verre décrémenté).
+        await AdvanceAsync(dbPath, orderId, OrderStatus.New, OrderStatus.ToFabricate);
+        await AdvanceAsync(dbPath, orderId, OrderStatus.ToFabricate, OrderStatus.InProgress);
+
+        using var verify = CreateContext(dbPath);
+        verify.Products.AsNoTracking().Single(p => p.ProductId == frameId).StockQuantity
+            .Should().Be(3, "monture décrémentée à la vente (4 - 1)");
+        verify.Products.AsNoTracking().Single(p => p.ProductId == lensId).StockQuantity
+            .Should().Be(1, "verre décrémenté à la fabrication (2 - 1)");
+
+        verify.StockMovements.AsNoTracking().Single(m => m.ProductId == frameId).Quantity.Should().Be(-1);
+        verify.StockMovements.AsNoTracking().Single(m => m.ProductId == lensId).Quantity.Should().Be(-1);
+    }
+
+    private static async Task AdvanceAsync(string dbPath, long orderId, OrderStatus from, OrderStatus to)
+    {
+        using var context = CreateContext(dbPath);
+        var useCase = new AdvanceOrderStatusUseCase(
+            new OrderRepository(context),
+            new StockMovementRepository(context),
+            new UnitOfWork(context),
+            new EfTransactionRunner(context),
+            new EfStockMutationService(context),
+            new NotificationRepository(context));
+
+        await useCase.ExecuteAsync(new AdvanceOrderStatusCommand
+        {
+            OrderId = orderId,
+            CurrentStatus = from,
+            NextStatus = to,
+            CustomerDisplayName = "Client",
+            CurrentStatusDisplay = from.ToString(),
+            NextStatusDisplay = to.ToString(),
+        });
     }
 }

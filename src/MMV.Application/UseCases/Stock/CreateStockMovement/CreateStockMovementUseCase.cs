@@ -17,18 +17,19 @@ namespace MMV.Application.UseCases.Stock.CreateStockMovement;
 /// </summary>
 /// <remarks>
 /// <para>
-/// La frontière transactionnelle est désormais ouverte <b>ici</b> (et non plus dans la ViewModel) : pour une
-/// même ligne, l'effet sur le stock (décrément sûr / incrément / ajustement) et la création du mouvement
-/// participent à la même transaction (commit si succès, rollback complet si exception — aucune écriture
-/// partielle). C'est strictement le comportement P2A-1D-R2 d'origine, déplacé.
+/// La frontière transactionnelle est ouverte <b>ici</b> (et non plus dans la ViewModel) : pour une même ligne,
+/// l'effet sur le stock (décrément sûr / incrément / ajustement) et la création du mouvement participent à la
+/// même transaction (commit si succès, rollback complet si exception — aucune écriture partielle).
 /// </para>
 /// <para>
-/// Sémantique conservée à l'identique : pour une <see cref="StockMovementType.Out"/>, décrément atomique
-/// conditionnel via <see cref="IStockMutationService.DecrementStockAsync"/> (jamais négatif ;
-/// <see cref="MMV.Domain.Exceptions.InsufficientStockException"/> si stock insuffisant, aucune écriture). Pour une
-/// <see cref="StockMovementType.In"/>, incrément direct ; pour un <see cref="StockMovementType.Adjustment"/>,
-/// correction en valeur absolue. La quantité du mouvement reste positive (telle que saisie) ; le motif est repris
-/// tel quel depuis la commande.
+/// P3-5 : les <b>trois</b> mutations passent désormais par <see cref="IStockMutationService"/> (plus aucune
+/// écriture directe de <c>StockQuantity</c> dans le use case). <see cref="StockMovementType.Out"/> ⇒ décrément
+/// atomique conditionnel (jamais négatif ; <see cref="MMV.Domain.Exceptions.InsufficientStockException"/> si
+/// insuffisant). <see cref="StockMovementType.In"/> ⇒ incrément atomique (aucune quantité perdue en concurrence).
+/// <see cref="StockMovementType.Adjustment"/> ⇒ mise à jour concurrent-safe basée sur la valeur lue
+/// (<see cref="MMV.Domain.Exceptions.StockConcurrencyConflictException"/> si un autre poste a modifié le stock
+/// entre-temps ; aucun <i>last-write-wins</i>). Le mouvement enregistre le <b>delta signé</b> (In : +q ; Out : −q ;
+/// Adjustment : nouvelle − ancienne). Le motif est repris tel quel depuis la commande.
 /// </para>
 /// </remarks>
 public sealed class CreateStockMovementUseCase : ICreateStockMovementUseCase
@@ -68,20 +69,13 @@ public sealed class CreateStockMovementUseCase : ICreateStockMovementUseCase
             return new CreateStockMovementResult { ProductFound = false };
         }
 
-        var movement = new StockMovement
-        {
-            ProductId = product.ProductId,
-            MovementType = command.MovementType,
-            Quantity = command.Quantity,
-            Reason = command.Reason,
-        };
-
         // Frontière transactionnelle OBLIGATOIRE (P2A-1C, R-23) : ouverte ICI, dans le use case (plus jamais dans
-        // la ViewModel). L'effet sur le stock et la création du mouvement sont persistés de façon atomique ; toute
-        // exception annule TOUT (aucune écriture partielle).
-        var newStockQuantity = await _transactionRunner.RunAsync(async ct =>
+        // la ViewModel). L'effet sur le stock (toujours via IStockMutationService, P3-5) et la création du mouvement
+        // sont persistés de façon atomique ; toute exception annule TOUT (aucune écriture partielle).
+        var (newStockQuantity, movementId) = await _transactionRunner.RunAsync(async ct =>
         {
             int resultingStock;
+            int signedQuantity; // delta signé enregistré dans le mouvement (convention P3-5).
             switch (command.MovementType)
             {
                 case StockMovementType.Out:
@@ -89,32 +83,40 @@ public sealed class CreateStockMovementUseCase : ICreateStockMovementUseCase
                     // insuffisant, InsufficientStockException est levée → le runner annule TOUTE l'écriture.
                     await _stockMutationService.DecrementStockAsync(product.ProductId, command.Quantity, ct);
                     resultingStock = product.StockQuantity - command.Quantity;
+                    signedQuantity = -command.Quantity; // sortie ⇒ delta négatif.
                     break;
 
                 case StockMovementType.In:
-                    // Entrée : incrément (aucun risque de négatif).
-                    product.StockQuantity += command.Quantity;
-                    await _productRepository.UpdateAsync(product, ct);
-                    resultingStock = product.StockQuantity;
+                    // Entrée : incrément ATOMIQUE (deux entrées concurrentes ne perdent aucune quantité).
+                    resultingStock = await _stockMutationService.IncrementStockAsync(product.ProductId, command.Quantity, ct);
+                    signedQuantity = command.Quantity; // entrée ⇒ delta positif.
                     break;
 
                 default: // StockMovementType.Adjustment
-                    // Ajustement d'inventaire : correction CONTRÔLÉE en valeur absolue (quantité saisie ≥ 1).
-                    product.StockQuantity = command.Quantity;
-                    await _productRepository.UpdateAsync(product, ct);
-                    resultingStock = product.StockQuantity;
+                    // Ajustement d'inventaire : correction en valeur absolue, CONCURRENT-SAFE (P3-5). Un autre poste
+                    // ayant modifié le stock entre-temps ⇒ StockConcurrencyConflictException → rollback complet.
+                    var adjustment = await _stockMutationService.AdjustStockToAsync(product.ProductId, command.Quantity, ct);
+                    resultingStock = adjustment.NewQuantity;
+                    signedQuantity = adjustment.Delta; // ajustement ⇒ delta réel (nouvelle − ancienne).
                     break;
             }
 
+            var movement = new StockMovement
+            {
+                ProductId = product.ProductId,
+                MovementType = command.MovementType,
+                Quantity = signedQuantity,
+                Reason = command.Reason,
+            };
             await _stockMovementRepository.CreateAsync(movement, ct);
             await _unitOfWork.SaveChangesAsync(ct);
-            return resultingStock;
+            return (resultingStock, movement.MovementId);
         }, cancellationToken);
 
         return new CreateStockMovementResult
         {
             ProductFound = true,
-            StockMovementId = movement.MovementId,
+            StockMovementId = movementId,
             ProductId = product.ProductId,
             MovementType = command.MovementType,
             Quantity = command.Quantity,

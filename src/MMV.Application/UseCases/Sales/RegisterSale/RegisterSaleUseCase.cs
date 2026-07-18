@@ -178,41 +178,40 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
             createdOrder = order;
         }
 
-        // Si vente comptoir : créer les mouvements de stock et décrémenter le stock
-        // SAUF pour les verres (ils sont commandés aux fournisseurs)
-        if (command.IsCounterSale)
+        // Décrément du stock des produits NON-VERRE (montures, clips, accessoires, solaires…) à l'enregistrement de
+        // la vente, que la vente soit comptoir OU fabrication (P3-5). Les VERRES / LENTILLES sont commandés aux
+        // fournisseurs (mis dans l'Order ci-dessus) et décrémentés plus tard, au passage en fabrication
+        // (AdvanceOrderStatusUseCase). Un non-verre n'entrant jamais dans l'Order, il n'est décrémenté qu'une fois ici.
+        foreach (var line in command.Lines)
         {
-            foreach (var line in command.Lines)
+            // Vérifier que le ProductId existe
+            if (!line.ProductId.HasValue)
+                continue;
+
+            // Charger le produit pour connaître sa catégorie
+            var product = await _productRepository.GetByIdAsync(line.ProductId.Value, cancellationToken);
+            if (product != null)
             {
-                // Vérifier que le ProductId existe
-                if (!line.ProductId.HasValue)
+                // Exclure les verres/lentilles de la décrémentation à la vente (décrémentés à la fabrication).
+                bool isLens = product.Category == ProductCategoryEnum.VERRE || product.Category == ProductCategoryEnum.LENTILLE;
+                if (isLens)
                     continue;
 
-                // Charger le produit avec détails
-                var product = await _productRepository.GetByIdAsync(line.ProductId.Value, cancellationToken);
-                if (product != null)
+                // Décrément atomique conditionnel (P2A-1D, R-09) : ne rend jamais le stock négatif et élimine la
+                // mise à jour perdue. En cas de stock insuffisant (ou modifié entre-temps), une
+                // InsufficientStockException est levée → le runner annule TOUTE la vente.
+                await _stockMutationService.DecrementStockAsync(line.ProductId.Value, line.Quantity, cancellationToken);
+
+                // Créer le mouvement de stock (sortie) : Quantity négative (convention de signe P3-5).
+                var stockMovement = new StockMovement
                 {
-                    // Exclure les verres de la décrémentation du stock
-                    bool isLens = product.Category == ProductCategoryEnum.VERRE || product.Category == ProductCategoryEnum.LENTILLE;
-                    if (isLens)
-                        continue; // Les verres sont commandés aux fournisseurs, pas en stock
-
-                    // Décrément atomique conditionnel (P2A-1D, R-09) : ne rend jamais le stock négatif et
-                    // élimine la mise à jour perdue. En cas de stock insuffisant (ou modifié entre-temps),
-                    // une InsufficientStockException est levée → le runner annule TOUTE la vente.
-                    await _stockMutationService.DecrementStockAsync(line.ProductId.Value, line.Quantity, cancellationToken);
-
-                    // Créer le mouvement de stock (sortie)
-                    var stockMovement = new StockMovement
-                    {
-                        ProductId = line.ProductId.Value,
-                        MovementType = StockMovementType.Out,
-                        Quantity = -line.Quantity, // Négatif pour sortie
-                        Reason = $"Vente comptoir {sale.SaleNumber} - Client #{command.CustomerId}",
-                        CreatedAt = DateTime.Now
-                    };
-                    await _stockMovementRepository.CreateAsync(stockMovement, cancellationToken);
-                }
+                    ProductId = line.ProductId.Value,
+                    MovementType = StockMovementType.Out,
+                    Quantity = -line.Quantity, // Négatif pour sortie
+                    Reason = $"Vente {sale.SaleNumber} - Client #{command.CustomerId}",
+                    CreatedAt = DateTime.Now
+                };
+                await _stockMovementRepository.CreateAsync(stockMovement, cancellationToken);
             }
         }
 

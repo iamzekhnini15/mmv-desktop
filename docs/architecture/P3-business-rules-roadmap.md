@@ -260,6 +260,22 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - **Risques** : régression du flux fabrication existant. Mitigation : tests avant/après.
 - **Sortie** : politique de stock **unique et sûre** sur tous les flux.
 
+#### État (P3-5 — audit terminé, implémentation backend validée localement)
+
+- **P3-5A audit terminé** — rapport : [`docs/implementation/P3-5-stock-and-movements-audit-report.md`](../implementation/P3-5-stock-and-movements-audit-report.md).
+- **P3-5 implémentation backend validée localement** — rapport :
+  [`docs/implementation/P3-5-stock-and-movements-implementation-report.md`](../implementation/P3-5-stock-and-movements-implementation-report.md).
+  Verdict : `P3-5 = GO LOCAL` (subordonné au vert CI ; **non** marqué définitivement terminé).
+- **Contenu** : `IStockMutationService` étendu (incrément atomique + ajustement concurrent-safe) ; convention de
+  signe unique (`In` +q / `Out` −q / `Adjustment` delta) ; `AdvanceOrderStatusUseCase` corrigé (décrément sûr,
+  prise de statut atomique conditionnelle idempotente, transaction unique) ; `UpdateProductUseCase` ne réécrit plus
+  le stock ; non-verres décrémentés à la vente fabrication.
+- **Tests** : **819** réussis (799 + 20), 0 échec, 0 ignoré.
+- **Aucune UI** modifiée. **Aucune migration** (schéma inchangé).
+- **Reports maintenus** : matrice complète des statuts Commande → **P3-6** ; validations monétaires / client
+  archivé en vente → **P3-7**. Autres reports (PerformedByUserId, liens `SaleId`/`OrderId`, `CHECK` DB, provider
+  serveur) détaillés dans le rapport d'implémentation §18.
+
 ### P3-6 — Commandes
 
 - **Objectif** : formaliser le **workflow de statut** (aujourd'hui `AdvanceOrderStatusUseCase` accepte

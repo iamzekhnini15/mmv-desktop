@@ -59,7 +59,10 @@ public sealed class UpdateProductUseCase : IUpdateProductUseCase
         product.PurchasePrice = command.PurchasePrice;
         product.SalePrice = command.SalePrice;
         product.RecommendedPrice = command.RecommendedPrice;
-        product.StockQuantity = command.StockQuantity;
+        // P3-5 : l'édition catalogue NE réécrit PLUS StockQuantity. Le stock est la propriété exclusive des use cases
+        // de mouvement (décrément sûr, incrément atomique, ajustement concurrent-safe) ; réécrire ici la quantité
+        // chargée dans le formulaire écraserait tout décrément concurrent survenu entre-temps (lost update).
+        // command.StockQuantity est conservé dans la commande pour la compatibilité des appelants, mais non persisté.
         product.StockAlertThreshold = command.StockAlertThreshold;
         product.Category = command.Category;
         product.SupplierId = command.SupplierId ?? 0;
@@ -85,7 +88,8 @@ public sealed class UpdateProductUseCase : IUpdateProductUseCase
         {
             await _transactionRunner.RunAsync(async ct =>
             {
-                await _productRepository.UpdateAsync(product, ct);
+                // P3-5 : mise à jour catalogue qui EXCLUT StockQuantity de l'UPDATE (le stock ne bouge que par mouvement).
+                await _productRepository.UpdateCatalogAsync(product, ct);
                 await _unitOfWork.SaveChangesAsync(ct);
             }, cancellationToken);
         }

@@ -54,6 +54,15 @@ public interface IProductRepository : IGenericRepository<Product, long>
     Task<IList<Product>> GetActiveProductsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Met à jour les champs <b>catalogue</b> d'un produit (nom, référence, prix, catégorie, fournisseur, détails)
+    /// <b>sans jamais réécrire <see cref="Product.StockQuantity"/></b> (P3-5). L'édition catalogue ne doit pas
+    /// réécrire une quantité chargée précédemment dans un formulaire : cela écraserait tout décrément concurrent
+    /// survenu entre-temps (lost update). Le stock ne change désormais que par les use cases de <b>mouvement</b>
+    /// (décrément sûr, incrément atomique, ajustement concurrent-safe).
+    /// </summary>
+    Task UpdateCatalogAsync(Product product, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Récupère un produit par ID avec tous ses détails (GlassDetail, LensDetail, AccessoryDetail).
     /// </summary>
     Task<Product?> GetByIdWithDetailsAsync(long id, CancellationToken cancellationToken = default);

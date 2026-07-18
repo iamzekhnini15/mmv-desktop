@@ -5,6 +5,7 @@ using MMV.Application.UseCases.Stock.CreateStockMovement;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
+using MMV.Domain.Interfaces.Persistence;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
@@ -188,7 +189,7 @@ public sealed class CreateStockMovementUseCaseTests : IDisposable
         stock.Should().Be(7);
         count.Should().Be(1);
         movement!.MovementType.Should().Be(StockMovementType.Out);
-        movement.Quantity.Should().Be(3, "quantité positive, le sens découle du type Out (comme le flux d'origine)");
+        movement.Quantity.Should().Be(-3, "sortie ⇒ delta négatif (convention de signe P3-5)");
         movement.Reason.Should().Be("Sortie manuelle");
     }
 
@@ -358,5 +359,97 @@ public sealed class CreateStockMovementUseCaseTests : IDisposable
             new EfTransactionRunner(context),
             stockMutationService: null!);
         withoutStockMutation.Should().Throw<ArgumentNullException>();
+    }
+
+    // ------------------------------------------------------------------
+    // (9) P3-5 — Ajustement : le mouvement enregistre le DELTA SIGNÉ (nouvelle − ancienne), pas la valeur absolue
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_Adjustment_RecordsSignedDelta_NotAbsoluteValue()
+    {
+        var dbPath = PathFor("adjust-delta.db");
+        EnsureSchema(dbPath);
+        var productId = SeedProduct(dbPath, initialStock: 5);
+
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            await useCase.ExecuteAsync(new CreateStockMovementCommand
+            {
+                ProductId = productId,
+                MovementType = StockMovementType.Adjustment,
+                Quantity = 2,   // cible absolue 2, en partant de 5 ⇒ delta = -3
+                Reason = "Inventaire",
+            });
+        }
+
+        var (stock, count, movement) = ReadState(dbPath, productId);
+        stock.Should().Be(2, "l'ajustement fixe le stock à la valeur comptée");
+        count.Should().Be(1);
+        movement!.MovementType.Should().Be(StockMovementType.Adjustment);
+        movement.Quantity.Should().Be(-3, "delta signé = nouvelle (2) − ancienne (5), convention P3-5");
+    }
+
+    // ------------------------------------------------------------------
+    // (10) P3-5 — Conflit d'ajustement concurrent : rollback complet, AUCUN mouvement conservé
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_Adjustment_ConcurrencyConflict_RollsBack_NoMovementKept()
+    {
+        var dbPath = PathFor("adjust-conflict.db");
+        EnsureSchema(dbPath);
+        var productId = SeedProduct(dbPath, initialStock: 5);
+
+        using (var context = CreateContext(dbPath))
+        {
+            // Service dont l'ajustement lève un conflit contrôlé (un autre poste a modifié le stock entre-temps).
+            var useCase = new CreateStockMovementUseCase(
+                new StockMovementRepository(context),
+                new ProductRepository(context),
+                new UnitOfWork(context),
+                new EfTransactionRunner(context),
+                new ConflictingAdjustStockMutationService(productId, expectedQuantity: 5));
+
+            Func<Task> act = () => useCase.ExecuteAsync(new CreateStockMovementCommand
+            {
+                ProductId = productId,
+                MovementType = StockMovementType.Adjustment,
+                Quantity = 9,
+                Reason = "Inventaire concurrent",
+            });
+
+            await act.Should().ThrowAsync<StockConcurrencyConflictException>();
+        }
+
+        var (stock, count, _) = ReadState(dbPath, productId);
+        stock.Should().Be(5, "rollback : le stock reste inchangé après conflit");
+        count.Should().Be(0, "aucun mouvement n'est conservé quand la concurrence invalide l'état lu (tout ou rien)");
+    }
+
+    /// <summary>
+    /// Service de mutation dont seule la branche ajustement lève un <see cref="StockConcurrencyConflictException"/>
+    /// contrôlé — simule un autre poste ayant modifié le stock entre la lecture et l'écriture.
+    /// </summary>
+    private sealed class ConflictingAdjustStockMutationService : IStockMutationService
+    {
+        private readonly long _productId;
+        private readonly int _expectedQuantity;
+
+        public ConflictingAdjustStockMutationService(long productId, int expectedQuantity)
+        {
+            _productId = productId;
+            _expectedQuantity = expectedQuantity;
+        }
+
+        public Task DecrementStockAsync(long productId, int quantity, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<int> IncrementStockAsync(long productId, int quantity, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<StockAdjustmentResult> AdjustStockToAsync(long productId, int targetQuantity, CancellationToken cancellationToken = default)
+            => throw new StockConcurrencyConflictException(_productId, _expectedQuantity);
     }
 }
