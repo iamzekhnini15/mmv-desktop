@@ -7,6 +7,7 @@ using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
+using MMV.Domain.Services;
 
 namespace MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 
@@ -29,7 +30,13 @@ namespace MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 /// <c>UPDATE … WHERE Status = statut attendu</c> (aucune comparaison en mémoire) : deux postes tentant simultanément
 /// <c>ToFabricate → InProgress</c>, ou une répétition de la même transition, ne produisent qu'<b>un seul</b> ensemble
 /// de décréments et de mouvements ; la seconde tentative est refusée par <see cref="OrderStatusConflictException"/>.
-/// La matrice complète des transitions autorisées reste hors périmètre (P3-6).
+/// </para>
+/// <para>
+/// <b>Légalité de la transition (matrice P3-6).</b> Avant d'ouvrir la transaction, le couple
+/// <c>CurrentStatus → NextStatus</c> est validé par <c>OrderStatusPolicy.IsAllowed</c> (source de vérité unique du
+/// Domain). Un couple interdit (saut d'étape, retour arrière, même statut, sortie de
+/// <see cref="OrderStatus.Delivered"/>) lève <see cref="InvalidOrderStatusTransitionException"/> <b>sans</b> aucune
+/// écriture. Légalité (matrice) et conflit de concurrence (prise atomique) sont deux gardes complémentaires.
 /// </para>
 /// <para>
 /// <see cref="INotificationRepository"/> reste <b>optionnel</b> (peut être <c>null</c>), reproduisant la garde
@@ -71,6 +78,15 @@ public sealed class AdvanceOrderStatusUseCase : IAdvanceOrderStatusUseCase
 
         var previousStatus = command.CurrentStatus;
         var nextStatus = command.NextStatus;
+
+        // Garde de LÉGALITÉ métier (P3-6) : la matrice unique du Domain valide le couple AVANT toute transaction.
+        // Un couple interdit (saut d'étape, retour arrière, même statut, sortie de Delivered) est refusé ici même :
+        // aucune transaction n'est ouverte ⇒ aucune prise de statut, aucun décrément, aucun mouvement, aucune
+        // notification. La prise atomique conditionnelle (P3-5) reste ensuite responsable du CONFLIT de concurrence.
+        if (!OrderStatusPolicy.IsAllowed(previousStatus, nextStatus))
+        {
+            throw new InvalidOrderStatusTransitionException(previousStatus, nextStatus);
+        }
 
         return await _transactionRunner.RunAsync(async token =>
         {

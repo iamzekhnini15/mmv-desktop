@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Exceptions;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.Application.UseCases.Orders.UpdateOrder;
@@ -61,6 +62,13 @@ public sealed class UpdateOrderUseCase : IUpdateOrderUseCase
         var order = await _orderRepository.GetWithItemsAsync(command.OrderId, cancellationToken);
         if (order is null)
             return new UpdateOrderResult { OrderFound = false, OrderId = command.OrderId };
+
+        // Garde métier P3-6 : la modification (qui reconstruit intégralement les lignes) n'est autorisée que tant
+        // que la fabrication n'a pas commencé — c.-à-d. New ou ToFabricate. Dès InProgress, le stock a pu être
+        // décrémenté sur les lignes existantes ; vider puis recréer les lignes désynchroniserait la consommation de
+        // stock déjà enregistrée, sans mouvement compensatoire. On refuse donc toute édition à partir de InProgress.
+        if (order.Status != OrderStatus.New && order.Status != OrderStatus.ToFabricate)
+            throw new BusinessRuleException("Cette commande ne peut plus être modifiée après le début de la fabrication.");
 
         // Mise à jour des champs éditables (mêmes champs que le flux d'origine : numéro réaffecté à l'identique,
         // date estimée, notes normalisées en null si blanches). Statut/SaleId inchangés.

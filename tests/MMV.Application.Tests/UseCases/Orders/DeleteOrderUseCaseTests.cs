@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Orders.DeleteOrder;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Exceptions;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Repositories;
 using Xunit;
@@ -74,7 +75,7 @@ public sealed class DeleteOrderUseCaseTests : IDisposable
     /// Crée une vente parente (avec client) puis une commande liée. La vente est nécessaire car
     /// <c>Order.SaleId</c> est une clé étrangère non nulle.
     /// </summary>
-    private static long SeedOrder(string databasePath, string orderNumber)
+    private static long SeedOrder(string databasePath, string orderNumber, OrderStatus status = OrderStatus.New)
     {
         using var context = CreateContext(databasePath);
 
@@ -96,7 +97,11 @@ public sealed class DeleteOrderUseCaseTests : IDisposable
             OrderNumber = orderNumber,
             SaleId = sale.SaleId,
             OrderDate = DateTime.UtcNow,
-            Status = OrderStatus.New,
+            Status = status,
+            OrderItems =
+            {
+                new OrderItem { ItemType = OrderItemType.LensOd, Quantity = 1, UnitPrice = 80m }
+            }
         };
         context.Orders.Add(order);
         context.SaveChanges();
@@ -224,5 +229,54 @@ public sealed class DeleteOrderUseCaseTests : IDisposable
             unitOfWork: null!);
 
         act.Should().Throw<ArgumentNullException>();
+    }
+
+    // ------------------------------------------------------------------
+    // (7) P3-6 — Garde de suppression : seule une commande « Nouvelle » peut être supprimée
+    // ------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(OrderStatus.ToFabricate)]
+    [InlineData(OrderStatus.InProgress)]
+    [InlineData(OrderStatus.QualityCheck)]
+    [InlineData(OrderStatus.Ready)]
+    [InlineData(OrderStatus.Delivered)]
+    public async Task ExecuteAsync_NonNewStatus_Throws_AndKeepsOrderAndLines(OrderStatus status)
+    {
+        var dbPath = PathFor($"guard-{status}.db");
+        EnsureSchema(dbPath);
+        var orderId = SeedOrder(dbPath, "CMD-000900", status);
+
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            Func<Task> act = () => useCase.ExecuteAsync(new DeleteOrderCommand { OrderId = orderId });
+
+            (await act.Should().ThrowAsync<BusinessRuleException>())
+                .Which.Message.Should().Be("Seule une commande au statut « Nouvelle » peut être supprimée.");
+        }
+
+        using var verify = CreateContext(dbPath);
+        verify.Orders.AsNoTracking().Should().ContainSingle("la commande est conservée");
+        verify.OrderItems.AsNoTracking().Should().ContainSingle("les lignes sont conservées");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_NewStatus_IsDeleted()
+    {
+        var dbPath = PathFor("guard-new.db");
+        EnsureSchema(dbPath);
+        var orderId = SeedOrder(dbPath, "CMD-000901", OrderStatus.New);
+
+        DeleteOrderResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            result = await useCase.ExecuteAsync(new DeleteOrderCommand { OrderId = orderId });
+        }
+
+        result.OrderFound.Should().BeTrue();
+        using var verify = CreateContext(dbPath);
+        verify.Orders.AsNoTracking().Should().BeEmpty("une commande Nouvelle peut être supprimée");
     }
 }

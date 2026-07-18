@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Orders.UpdateOrder;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Exceptions;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Repositories;
 using Xunit;
@@ -104,11 +105,13 @@ public sealed class UpdateOrderUseCaseTests : IDisposable
     }
 
     /// <summary>
-    /// Sème une commande existante (statut <c>InProgress</c>) avec ses lignes initiales, rattachée à une vente
+    /// Sème une commande existante (statut éditable par défaut, <c>ToFabricate</c>) avec ses lignes initiales,
+    /// rattachée à une vente
     /// parente réelle. La vente est nécessaire car <c>GetWithItemsAsync</c> charge la commande via la navigation
     /// <b>requise</b> <c>Order → Sale</c> (jointure interne) ; en production toute commande possède sa vente.
     /// </summary>
-    private static long SeedExistingOrder(string databasePath, Action<Order> configure)
+    private static long SeedExistingOrder(string databasePath, Action<Order> configure,
+        OrderStatus status = OrderStatus.ToFabricate)
     {
         using var context = CreateContext(databasePath);
         var sale = new Sale { SaleNumber = "VTE-000100" };
@@ -120,7 +123,7 @@ public sealed class UpdateOrderUseCaseTests : IDisposable
             OrderNumber = "CMD-000100",
             EstimatedDelivery = new DateTime(2026, 1, 1),
             Notes = "Notes initiales",
-            Status = OrderStatus.InProgress,
+            Status = status,
             SaleId = sale.SaleId,
         };
         configure(order);
@@ -181,14 +184,14 @@ public sealed class UpdateOrderUseCaseTests : IDisposable
         result.OrderFound.Should().BeTrue();
         result.OrderId.Should().Be(orderId);
         result.OrderNumber.Should().Be("CMD-000100");
-        result.Status.Should().Be(OrderStatus.InProgress, "l'édition ne touche pas le statut");
+        result.Status.Should().Be(OrderStatus.ToFabricate, "l'édition ne touche pas le statut");
         result.EstimatedDelivery.Should().Be(newEstimated);
 
         using var verify = CreateContext(dbPath);
         var order = verify.Orders.AsNoTracking().Include(o => o.OrderItems).Single();
         order.EstimatedDelivery.Should().Be(newEstimated);
         order.Notes.Should().Be("Notes modifiées");
-        order.Status.Should().Be(OrderStatus.InProgress);
+        order.Status.Should().Be(OrderStatus.ToFabricate);
         order.OrderItems.Should().ContainSingle("les anciennes lignes sont supprimées et remplacées");
         var item = order.OrderItems.Single();
         item.ProductId.Should().Be(lensId);
@@ -344,5 +347,87 @@ public sealed class UpdateOrderUseCaseTests : IDisposable
         Action act = () => _ = new UpdateOrderUseCase(orderRepository: null!, new UnitOfWork(context));
 
         act.Should().Throw<ArgumentNullException>();
+    }
+
+    // ------------------------------------------------------------------
+    // (7) P3-6 — Garde de modification : éditable en New / ToFabricate uniquement
+    // ------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(OrderStatus.New)]
+    [InlineData(OrderStatus.ToFabricate)]
+    public async Task ExecuteAsync_EditableStatus_Succeeds(OrderStatus status)
+    {
+        var dbPath = PathFor($"editable-{status}.db");
+        EnsureSchema(dbPath);
+        var frameId = SeedProduct(dbPath, ProductCategoryEnum.MONTURE, "MON-EDIT");
+        var orderId = SeedExistingOrder(dbPath,
+            o => o.OrderItems.Add(new OrderItem { ProductId = frameId, ItemType = OrderItemType.Frame, Quantity = 1, UnitPrice = 30m }),
+            status);
+
+        UpdateOrderResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            result = await useCase.ExecuteAsync(new UpdateOrderCommand
+            {
+                OrderId = orderId,
+                OrderNumber = "CMD-000100",
+                Notes = "Modifiée",
+                Lines = new[]
+                {
+                    new UpdateOrderLineCommand { ProductId = frameId, ItemType = OrderItemType.Frame, Quantity = 3, UnitPrice = 40m }
+                }
+            });
+        }
+
+        result.OrderFound.Should().BeTrue();
+        result.Status.Should().Be(status);
+
+        using var verify = CreateContext(dbPath);
+        var item = verify.Orders.AsNoTracking().Include(o => o.OrderItems).Single().OrderItems.Single();
+        item.Quantity.Should().Be(3, "la modification est appliquée pour un statut éditable");
+    }
+
+    [Theory]
+    [InlineData(OrderStatus.InProgress)]
+    [InlineData(OrderStatus.QualityCheck)]
+    [InlineData(OrderStatus.Ready)]
+    [InlineData(OrderStatus.Delivered)]
+    public async Task ExecuteAsync_StatusAfterFabricationStart_Throws_AndLeavesEverythingUnchanged(OrderStatus status)
+    {
+        var dbPath = PathFor($"locked-{status}.db");
+        EnsureSchema(dbPath);
+        var frameId = SeedProduct(dbPath, ProductCategoryEnum.MONTURE, "MON-LOCK");
+        var orderId = SeedExistingOrder(dbPath,
+            o => o.OrderItems.Add(new OrderItem { ProductId = frameId, ItemType = OrderItemType.Frame, Quantity = 1, UnitPrice = 30m }),
+            status);
+
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            Func<Task> act = () => useCase.ExecuteAsync(new UpdateOrderCommand
+            {
+                OrderId = orderId,
+                OrderNumber = "CMD-CHANGED",
+                Notes = "Ne doit pas être appliqué",
+                Lines = new[]
+                {
+                    new UpdateOrderLineCommand { ProductId = frameId, ItemType = OrderItemType.Frame, Quantity = 99, UnitPrice = 999m }
+                }
+            });
+
+            (await act.Should().ThrowAsync<BusinessRuleException>())
+                .Which.Message.Should().Be("Cette commande ne peut plus être modifiée après le début de la fabrication.");
+        }
+
+        using var verify = CreateContext(dbPath);
+        var order = verify.Orders.AsNoTracking().Include(o => o.OrderItems).Single();
+        order.OrderNumber.Should().Be("CMD-000100", "les champs restent inchangés");
+        order.Notes.Should().Be("Notes initiales");
+        order.Status.Should().Be(status);
+        var item = order.OrderItems.Single();
+        item.Quantity.Should().Be(1, "les lignes restent inchangées");
+        item.UnitPrice.Should().Be(30m);
     }
 }

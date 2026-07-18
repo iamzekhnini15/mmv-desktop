@@ -67,7 +67,8 @@ public static class DependencyInjection
         // P3-3B : IPrescriptionService / PrescriptionService supprimés — second chemin d'écriture dormant, sans aucun
         // consommateur runtime, qui court-circuitait les use cases et donc leurs garde-fous (validation, client
         // archivé). L'écriture des ordonnances passe exclusivement par les use cases Application.
-        services.AddScoped<IOrderService, OrderService>();
+        // P3-6 : IOrderService / OrderService supprimés — service mort (aucun consommateur runtime) qui portait une
+        // SECONDE matrice de transitions codée en dur. La matrice unique vit désormais dans OrderStatusPolicy (Domain).
         services.AddScoped<ISaleService, SaleService>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();
 

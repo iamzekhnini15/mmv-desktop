@@ -138,6 +138,37 @@ public class OrderStatusConflictException : DomainException
 }
 
 /// <summary>
+/// Erreur <b>métier contrôlée</b> (P3-6) : une <b>transition de statut de commande</b> a été refusée parce que le
+/// couple demandé (<see cref="CurrentStatus"/> → <see cref="NextStatus"/>) n'est <b>pas autorisé</b> par le
+/// workflow linéaire strict (<see cref="MMV.Domain.Services.OrderStatusPolicy"/>). Couvre les sauts d'étape, les
+/// retours arrière, la transition « même statut vers même statut » et toute sortie de
+/// <see cref="OrderStatus.Delivered"/> (terminal). Aucune écriture, aucun mouvement de stock ni notification n'est
+/// produit : le refus intervient <b>avant</b> toute prise de statut.
+///
+/// <para>
+/// À distinguer de <see cref="OrderStatusConflictException"/> (P3-5) : cette dernière concerne un couple
+/// <b>légal</b> dont le statut réellement stocké a changé (concurrence multi-poste). Ici, le couple est
+/// <b>interdit par la règle métier</b>, indépendamment du statut stocké. Définie dans le domaine (sans dépendance
+/// EF/SQLite) ; le message est stable et métier (aucun détail technique exposé).
+/// </para>
+/// </summary>
+public class InvalidOrderStatusTransitionException : DomainException
+{
+    /// <summary>Statut actuel demandé (origine de la transition refusée).</summary>
+    public OrderStatus CurrentStatus { get; }
+
+    /// <summary>Statut suivant demandé (cible de la transition refusée).</summary>
+    public OrderStatus NextStatus { get; }
+
+    public InvalidOrderStatusTransitionException(OrderStatus currentStatus, OrderStatus nextStatus)
+        : base($"La transition de commande de « {currentStatus} » vers « {nextStatus} » n'est pas autorisée.")
+    {
+        CurrentStatus = currentStatus;
+        NextStatus = nextStatus;
+    }
+}
+
+/// <summary>
 /// Erreur <b>métier contrôlée</b> (P2A-1E, R-03) liée à la <b>numérotation fiable</b> des documents : la
 /// séquence demandée est introuvable (compteur non initialisé) ou aucun numéro n'a pu être attribué malgré
 /// les tentatives (contention persistante). Aucun numéro n'est consommé.

@@ -495,4 +495,133 @@ public sealed class AdvanceOrderStatusUseCaseTests : IDisposable
         verify.StockMovements.AsNoTracking().Count(m => m.ProductId == productId)
             .Should().BeLessThanOrEqualTo(1, "au plus un mouvement de fabrication (jamais deux)");
     }
+
+    // ==================================================================
+    // P3-6 — Matrice de transitions (OrderStatusPolicy) : légalité métier
+    // ==================================================================
+
+    // ------------------------------------------------------------------
+    // (10) Les 4 transitions légales NON-fabrication avancent le statut sans toucher au stock
+    // ------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(OrderStatus.New, OrderStatus.ToFabricate)]
+    [InlineData(OrderStatus.InProgress, OrderStatus.QualityCheck)]
+    [InlineData(OrderStatus.QualityCheck, OrderStatus.Ready)]
+    [InlineData(OrderStatus.Ready, OrderStatus.Delivered)]
+    public async Task ExecuteAsync_LegalNonFabricationTransition_AdvancesStatus_WithoutStockChange(
+        OrderStatus current, OrderStatus next)
+    {
+        var dbPath = PathFor($"legal-{current}-{next}.db");
+        EnsureSchema(dbPath);
+        var lensId = SeedProduct(dbPath, stockQuantity: 5);
+        var orderId = SeedOrder(dbPath, current, "CMD-000700", lensId, quantity: 2);
+
+        AdvanceOrderStatusResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            result = await useCase.ExecuteAsync(new AdvanceOrderStatusCommand
+            {
+                OrderId = orderId,
+                CurrentStatus = current,
+                NextStatus = next,
+                CustomerDisplayName = "Jean Dupont",
+                CurrentStatusDisplay = current.ToString(),
+                NextStatusDisplay = next.ToString(),
+            });
+        }
+
+        result.OrderFound.Should().BeTrue();
+        result.NewStatus.Should().Be(next);
+        result.HasCreatedStockMovements.Should().BeFalse("seule ToFabricate → InProgress touche le stock");
+        result.CreatedStockMovementCount.Should().Be(0);
+
+        using var verify = CreateContext(dbPath);
+        verify.Orders.AsNoTracking().Single(o => o.OrderId == orderId).Status.Should().Be(next);
+        verify.StockMovements.AsNoTracking().Should().BeEmpty("aucune sortie de stock hors fabrication");
+        verify.Products.AsNoTracking().Single(p => p.ProductId == lensId).StockQuantity
+            .Should().Be(5, "stock inchangé hors fabrication");
+    }
+
+    // ------------------------------------------------------------------
+    // (11) Transition ILLÉGALE (saut, retour arrière, même statut, sortie de Delivered) : refus AVANT toute écriture
+    // ------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(OrderStatus.New, OrderStatus.InProgress)]      // saut (contournerait le décrément)
+    [InlineData(OrderStatus.New, OrderStatus.Delivered)]        // saut total
+    [InlineData(OrderStatus.ToFabricate, OrderStatus.Ready)]    // saut par-dessus la fabrication
+    [InlineData(OrderStatus.InProgress, OrderStatus.New)]       // retour arrière
+    [InlineData(OrderStatus.Delivered, OrderStatus.Ready)]      // réouverture d'une commande livrée
+    [InlineData(OrderStatus.Delivered, OrderStatus.New)]        // réouverture totale
+    [InlineData(OrderStatus.InProgress, OrderStatus.InProgress)]// même statut (no-op)
+    public async Task ExecuteAsync_IllegalTransition_Throws_AndWritesNothing(OrderStatus current, OrderStatus next)
+    {
+        var dbPath = PathFor($"illegal-{current}-{next}.db");
+        EnsureSchema(dbPath);
+        var lensId = SeedProduct(dbPath, stockQuantity: 5);
+        var orderId = SeedOrder(dbPath, current, "CMD-000800", lensId, quantity: 2);
+
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            Func<Task> act = () => useCase.ExecuteAsync(new AdvanceOrderStatusCommand
+            {
+                OrderId = orderId,
+                CurrentStatus = current,
+                NextStatus = next,
+                CustomerDisplayName = "Jean Dupont",
+                CurrentStatusDisplay = current.ToString(),
+                NextStatusDisplay = next.ToString(),
+            });
+
+            await act.Should().ThrowAsync<InvalidOrderStatusTransitionException>();
+        }
+
+        using var verify = CreateContext(dbPath);
+        verify.Orders.AsNoTracking().Single(o => o.OrderId == orderId).Status
+            .Should().Be(current, "une transition illégale ne modifie pas le statut");
+        verify.StockMovements.AsNoTracking().Should().BeEmpty("aucun mouvement sur transition illégale");
+        verify.Notifications.AsNoTracking().Should().BeEmpty("aucune notification sur transition illégale");
+        verify.Products.AsNoTracking().Single(p => p.ProductId == lensId).StockQuantity
+            .Should().Be(5, "aucun décrément sur transition illégale");
+    }
+
+    // ------------------------------------------------------------------
+    // (12) Illégalité vs concurrence : couple légal mais statut réel obsolète ⇒ OrderStatusConflictException
+    //      (garde P3-5 conservée, distincte de la garde de légalité P3-6)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task ExecuteAsync_LegalPair_ButStoredStatusStale_ThrowsConflict_NotInvalidTransition()
+    {
+        var dbPath = PathFor("legal-but-stale.db");
+        EnsureSchema(dbPath);
+        var lensId = SeedProduct(dbPath, stockQuantity: 5);
+        // Statut réellement stocké = InProgress, mais l'appelant croit encore être en ToFabricate.
+        var orderId = SeedOrder(dbPath, OrderStatus.InProgress, "CMD-000900", lensId, quantity: 1);
+
+        using (var context = CreateContext(dbPath))
+        {
+            var useCase = CreateUseCase(context);
+            // ToFabricate → InProgress est un couple LÉGAL (passe la matrice), mais le statut stocké n'est plus
+            // ToFabricate ⇒ la prise atomique échoue ⇒ conflit de concurrence, pas une transition illégale.
+            Func<Task> act = () => useCase.ExecuteAsync(new AdvanceOrderStatusCommand
+            {
+                OrderId = orderId,
+                CurrentStatus = OrderStatus.ToFabricate,
+                NextStatus = OrderStatus.InProgress,
+                CustomerDisplayName = "Jean Dupont",
+                CurrentStatusDisplay = "À fabriquer",
+                NextStatusDisplay = "En fabrication",
+            });
+
+            await act.Should().ThrowAsync<OrderStatusConflictException>();
+        }
+
+        using var verify = CreateContext(dbPath);
+        verify.Orders.AsNoTracking().Single(o => o.OrderId == orderId).Status.Should().Be(OrderStatus.InProgress);
+        verify.StockMovements.AsNoTracking().Should().BeEmpty();
+    }
 }

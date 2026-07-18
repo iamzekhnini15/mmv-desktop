@@ -205,6 +205,11 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   - **prisme perdu** au pré-remplissage des commandes (`OrderFormViewModel.AutoFillFromPrescription()`) ⇒ **P3-6** ;
   - **refus de vente** pour un client archivé ⇒ **P3-7**.
 
+> **Décision — périmètre backend uniquement à partir de P3-4.** À partir de P3-4, les travaux P3 en cours sont
+> backend uniquement : Domain, Application, Infrastructure, persistance, migrations éventuelles, tests et
+> documentation. Les changements UI sont reportés au redesign global piloté via Claude Design. Cette décision
+> ne modifie pas rétroactivement P3-2C et P3-3C, réellement exécutées avant elle.
+
 ### P3-4 — Produits
 
 - **Objectif** : fiabiliser catalogue et cohérence catégorie/détails.
@@ -243,8 +248,8 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   modification, migration non enregistrée).
 - **799 tests** verts localement (Domain 297 / Application 263 / App 239), 0 vulnérabilité, aucune migration en
   attente, frontière `Application → Domain` préservée.
-- **P3-4 n'est pas encore entièrement terminé** : l'**alignement UI Produits** (consommer `IsValid`/
-  `ValidationErrors` dans `ProductFormViewModel`, sur le modèle P3-3C) **reste à faire** — non commencé ici.
+- **P3-4 backend terminé** ; CI verte du commit P3-4. L'**UI Produits** est reportée au **redesign global**
+  (cf. décision de périmètre ci-dessus) : **P3-4C** n'a pas été créée.
 - Reports **inchangés** : **écriture directe du stock → P3-5** ; **règles/intégrité fournisseur → P3-9**.
 
 ### P3-5 — Stock / mouvements
@@ -263,14 +268,16 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 #### État (P3-5 — audit terminé, implémentation backend validée localement)
 
 - **P3-5A audit terminé** — rapport : [`docs/implementation/P3-5-stock-and-movements-audit-report.md`](../implementation/P3-5-stock-and-movements-audit-report.md).
-- **P3-5 implémentation backend validée localement** — rapport :
+- **P3-5 terminé côté backend** — rapport :
   [`docs/implementation/P3-5-stock-and-movements-implementation-report.md`](../implementation/P3-5-stock-and-movements-implementation-report.md).
-  Verdict : `P3-5 = GO LOCAL` (subordonné au vert CI ; **non** marqué définitivement terminé).
+  CI du commit confirmée verte (SHA `3e7a1ab3a5f7936555b1126c488c748d0dcc0096`, run
+  [`29623464755`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/29623464755), conclusion `success`).
+  Verdict : **`P3-5-CI = GO`**.
 - **Contenu** : `IStockMutationService` étendu (incrément atomique + ajustement concurrent-safe) ; convention de
   signe unique (`In` +q / `Out` −q / `Adjustment` delta) ; `AdvanceOrderStatusUseCase` corrigé (décrément sûr,
   prise de statut atomique conditionnelle idempotente, transaction unique) ; `UpdateProductUseCase` ne réécrit plus
   le stock ; non-verres décrémentés à la vente fabrication.
-- **Tests** : **819** réussis (799 + 20), 0 échec, 0 ignoré.
+- **819 tests** au moment du commit P3-5 (799 + 20), 0 échec, 0 ignoré.
 - **Aucune UI** modifiée. **Aucune migration** (schéma inchangé).
 - **Reports maintenus** : matrice complète des statuts Commande → **P3-6** ; validations monétaires / client
   archivé en vente → **P3-7**. Autres reports (PerformedByUserId, liens `SaleId`/`OrderId`, `CHECK` DB, provider
@@ -289,6 +296,26 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - **Tests** : matrice de transitions (autorisées/refusées) ; suppression selon statut.
 - **Risques** : le workflow réel mélange fournisseur et atelier. Mitigation : décider le sens avant de coder.
 - **Sortie** : machine à états explicite et testée.
+
+#### État (P3-6 — audit terminé, implémentation backend validée localement)
+
+- **P3-6 audit terminé** — rapport :
+  [`docs/implementation/P3-6-orders-workflow-audit-report.md`](../implementation/P3-6-orders-workflow-audit-report.md).
+- **P3-6 implémentation backend validée localement** — rapport :
+  [`docs/implementation/P3-6-orders-workflow-implementation-report.md`](../implementation/P3-6-orders-workflow-implementation-report.md).
+  - **Matrice linéaire stricte** unique dans le Domain (`OrderStatusPolicy`) :
+    `New → ToFabricate → InProgress → QualityCheck → Ready → Delivered` ; sauts, retours arrière, même statut et
+    sortie de `Delivered` refusés (`InvalidOrderStatusTransitionException`). La seconde matrice morte
+    (`OrderService`) a été **supprimée** (source de vérité unique). La prise atomique multi-poste P3-5 est
+    **conservée** (légalité et concurrence = deux gardes complémentaires).
+  - **Suppression** limitée au statut `New` ; **modification** bloquée à partir de `InProgress`
+    (`BusinessRuleException`).
+  - **869 tests** au total (0 échec, 0 ignoré) ; **aucune migration** ; **aucune UI** modifiée.
+  - Verdict : `P3-6 = GO LOCAL` (subordonné au vert CI du commit ; **non** marqué définitivement terminé).
+- **Reports maintenus** : fiche atelier persistée / QC bloquant / mesures montage → **P3-6B** ; réconciliation
+  `SaleStatus` ↔ `OrderStatus` et validations monétaires vente → **P3-7** ; règles générales de notifications
+  → **P3-8** ; statut `Cancelled`/archivage, `SaleId` de la création manuelle, pertes optiques du DTO manuel et
+  séparation formelle fournisseur/atelier → **redesign métier futur** (non ouverts en P3-6).
 
 ### P3-6B — Fiche atelier de montage / technicien
 

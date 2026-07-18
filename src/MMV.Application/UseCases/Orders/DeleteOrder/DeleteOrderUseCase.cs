@@ -1,6 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using MMV.Domain.Enums;
+using MMV.Domain.Exceptions;
 using MMV.Domain.Interfaces.Repositories;
 
 namespace MMV.Application.UseCases.Orders.DeleteOrder;
@@ -47,6 +49,14 @@ public sealed class DeleteOrderUseCase : IDeleteOrderUseCase
         var order = await _orderRepository.GetByIdAsync(command.OrderId, cancellationToken);
         if (order is null)
             return new DeleteOrderResult { OrderFound = false, OrderId = command.OrderId };
+
+        // Garde métier P3-6 : seule une commande au statut « Nouvelle » (brouillon initial) peut être supprimée
+        // physiquement. Dès ToFabricate, la commande appartient à l'historique du workflow atelier ; à partir de
+        // InProgress le stock peut déjà avoir été décrémenté. Supprimer une commande avancée effacerait ses lignes
+        // optiques et laisserait des mouvements/notifications sans commande de rattachement. Aucun statut Cancelled,
+        // aucun archivage, aucune restauration de stock (décisions reportées) : le refus est simplement une garde.
+        if (order.Status != OrderStatus.New)
+            throw new BusinessRuleException("Seule une commande au statut « Nouvelle » peut être supprimée.");
 
         // Supprimer par entité (iso-fonctionnel : même comportement que l'ancien DeleteAsync(id) qui chargeait
         // l'entité en interne avant de marquer la suppression).
