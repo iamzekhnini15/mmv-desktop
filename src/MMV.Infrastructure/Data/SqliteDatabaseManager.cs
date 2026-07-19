@@ -287,6 +287,27 @@ public sealed class SqliteDatabaseManager
 
         _journal.Write("ADOPT: schema compatibility gate passed.");
 
+        // --- P3-6B : refus explicite d'une extension de fiche atelier PARTIELLE (avant toute écriture) ---
+        // Les deux tables sont créées ensemble par AddWorkshopSheets : n'en trouver qu'une seule signale une base
+        // altérée à la main ou une adoption précédemment interrompue. Les deux issues automatiques seraient
+        // fausses — baseliner marquerait une table manquante comme créée, et exécuter la migration ferait échouer
+        // un CreateTable sur la table déjà présente, avec un message technique brut. On échoue donc ici, AVANT
+        // toute inscription dans __EFMigrationsHistory : aucune fausse entrée n'est écrite.
+        var tablesBeforeAdoption = GetTableNames(context);
+        var hasWorkshopSheets = tablesBeforeAdoption.Contains(WorkshopSheetsTableName, StringComparer.OrdinalIgnoreCase);
+        var hasWorkshopSheetItems = tablesBeforeAdoption.Contains(WorkshopSheetItemsTableName, StringComparer.OrdinalIgnoreCase);
+
+        if (hasWorkshopSheets != hasWorkshopSheetItems)
+        {
+            var present = hasWorkshopSheets ? WorkshopSheetsTableName : WorkshopSheetItemsTableName;
+            var missing = hasWorkshopSheets ? WorkshopSheetItemsTableName : WorkshopSheetsTableName;
+            _journal.Write($"ADOPT REFUSED: partial workshop sheet schema (present: {present}, missing: {missing}).");
+            throw new DatabaseMigrationException(
+                $"Schéma de fiche atelier partiel : la table {present} est présente alors que {missing} est " +
+                "absente. Ces deux tables sont créées ensemble ; adoption refusée. Aucune migration n'a été " +
+                "inscrite dans __EFMigrationsHistory ; la base et sa sauvegarde sont conservées.");
+        }
+
         // --- P2A-1R19-R2 : détection des anciens DEFAULT DateTime figés (R-19) physiquement présents ---
         // Le portail de compatibilité ci-dessus ne compare PAS les valeurs DEFAULT. Une base historique
         // créée par EnsureCreated AVANT P2A-1R19 reste donc « compatible » tout en conservant les anciens
@@ -349,6 +370,23 @@ public sealed class SqliteDatabaseManager
             }
         }
 
+        // (d) P3-6B : AddWorkshopSheets si la table WorkshopSheets est physiquement absente (base antérieure à
+        //     P3-6B). Baseliner cette migration marquerait à tort les tables de fiche atelier comme créées : la
+        //     génération automatique de la première fiche échouerait alors au premier passage en fabrication.
+        //     L'état partiel ayant déjà été refusé plus haut, l'absence de WorkshopSheets vaut absence des deux.
+        var workshopSheetsMissing = !hasWorkshopSheets;
+        if (workshopSheetsMissing)
+        {
+            var workshopIndex = allMigrations.FindIndex(IsAddWorkshopSheetsMigration);
+            if (workshopIndex >= 0)
+            {
+                firstIndexToExecute = Math.Min(firstIndexToExecute, workshopIndex);
+                _journal.Write(
+                    "ADOPT: WorkshopSheets table absent (base antérieure à P3-6B) — " +
+                    "AddWorkshopSheets will be executed (workshop sheet tables created).");
+            }
+        }
+
         var migrationsToBaseline = allMigrations.Take(firstIndexToExecute).ToList();
 
         // --- Baseline : inscription de l'historique (accès EF encapsulé) ---
@@ -406,6 +444,20 @@ public sealed class SqliteDatabaseManager
                 "reflète pas le schéma réel ; la base et sa sauvegarde sont conservées.");
         }
 
+        // --- P3-6B : vérification physique post-adoption — les tables de fiche atelier existent réellement ---
+        // Garantit qu'aucune base n'est marquée « AddWorkshopSheets appliquée » sans les tables physiques (un
+        // baseline mensonger ferait échouer la génération automatique de fiche au passage en fabrication).
+        var tablesAfterAdoption = GetTableNames(context);
+        if (!tablesAfterAdoption.Contains(WorkshopSheetsTableName, StringComparer.OrdinalIgnoreCase)
+            || !tablesAfterAdoption.Contains(WorkshopSheetItemsTableName, StringComparer.OrdinalIgnoreCase))
+        {
+            _journal.Write("ADOPT INCONSISTENT: WorkshopSheets table(s) absent after adoption.");
+            throw new DatabaseMigrationException(
+                "Incohérence après adoption : les tables de fiche atelier (WorkshopSheets / WorkshopSheetItems) " +
+                "sont absentes alors que la migration AddWorkshopSheets est inscrite. __EFMigrationsHistory ne " +
+                "reflète pas le schéma réel ; la base et sa sauvegarde sont conservées.");
+        }
+
         return new DatabasePreparationResult
         {
             DetectedState = DatabaseState.HistoricalWithoutMigrationsHistory,
@@ -430,6 +482,18 @@ public sealed class SqliteDatabaseManager
 
     private static bool IsAddDocumentSequencesMigration(string migrationId)
         => migrationId.EndsWith(AddDocumentSequencesMigrationSuffix, StringComparison.Ordinal);
+
+    /// <summary>Table racine des fiches atelier (P3-6B).</summary>
+    private const string WorkshopSheetsTableName = "WorkshopSheets";
+
+    /// <summary>Table des lignes snapshot des fiches atelier (P3-6B).</summary>
+    private const string WorkshopSheetItemsTableName = "WorkshopSheetItems";
+
+    /// <summary>Suffixe de l'identifiant de la migration additive P3-6B (tables de fiche atelier).</summary>
+    private const string AddWorkshopSheetsMigrationSuffix = "_AddWorkshopSheets";
+
+    private static bool IsAddWorkshopSheetsMigration(string migrationId)
+        => migrationId.EndsWith(AddWorkshopSheetsMigrationSuffix, StringComparison.Ordinal);
 
     /// <summary>Table des clients.</summary>
     private const string CustomersTableName = "Customers";

@@ -297,7 +297,7 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - **Risques** : le workflow réel mélange fournisseur et atelier. Mitigation : décider le sens avant de coder.
 - **Sortie** : machine à états explicite et testée.
 
-#### État (P3-6 — audit terminé, implémentation backend validée localement)
+#### État (P3-6 — terminé, CI validée)
 
 - **P3-6 audit terminé** — rapport :
   [`docs/implementation/P3-6-orders-workflow-audit-report.md`](../implementation/P3-6-orders-workflow-audit-report.md).
@@ -311,7 +311,8 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   - **Suppression** limitée au statut `New` ; **modification** bloquée à partir de `InProgress`
     (`BusinessRuleException`).
   - **869 tests** au total (0 échec, 0 ignoré) ; **aucune migration** ; **aucune UI** modifiée.
-  - Verdict : `P3-6 = GO LOCAL` (subordonné au vert CI du commit ; **non** marqué définitivement terminé).
+  - **CI validée** — commit `a4d7380b374167f4b27809e9b4a7e56b28bf3c48`, run `29665945780`,
+    conclusion `success`. Verdict : **`P3-6-CI = GO`** (étape close).
 - **Reports maintenus** : fiche atelier persistée / QC bloquant / mesures montage → **P3-6B** ; réconciliation
   `SaleStatus` ↔ `OrderStatus` et validations monétaires vente → **P3-7** ; règles générales de notifications
   → **P3-8** ; statut `Cancelled`/archivage, `SaleId` de la création manuelle, pertes optiques du DTO manuel et
@@ -341,6 +342,44 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   un `OpticalPrescriptionTranspositionService` Domain pur (cf. §5).
 - **Tests** : génération, versionnement/obsolescence, QC bloquant, minimisation données.
 - **Sortie** : fiche atelier persistée, versionnée, avec QC ; ordonnance source intacte.
+
+#### État (P3-6B — audit terminé, implémentation backend durcie et validée localement)
+
+- **P3-6B audit terminé** — rapport :
+  [`docs/implementation/P3-6B-workshop-sheet-audit-report.md`](../implementation/P3-6B-workshop-sheet-audit-report.md)
+  (verdict `P3-6B AUDIT = GO`). Constat structurant : la fiche n'existait qu'en **UI éphémère**, son contrôle
+  qualité n'était que des **cases à cocher décoratives**, et `OrderDetailsItemDto` **perd** usage/prisme/base/acuité.
+  Le §27 enregistre les décisions retenues pour l'implémentation.
+- **P3-6B implémentation backend validée localement** — rapport :
+  [`docs/implementation/P3-6B-workshop-sheet-implementation-report.md`](../implementation/P3-6B-workshop-sheet-implementation-report.md).
+  Verdict : **`P3-6B HARDENED = GO LOCAL`** — implémentation **locale** uniquement, **sous réserve de la CI du
+  futur commit ; non** marquée définitivement terminée.
+  - **Fiche persistée et versionnée** : agrégat `WorkshopSheet` + `WorkshopSheetItem` (une ligne par `OrderItem`),
+    snapshot **par valeur** construit depuis `OrderItem` (donc prisme, usage et acuité **récupérés**), nom du
+    porteur **seul** (ni téléphone, ni email, ni montant — absence **structurelle**). Unicité `(OrderId, Version)`
+    et **index unique filtré** garantissant **une seule version courante** ; bascule atomique en transaction.
+  - **Première fiche générée automatiquement** par `AdvanceOrderStatusUseCase`, dans la transaction, à
+    `ToFabricate → InProgress` et `InProgress → QualityCheck` (idempotent). Conséquence testée : **aucune commande
+    créée après P3-6B ne peut atteindre `QualityCheck` sans fiche**.
+  - **QC bloquant avant `Ready`** : `QualityCheck → Ready` refusé si la fiche courante n'est pas `Passed` **ou**
+    n'est plus à jour (empreinte technique déterministe). Décision QC **atomique et définitive** ; un refus se
+    reprend par une **nouvelle version** `Pending`, jamais par réouverture.
+  - **Compatibilité historique sans faux QC** : une commande déjà en `QualityCheck` **sans** fiche reste
+    autorisée à avancer ; **aucune** fiche rétroactive, **aucun** contrôle qualité inventé.
+  - **Transposition optique pure** (`OpticalTranspositionService` + value object `OpticalCorrection`) : ordonnance
+    source **jamais** modifiée (garantie structurelle — addition/prisme/base/acuité ne sont pas exposés au service).
+  - **Durcissement de concurrence appliqué avant commit** (rapport §24bis) : `QualityCheck → Ready` est désormais
+    **atomiquement lié** à la fiche courante attendue (condition `EXISTS`/`NOT EXISTS` dans l'`UPDATE` lui-même),
+    la compatibilité historique « aucune fiche » est reconfirmée atomiquement, et la création de version passe par
+    un **compare-and-swap sur la version attendue** — deux demandes concurrentes donnent un succès et un conflit,
+    **jamais une v3**. Les schémas partiels de fiche atelier sont refusés **avant** toute écriture d'historique.
+  - **1031 tests** au total (0 échec, 0 ignoré ; Domain 430 · Application 362 · App 239), 0 vulnérabilité,
+    aucune migration en attente.
+  - **Migration créée** : `AddWorkshopSheets`, **purement additive**, sans backfill ; l'adoption des bases
+    antérieures a dû être étendue (tables additives tolérées + migration exécutée, précédent `DocumentSequences`).
+  - **Aucune UI modifiée** (`MMV.App.Tests` inchangé à 239).
+- **Reports maintenus** : UI/impression/PDF → redesign global ; auteur du QC → P3-10 ; mesures porteur, cotes de
+  montage et points de contrôle séparés → V2 fiche ; validations monétaires vente → P3-7.
 
 ### P3-7 — Ventes
 

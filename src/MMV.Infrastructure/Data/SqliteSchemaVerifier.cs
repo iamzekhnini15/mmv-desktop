@@ -36,10 +36,13 @@ public sealed class SqliteSchemaVerifier
     /// physiquement créées sans risque. Toute autre table manquante reste bloquante (corruption/schéma ancien).
     /// <list type="bullet">
     ///   <item><c>DocumentSequences</c> — P2A-1E (R-03), créée par <c>AddDocumentSequences</c>.</item>
+    ///   <item><c>WorkshopSheets</c> et <c>WorkshopSheetItems</c> — P3-6B (fiche atelier versionnée), créées par
+    ///   <c>AddWorkshopSheets</c>. Purement additives : aucune table métier existante n'est modifiée, et aucune
+    ///   fiche n'est backfillée (une base antérieure n'a simplement aucune fiche).</item>
     /// </list>
     /// </summary>
     private static readonly HashSet<string> AdditiveTablesToleratedWhenAbsent =
-        new(StringComparer.OrdinalIgnoreCase) { "DocumentSequences" };
+        new(StringComparer.OrdinalIgnoreCase) { "DocumentSequences", "WorkshopSheets", "WorkshopSheetItems" };
 
     /// <summary>
     /// Colonnes <b>purement additives</b> (NOT NULL avec valeur par défaut) introduites par une migration

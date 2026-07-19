@@ -169,6 +169,35 @@ public class InvalidOrderStatusTransitionException : DomainException
 }
 
 /// <summary>
+/// Erreur <b>métier contrôlée</b> (P3-6B) : la création d'une nouvelle <b>version de fiche atelier</b> a échoué
+/// parce qu'une autre opération a créé la même version entre-temps. La base est l'arbitre : l'unicité
+/// <c>(OrderId, Version)</c> — et celle de la version courante — a refusé l'insertion. La transaction est
+/// annulée : l'ancienne version courante <b>reste courante</b>, aucune version partielle n'est conservée.
+///
+/// <para>
+/// Aucune re-tentative opaque n'est effectuée à l'intérieur de la transaction : après une violation de
+/// contrainte, la transaction n'est plus utilisable. L'appelant peut relancer <b>explicitement</b> l'opération.
+/// Définie dans le domaine (sans dépendance EF/SQLite) ; le message est métier et stable, sans détail technique.
+/// </para>
+/// </summary>
+public class WorkshopSheetVersionConflictException : DomainException
+{
+    /// <summary>Identifiant de la commande concernée.</summary>
+    public long OrderId { get; }
+
+    /// <summary>Numéro de version dont l'attribution a échoué.</summary>
+    public int AttemptedVersion { get; }
+
+    public WorkshopSheetVersionConflictException(long orderId, int attemptedVersion)
+        : base("Une autre fiche atelier a été générée pour cette commande pendant l'opération. " +
+               "Aucune modification n'a été conservée ; veuillez rafraîchir la commande et réessayer.")
+    {
+        OrderId = orderId;
+        AttemptedVersion = attemptedVersion;
+    }
+}
+
+/// <summary>
 /// Erreur <b>métier contrôlée</b> (P2A-1E, R-03) liée à la <b>numérotation fiable</b> des documents : la
 /// séquence demandée est introuvable (compteur non initialisé) ou aucun numéro n'a pu être attribué malgré
 /// les tentatives (contention persistante). Aucun numéro n'est consommé.

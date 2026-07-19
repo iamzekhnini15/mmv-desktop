@@ -42,6 +42,11 @@ using MMV.Application.UseCases.Users.CreateUser;
 using MMV.Application.UseCases.Users.ListUsers;
 using MMV.Application.UseCases.Users.SetUserActive;
 using MMV.Application.UseCases.Users.UpdateUser;
+using MMV.Application.UseCases.WorkshopSheets.GenerateWorkshopSheet;
+using MMV.Application.UseCases.WorkshopSheets.GetCurrentWorkshopSheet;
+using MMV.Application.UseCases.WorkshopSheets.ListWorkshopSheetVersions;
+using MMV.Application.UseCases.WorkshopSheets.RejectWorkshopSheetQc;
+using MMV.Application.UseCases.WorkshopSheets.ValidateWorkshopSheetQc;
 
 namespace MMV.Application;
 
@@ -230,6 +235,19 @@ public static class DependencyInjection
         // liste produit à graphe (threading vers fiche + formulaire d'ÉDITION). Portée Scoped (même portée
         // qu'OpticDbContext / repositories). Chaque query projette vers des DTO plats/composites : aucune entité EF
         // suivie ne franchit la frontière UI.
+        // ---------------------------------------------------------------------------------------------------------
+        // P3-6B — Fiche atelier de montage (bon de travaux technicien). Portée Scoped : même portée
+        // qu'OpticDbContext, IOrderRepository et ITransactionRunner — la génération d'une version (bascule de la
+        // version courante + insertion) et la prise de décision de contrôle qualité partagent donc la transaction.
+        // La création AUTOMATIQUE de la première version est portée par AdvanceOrderStatusUseCase (déjà enregistré
+        // ci-dessus), qui réutilise la même opération partagée : aucune seconde source de vérité.
+        // ---------------------------------------------------------------------------------------------------------
+        services.AddScoped<IGenerateWorkshopSheetUseCase, GenerateWorkshopSheetUseCase>();
+        services.AddScoped<IGetCurrentWorkshopSheetUseCase, GetCurrentWorkshopSheetUseCase>();
+        services.AddScoped<IListWorkshopSheetVersionsUseCase, ListWorkshopSheetVersionsUseCase>();
+        services.AddScoped<IValidateWorkshopSheetQcUseCase, ValidateWorkshopSheetQcUseCase>();
+        services.AddScoped<IRejectWorkshopSheetQcUseCase, RejectWorkshopSheetQcUseCase>();
+
         services.AddScoped<IGetSaleFormReferenceDataUseCase, GetSaleFormReferenceDataUseCase>();
         services.AddScoped<IGetOrderDetailsUseCase, GetOrderDetailsUseCase>();
         services.AddScoped<IListCustomersUseCase, ListCustomersUseCase>();

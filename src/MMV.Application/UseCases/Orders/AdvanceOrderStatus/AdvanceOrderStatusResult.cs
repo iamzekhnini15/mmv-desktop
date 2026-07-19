@@ -37,4 +37,10 @@ public sealed class AdvanceOrderStatusResult
 
     /// <summary>Vrai si une notification de changement de statut a été créée.</summary>
     public bool HasNotification { get; init; }
+
+    /// <summary>
+    /// Vrai si une <b>première version de fiche atelier</b> a été générée automatiquement par cette transition
+    /// (P3-6B). Faux si la commande en possédait déjà une, ou si la transition n'est pas un point de génération.
+    /// </summary>
+    public bool HasCreatedWorkshopSheet { get; init; }
 }

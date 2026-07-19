@@ -91,6 +91,16 @@ public class OpticDbContext : DbContext
     /// </summary>
     public DbSet<OrderItem> OrderItems { get; set; } = null!;
 
+    /// <summary>
+    /// Fiches atelier de montage (bons de travaux technicien), versionnées et immuables. P3-6B.
+    /// </summary>
+    public DbSet<WorkshopSheet> WorkshopSheets { get; set; } = null!;
+
+    /// <summary>
+    /// Lignes snapshot des fiches atelier. P3-6B.
+    /// </summary>
+    public DbSet<WorkshopSheetItem> WorkshopSheetItems { get; set; } = null!;
+
     // ========== POINT DE VENTE ==========
     /// <summary>
     /// Ventes (caisse/point de vente).
@@ -152,6 +162,8 @@ public class OpticDbContext : DbContext
         modelBuilder.ApplyConfiguration(new PrescriptionConfiguration());
         modelBuilder.ApplyConfiguration(new OrderConfiguration());
         modelBuilder.ApplyConfiguration(new OrderItemConfiguration());
+        modelBuilder.ApplyConfiguration(new WorkshopSheetConfiguration());
+        modelBuilder.ApplyConfiguration(new WorkshopSheetItemConfiguration());
         modelBuilder.ApplyConfiguration(new SaleConfiguration());
         modelBuilder.ApplyConfiguration(new SaleItemConfiguration());
         modelBuilder.ApplyConfiguration(new StockMovementConfiguration());
