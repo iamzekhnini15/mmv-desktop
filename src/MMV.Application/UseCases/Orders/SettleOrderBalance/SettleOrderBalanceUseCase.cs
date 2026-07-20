@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using MMV.Domain.Constants;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Persistence;
@@ -131,11 +132,11 @@ public sealed class SettleOrderBalanceUseCase : ISettleOrderBalanceUseCase
         {
             var notification = new Notification
             {
-                Type = "PaymentReceived",
+                Type = NotificationTypes.PaymentReceived,
                 Title = $"Paiement encaissé - {fresh.OrderNumber}",
                 Message = $"Le solde de {amountToEncash:F2} € a été encaissé pour la commande {fresh.OrderNumber}.",
                 EntityId = fresh.OrderId,
-                EntityType = "Order",
+                EntityType = NotificationEntityTypes.Order,
                 IsRead = false,
                 CreatedAt = DateTime.Now
             };

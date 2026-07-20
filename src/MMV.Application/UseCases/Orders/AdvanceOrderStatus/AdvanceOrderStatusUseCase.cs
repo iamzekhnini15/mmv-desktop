@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using MMV.Domain.Constants;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
@@ -170,13 +171,13 @@ public sealed class AdvanceOrderStatusUseCase : IAdvanceOrderStatusUseCase
             {
                 var notification = new Notification
                 {
-                    Type = "OrderStatusChanged",
+                    Type = NotificationTypes.OrderStatusChanged,
                     Title = $"Commande {fresh.OrderNumber} : {command.NextStatusDisplay}",
                     Message = $"La commande {fresh.OrderNumber} ({command.CustomerDisplayName}) est passée de " +
                               $"'{command.CurrentStatusDisplay}' à " +
                               $"'{command.NextStatusDisplay}'.",
                     EntityId = fresh.OrderId,
-                    EntityType = "Order",
+                    EntityType = NotificationEntityTypes.Order,
                     IsRead = false,
                     CreatedAt = DateTime.Now
                 };

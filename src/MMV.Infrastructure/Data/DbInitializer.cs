@@ -1,3 +1,4 @@
+using MMV.Domain.Constants;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 
@@ -933,11 +934,11 @@ public static class DbInitializer
         {
             notifications.Add(new Notification
             {
-                Type = "LowStock",
+                Type = NotificationTypes.LowStock,
                 Title = "Stock faible",
                 Message = $"Le produit '{product.Name}' a un stock faible ({product.StockQuantity} unités)",
                 EntityId = product.ProductId,
-                EntityType = "Product",
+                EntityType = NotificationEntityTypes.Product,
                 IsRead = _random.Next(100) < 30,
                 CreatedAt = DateTime.UtcNow.AddDays(-_random.Next(1, 7))
             });
@@ -949,11 +950,11 @@ public static class DbInitializer
         {
             notifications.Add(new Notification
             {
-                Type = "StockOut",
+                Type = NotificationTypes.StockOut,
                 Title = "Rupture de stock",
                 Message = $"Le produit '{product.Name}' est en rupture de stock",
                 EntityId = product.ProductId,
-                EntityType = "Product",
+                EntityType = NotificationEntityTypes.Product,
                 IsRead = _random.Next(100) < 20,
                 CreatedAt = DateTime.UtcNow.AddDays(-_random.Next(1, 5))
             });
@@ -962,7 +963,7 @@ public static class DbInitializer
         // Quelques notifications générales
         notifications.Add(new Notification
         {
-            Type = "Info",
+            Type = NotificationTypes.Info,
             Title = "Nouveau catalogue",
             Message = "Le nouveau catalogue de montures est disponible",
             IsRead = false,
@@ -971,7 +972,7 @@ public static class DbInitializer
 
         notifications.Add(new Notification
         {
-            Type = "Info",
+            Type = NotificationTypes.Info,
             Title = "Formation",
             Message = "Formation sur les nouveaux verres progressifs le 15/02",
             IsRead = false,

@@ -122,6 +122,9 @@ public sealed class RegisterSaleProductAcquisitionOrderTests : IDisposable
         public Task<Product?> GetByIdFreshAsync(long productId, CancellationToken cancellationToken = default)
             => _inner.GetByIdFreshAsync(productId, cancellationToken);
 
+        public Task<IReadOnlyList<Product>> GetActiveLowStockAsync(CancellationToken cancellationToken = default)
+            => _inner.GetActiveLowStockAsync(cancellationToken);
+
         public Task<Product?> GetByReferenceAsync(string reference, CancellationToken cancellationToken = default)
             => _inner.GetByReferenceAsync(reference, cancellationToken);
 

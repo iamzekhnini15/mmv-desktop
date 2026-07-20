@@ -423,6 +423,178 @@ public sealed class SqliteDatabaseManagerTests : IDisposable
         journal.Entries.Should().Contain(e => e.Contains("ADOPT REFUSED"));
     }
 
+    // ---------------------------------------------------------------------
+    // P3-8 — Adoption partielle du schéma de résolution des notifications
+    // ---------------------------------------------------------------------
+    //
+    // AddNotificationResolution ajoute, dans UNE seule migration, la colonne Notifications.ResolvedAt ET l'index
+    // unique filtré idx_notifications_active_low_stock_unique. Comme pour R-19 / DocumentSequences / IsArchived /
+    // WorkshopSheets, une base historique peut avoir été créée AVANT cette migration : EnsureCreated() construit
+    // toujours le modèle COURANT, donc pour simuler une base antérieure on construit le schéma courant puis on
+    // retire chirurgicalement la colonne et/ou l'index P3-8 avant adoption.
+
+    private static List<string> ColumnNames(string databasePath, string table)
+    {
+        using var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False;Mode=ReadOnly");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info(\"{table}\")";
+        using var reader = command.ExecuteReader();
+        var names = new List<string>();
+        while (reader.Read())
+        {
+            names.Add(reader.GetString(1));
+        }
+
+        return names;
+    }
+
+    private static bool IndexExists(string databasePath, string indexName)
+    {
+        using var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False;Mode=ReadOnly");
+        connection.Open();
+        return ScalarOrNull(connection, $"SELECT name FROM sqlite_master WHERE type='index' AND name='{indexName}'") != null;
+    }
+
+    [Fact]
+    public void PrepareDatabase_Historical_MissingNotificationResolutionSchema_ExecutesMigration_WithoutDataLoss()
+    {
+        // État "absent / absent / absent" (§3.2, ligne 1) : aucune trace de P3-8 -> la migration doit s'EXÉCUTER
+        // réellement (pas être baselinée), comme R-19/DocumentSequences/IsArchived/WorkshopSheets avant elle.
+        var dbPath = PathFor("historical-p38-absent.db");
+        using (var seed = CreateContext(dbPath))
+        {
+            seed.Database.EnsureCreated();
+            seed.Customers.Add(new Customer { FirstName = "Ivy", LastName = "Historique" });
+            seed.SaveChanges();
+        }
+        SqliteConnection.ClearAllPools();
+
+        using (var connection = new SqliteConnection($"Data Source={dbPath};Pooling=False"))
+        {
+            connection.Open();
+            Exec(connection, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+            Exec(connection, "ALTER TABLE \"Notifications\" DROP COLUMN \"ResolvedAt\"");
+        }
+        SqliteConnection.ClearAllPools();
+
+        var journal = new MigrationJournal();
+        var manager = new SqliteDatabaseManager(journal);
+
+        DatabasePreparationResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            result = manager.PrepareDatabase(context);
+        }
+
+        result.WasAdopted.Should().BeTrue();
+        journal.Entries.Should().Contain(e => e.Contains("AddNotificationResolution will be executed"));
+
+        using var verify = CreateContext(dbPath);
+        verify.Database.GetPendingMigrations().Should().BeEmpty();
+        verify.Database.GetAppliedMigrations().Should().Contain(m => m.EndsWith("_AddNotificationResolution", StringComparison.Ordinal));
+        verify.Customers.Should().ContainSingle(c => c.FirstName == "Ivy", "l'exécution réelle de la migration ne doit perdre aucune donnée");
+
+        ColumnNames(dbPath, "Notifications").Should().Contain("ResolvedAt");
+        IndexExists(dbPath, "idx_notifications_active_low_stock_unique").Should().BeTrue();
+    }
+
+    [Fact]
+    public void PrepareDatabase_Historical_NotificationSchemaAlreadyComplete_BaselinesWithoutReplayingAddColumn()
+    {
+        // État "absent (historique) / présent / présent" (§3.2, ligne 3) : le schéma P3-8 est déjà physiquement
+        // complet (cas réel : EnsureCreated() construit toujours le modèle courant) -> baseline normal, aucune
+        // exécution forcée de AddNotificationResolution.
+        var dbPath = PathFor("historical-p38-complete.db");
+        using (var seed = CreateContext(dbPath))
+        {
+            seed.Database.EnsureCreated();
+        }
+        SqliteConnection.ClearAllPools();
+
+        var journal = new MigrationJournal();
+        var manager = new SqliteDatabaseManager(journal);
+
+        DatabasePreparationResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            result = manager.PrepareDatabase(context);
+        }
+
+        result.WasAdopted.Should().BeTrue();
+        result.BaselinedMigrations.Should().Contain(m => m.EndsWith("_AddNotificationResolution", StringComparison.Ordinal));
+        result.AppliedMigrations.Should().NotContain(m => m.EndsWith("_AddNotificationResolution", StringComparison.Ordinal),
+            "le schéma étant déjà physiquement complet, la migration doit être BASELINÉE, jamais rejouée");
+        journal.Entries.Should().NotContain(e => e.Contains("AddNotificationResolution will be executed"));
+    }
+
+    [Fact]
+    public void PrepareDatabase_Historical_ResolvedAtPresentButIndexMissing_RefusesAdoption()
+        // État "absent / présent / absent" (§3.2, ligne 4) : schéma partiel -> refus explicite, jamais un baseline
+        // qui affirmerait à tort une protection multi-poste inexistante.
+        => AssertHistoricalAdoptionRefused(
+            conn => Exec(conn, "DROP INDEX \"idx_notifications_active_low_stock_unique\""),
+            "partiel");
+
+    [Fact]
+    public void PrepareDatabase_Historical_ResolvedAtPresentButIndexFilterWrong_RefusesAdoption()
+        // Variante de la ligne 4/8 : un index du même nom existe, UNIQUE, sur les bonnes colonnes, mais SANS la
+        // restriction de type — exactement le piège signalé par l'audit (bloquerait les transitions de commande).
+        // Il doit être détecté comme mal défini, pas seulement comme "absent".
+        => AssertHistoricalAdoptionRefused(
+            conn =>
+            {
+                Exec(conn, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+                Exec(conn,
+                    "CREATE UNIQUE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                    "(\"Type\", \"EntityType\", \"EntityId\") WHERE \"EntityId\" IS NOT NULL AND \"ResolvedAt\" IS NULL");
+            },
+            "partiel");
+
+    [Fact]
+    public void PrepareDatabase_Historical_IndexHomonymPresentButResolvedAtMissing_RefusesAdoption()
+        // État "absent / absent / index homonyme mal défini" (§3.2, ligne 5) : un index de même nom existe sans
+        // rapport avec la colonne (jamais produit par une exécution normale de la migration, mais une base altérée
+        // à la main peut le présenter) -> refus explicite, jamais confondu avec "absence normale".
+        => AssertHistoricalAdoptionRefused(
+            conn =>
+            {
+                Exec(conn, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+                Exec(conn, "ALTER TABLE \"Notifications\" DROP COLUMN \"ResolvedAt\"");
+                Exec(conn, "CREATE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" (\"Type\")");
+            },
+            "incohérent");
+
+    [Fact]
+    public void PrepareDatabase_ManagedDatabase_TamperedNotificationSchema_ThrowsInconsistentHistory()
+    {
+        // États "présent (historique) / absent ou mal défini" (§3.2, lignes 6-8) : une migration transactionnelle
+        // normale ne peut pas les produire (Migrate() est tout-ou-rien), mais une base altérée à la main APRÈS
+        // une migration réussie le peut. __EFMigrationsHistory affirme AddNotificationResolution appliquée alors
+        // que le schéma physique ne la reflète plus -> jamais accepté silencieusement, même hors adoption.
+        var dbPath = PathFor("managed-p38-tampered.db");
+        using (var seed = CreateContext(dbPath))
+        {
+            seed.Database.Migrate();
+        }
+        SqliteConnection.ClearAllPools();
+
+        using (var connection = new SqliteConnection($"Data Source={dbPath};Pooling=False"))
+        {
+            connection.Open();
+            Exec(connection, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+            Exec(connection, "ALTER TABLE \"Notifications\" DROP COLUMN \"ResolvedAt\"");
+        }
+        SqliteConnection.ClearAllPools();
+
+        var manager = new SqliteDatabaseManager();
+        using var context = CreateContext(dbPath);
+        var act = () => manager.PrepareDatabase(context);
+
+        act.Should().Throw<DatabaseMigrationException>()
+            .Which.Message.Should().Contain("AddNotificationResolution");
+    }
+
     [Fact]
     public void Baseline_WritesAndReadsBackMigrationHistory()
     {

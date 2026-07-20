@@ -96,6 +96,25 @@ public class ProductRepository : BaseRepository<Product, long>, IProductReposito
     }
 
     /// <summary>
+    /// Produits <b>actifs</b> au niveau ou en dessous du seuil d'alerte (P3-8) : population exacte des alertes de
+    /// stock bas, filtrée <b>en SQL</b>.
+    /// </summary>
+    /// <remarks>
+    /// N'emprunte pas le <c>GetQueryable()</c> privé : celui-ci charge cinq navigations (catégorie, fournisseur,
+    /// détails verre/lentille/accessoire) dont la génération d'alertes n'utilise aucune. Seules les colonnes de la
+    /// table <c>Products</c> sont lues. Tri par <c>ProductId</c> : ordre déterministe et stable, indépendant du
+    /// stock — donc reproductible d'une exécution à l'autre.
+    /// </remarks>
+    public async Task<IReadOnlyList<Product>> GetActiveLowStockAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .Where(p => p.IsActive && p.StockQuantity <= p.StockAlertThreshold)
+            .OrderBy(p => p.ProductId)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
     /// Recherche des produits par nom (partiel).
     /// </summary>
     public async Task<IList<Product>> SearchByNameAsync(string searchTerm, CancellationToken cancellationToken = default)

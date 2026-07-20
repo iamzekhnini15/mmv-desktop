@@ -4,6 +4,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using MMV.Domain.Constants;
 
 namespace MMV.Infrastructure.Data;
 
@@ -287,6 +288,38 @@ public sealed class SqliteDatabaseManager
 
         _journal.Write("ADOPT: schema compatibility gate passed.");
 
+        // --- P3-8 : refus explicite d'un schéma de résolution des notifications PARTIEL ou ALTÉRÉ (avant toute
+        //     écriture). AddNotificationResolution ajoute, dans une seule migration, la colonne Notifications.
+        //     ResolvedAt ET l'index unique filtré protégeant l'unicité des alertes de stock bas actives. Un état où
+        //     l'un existe sans l'autre — ou où un index porte le même nom sans le filtre attendu — ne peut être
+        //     produit par une exécution normale de cette migration : c'est un schéma altéré à la main ou un
+        //     historique mensonger. On refuse ici, AVANT toute inscription dans __EFMigrationsHistory, plutôt que de
+        //     baseliner une protection multi-poste qui n'existe pas physiquement.
+        var resolvedAtColumnPresent = ColumnExists(context, NotificationsTableName, ResolvedAtColumnName);
+        var (activeLowStockIndexExists, activeLowStockIndexValid) = InspectActiveLowStockUniqueIndex(context);
+
+        if (!resolvedAtColumnPresent && activeLowStockIndexExists)
+        {
+            _journal.Write(
+                "ADOPT REFUSED: notification active low-stock index present without ResolvedAt column (homonym or leftover index).");
+            throw new DatabaseMigrationException(
+                "Schéma de résolution des notifications incohérent : un index nommé idx_notifications_active_low_stock_unique " +
+                "existe alors que la colonne Notifications.ResolvedAt qu'il filtre est absente. Adoption refusée. " +
+                "Aucune migration n'a été inscrite dans __EFMigrationsHistory ; la base et sa sauvegarde sont conservées.");
+        }
+
+        if (resolvedAtColumnPresent && !(activeLowStockIndexExists && activeLowStockIndexValid))
+        {
+            _journal.Write(
+                $"ADOPT REFUSED: partial notification resolution schema (ResolvedAt present, active low-stock unique index " +
+                $"present={activeLowStockIndexExists}, valid={activeLowStockIndexValid}).");
+            throw new DatabaseMigrationException(
+                "Schéma de résolution des notifications partiel : la colonne Notifications.ResolvedAt est présente " +
+                "mais l'index unique filtré idx_notifications_active_low_stock_unique protégeant les alertes de stock " +
+                "bas actives est absent ou mal défini. Adoption refusée. Aucune migration n'a été inscrite dans " +
+                "__EFMigrationsHistory ; la base et sa sauvegarde sont conservées.");
+        }
+
         // --- P3-6B : refus explicite d'une extension de fiche atelier PARTIELLE (avant toute écriture) ---
         // Les deux tables sont créées ensemble par AddWorkshopSheets : n'en trouver qu'une seule signale une base
         // altérée à la main ou une adoption précédemment interrompue. Les deux issues automatiques seraient
@@ -387,6 +420,23 @@ public sealed class SqliteDatabaseManager
             }
         }
 
+        // (e) P3-8 : AddNotificationResolution si la colonne Notifications.ResolvedAt est physiquement absente (base
+        //     antérieure à P3-8). Baseliner cette migration marquerait à tort la colonne ET l'index unique filtré
+        //     comme créés, laissant les alertes de stock bas sans protection multi-poste ni distinction
+        //     active/résolue (historique mensonger). Le cas partiel (colonne présente sans index valide, ou index
+        //     homonyme sans colonne) a déjà été refusé plus haut.
+        if (!resolvedAtColumnPresent)
+        {
+            var notificationResolutionIndex = allMigrations.FindIndex(IsAddNotificationResolutionMigration);
+            if (notificationResolutionIndex >= 0)
+            {
+                firstIndexToExecute = Math.Min(firstIndexToExecute, notificationResolutionIndex);
+                _journal.Write(
+                    "ADOPT: Notifications.ResolvedAt column absent (base antérieure à P3-8) — " +
+                    "AddNotificationResolution will be executed (resolution column + unique filtered index created, historical duplicates normalized).");
+            }
+        }
+
         var migrationsToBaseline = allMigrations.Take(firstIndexToExecute).ToList();
 
         // --- Baseline : inscription de l'historique (accès EF encapsulé) ---
@@ -458,6 +508,10 @@ public sealed class SqliteDatabaseManager
                 "reflète pas le schéma réel ; la base et sa sauvegarde sont conservées.");
         }
 
+        // Note : la cohérence physique de Notifications.ResolvedAt et de son index unique filtré (P3-8) est déjà
+        // garantie inconditionnellement par VerifyAfterPreparation ci-dessus (appelée avant ce point) — inutile de
+        // la revérifier ici.
+
         return new DatabasePreparationResult
         {
             DetectedState = DatabaseState.HistoricalWithoutMigrationsHistory,
@@ -506,6 +560,21 @@ public sealed class SqliteDatabaseManager
 
     private static bool IsAddCustomerArchivingMigration(string migrationId)
         => migrationId.EndsWith(AddCustomerArchivingMigrationSuffix, StringComparison.Ordinal);
+
+    /// <summary>Table des notifications.</summary>
+    private const string NotificationsTableName = "Notifications";
+
+    /// <summary>Colonne de résolution des alertes de stock bas (P3-8).</summary>
+    private const string ResolvedAtColumnName = "ResolvedAt";
+
+    /// <summary>Index unique filtré protégeant l'unicité des alertes de stock bas actives (P3-8).</summary>
+    private const string ActiveLowStockUniqueIndexName = "idx_notifications_active_low_stock_unique";
+
+    /// <summary>Suffixe de l'identifiant de la migration additive P3-8 (résolution des notifications).</summary>
+    private const string AddNotificationResolutionMigrationSuffix = "_AddNotificationResolution";
+
+    private static bool IsAddNotificationResolutionMigration(string migrationId)
+        => migrationId.EndsWith(AddNotificationResolutionMigrationSuffix, StringComparison.Ordinal);
 
     /// <summary>
     /// Point UNIQUE d'écriture de <c>__EFMigrationsHistory</c> (encapsule l'accès à l'API
@@ -564,6 +633,23 @@ public sealed class SqliteDatabaseManager
             throw new DatabaseMigrationException(
                 "La base a été préparée mais reste illisible par EF (agrégats principaux inaccessibles).", ex);
         }
+
+        // --- P3-8 : garantie inconditionnelle, quel que soit le chemin (fresh install / managé / adopté) ---
+        // AddNotificationResolution est TOUJOURS dans l'historique une fois la préparation terminée sans erreur
+        // (aucune migration en attente n'a été vérifiée ci-dessus). Un historique qui l'affirme sans que la colonne
+        // et l'index unique filtré existent physiquement — schéma altéré à la main après coup, y compris sur une
+        // base déjà gérée par migrations — ne doit jamais être accepté silencieusement.
+        var (activeLowStockIndexExists, activeLowStockIndexValid) = InspectActiveLowStockUniqueIndex(context);
+        if (!ColumnExists(context, NotificationsTableName, ResolvedAtColumnName)
+            || !activeLowStockIndexExists
+            || !activeLowStockIndexValid)
+        {
+            throw new DatabaseMigrationException(
+                "Incohérence après préparation : la colonne Notifications.ResolvedAt ou l'index unique filtré " +
+                "idx_notifications_active_low_stock_unique sont absents ou mal définis alors qu'aucune migration " +
+                "n'est en attente (AddNotificationResolution devrait être appliquée). __EFMigrationsHistory ne " +
+                "reflète pas le schéma réel.");
+        }
     }
 
     /// <summary>
@@ -594,6 +680,61 @@ public sealed class SqliteDatabaseManager
             }
 
             return false;
+        }
+        finally
+        {
+            if (mustClose && connection.State == ConnectionState.Open)
+            {
+                connection.Close();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Inspecte physiquement l'index unique filtré des alertes de stock bas actives (P3-8) via
+    /// <c>sqlite_master.sql</c> — PRAGMA <c>index_info</c> n'expose pas la clause <c>WHERE</c>, donc seule une
+    /// lecture du texte SQL réel permet de distinguer un index correctement filtré d'un homonyme mal défini.
+    /// </summary>
+    /// <returns>
+    /// <c>Exists</c> : un index de ce nom existe. <c>Valid</c> : il est <c>UNIQUE</c>, porte les trois colonnes
+    /// attendues et filtre exactement sur les quatre termes requis (Type='LowStock', EntityType='Product',
+    /// EntityId IS NOT NULL, ResolvedAt IS NULL).
+    /// </returns>
+    private static (bool Exists, bool Valid) InspectActiveLowStockUniqueIndex(OpticDbContext context)
+    {
+        var connection = context.Database.GetDbConnection();
+        var mustClose = connection.State != ConnectionState.Open;
+        try
+        {
+            if (mustClose)
+            {
+                connection.Open();
+            }
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = @name";
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = "@name";
+            parameter.Value = ActiveLowStockUniqueIndexName;
+            command.Parameters.Add(parameter);
+
+            var sql = command.ExecuteScalar() as string;
+            if (string.IsNullOrEmpty(sql))
+            {
+                return (false, false);
+            }
+
+            var valid = sql.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase)
+                && sql.Contains("\"Type\"", StringComparison.Ordinal)
+                && sql.Contains("\"EntityType\"", StringComparison.Ordinal)
+                && sql.Contains("\"EntityId\"", StringComparison.Ordinal)
+                && sql.Contains("WHERE", StringComparison.OrdinalIgnoreCase)
+                && sql.Contains(NotificationTypes.LowStock, StringComparison.Ordinal)
+                && sql.Contains(NotificationEntityTypes.Product, StringComparison.Ordinal)
+                && sql.Contains("\"EntityId\" IS NOT NULL", StringComparison.Ordinal)
+                && sql.Contains("\"ResolvedAt\" IS NULL", StringComparison.Ordinal);
+
+            return (true, valid);
         }
         finally
         {

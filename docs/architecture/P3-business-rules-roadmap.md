@@ -420,7 +420,12 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   - **1134 tests** au total (0 échec, 0 ignoré ; Domain 481 · Application 414 · App 239), tri déterministe des
     prises produit et lectures fraîches non suivies ajoutés lors de la revue ciblée avant commit ;
   - **aucune migration** ; **aucune UI** modifiée.
-- **Sous réserve de CI** : validation locale uniquement à ce stade (aucun commit, aucun push).
+- **CI validée — étape close.**
+  - commit : `ae0e35d7409a7287af1881025843b26382b5ecfc` ;
+  - run CI : [`29709378954`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/29709378954) ;
+  - conclusion : `success` (`push` / `completed`) ;
+  - **1134 tests** au moment du commit ; **aucune migration** ; **aucune UI**.
+- **Verdict : `P3-7-CI = GO`.**
 
 ### P3-8 — Notifications métier
 
@@ -433,6 +438,39 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - **Fichiers** : `Notification`, `GenerateLowStockNotificationsUseCase`, `MarkAllNotificationsReadUseCase`.
 - **Tests** : anti-doublon ; pas de N+1 ; résolution au réapprovisionnement (si retenu).
 - **Sortie** : notifications non doublonnées, requête efficace.
+- **Audit terminé** — [rapport d'audit P3-8](../implementation/P3-8-notifications-business-rules-audit-report.md)
+  (verdict `P3-8 AUDIT = GO`).
+- **Implémentation backend validée localement** — [rapport d'implémentation
+  P3-8](../implementation/P3-8-notifications-business-rules-implementation-report.md) :
+  - **lecture et résolution séparées** : `IsRead` (« vu par l'opérateur ») et `ResolvedAt` (« condition terminée »)
+    sont deux axes orthogonaux ; `IsRead` ne participe plus à l'anti-doublon ;
+  - **doublons après lecture supprimés** : « tout marquer comme lu » puis générer ne recrée plus aucune alerte —
+    le défaut était déterministe et mono-poste, déclenché à chaque connexion ;
+  - **N+1 supprimé** : le nombre de lectures est constant (toute la table `Notifications` était rechargée pour
+    *chaque* produit sous seuil, en `O(N × M)`) ;
+  - **résolution automatique** au réapprovisionnement, à la désactivation du produit, à sa disparition et au
+    changement de seuil — par recalcul ensembliste, sans code dédié à chaque cas ;
+  - **nouveaux épisodes supportés** : une seconde pénurie après réapprovisionnement ouvre une nouvelle alerte,
+    l'ancienne restant conservée et résolue ;
+  - **création concurrente protégée** : insertion atomique `ON CONFLICT DO NOTHING` adossée à un index unique
+    limité aux alertes `LowStock` / `Product` **non résolues** (une seule alerte active, c'est-à-dire
+    `ResolvedAt IS NULL`, par produit) — les faits historiques ne sont jamais contraints ;
+  - **compteur réparé** : les alertes résolues non lues sont exclues du badge ;
+  - migration additive **`AddNotificationResolution`** (colonne nullable + dédoublonnage déterministe + index
+    filtré), **sans aucune suppression de ligne** ;
+  - **1193 tests** au total (0 échec, 0 ignoré ; Domain 508 · Application 446 · App 239).
+- **Revue ciblée avant commit** — [rapport d'implémentation P3-8](../implementation/P3-8-notifications-business-rules-implementation-report.md#revue-ciblée-avant-commit) :
+  - défaut concret trouvé et corrigé dans `SqliteDatabaseManager` : l'adoption d'une base historique antérieure à
+    P3-8 n'exécutait ni ne vérifiait physiquement la migration `AddNotificationResolution` (seule migration additive
+    P3 sans ce traitement) — un historique aurait pu affirmer la protection multi-poste appliquée sans qu'elle
+    existe physiquement ; huit états d'adoption partielle testés (colonne/index absents, présents, partiels,
+    homonymes, ou altérés après coup) ;
+  - preuve ajoutée de l'enrôlement transactionnel de l'insertion SQL brute et de la résolution ensembliste dans la
+    même transaction `EfTransactionRunner` (rollback conjoint prouvé) ;
+  - primitive atomique et fenêtre de mesure du N+1 revues, aucun défaut supplémentaire trouvé ;
+  - **1202 tests** au total après revue (0 échec, 0 ignoré ; Domain 514 · Application 449 · App 239) ;
+  - **aucune UI** modifiée ; commande et paiement fonctionnellement **inchangés**.
+- **Sous réserve de CI** : validation locale uniquement à ce stade (aucun commit, aucun push).
 
 ### P3-9 — Fournisseurs
 

@@ -25,4 +25,17 @@ public sealed class NotificationListItemDto
 
     /// <summary>Date de création (utilisée pour le tri décroissant à l'affichage).</summary>
     public DateTime CreatedAt { get; init; }
+
+    /// <summary>
+    /// Date de résolution métier, ou <c>null</c> si la condition décrite est encore active (P3-8). Orthogonal à
+    /// <see cref="IsRead"/>.
+    /// </summary>
+    public DateTime? ResolvedAt { get; init; }
+
+    /// <summary>
+    /// Indicateur dérivé de <see cref="ResolvedAt"/>, exposé pour le futur redesign du panneau (distinguer visuellement
+    /// une alerte encore active d'un historique clos). <b>Aucun filtrage n'en découle</b> : la liste reste complète,
+    /// actives et résolues confondues — l'historique n'est jamais masqué.
+    /// </summary>
+    public bool IsResolved => ResolvedAt != null;
 }

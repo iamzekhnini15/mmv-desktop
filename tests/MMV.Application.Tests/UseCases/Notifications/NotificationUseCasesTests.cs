@@ -6,6 +6,7 @@ using MMV.Application.UseCases.Notifications.MarkAllNotificationsRead;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Infrastructure.Data;
+using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
 using Xunit;
 
@@ -91,7 +92,7 @@ public sealed class NotificationUseCasesTests : IDisposable
 
         using (var context = CreateContext(dbPath))
         {
-            var useCase = new GenerateLowStockNotificationsUseCase(new ProductRepository(context), new NotificationRepository(context), new UnitOfWork(context));
+            var useCase = new GenerateLowStockNotificationsUseCase(new ProductRepository(context), new NotificationRepository(context), new UnitOfWork(context), new EfTransactionRunner(context));
             var first = await useCase.ExecuteAsync();
             first.CreatedCount.Should().Be(1, "un seul produit est sous son seuil d'alerte");
             first.UnreadCount.Should().Be(1);
@@ -100,7 +101,7 @@ public sealed class NotificationUseCasesTests : IDisposable
         // Deuxième exécution : anti-doublon ⇒ aucune nouvelle notification.
         using (var context = CreateContext(dbPath))
         {
-            var useCase = new GenerateLowStockNotificationsUseCase(new ProductRepository(context), new NotificationRepository(context), new UnitOfWork(context));
+            var useCase = new GenerateLowStockNotificationsUseCase(new ProductRepository(context), new NotificationRepository(context), new UnitOfWork(context), new EfTransactionRunner(context));
             var second = await useCase.ExecuteAsync();
             second.CreatedCount.Should().Be(0);
         }
@@ -113,6 +114,6 @@ public sealed class NotificationUseCasesTests : IDisposable
     public void Constructors_RejectNullDependencies()
     {
         ((Action)(() => _ = new MarkAllNotificationsReadUseCase(null!, null!))).Should().Throw<ArgumentNullException>();
-        ((Action)(() => _ = new GenerateLowStockNotificationsUseCase(null!, null!, null!))).Should().Throw<ArgumentNullException>();
+        ((Action)(() => _ = new GenerateLowStockNotificationsUseCase(null!, null!, null!, null!))).Should().Throw<ArgumentNullException>();
     }
 }

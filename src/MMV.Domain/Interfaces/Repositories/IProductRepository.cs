@@ -44,6 +44,24 @@ public interface IProductRepository : IGenericRepository<Product, long>
     Task<IList<Product>> GetLowStockProductsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Récupère les produits <b>actifs</b> dont le stock est <b>au niveau ou en dessous</b> du seuil d'alerte
+    /// (<c>StockQuantity &lt;= StockAlertThreshold</c>) — population exacte des alertes de stock bas (P3-8).
+    ///
+    /// <para>
+    /// <b>Distincte de <see cref="GetLowStockProductsAsync"/></b>, qui applique une comparaison <b>stricte</b>
+    /// (<c>&lt;</c>) et trie par quantité : elle sert l'écran de réapprovisionnement, pas la génération d'alertes.
+    /// Les fusionner déplacerait silencieusement la frontière métier (un produit exactement au seuil est alerté
+    /// depuis toujours). Tri par <c>ProductId</c> pour un résultat déterministe.
+    /// </para>
+    ///
+    /// <para>
+    /// Le filtre <c>IsActive</c> répare un bruit permanent : avant P3-8 un produit retiré du catalogue mais resté
+    /// sous seuil régénérait une alerte à chaque exécution.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<Product>> GetActiveLowStockAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Recherche des produits par nom (partiel).
     /// </summary>
     Task<IList<Product>> SearchByNameAsync(string searchTerm, CancellationToken cancellationToken = default);

@@ -39,6 +39,9 @@ public sealed class ListNotificationsUseCase : IListNotificationsUseCase
                 Message = n.Message,
                 IsRead = n.IsRead,
                 CreatedAt = n.CreatedAt,
+                // Historique intégral : une alerte résolue reste listée, exactement comme avant P3-8. Seule
+                // l'information de résolution s'ajoute à la projection ; aucune ligne n'est écartée.
+                ResolvedAt = n.ResolvedAt,
             })
             .ToList();
     }

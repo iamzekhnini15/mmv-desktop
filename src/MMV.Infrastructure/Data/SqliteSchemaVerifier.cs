@@ -54,10 +54,17 @@ public sealed class SqliteSchemaVerifier
     /// <list type="bullet">
     ///   <item><c>Customers.IsArchived</c> — P3-2B, ajoutée par <c>AddCustomerArchivingAndProtectHistory</c>.</item>
     ///   <item><c>Products.NormalizedReference</c> — P3-4B, ajoutée par <c>AddProductNormalizedReferenceAndProtectHistory</c>.</item>
+    ///   <item><c>Notifications.ResolvedAt</c> — P3-8, ajoutée par <c>AddNotificationResolution</c>. Nullable et sans
+    ///   valeur par défaut : une base antérieure n'a simplement aucune résolution enregistrée.</item>
     /// </list>
     /// </summary>
     private static readonly HashSet<string> AdditiveColumnsToleratedWhenAbsent =
-        new(StringComparer.OrdinalIgnoreCase) { "Customers.IsArchived", "Products.NormalizedReference" };
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Customers.IsArchived",
+            "Products.NormalizedReference",
+            "Notifications.ResolvedAt",
+        };
 
     /// <summary>
     /// Index uniques <b>purement additifs</b> introduits par une migration récente et qu'aucune base historique
@@ -68,10 +75,17 @@ public sealed class SqliteSchemaVerifier
     ///   <item><c>Products.NormalizedReference</c> — P3-4B (unicité normalisée), créé par
     ///   <c>AddProductNormalizedReferenceAndProtectHistory</c>. L'ancien index unique sur <c>Products.Reference</c>
     ///   subsiste alors en base : c'est un élément supplémentaire, toléré (non attendu par le modèle courant).</item>
+    ///   <item><c>Notifications.EntityId,EntityType,Type</c> — P3-8 (index unique <b>filtré</b> protégeant l'unicité
+    ///   des alertes de stock bas actives), créé par <c>AddNotificationResolution</c> après dédoublonnage des
+    ///   alertes historiques.</item>
     /// </list>
     /// </summary>
     private static readonly HashSet<string> AdditiveUniqueIndexesToleratedWhenAbsent =
-        new(StringComparer.OrdinalIgnoreCase) { "Products.NormalizedReference" };
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Products.NormalizedReference",
+            "Notifications.EntityId,EntityType,Type",
+        };
 
     public SchemaCompatibilityResult Verify(OpticDbContext context)
     {

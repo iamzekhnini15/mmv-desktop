@@ -154,10 +154,11 @@ public sealed class SettleOrderBalanceUseCaseTests : IDisposable
         public Task DeleteAsync(long id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task DeleteAsync(Notification entity, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<bool> ExistsAsync(long id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<IEnumerable<Notification>> GetUnreadNotificationsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task MarkAllAsReadAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task MarkAsReadAsync(long notificationId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<int> CountUnreadAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<long>> GetActiveLowStockEntityIdsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<int> ResolveActiveLowStockAsync(IReadOnlyCollection<long> productIds, DateTime resolvedAt, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> TryCreateActiveLowStockAsync(Notification notification, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     // ------------------------------------------------------------------
