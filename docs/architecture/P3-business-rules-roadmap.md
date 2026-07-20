@@ -343,17 +343,18 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - **Tests** : génération, versionnement/obsolescence, QC bloquant, minimisation données.
 - **Sortie** : fiche atelier persistée, versionnée, avec QC ; ordonnance source intacte.
 
-#### État (P3-6B — audit terminé, implémentation backend durcie et validée localement)
+#### État (P3-6B — terminé, CI validée)
 
 - **P3-6B audit terminé** — rapport :
   [`docs/implementation/P3-6B-workshop-sheet-audit-report.md`](../implementation/P3-6B-workshop-sheet-audit-report.md)
   (verdict `P3-6B AUDIT = GO`). Constat structurant : la fiche n'existait qu'en **UI éphémère**, son contrôle
   qualité n'était que des **cases à cocher décoratives**, et `OrderDetailsItemDto` **perd** usage/prisme/base/acuité.
   Le §27 enregistre les décisions retenues pour l'implémentation.
-- **P3-6B implémentation backend validée localement** — rapport :
+- **P3-6B implémentation backend durcie et validée** — rapport :
   [`docs/implementation/P3-6B-workshop-sheet-implementation-report.md`](../implementation/P3-6B-workshop-sheet-implementation-report.md).
-  Verdict : **`P3-6B HARDENED = GO LOCAL`** — implémentation **locale** uniquement, **sous réserve de la CI du
-  futur commit ; non** marquée définitivement terminée.
+  Verdict : **`P3-6B HARDENED = GO LOCAL`**, **définitif** — commit `53d689eb60821f05ab501a4fa38ec822b0fbff3e`,
+  CI [`29706846895`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/29706846895), conclusion
+  `success`. Verdict : **`P3-6B-CI = GO`**.
   - **Fiche persistée et versionnée** : agrégat `WorkshopSheet` + `WorkshopSheetItem` (une ligne par `OrderItem`),
     snapshot **par valeur** construit depuis `OrderItem` (donc prisme, usage et acuité **récupérés**), nom du
     porteur **seul** (ni téléphone, ni email, ni montant — absence **structurelle**). Unicité `(OrderId, Version)`
@@ -401,6 +402,25 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   reste **nullable** : une vente au comptoir sans client demeure valide). Cf.
   [rapport P3-2B §10](../implementation/P3-2B-customer-archiving-and-deletion-report.md).
 - **Sortie** : vente cohérente, atomique, aux montants fiables.
+- **Audit terminé** — [rapport d'audit P3-7](../implementation/P3-7-sales-business-rules-audit-report.md)
+  (verdict `P3-7 AUDIT = GO`).
+- **Implémentation backend validée localement** — [rapport d'implémentation
+  P3-7](../implementation/P3-7-sales-business-rules-implementation-report.md) :
+  - montants **recalculés** par le backend (`SalePricingPolicy`, propriétaire unique) ; les montants fournis par
+    l'appelant ne sont ni lus, ni comparés ;
+  - `SaleItem.TotalPrice` **corrigé pour les nouvelles ventes** (jamais affecté auparavant) ; aucun backfill
+    historique ;
+  - **client facultatif** (vente au comptoir sans client enfin possible) mais **client archivé refusé**, acquis de
+    façon atomique conditionnelle dans la transaction ;
+  - **produits inexistants ou inactifs refusés**, acquis de façon atomique conditionnelle ;
+  - **règlement du solde atomique** et idempotent (un seul encaissement, une seule notification) ;
+  - `PaymentStatus` **cohérent** (`Pending` / `Partial` / `Paid`), jamais laissé au défaut EF ;
+  - `SaleStatus` **non synchronisé** : seul son état initial contradictoire est corrigé ; la dette de modèle reste
+    documentée, sans nouvelle machine à états ;
+  - **1134 tests** au total (0 échec, 0 ignoré ; Domain 481 · Application 414 · App 239), tri déterministe des
+    prises produit et lectures fraîches non suivies ajoutés lors de la revue ciblée avant commit ;
+  - **aucune migration** ; **aucune UI** modifiée.
+- **Sous réserve de CI** : validation locale uniquement à ce stade (aucun commit, aucun push).
 
 ### P3-8 — Notifications métier
 

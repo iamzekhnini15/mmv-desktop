@@ -48,4 +48,31 @@ public interface ISaleRepository : IGenericRepository<Sale, long>
     /// Récupère les ventes par méthode de paiement.
     /// </summary>
     Task<IList<Sale>> GetByPaymentMethodAsync(PaymentMethod paymentMethod, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <b>Règlement atomique conditionnel</b> de l'intégralité du solde restant d'une vente (P3-7) : solde le
+    /// solde de la vente <paramref name="saleId"/> <b>uniquement si</b> il reste réellement quelque chose à
+    /// encaisser au moment exact de l'écriture. Réalisé par une seule instruction
+    /// <c>UPDATE … WHERE SaleId = @id AND RemainingAmount &gt; 0</c>, qui pose <c>DepositAmount = FinalAmount</c>,
+    /// <c>RemainingAmount = 0</c> et <c>PaymentStatus = Paid</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Pourquoi une primitive.</b> Le règlement était, avant P3-7, le <b>seul</b> acte sensible du système
+    /// dépourvu de protection concurrentielle — alors que le stock (P2A-1D), la numérotation (P2A-1E) et la fiche
+    /// atelier (P3-6B) en disposent tous. Deux postes réglant le même solde réussissaient tous les deux et
+    /// créaient <b>deux</b> notifications d'encaissement du même montant. La condition étant désormais évaluée par
+    /// l'instruction d'écriture, un seul appel peut faire passer le solde à zéro.
+    /// </para>
+    /// <para>
+    /// <b>Idempotence.</b> Un second appel, ou un rejeu, n'affecte aucune ligne : aucune écriture, aucune
+    /// notification. Le montant déjà encaissé n'est jamais réencaissé.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// <c>true</c> si le solde a été réglé par cet appel (1 ligne affectée) ; <c>false</c> si aucune ligne n'a été
+    /// affectée (vente introuvable, solde déjà nul, ou règlement concurrent survenu entre-temps). L'appelant
+    /// distingue ces cas par une lecture <b>purement diagnostique</b>, qui ne décide jamais de l'écriture.
+    /// </returns>
+    Task<bool> TrySettleRemainingBalanceAsync(long saleId, CancellationToken cancellationToken = default);
 }

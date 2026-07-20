@@ -49,4 +49,26 @@ public sealed class ApplicationArchitectureTests
     [Fact]
     public void Application_DoesNotReference_Sqlite()
         => ReferencedAssemblyNames.Should().NotContain(n => n.StartsWith("Microsoft.Data.Sqlite"));
+
+    /// <summary>
+    /// P3-7 — Garde de non-régression : aucun chemin de suppression, de modification ou d'annulation de vente
+    /// n'est introduit. L'absence de ce chemin est aujourd'hui une <b>protection</b> (audit §16) : aucune politique
+    /// d'annulation n'est prouvée métier, et une cascade <c>Sale → Order → OrderItem</c> détruirait l'historique de
+    /// commande tout en laissant des mouvements de stock <b>orphelins</b> (aucune FK ne les relie à la vente), donc
+    /// un stock durablement irréconciliable. La politique d'annulation reste explicitement reportée.
+    /// </summary>
+    [Fact]
+    public void Application_DoesNotExpose_SaleDeletionOrMutationUseCase()
+    {
+        var forbidden = typeof(RegisterSaleUseCase).Assembly.GetTypes()
+            .Where(t => t.IsPublic)
+            .Where(t => t.Name.Contains("DeleteSale", StringComparison.Ordinal)
+                        || t.Name.Contains("UpdateSale", StringComparison.Ordinal)
+                        || t.Name.Contains("CancelSale", StringComparison.Ordinal))
+            .Select(t => t.FullName)
+            .ToList();
+
+        forbidden.Should().BeEmpty(
+            "P3-7 n'ouvre ni suppression, ni modification, ni annulation de vente (politique reportée)");
+    }
 }

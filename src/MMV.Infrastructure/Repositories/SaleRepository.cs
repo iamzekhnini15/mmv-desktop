@@ -102,4 +102,27 @@ public class SaleRepository : BaseRepository<Sale, long>, ISaleRepository
             .OrderByDescending(s => s.SaleDate)
             .ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<bool> TrySettleRemainingBalanceAsync(long saleId, CancellationToken cancellationToken = default)
+    {
+        // Règlement atomique conditionnel (P3-7) : « il reste quelque chose à encaisser » est évalué par la MÊME
+        // instruction que l'écriture. Deux postes réglant le même solde ne peuvent donc pas réussir tous les deux —
+        // le second n'affecte aucune ligne, n'écrit rien et ne notifie rien.
+        //
+        // RemainingAmount étant nullable, une valeur NULL ne satisfait pas « > 0 » : une vente au solde inconnu
+        // n'est jamais réglée à l'aveugle. Le montant encaissé n'est pas fourni par l'appelant : DepositAmount est
+        // posé à la valeur de FinalAmount TELLE QU'ELLE EST EN BASE (jamais une valeur lue puis renvoyée), ce qui
+        // interdit tout encaissement fondé sur un montant périmé.
+        var rowsAffected = await _context.Sales
+            .Where(s => s.SaleId == saleId && s.RemainingAmount > 0m)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(s => s.DepositAmount, s => (decimal?)s.FinalAmount)
+                    .SetProperty(s => s.RemainingAmount, (decimal?)0m)
+                    .SetProperty(s => s.PaymentStatus, PaymentStatus.Paid),
+                cancellationToken);
+
+        return rowsAffected == 1;
+    }
 }

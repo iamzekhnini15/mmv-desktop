@@ -165,4 +165,34 @@ public class ProductRepository : BaseRepository<Product, long>, IProductReposito
                 .ThenInclude(oi => oi.Order)
             .FirstOrDefaultAsync(p => p.ProductId == id, cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<bool> TryAcquireActiveAsync(long productId, CancellationToken cancellationToken = default)
+    {
+        // Prise atomique conditionnelle (P3-7) : « existe ET actif » est évalué par la MÊME instruction que
+        // l'écriture, ce qui refuse une désactivation concurrente survenue depuis l'affichage du panier. La valeur
+        // écrite est celle que la ligne doit déjà porter (IsActive = true) : aucune donnée catalogue n'est
+        // modifiée — en particulier jamais StockQuantity (P3-5) —, la mise à jour sert uniquement de prise de
+        // ligne, maintenue jusqu'au commit.
+        var rowsAffected = await _context.Products
+            .Where(p => p.ProductId == productId && p.IsActive)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(p => p.IsActive, true),
+                cancellationToken);
+
+        return rowsAffected == 1;
+    }
+
+    /// <inheritdoc />
+    public async Task<Product?> GetByIdFreshAsync(long productId, CancellationToken cancellationToken = default)
+    {
+        // AsNoTracking : contourne délibérément le change tracker. GetByIdAsync (FindAsync hérité) renverrait
+        // sinon une entité déjà suivie dans le DbContext de la portée sans requêter la base (P3-7, revue avant
+        // commit) — un risque réel dès lors qu'un même contexte peut avoir chargé ce produit avec tracking
+        // ailleurs dans la même portée (p. ex. un écran catalogue resté ouvert), avec une Category potentiellement
+        // périmée décidant à tort du moment du décrément de stock.
+        return await _dbSet
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.ProductId == productId, cancellationToken);
+    }
 }

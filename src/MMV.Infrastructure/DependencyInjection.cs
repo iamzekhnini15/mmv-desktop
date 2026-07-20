@@ -69,7 +69,9 @@ public static class DependencyInjection
         // archivé). L'écriture des ordonnances passe exclusivement par les use cases Application.
         // P3-6 : IOrderService / OrderService supprimés — service mort (aucun consommateur runtime) qui portait une
         // SECONDE matrice de transitions codée en dur. La matrice unique vit désormais dans OrderStatusPolicy (Domain).
-        services.AddScoped<ISaleService, SaleService>();
+        // P3-7 : ISaleService / SaleService supprimés — service mort (aucun consommateur runtime) qui portait une
+        // SECONDE formule monétaire, divergente et jamais exécutée. Le calcul monétaire d'une vente vit désormais
+        // dans SalePricingPolicy (Domain), unique propriétaire, réellement appelé par RegisterSaleUseCase.
         services.AddScoped<IAuthenticationService, AuthenticationService>();
 
         return services;

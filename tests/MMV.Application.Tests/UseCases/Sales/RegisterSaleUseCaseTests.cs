@@ -79,6 +79,7 @@ public sealed class RegisterSaleUseCaseTests : IDisposable
             new SaleRepository(context),
             new OrderRepository(context),
             new ProductRepository(context),
+            new CustomerRepository(context),
             new StockMovementRepository(context),
             unitOfWork,
             new EfTransactionRunner(context),
@@ -314,9 +315,10 @@ public sealed class RegisterSaleUseCaseTests : IDisposable
             new SaleRepository(context),
             new OrderRepository(context),
             new ProductRepository(context),
+            new CustomerRepository(context),
             new StockMovementRepository(context),
             unitOfWork,
-            transactionRunner: null!,
+            null!, // ITransactionRunner absent : dépendance critique (P2A-1C, R-23)
             new EfStockMutationService(context),
             new EfNumberSequenceService(context));
 

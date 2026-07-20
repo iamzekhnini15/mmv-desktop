@@ -98,4 +98,36 @@ public class CustomerRepository : BaseRepository<Customer, long>, ICustomerRepos
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<bool> TryAcquireActiveAsync(long customerId, CancellationToken cancellationToken = default)
+    {
+        // Prise atomique conditionnelle (P3-7) : la condition « existe ET non archivé » est évaluée par la MÊME
+        // instruction que l'écriture. La valeur écrite est celle que la ligne doit déjà porter (IsArchived = false)
+        // : la mise à jour ne change aucune donnée métier, elle sert exclusivement de prise de ligne, maintenue
+        // jusqu'au commit de la transaction ouverte par ITransactionRunner.
+        //
+        // ExecuteUpdateAsync contourne le change tracker (écriture directe en base, aucune entité suivie mutée) et
+        // s'exécute sur le DbContext de la portée, donc dans la transaction courante : un rollback de la vente
+        // libère la prise.
+        var rowsAffected = await _context.Customers
+            .Where(c => c.CustomerId == customerId && !c.IsArchived)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(c => c.IsArchived, false),
+                cancellationToken);
+
+        return rowsAffected == 1;
+    }
+
+    /// <inheritdoc />
+    public async Task<Customer?> GetByIdFreshAsync(long customerId, CancellationToken cancellationToken = default)
+    {
+        // AsNoTracking : contourne délibérément le change tracker. GetByIdAsync (FindAsync hérité) renverrait
+        // sinon une entité déjà suivie dans le DbContext de la portée sans requêter la base (P3-7, revue avant
+        // commit) — un risque réel dès lors qu'un même contexte peut avoir chargé ce client avec tracking ailleurs
+        // dans la même portée (p. ex. un écran client resté ouvert).
+        return await _context.Customers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.CustomerId == customerId, cancellationToken);
+    }
 }

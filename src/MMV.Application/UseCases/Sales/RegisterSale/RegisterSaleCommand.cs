@@ -9,16 +9,28 @@ namespace MMV.Application.UseCases.Sales.RegisterSale;
 /// transforme son état (champs liés à l'UI) en cette commande, puis délègue.
 /// </summary>
 /// <remarks>
-/// DTO neutre (aucune dépendance EF/Avalonia/MVVM). Les montants (<see cref="TotalAmount"/>,
-/// <see cref="FinalAmount"/>, <see cref="RemainingAmount"/>…) sont calculés par la ViewModel comme dans le
-/// flux d'origine (<c>CalculateFinalAmount</c>) et transmis tels quels : le use case ne recalcule pas, il
-/// déplace la logique de persistance sans en changer le comportement observable. Aucun nouveau concept
-/// métier, aucun <c>Money</c>, aucune devise.
+/// <para>
+/// DTO neutre (aucune dépendance EF/Avalonia/MVVM). Aucun nouveau concept métier, aucun <c>Money</c>, aucune devise.
+/// </para>
+/// <para>
+/// <b>P3-7 — les montants totaux ne sont plus une entrée.</b> <see cref="TotalAmount"/>,
+/// <see cref="FinalAmount"/> et <see cref="RemainingAmount"/> sont désormais <b>intégralement recalculés</b> par
+/// <c>SalePricingPolicy</c> à partir des lignes : le backend ne leur fait plus confiance. Seuls
+/// <see cref="DiscountAmount"/> et <see cref="DepositAmount"/> restent de véritables entrées métier (validées et
+/// bornées). Les trois champs hérités sont conservés uniquement pour ne pas casser l'appelant UI existant.
+/// </para>
 /// </remarks>
 public sealed class RegisterSaleCommand
 {
-    /// <summary>Identifiant du client de la vente.</summary>
-    public long CustomerId { get; init; }
+    /// <summary>
+    /// Identifiant du client de la vente, ou <c>null</c> pour une <b>vente sans client</b> (P3-7).
+    /// </summary>
+    /// <remarks>
+    /// Aligné sur <c>Sale.CustomerId</c>, nullable depuis toujours : le modèle autorisait la vente au comptoir
+    /// anonyme, que ce contrat rendait pourtant impossible. Lorsqu'un client est fourni, il doit exister et ne pas
+    /// être archivé — vérifié par une prise atomique dans la transaction de la vente.
+    /// </remarks>
+    public long? CustomerId { get; init; }
 
     /// <summary>
     /// Vente comptoir immédiate (<c>true</c> : livrée + décrément de stock hors verres) ou vente avec
@@ -26,19 +38,35 @@ public sealed class RegisterSaleCommand
     /// </summary>
     public bool IsCounterSale { get; init; }
 
-    /// <summary>Montant total avant remise (calculé par la ViewModel).</summary>
+    /// <summary>
+    /// <b>Champ hérité de l'ancien contrat — IGNORÉ par le backend (P3-7).</b> Le montant total est recalculé
+    /// depuis les lignes (<c>Σ Quantité × PrixUnitaire</c>) ; la valeur fournie ici n'est ni lue, ni comparée, ni
+    /// persistée. Conservé uniquement pour la compatibilité source de l'appelant UI existant.
+    /// </summary>
     public decimal TotalAmount { get; init; }
 
-    /// <summary>Montant de la remise appliquée.</summary>
+    /// <summary>
+    /// Montant de la remise globale appliquée. <b>Véritable entrée métier</b> : validée (≥ 0) et bornée au montant
+    /// total recalculé.
+    /// </summary>
     public decimal DiscountAmount { get; init; }
 
-    /// <summary>Montant final après remise (calculé par la ViewModel).</summary>
+    /// <summary>
+    /// <b>Champ hérité de l'ancien contrat — IGNORÉ par le backend (P3-7).</b> Le montant final est recalculé
+    /// (<c>Total − Remise</c>) ; la valeur fournie ici n'est ni lue, ni comparée, ni persistée.
+    /// </summary>
     public decimal FinalAmount { get; init; }
 
-    /// <summary>Montant de l'acompte versé.</summary>
+    /// <summary>
+    /// Montant de l'acompte versé. <b>Véritable entrée métier</b> : validé (≥ 0) et borné au montant final
+    /// recalculé.
+    /// </summary>
     public decimal DepositAmount { get; init; }
 
-    /// <summary>Montant restant à payer (calculé par la ViewModel).</summary>
+    /// <summary>
+    /// <b>Champ hérité de l'ancien contrat — IGNORÉ par le backend (P3-7).</b> Le solde restant est recalculé
+    /// (<c>Final − Acompte</c>) ; la valeur fournie ici n'est ni lue, ni comparée, ni persistée.
+    /// </summary>
     public decimal RemainingAmount { get; init; }
 
     /// <summary>Méthode de paiement (déjà convertie depuis le libellé UI par la ViewModel).</summary>

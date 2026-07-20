@@ -180,7 +180,7 @@ public sealed class WorkshopSheetConcurrencyHardeningTests : WorkshopSheetTestBa
     }
 
     [Fact]
-    public void PriseReady_Historique_EstRefusee_SiUneFicheApparaitAvantLEcriture()
+    public async Task PriseReady_Historique_EstRefusee_SiUneFicheApparaitAvantLEcriture()
     {
         // Compatibilité historique atomique : « aucune fiche » lu par le poste A ne doit PAS autoriser Ready si
         // une fiche Pending a été créée entre-temps. L'autorisation est reconfirmée par un NOT EXISTS réel.
@@ -196,8 +196,11 @@ public sealed class WorkshopSheetConcurrencyHardeningTests : WorkshopSheetTestBa
         RegenerateFromOtherWorkstation(dbPath, orderId);
 
         using var context = CreateContext(dbPath);
-        var outcome = new OrderRepository(context).TryTransitionWithWorkshopSheetAsync(
-            orderId, OrderStatus.QualityCheck, OrderStatus.Ready, null, null).GetAwaiter().GetResult();
+        // P3-7 (nettoyage hérité, test-only) : attente asynchrone au lieu de GetAwaiter().GetResult() — une
+        // opération bloquante dans un test peut provoquer un interblocage (xUnit1031). Aucun changement de
+        // comportement ni d'invariant P3-6B : la même prise est exercée, sur le même état, avec la même assertion.
+        var outcome = await new OrderRepository(context).TryTransitionWithWorkshopSheetAsync(
+            orderId, OrderStatus.QualityCheck, OrderStatus.Ready, null, null);
 
         outcome.Should().Be(OrderReadyTransitionOutcome.WorkshopSheetRequirementNotMet);
         StatusOf(dbPath, orderId).Should().Be(OrderStatus.QualityCheck);

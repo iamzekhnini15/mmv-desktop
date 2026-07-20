@@ -37,4 +37,11 @@ public sealed class SettleOrderBalanceResult
 
     /// <summary>Vrai si une notification d'encaissement a été créée.</summary>
     public bool HasNotification { get; init; }
+
+    /// <summary>
+    /// Vrai lorsque le solde était <b>déjà réglé</b> au moment de la prise atomique (P3-7) : rejeu, second clic,
+    /// ou règlement concurrent gagné par un autre poste. Aucune écriture, aucun réencaissement et
+    /// <b>aucune notification</b> n'ont eu lieu ; <see cref="AmountEncashed"/> vaut alors <c>0</c>.
+    /// </summary>
+    public bool AlreadySettled { get; init; }
 }

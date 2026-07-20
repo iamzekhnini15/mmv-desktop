@@ -76,6 +76,7 @@ public sealed class SettleOrderBalanceUseCaseTests : IDisposable
     {
         return new SettleOrderBalanceUseCase(
             new OrderRepository(context),
+            new SaleRepository(context),
             new UnitOfWork(context),
             new EfTransactionRunner(context),
             notificationRepository);
@@ -311,6 +312,7 @@ public sealed class SettleOrderBalanceUseCaseTests : IDisposable
 
         Action act = () => _ = new SettleOrderBalanceUseCase(
             new OrderRepository(context),
+            new SaleRepository(context),
             new UnitOfWork(context),
             transactionRunner: null!);
 
@@ -327,6 +329,7 @@ public sealed class SettleOrderBalanceUseCaseTests : IDisposable
 
         Action act = () => _ = new SettleOrderBalanceUseCase(
             orderRepository: null!,
+            new SaleRepository(context),
             new UnitOfWork(context),
             new EfTransactionRunner(context));
 
