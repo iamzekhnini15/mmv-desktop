@@ -30,9 +30,12 @@ public class SupplierConfiguration : IEntityTypeConfiguration<Supplier>
             .HasMaxLength(50);
 
         // Relations
-        builder.HasMany(s => s.Products)
-            .WithOne(p => p.Supplier)
-            .HasForeignKey(p => p.SupplierId)
-            .OnDelete(DeleteBehavior.SetNull);
+        // P3-9 : la relation Supplier ↔ Product est configurée d'un SEUL côté, dans ProductConfiguration
+        // (IsRequired + DeleteBehavior.Restrict). Un HasMany(...).OnDelete(DeleteBehavior.SetNull) vivait ici et
+        // n'a JAMAIS eu d'effet : le modèle effectif — snapshot, migration ProductSchemaRefactoring et
+        // PRAGMA foreign_key_list('Products') relevé sur une base réelle — porte bien RESTRICT. Il était de plus
+        // inapplicable, SetNull exigeant une FK nullable alors que Product.SupplierId est un long non nullable.
+        // Code trompeur retiré : il décrivait un comportement inexistant. Aucune migration, aucun changement de
+        // modèle (has-pending-model-changes reste vide).
     }
 }

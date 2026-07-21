@@ -470,7 +470,14 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   - primitive atomique et fenêtre de mesure du N+1 revues, aucun défaut supplémentaire trouvé ;
   - **1202 tests** au total après revue (0 échec, 0 ignoré ; Domain 514 · Application 449 · App 239) ;
   - **aucune UI** modifiée ; commande et paiement fonctionnellement **inchangés**.
-- **Sous réserve de CI** : validation locale uniquement à ce stade (aucun commit, aucun push).
+- **Commit et CI — définitif** :
+  - commit : `b30f7748cf6d3eb69cc88c4a6457dea170be4e8a` ;
+  - run CI : [`29783755704`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/29783755704) ;
+  - conclusion : `success` (`push` / `completed`) ;
+  - **1202 tests** au moment du commit (0 échec, 0 ignoré) ;
+  - migration additive **`AddNotificationResolution`** ;
+  - **aucune UI**.
+- **Verdict : `P3-8-CI = GO`.**
 
 ### P3-9 — Fournisseurs
 
@@ -482,6 +489,65 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - **Fichiers** : `Supplier`, (nouveau) `SupplierValidator`, `DeleteSupplierUseCase`.
 - **Tests** : suppression refusée avec produits liés ; validation email.
 - **Sortie** : intégrité fournisseur ↔ produits garantie.
+- **Audit terminé** — [rapport d'audit P3-9](../implementation/P3-9-suppliers-business-rules-audit-report.md)
+  (verdict `P3-9 AUDIT = GO`).
+- **Implémentation backend validée localement** — [rapport d'implémentation
+  P3-9](../implementation/P3-9-suppliers-business-rules-implementation-report.md) :
+  - **fournisseur réellement validé** : `SupplierValidator` (nouveau) — nom obligatoire et borné à 200, longueurs
+    e-mail/téléphone/adresse/code réellement appliquées. Elles ne l'étaient **nulle part** auparavant :
+    `HasMaxLength` ne génère aucune contrainte en SQLite, et un nom vide, en espaces seuls ou de 5 000 caractères
+    était persisté sans le moindre filet ;
+  - **e-mail facultatif mais validé s'il est renseigné**, sur le motif exact de `CustomerValidator` (aucune regex
+    maison). Portée réelle énoncée sans la surestimer : le mode `AspNetCoreCompatible` attrape les fautes
+    grossières, pas les adresses exotiques ;
+  - **normalisation commune** des cinq champs (`Trim`, `""` → `null`) par un propriétaire unique partagé par
+    Create et Update — une seule représentation de « non renseigné » subsiste en base ;
+  - **suppression conditionnelle atomique** (`TryDeleteIfUnusedAsync`) : la condition « aucun produit lié » et
+    l'écriture sont la **même instruction SQL**. Le « check-then-act » du motif P3-2B est **fermé**, pas seulement
+    documenté ; la lecture qui subsiste ne sert qu'au diagnostic et ne décide jamais de l'écriture ;
+  - **produits actifs ET inactifs** bloquent la suppression : un produit désactivé conserve sa ligne, donc sa FK ;
+  - **message métier stable** au lieu d'une `DbUpdateException` brute. L'utilisateur lisait auparavant
+    littéralement « *An error occurred while saving the entity changes.* » après avoir confirmé « ⚠️ irréversible ! » ;
+  - **l'écran s'améliore sans être touché** : le `catch (Exception ex)` existant de `SuppliersViewModel` affiche
+    désormais le message métier français — aucun fichier UI modifié ;
+  - **fournisseur obligatoire et existant** dans `CreateProduct` / `UpdateProduct` ; le `SupplierId ?? 0` — qui
+    transformait une donnée **manquante** en violation d'intégrité — est supprimé, vérification faite **dans** la
+    transaction existante ;
+  - **FK `RESTRICT` conservée** comme filet ultime, prouvée jusqu'en **SQL brut** (hors EF et hors use case) ;
+    `DeleteBehavior.SetNull` trompeur retiré de `SupplierConfiguration` — **sans aucun changement de modèle**, ce
+    qui confirme qu'il était sans effet ;
+  - **courses traduites en erreurs métier**, testées sans `Thread.Sleep` (états déterministes et résultat
+    d'existence périmé injecté) ; aucune exception technique n'atteint l'appelant ;
+  - **aucune désactivation** (`IsActive`/`IsArchived`), **aucune unicité**, **aucune migration** — verrouillé par
+    gardes d'architecture ;
+  - **1302 tests** au total (0 échec, 0 ignoré ; Domain 537 · Application 526 · App 239) — `MMV.App.Tests` reste
+    exactement à 239, **aucune UI** modifiée ;
+  - deux affirmations de l'audit **corrigées par le code réel** : `EmailAddress()` n'échoue pas sur un e-mail
+    entouré d'espaces, et l'état « produit référençant un fournisseur inexistant » est **infabricable**.
+- **Revue ciblée avant commit** — [rapport d'implémentation
+  P3-9 §« Revue ciblée avant commit »](../implementation/P3-9-suppliers-business-rules-implementation-report.md#revue-ciblée-avant-commit) :
+  - **SQL de suppression conditionnelle vérifié par interception EF** : une seule commande `DELETE … WHERE
+    SupplierId = @p AND NOT EXISTS (SELECT 1 FROM Products …)`, requête paramétrée, aucune lecture préalable,
+    aucun `SaveChangesAsync` superflu ;
+  - **défaut concret trouvé et corrigé** : `ExecuteDeleteAsync` contourne le change tracker — une entité
+    `Supplier` chargée puis supprimée dans la **même** portée `DbContext` restait ressuscitable par un
+    `FindAsync` ultérieur sur ce même contexte. Corrigé par un détachement **ciblé** sur l'identifiant supprimé
+    (aucun `ChangeTracker.Clear()` global, aucun produit ni fournisseur voisin affecté, aucune requête SQL
+    supplémentaire) ;
+  - **diagnostic après suppression refusée confirmé honnête** au niveau use case (`ExistsFreshAsync`, jamais
+    l'`ExistsAsync` hérité basé sur `FindAsync`) ;
+  - **classification des violations de contrainte produit analysée** : `PersistenceErrorMapper` distingue déjà
+    `UniqueConstraint` (codes SQLite étendus 2067/1555) de `ConstraintViolation` (FK, code générique 19) —
+    aucune mauvaise classification possible ni observée ; le scénario « fournisseur présent + autre FK que
+    `SupplierId` » est **non constructible** dans le schéma actuel (noté honnêtement, aucune règle inventée) ;
+  - **preuve FK ré-confirmée** dans les deux ordres (produit créé puis suppression tentée ; suppression réussie
+    puis création tentée), sans `Thread.Sleep`, plus preuve en SQL brut hors EF/use case ;
+  - **normalisation et validation Create/Update reconfirmées identiques** (propriétaire unique partagé) ;
+  - **6 tests ajoutés** (`SupplierDeletionSqlAndTrackerTests`) ; **1308 tests** au total après revue (0 échec,
+    0 ignoré ; Domain 537 · Application 532 · App 239) ; 0 vulnérabilité ; aucune migration en attente ;
+    **aucune UI** modifiée.
+- **Sous réserve de CI** : validation locale complète à ce stade (revue ciblée incluse), commit et push en
+  préparation.
 
 ### P3-10 — Utilisateurs locaux
 

@@ -45,16 +45,35 @@ public sealed class CreateProductUseCase : ICreateProductUseCase
     public const string DuplicateReferenceMessage =
         "Un produit portant cette référence existe déjà.";
 
+    /// <summary>
+    /// Message métier stable renvoyé lorsqu'aucun fournisseur n'est fourni (P3-9). Le fournisseur est
+    /// <b>structurellement obligatoire</b> : <c>Product.SupplierId</c> est non nullable et sa FK est
+    /// <c>Restrict</c> + <c>IsRequired</c>.
+    /// </summary>
+    public const string SupplierRequiredMessage = "Le fournisseur est obligatoire.";
+
+    /// <summary>
+    /// Message métier stable renvoyé lorsque le fournisseur désigné n'existe pas (P3-9) — identifiant inconnu, ou
+    /// fournisseur supprimé sur un autre poste depuis le chargement du sélecteur.
+    /// </summary>
+    public const string SupplierNotFoundMessage = "Le fournisseur sélectionné est introuvable.";
+
     // Validateur Domain réutilisé (règle métier propriétaire du Domain — aucune duplication). Stateless, partagé.
     private static readonly ProductValidator ProductValidator = new();
 
     private readonly IProductRepository _productRepository;
+    private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITransactionRunner _transactionRunner;
 
-    public CreateProductUseCase(IProductRepository productRepository, IUnitOfWork unitOfWork, ITransactionRunner transactionRunner)
+    public CreateProductUseCase(
+        IProductRepository productRepository,
+        ISupplierRepository supplierRepository,
+        IUnitOfWork unitOfWork,
+        ITransactionRunner transactionRunner)
     {
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
+        _supplierRepository = supplierRepository ?? throw new ArgumentNullException(nameof(supplierRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
     }
@@ -63,6 +82,17 @@ public sealed class CreateProductUseCase : ICreateProductUseCase
     public async Task<CreateProductResult> ExecuteAsync(CreateProductCommand command, CancellationToken cancellationToken = default)
     {
         if (command is null) throw new ArgumentNullException(nameof(command));
+
+        // P3-9 : le fournisseur est obligatoire. L'ancien « command.SupplierId ?? 0 » écrivait un 0 qu'aucun
+        // fournisseur ne porte : une donnée MANQUANTE devenait une violation d'intégrité (DbUpdateException
+        // vérifiée empiriquement, audit §16) au lieu d'une erreur de saisie lisible. Le 0 n'est plus jamais écrit.
+        if (command.SupplierId is not > 0)
+            return new CreateProductResult
+            {
+                ValidationErrors = new List<ValidationError> { new(nameof(Product.SupplierId), SupplierRequiredMessage) }
+            };
+
+        var supplierId = command.SupplierId.Value;
 
         var product = new Product
         {
@@ -75,7 +105,7 @@ public sealed class CreateProductUseCase : ICreateProductUseCase
             StockQuantity = command.StockQuantity,
             StockAlertThreshold = command.StockAlertThreshold,
             Category = command.Category,
-            SupplierId = command.SupplierId ?? 0,
+            SupplierId = supplierId,
         };
 
         // P3-1 : validation de commande AVANT toute écriture.
@@ -95,11 +125,43 @@ public sealed class CreateProductUseCase : ICreateProductUseCase
 
         try
         {
-            await _transactionRunner.RunAsync(async ct =>
+            // P3-9 : l'existence du fournisseur est vérifiée DANS la transaction qui écrit — lecture fraîche
+            // (AnyAsync), jamais FindAsync ni une navigation déjà chargée. Renvoyer un drapeau plutôt que d'écrire
+            // laisse la transaction se valider à vide : aucun produit persisté.
+            var supplierMissing = await _transactionRunner.RunAsync(async ct =>
             {
+                if (!await _supplierRepository.ExistsFreshAsync(supplierId, ct))
+                    return true;
+
                 await _productRepository.CreateAsync(product, ct);
                 await _unitOfWork.SaveChangesAsync(ct);
+                return false;
             }, cancellationToken);
+
+            if (supplierMissing)
+                return new CreateProductResult
+                {
+                    ValidationErrors = new List<ValidationError> { new(nameof(Product.SupplierId), SupplierNotFoundMessage) }
+                };
+        }
+        catch (PersistenceException ex) when (ex.Category == PersistenceErrorCategory.ConstraintViolation)
+        {
+            // P3-9 — filet FK. Une vérification d'existence ne VERROUILLE pas le fournisseur jusqu'à l'écriture :
+            // il peut disparaître entre le contrôle et le SaveChanges. La FK Restrict arbitre alors, et la
+            // violation est traduite en la MÊME erreur métier stable que la garde pré-écriture.
+            //
+            // La confirmation ci-dessous est délibérée : PersistenceErrorMapper classe TOUTE contrainte SQLite
+            // (FK, NOT NULL, CHECK) en ConstraintViolation. Sans vérifier que le fournisseur a réellement disparu,
+            // une violation d'une autre contrainte serait étiquetée « fournisseur introuvable » — un message faux,
+            // ce qui reproduirait à l'envers le défaut que P3-9 corrige. Non confirmée, l'exception remonte
+            // inchangée (le « throw; » préserve la pile) : on ne masque jamais une panne réelle.
+            if (await _supplierRepository.ExistsFreshAsync(supplierId, cancellationToken))
+                throw;
+
+            return new CreateProductResult
+            {
+                ValidationErrors = new List<ValidationError> { new(nameof(Product.SupplierId), SupplierNotFoundMessage) }
+            };
         }
         catch (PersistenceException ex) when (ex.Category == PersistenceErrorCategory.UniqueConstraint)
         {

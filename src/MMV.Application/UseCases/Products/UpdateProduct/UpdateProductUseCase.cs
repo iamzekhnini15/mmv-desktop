@@ -34,12 +34,18 @@ public sealed class UpdateProductUseCase : IUpdateProductUseCase
     private static readonly ProductValidator ProductValidator = new();
 
     private readonly IProductRepository _productRepository;
+    private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITransactionRunner _transactionRunner;
 
-    public UpdateProductUseCase(IProductRepository productRepository, IUnitOfWork unitOfWork, ITransactionRunner transactionRunner)
+    public UpdateProductUseCase(
+        IProductRepository productRepository,
+        ISupplierRepository supplierRepository,
+        IUnitOfWork unitOfWork,
+        ITransactionRunner transactionRunner)
     {
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
+        _supplierRepository = supplierRepository ?? throw new ArgumentNullException(nameof(supplierRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
     }
@@ -53,6 +59,20 @@ public sealed class UpdateProductUseCase : IUpdateProductUseCase
         if (product is null)
             return new UpdateProductResult { ProductFound = false, ProductId = command.ProductId };
 
+        // P3-9 : le fournisseur reste obligatoire à CHAQUE modification, même si l'identifiant fourni est celui du
+        // fournisseur actuel — il doit toujours exister au moment de la sauvegarde. Le « ?? 0 » a disparu : aucune
+        // écriture ne peut plus transformer une donnée manquante en violation de FK. Contrôle placé avant toute
+        // mutation de l'entité suivie.
+        if (command.SupplierId is not > 0)
+            return new UpdateProductResult
+            {
+                ProductFound = true,
+                ProductId = product.ProductId,
+                ValidationErrors = new List<ValidationError> { new(nameof(Product.SupplierId), CreateProductUseCase.SupplierRequiredMessage) }
+            };
+
+        var supplierId = command.SupplierId.Value;
+
         product.Reference = command.Reference; // le setter nettoie (Trim) et recalcule NormalizedReference
         product.Name = command.Name;
         product.Description = command.Description;
@@ -65,7 +85,7 @@ public sealed class UpdateProductUseCase : IUpdateProductUseCase
         // command.StockQuantity est conservé dans la commande pour la compatibilité des appelants, mais non persisté.
         product.StockAlertThreshold = command.StockAlertThreshold;
         product.Category = command.Category;
-        product.SupplierId = command.SupplierId ?? 0;
+        product.SupplierId = supplierId;
 
         // P3-1 : validation de commande AVANT toute écriture.
         var validationErrors = CommandValidation.Validate(ProductValidator, product);
@@ -86,12 +106,39 @@ public sealed class UpdateProductUseCase : IUpdateProductUseCase
 
         try
         {
-            await _transactionRunner.RunAsync(async ct =>
+            // P3-9 : existence du fournisseur vérifiée DANS la transaction qui écrit (lecture fraîche AnyAsync).
+            var supplierMissing = await _transactionRunner.RunAsync(async ct =>
             {
+                if (!await _supplierRepository.ExistsFreshAsync(supplierId, ct))
+                    return true;
+
                 // P3-5 : mise à jour catalogue qui EXCLUT StockQuantity de l'UPDATE (le stock ne bouge que par mouvement).
                 await _productRepository.UpdateCatalogAsync(product, ct);
                 await _unitOfWork.SaveChangesAsync(ct);
+                return false;
             }, cancellationToken);
+
+            if (supplierMissing)
+                return new UpdateProductResult
+                {
+                    ProductFound = true,
+                    ProductId = product.ProductId,
+                    ValidationErrors = new List<ValidationError> { new(nameof(Product.SupplierId), CreateProductUseCase.SupplierNotFoundMessage) }
+                };
+        }
+        catch (PersistenceException ex) when (ex.Category == PersistenceErrorCategory.ConstraintViolation)
+        {
+            // P3-9 — filet FK, symétrique de CreateProductUseCase : traduit uniquement si le fournisseur a
+            // RÉELLEMENT disparu, sinon l'exception remonte inchangée (voir le commentaire détaillé côté création).
+            if (await _supplierRepository.ExistsFreshAsync(supplierId, cancellationToken))
+                throw;
+
+            return new UpdateProductResult
+            {
+                ProductFound = true,
+                ProductId = product.ProductId,
+                ValidationErrors = new List<ValidationError> { new(nameof(Product.SupplierId), CreateProductUseCase.SupplierNotFoundMessage) }
+            };
         }
         catch (PersistenceException ex) when (ex.Category == PersistenceErrorCategory.UniqueConstraint)
         {

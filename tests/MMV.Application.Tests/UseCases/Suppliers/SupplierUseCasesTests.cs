@@ -6,6 +6,7 @@ using MMV.Application.UseCases.Suppliers.DeleteSupplier;
 using MMV.Application.UseCases.Suppliers.UpdateSupplier;
 using MMV.Domain.Entities;
 using MMV.Infrastructure.Data;
+using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
 using Xunit;
 
@@ -139,7 +140,7 @@ public sealed class SupplierUseCasesTests : IDisposable
         DeleteSupplierResult result;
         using (var context = CreateContext(dbPath))
         {
-            var useCase = new DeleteSupplierUseCase(new SupplierRepository(context), new UnitOfWork(context));
+            var useCase = new DeleteSupplierUseCase(new SupplierRepository(context), new EfTransactionRunner(context));
             result = await useCase.ExecuteAsync(new DeleteSupplierCommand { SupplierId = id });
         }
 
@@ -155,7 +156,7 @@ public sealed class SupplierUseCasesTests : IDisposable
         EnsureSchema(dbPath);
 
         using var context = CreateContext(dbPath);
-        var useCase = new DeleteSupplierUseCase(new SupplierRepository(context), new UnitOfWork(context));
+        var useCase = new DeleteSupplierUseCase(new SupplierRepository(context), new EfTransactionRunner(context));
         var result = await useCase.ExecuteAsync(new DeleteSupplierCommand { SupplierId = 12345 });
 
         result.SupplierFound.Should().BeFalse();
@@ -170,7 +171,7 @@ public sealed class SupplierUseCasesTests : IDisposable
 
         var create = new CreateSupplierUseCase(new SupplierRepository(context), new UnitOfWork(context));
         var update = new UpdateSupplierUseCase(new SupplierRepository(context), new UnitOfWork(context));
-        var delete = new DeleteSupplierUseCase(new SupplierRepository(context), new UnitOfWork(context));
+        var delete = new DeleteSupplierUseCase(new SupplierRepository(context), new EfTransactionRunner(context));
 
         await ((Func<Task>)(() => create.ExecuteAsync(null!))).Should().ThrowAsync<ArgumentNullException>();
         await ((Func<Task>)(() => update.ExecuteAsync(null!))).Should().ThrowAsync<ArgumentNullException>();

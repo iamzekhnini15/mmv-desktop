@@ -62,10 +62,10 @@ public sealed class ProductBusinessRulesTests : IDisposable
     }
 
     private static CreateProductUseCase CreateUseCase(OpticDbContext ctx) =>
-        new(new ProductRepository(ctx), new UnitOfWork(ctx), new EfTransactionRunner(ctx));
+        new(new ProductRepository(ctx), new SupplierRepository(ctx), new UnitOfWork(ctx), new EfTransactionRunner(ctx));
 
     private static UpdateProductUseCase UpdateUseCase(OpticDbContext ctx) =>
-        new(new ProductRepository(ctx), new UnitOfWork(ctx), new EfTransactionRunner(ctx));
+        new(new ProductRepository(ctx), new SupplierRepository(ctx), new UnitOfWork(ctx), new EfTransactionRunner(ctx));
 
     private static DeleteProductUseCase DeleteUseCase(OpticDbContext ctx) =>
         new(new ProductRepository(ctx), new UnitOfWork(ctx));
@@ -271,7 +271,7 @@ public sealed class ProductBusinessRulesTests : IDisposable
 
         using var ctx = CreateContext(dbPath);
         var raceLosing = new RaceLosingProductRepository(ctx);
-        var useCase = new CreateProductUseCase(raceLosing, new UnitOfWork(ctx), new EfTransactionRunner(ctx));
+        var useCase = new CreateProductUseCase(raceLosing, new SupplierRepository(ctx), new UnitOfWork(ctx), new EfTransactionRunner(ctx));
 
         CreateProductResult result = await useCase.ExecuteAsync(ValidCreate(supplierId, "abc-123"));
 
@@ -295,7 +295,7 @@ public sealed class ProductBusinessRulesTests : IDisposable
 
         using var ctx = CreateContext(dbPath);
         var raceLosing = new RaceLosingProductRepository(ctx);
-        var useCase = new UpdateProductUseCase(raceLosing, new UnitOfWork(ctx), new EfTransactionRunner(ctx));
+        var useCase = new UpdateProductUseCase(raceLosing, new SupplierRepository(ctx), new UnitOfWork(ctx), new EfTransactionRunner(ctx));
 
         UpdateProductResult result = await useCase.ExecuteAsync(new UpdateProductCommand
         {
