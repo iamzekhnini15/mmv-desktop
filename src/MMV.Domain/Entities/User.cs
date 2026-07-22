@@ -13,9 +13,18 @@ public class User
     public long UserId { get; set; }
 
     /// <summary>
-    /// Nom d'utilisateur pour la connexion (unique).
+    /// Nom d'utilisateur pour la connexion, dans sa forme <b>affichable</b> telle que saisie.
+    /// L'unicité et la recherche portent sur <see cref="NormalizedUsername"/>, pas sur ce champ.
     /// </summary>
     public string Username { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Forme <b>normalisée</b> du nom d'utilisateur (P3-10) : clé métier de recherche et d'unicité, calculée par
+    /// <see cref="MMV.Domain.Policies.UserIdentityPolicy.NormalizeUsername"/> — propriétaire unique de la règle.
+    /// Un index unique en base la protège entre postes : <c>admin</c>, <c>Admin</c> et <c>ADMIN</c> désignent
+    /// donc le même compte.
+    /// </summary>
+    public string NormalizedUsername { get; set; } = string.Empty;
 
     /// <summary>
     /// Hash du mot de passe (stocké de manière sécurisée).

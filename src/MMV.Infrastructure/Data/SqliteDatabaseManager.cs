@@ -320,6 +320,40 @@ public sealed class SqliteDatabaseManager
                 "__EFMigrationsHistory ; la base et sa sauvegarde sont conservées.");
         }
 
+        // --- P3-10 : refus explicite d'un schéma de login normalisé PARTIEL ou ALTÉRÉ (avant toute écriture) ---
+        //     AddNormalizedUsernameAndSecureLocalUsers ajoute, dans une seule migration, la colonne
+        //     Users.NormalizedUsername ET l'index unique qui garantit l'unicité du login entre postes. Un état où
+        //     l'un existe sans l'autre — ou où un index porte ce nom sans être unique, sur la bonne colonne et sans
+        //     filtre — ne peut pas résulter d'une exécution normale : c'est un schéma altéré à la main ou un
+        //     historique mensonger. Baseliner ici marquerait comme acquise une garantie d'unicité qui n'existe pas
+        //     physiquement, et deux postes pourraient créer des logins équivalents. On refuse AVANT toute écriture
+        //     dans __EFMigrationsHistory.
+        var normalizedUsernameColumnPresent = ColumnExists(context, UsersTableName, NormalizedUsernameColumnName);
+        var (normalizedUsernameIndexExists, normalizedUsernameIndexValid) =
+            InspectNormalizedUsernameUniqueIndex(context);
+
+        if (!normalizedUsernameColumnPresent && normalizedUsernameIndexExists)
+        {
+            _journal.Write(
+                "ADOPT REFUSED: normalized username unique index present without NormalizedUsername column (homonym or leftover index).");
+            throw new DatabaseMigrationException(
+                "Schéma d'identifiant de connexion incohérent : un index nommé idx_users_normalized_username_unique " +
+                "existe alors que la colonne Users.NormalizedUsername qu'il protège est absente. Adoption refusée. " +
+                "Aucune migration n'a été inscrite dans __EFMigrationsHistory ; la base et sa sauvegarde sont conservées.");
+        }
+
+        if (normalizedUsernameColumnPresent && !(normalizedUsernameIndexExists && normalizedUsernameIndexValid))
+        {
+            _journal.Write(
+                $"ADOPT REFUSED: partial normalized username schema (NormalizedUsername present, unique index " +
+                $"present={normalizedUsernameIndexExists}, valid={normalizedUsernameIndexValid}).");
+            throw new DatabaseMigrationException(
+                "Schéma d'identifiant de connexion partiel : la colonne Users.NormalizedUsername est présente mais " +
+                "l'index unique idx_users_normalized_username_unique garantissant l'unicité du login est absent ou " +
+                "mal défini (non unique, mauvaise colonne ou filtré). Adoption refusée. Aucune migration n'a été " +
+                "inscrite dans __EFMigrationsHistory ; la base et sa sauvegarde sont conservées.");
+        }
+
         // --- P3-6B : refus explicite d'une extension de fiche atelier PARTIELLE (avant toute écriture) ---
         // Les deux tables sont créées ensemble par AddWorkshopSheets : n'en trouver qu'une seule signale une base
         // altérée à la main ou une adoption précédemment interrompue. Les deux issues automatiques seraient
@@ -434,6 +468,23 @@ public sealed class SqliteDatabaseManager
                 _journal.Write(
                     "ADOPT: Notifications.ResolvedAt column absent (base antérieure à P3-8) — " +
                     "AddNotificationResolution will be executed (resolution column + unique filtered index created, historical duplicates normalized).");
+            }
+        }
+
+        // (f) P3-10 : AddNormalizedUsernameAndSecureLocalUsers si la colonne Users.NormalizedUsername est
+        //     physiquement absente (base antérieure à P3-10). Baseliner cette migration marquerait à tort la
+        //     colonne ET son index unique comme créés : le login resterait comparé en binaire, « admin » et
+        //     « Admin » continueraient de désigner deux comptes, et le backfill des logins hérités — avec ses
+        //     gardes « exact ou échec » — ne serait jamais exécuté. L'état partiel a déjà été refusé plus haut.
+        if (!normalizedUsernameColumnPresent)
+        {
+            var normalizedUsernameIndex = allMigrations.FindIndex(IsAddNormalizedUsernameMigration);
+            if (normalizedUsernameIndex >= 0)
+            {
+                firstIndexToExecute = Math.Min(firstIndexToExecute, normalizedUsernameIndex);
+                _journal.Write(
+                    "ADOPT: Users.NormalizedUsername column absent (base antérieure à P3-10) — " +
+                    "AddNormalizedUsernameAndSecureLocalUsers will be executed (normalized login column + unique index, historical logins backfilled).");
             }
         }
 
@@ -576,6 +627,21 @@ public sealed class SqliteDatabaseManager
     private static bool IsAddNotificationResolutionMigration(string migrationId)
         => migrationId.EndsWith(AddNotificationResolutionMigrationSuffix, StringComparison.Ordinal);
 
+    /// <summary>Table des utilisateurs.</summary>
+    private const string UsersTableName = "Users";
+
+    /// <summary>Clé métier normalisée de l'identifiant de connexion (P3-10).</summary>
+    private const string NormalizedUsernameColumnName = "NormalizedUsername";
+
+    /// <summary>Index unique protégeant l'unicité du login insensible à la casse (P3-10).</summary>
+    private const string NormalizedUsernameUniqueIndexName = "idx_users_normalized_username_unique";
+
+    /// <summary>Suffixe de l'identifiant de la migration additive P3-10 (login normalisé).</summary>
+    private const string AddNormalizedUsernameMigrationSuffix = "_AddNormalizedUsernameAndSecureLocalUsers";
+
+    private static bool IsAddNormalizedUsernameMigration(string migrationId)
+        => migrationId.EndsWith(AddNormalizedUsernameMigrationSuffix, StringComparison.Ordinal);
+
     /// <summary>
     /// Point UNIQUE d'écriture de <c>__EFMigrationsHistory</c> (encapsule l'accès à l'API
     /// d'infrastructure EF Core <see cref="IHistoryRepository"/>, P2A-1A-R2 §6). Inscrit, dans une
@@ -650,6 +716,23 @@ public sealed class SqliteDatabaseManager
                 "n'est en attente (AddNotificationResolution devrait être appliquée). __EFMigrationsHistory ne " +
                 "reflète pas le schéma réel.");
         }
+
+        // --- P3-10 : garantie inconditionnelle, quel que soit le chemin (fresh install / managé / adopté) ---
+        // Même raisonnement : aucune migration n'étant en attente, AddNormalizedUsernameAndSecureLocalUsers est
+        // forcément inscrite. Un historique qui l'affirme sans que la colonne et l'index unique existent
+        // physiquement — schéma altéré après coup, y compris sur une base déjà gérée par migrations — laisserait
+        // l'unicité du login sans protection entre postes. Jamais accepté silencieusement.
+        var (normalizedIndexExists, normalizedIndexValid) = InspectNormalizedUsernameUniqueIndex(context);
+        if (!ColumnExists(context, UsersTableName, NormalizedUsernameColumnName)
+            || !normalizedIndexExists
+            || !normalizedIndexValid)
+        {
+            throw new DatabaseMigrationException(
+                "Incohérence après préparation : la colonne Users.NormalizedUsername ou l'index unique " +
+                "idx_users_normalized_username_unique sont absents ou mal définis alors qu'aucune migration n'est " +
+                "en attente (AddNormalizedUsernameAndSecureLocalUsers devrait être appliquée). " +
+                "__EFMigrationsHistory ne reflète pas le schéma réel.");
+        }
     }
 
     /// <summary>
@@ -700,6 +783,98 @@ public sealed class SqliteDatabaseManager
     /// attendues et filtre exactement sur les quatre termes requis (Type='LowStock', EntityType='Product',
     /// EntityId IS NOT NULL, ResolvedAt IS NULL).
     /// </returns>
+    /// <summary>
+    /// Inspecte physiquement l'index unique du login normalisé (P3-10).
+    /// </summary>
+    /// <returns>
+    /// <c>Exists</c> : un index de ce nom existe. <c>Valid</c> : il est réellement <c>UNIQUE</c>, porte
+    /// exactement la colonne <c>NormalizedUsername</c> et n'est pas filtré.
+    /// </returns>
+    /// <remarks>
+    /// L'unicité et les colonnes sont lues via PRAGMA <c>index_list</c> / <c>index_info</c>, <b>pas</b> par
+    /// recherche du mot « UNIQUE » dans <c>sqlite_master.sql</c> : le nom de l'index se terminant lui-même par
+    /// <c>_unique</c>, une telle recherche textuelle serait vraie même pour un index NON unique portant ce nom —
+    /// exactement l'homonyme mal défini que cette fonction doit détecter. Seul le filtre <c>WHERE</c> est
+    /// cherché dans le texte SQL, car aucun PRAGMA ne l'expose : un index partiel donnerait une unicité qui ne
+    /// couvre pas toutes les lignes.
+    /// </remarks>
+    private static (bool Exists, bool Valid) InspectNormalizedUsernameUniqueIndex(OpticDbContext context)
+    {
+        var connection = context.Database.GetDbConnection();
+        var mustClose = connection.State != ConnectionState.Open;
+        try
+        {
+            if (mustClose)
+            {
+                connection.Open();
+            }
+
+            var exists = false;
+            var isUnique = false;
+
+            using (var listCommand = connection.CreateCommand())
+            {
+                listCommand.CommandText = $"PRAGMA index_list(\"{UsersTableName}\")";
+                using var reader = listCommand.ExecuteReader();
+                while (reader.Read())
+                {
+                    if (!string.Equals(reader.GetString(1), NormalizedUsernameUniqueIndexName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    exists = true;
+                    isUnique = reader.GetInt32(2) != 0; // colonne 2 de index_list = drapeau unique
+                    break;
+                }
+            }
+
+            if (!exists)
+            {
+                return (false, false);
+            }
+
+            var columns = new List<string>();
+            using (var infoCommand = connection.CreateCommand())
+            {
+                infoCommand.CommandText = $"PRAGMA index_info(\"{NormalizedUsernameUniqueIndexName}\")";
+                using var reader = infoCommand.ExecuteReader();
+                while (reader.Read())
+                {
+                    if (!reader.IsDBNull(2))
+                    {
+                        columns.Add(reader.GetString(2));
+                    }
+                }
+            }
+
+            string? sql;
+            using (var sqlCommand = connection.CreateCommand())
+            {
+                sqlCommand.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = @name";
+                var parameter = sqlCommand.CreateParameter();
+                parameter.ParameterName = "@name";
+                parameter.Value = NormalizedUsernameUniqueIndexName;
+                sqlCommand.Parameters.Add(parameter);
+                sql = sqlCommand.ExecuteScalar() as string;
+            }
+
+            var valid = isUnique
+                && columns.Count == 1
+                && string.Equals(columns[0], NormalizedUsernameColumnName, StringComparison.OrdinalIgnoreCase)
+                && !(sql ?? string.Empty).Contains("WHERE", StringComparison.OrdinalIgnoreCase);
+
+            return (true, valid);
+        }
+        finally
+        {
+            if (mustClose && connection.State == ConnectionState.Open)
+            {
+                connection.Close();
+            }
+        }
+    }
+
     private static (bool Exists, bool Valid) InspectActiveLowStockUniqueIndex(OpticDbContext context)
     {
         var connection = context.Database.GetDbConnection();

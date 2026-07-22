@@ -22,8 +22,16 @@ public sealed class CreateUserCommand
     /// <summary>Nom.</summary>
     public string LastName { get; init; } = string.Empty;
 
-    /// <summary>Rôle attribué.</summary>
-    public UserRole Role { get; init; }
+    /// <summary>
+    /// Rôle attribué. <b>Obligatoire</b> (P3-10) : <c>null</c> est refusé par une erreur de validation.
+    /// </summary>
+    /// <remarks>
+    /// Le type était <c>UserRole</c> non nullable, dont le défaut CLR est la première valeur de l'enum —
+    /// <c>Admin</c>. Une commande construite sans mention du rôle créait donc silencieusement un
+    /// <b>administrateur</b> (audit P3-10 §16, R3) : une omission produisait le privilège maximal. Rendre le
+    /// champ nullable rend l'omission détectable, donc refusable, au lieu d'être interprétée.
+    /// </remarks>
+    public UserRole? Role { get; init; }
 
     /// <summary>Indique si le compte est actif.</summary>
     public bool IsActive { get; init; }

@@ -34,5 +34,12 @@ public interface IAuthenticationService
     /// Change le mot de passe d'un utilisateur après vérification de l'ancien.
     /// </summary>
     /// <returns>True si le changement a réussi, false si l'ancien mot de passe est incorrect.</returns>
+    /// <exception cref="MMV.Domain.Exceptions.BusinessRuleException">
+    /// P3-10 — Le nouveau mot de passe ne respecte pas la politique
+    /// (<see cref="MMV.Domain.Validators.UserValidator.ValidatePasswordPolicy"/>) : <b>aucune écriture</b> n'a eu
+    /// lieu, le hash existant est intact. Le refus est porté par une exception typée plutôt que par
+    /// <c>false</c>, qui signifie déjà « utilisateur introuvable ou mot de passe actuel erroné » — un mot de
+    /// passe faible y serait indiscernable d'une erreur d'authentification.
+    /// </exception>
     Task<bool> ChangePasswordAsync(long userId, string currentPassword, string newPassword, CancellationToken cancellationToken = default);
 }

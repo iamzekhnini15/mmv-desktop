@@ -1,6 +1,7 @@
-using MMV.Domain.Constants;
+﻿using MMV.Domain.Constants;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Policies;
 
 namespace MMV.Infrastructure.Data;
 
@@ -26,8 +27,11 @@ public static class DbInitializer
         //    migrée, un compte « admin » existe (InsertData de la migration InitialCreate). On n'ajoute
         //    alors que les utilisateurs de démonstration absents, pour éviter une collision sur l'index
         //    unique Username (P2A-1F).
-        var existingUsernames = context.Users.Select(u => u.Username).ToHashSet();
-        var users = CreateUsers().Where(u => !existingUsernames.Contains(u.Username)).ToList();
+        //    P3-10 : l'idempotence porte désormais sur NormalizedUsername, la clé métier réellement unique en
+        //    base. Comparer les formes affichables laisserait passer un « Admin » de démonstration à côté d'un
+        //    « admin » existant : l'ajout échouerait sur l'index unique normalisé au lieu d'être ignoré.
+        var existingUsernames = context.Users.Select(u => u.NormalizedUsername).ToHashSet();
+        var users = CreateUsers().Where(u => !existingUsernames.Contains(u.NormalizedUsername)).ToList();
         if (users.Count > 0)
         {
             context.Users.AddRange(users);
@@ -111,6 +115,7 @@ public static class DbInitializer
             new User
             {
                 Username = "admin",
+                NormalizedUsername = UserIdentityPolicy.NormalizeUsername("admin"),
                 PasswordHash = adminHash,
                 FirstName = "Administrateur",
                 LastName = "Système",
@@ -122,6 +127,7 @@ public static class DbInitializer
             new User
             {
                 Username = "marie.optic",
+                NormalizedUsername = UserIdentityPolicy.NormalizeUsername("marie.optic"),
                 PasswordHash = adminHash,
                 FirstName = "Marie",
                 LastName = "Durand",
@@ -133,6 +139,7 @@ public static class DbInitializer
             new User
             {
                 Username = "pierre.tech",
+                NormalizedUsername = UserIdentityPolicy.NormalizeUsername("pierre.tech"),
                 PasswordHash = adminHash,
                 FirstName = "Pierre",
                 LastName = "Moreau",
@@ -144,6 +151,7 @@ public static class DbInitializer
             new User
             {
                 Username = "sophie.optic",
+                NormalizedUsername = UserIdentityPolicy.NormalizeUsername("sophie.optic"),
                 PasswordHash = adminHash,
                 FirstName = "Sophie",
                 LastName = "Lambert",

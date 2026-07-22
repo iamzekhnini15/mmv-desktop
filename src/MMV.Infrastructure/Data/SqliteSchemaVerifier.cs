@@ -56,6 +56,9 @@ public sealed class SqliteSchemaVerifier
     ///   <item><c>Products.NormalizedReference</c> — P3-4B, ajoutée par <c>AddProductNormalizedReferenceAndProtectHistory</c>.</item>
     ///   <item><c>Notifications.ResolvedAt</c> — P3-8, ajoutée par <c>AddNotificationResolution</c>. Nullable et sans
     ///   valeur par défaut : une base antérieure n'a simplement aucune résolution enregistrée.</item>
+    ///   <item><c>Users.NormalizedUsername</c> — P3-10, ajoutée par
+    ///   <c>AddNormalizedUsernameAndSecureLocalUsers</c>. Backfillée depuis <c>Username</c> par cette migration,
+    ///   qui est <b>exécutée</b> (et non baselinée) pendant l'adoption.</item>
     /// </list>
     /// </summary>
     private static readonly HashSet<string> AdditiveColumnsToleratedWhenAbsent =
@@ -64,6 +67,7 @@ public sealed class SqliteSchemaVerifier
             "Customers.IsArchived",
             "Products.NormalizedReference",
             "Notifications.ResolvedAt",
+            "Users.NormalizedUsername",
         };
 
     /// <summary>
@@ -78,6 +82,10 @@ public sealed class SqliteSchemaVerifier
     ///   <item><c>Notifications.EntityId,EntityType,Type</c> — P3-8 (index unique <b>filtré</b> protégeant l'unicité
     ///   des alertes de stock bas actives), créé par <c>AddNotificationResolution</c> après dédoublonnage des
     ///   alertes historiques.</item>
+    ///   <item><c>Users.NormalizedUsername</c> — P3-10 (unicité du login insensible à la casse), créé par
+    ///   <c>AddNormalizedUsernameAndSecureLocalUsers</c>. L'ancien index unique sur <c>Users.Username</c>
+    ///   subsiste alors en base : c'est un élément supplémentaire, toléré (non attendu par le modèle courant),
+    ///   et la migration exécutée pendant l'adoption le supprime.</item>
     /// </list>
     /// </summary>
     private static readonly HashSet<string> AdditiveUniqueIndexesToleratedWhenAbsent =
@@ -85,6 +93,7 @@ public sealed class SqliteSchemaVerifier
         {
             "Products.NormalizedReference",
             "Notifications.EntityId,EntityType,Type",
+            "Users.NormalizedUsername",
         };
 
     public SchemaCompatibilityResult Verify(OpticDbContext context)

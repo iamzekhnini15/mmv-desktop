@@ -1,7 +1,8 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Exceptions;
 using MMV.Domain.Interfaces.Repositories;
 using MMV.Domain.Services;
 using MMV.Infrastructure.Services;
@@ -85,7 +86,7 @@ public class AuthenticationServiceTests
             FirstName = "Admin", LastName = "User", Role = UserRole.Admin, IsActive = true
         };
 
-        _mockUserRepo.Setup(r => r.GetByUsernameAsync("admin", It.IsAny<CancellationToken>()))
+        _mockUserRepo.Setup(r => r.GetByNormalizedUsernameAsync("admin", It.IsAny<CancellationToken>()))
                      .ReturnsAsync(user);
         _mockUserRepo.Setup(r => r.GetByIdAsync(1L, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(user);
@@ -107,7 +108,7 @@ public class AuthenticationServiceTests
             FirstName = "Admin", LastName = "User", Role = UserRole.Admin, IsActive = true
         };
 
-        _mockUserRepo.Setup(r => r.GetByUsernameAsync("admin", It.IsAny<CancellationToken>()))
+        _mockUserRepo.Setup(r => r.GetByNormalizedUsernameAsync("admin", It.IsAny<CancellationToken>()))
                      .ReturnsAsync(user);
 
         var result = await _service.AuthenticateAsync("admin", "WrongPass");
@@ -118,7 +119,7 @@ public class AuthenticationServiceTests
     [Fact]
     public async Task AuthenticateAsync_UnknownUser_ReturnsNull()
     {
-        _mockUserRepo.Setup(r => r.GetByUsernameAsync("unknown", It.IsAny<CancellationToken>()))
+        _mockUserRepo.Setup(r => r.GetByNormalizedUsernameAsync("unknown", It.IsAny<CancellationToken>()))
                      .ReturnsAsync((User?)null);
 
         var result = await _service.AuthenticateAsync("unknown", "password");
@@ -136,7 +137,7 @@ public class AuthenticationServiceTests
             FirstName = "Admin", LastName = "User", Role = UserRole.Admin, IsActive = false
         };
 
-        _mockUserRepo.Setup(r => r.GetByUsernameAsync("admin", It.IsAny<CancellationToken>()))
+        _mockUserRepo.Setup(r => r.GetByNormalizedUsernameAsync("admin", It.IsAny<CancellationToken>()))
                      .ReturnsAsync(user);
 
         var result = await _service.AuthenticateAsync("admin", "Admin123!");
@@ -208,6 +209,151 @@ public class AuthenticationServiceTests
         var result = await _service.ChangePasswordAsync(999, "OldPass1!", "NewPass2!");
 
         result.Should().BeFalse();
+    }
+
+    #endregion
+
+    #region P3-10 — Politique de mot de passe et login normalisé
+
+    /// <summary>
+    /// P3-10 : un nouveau mot de passe faible est refusé par une exception métier typée, et <b>aucune écriture</b>
+    /// n'a lieu — le hash existant reste intact. Avant P3-10, seule l'UI appliquait la politique : ce chemin
+    /// remplaçait le hash par celui d'un mot de passe faible (audit §13, R1).
+    /// </summary>
+    [Theory]
+    [InlineData("court1A")]      // moins de 8 caractères
+    [InlineData("nouveaupass1")] // pas de majuscule
+    [InlineData("NOUVEAUPASS1")] // pas de minuscule
+    [InlineData("NouveauPass")]  // pas de chiffre
+    public async Task ChangePasswordAsync_WeakNewPassword_ThrowsBusinessRule_AndKeepsExistingHash(string weakPassword)
+    {
+        var hash = BCrypt.Net.BCrypt.HashPassword("OldPass1!", 11);
+        var user = new User
+        {
+            UserId = 1, Username = "admin", NormalizedUsername = "admin", PasswordHash = hash,
+            FirstName = "Admin", LastName = "User", Role = UserRole.Admin, IsActive = true
+        };
+
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1L, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(user);
+
+        var act = async () => await _service.ChangePasswordAsync(1, "OldPass1!", weakPassword);
+
+        await act.Should().ThrowAsync<BusinessRuleException>();
+
+        user.PasswordHash.Should().Be(hash, "un refus ne doit jamais remplacer le hash existant");
+        _mockUow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    /// <summary>
+    /// L'ordre des gardes est délibéré : le mot de passe ACTUEL est vérifié avant la politique. Un appelant qui
+    /// ne connaît pas le mot de passe actuel reçoit donc <c>false</c> — et non une exception qui lui apprendrait
+    /// que sa proposition de nouveau mot de passe était, elle, acceptable.
+    /// </summary>
+    [Fact]
+    public async Task ChangePasswordAsync_WrongCurrentPassword_AndWeakNew_ReturnsFalse_WithoutRevealingPolicy()
+    {
+        var hash = BCrypt.Net.BCrypt.HashPassword("OldPass1!", 11);
+        var user = new User
+        {
+            UserId = 1, Username = "admin", NormalizedUsername = "admin", PasswordHash = hash,
+            FirstName = "Admin", LastName = "User", Role = UserRole.Admin, IsActive = true
+        };
+
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1L, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(user);
+
+        var result = await _service.ChangePasswordAsync(1, "WrongPassword", "weak");
+
+        result.Should().BeFalse();
+        user.PasswordHash.Should().Be(hash);
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_StrongNewPassword_ProducesNewVerifiableHash_WithNewSalt()
+    {
+        var originalHash = BCrypt.Net.BCrypt.HashPassword("OldPass1!", 11);
+        var user = new User
+        {
+            UserId = 1, Username = "admin", NormalizedUsername = "admin", PasswordHash = originalHash,
+            FirstName = "Admin", LastName = "User", Role = UserRole.Admin, IsActive = true
+        };
+
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1L, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(user);
+
+        var result = await _service.ChangePasswordAsync(1, "OldPass1!", "NewStrongPass1");
+
+        result.Should().BeTrue();
+        user.PasswordHash.Should().NotBe(originalHash);
+        user.PasswordHash.Should().NotBe("NewStrongPass1", "aucun clair n'est persisté");
+        user.PasswordHash.Should().StartWith("$2a$11$", "le work factor 11 est inchangé");
+        BCrypt.Net.BCrypt.Verify("NewStrongPass1", user.PasswordHash).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Réutiliser le MÊME mot de passe reste autorisé (aucun historique n'est introduit en P3-10), mais produit
+    /// un hash différent : BCrypt tire un nouveau sel à chaque hachage.
+    /// </summary>
+    [Fact]
+    public async Task ChangePasswordAsync_SamePassword_IsAllowed_ButProducesDifferentHash()
+    {
+        var originalHash = BCrypt.Net.BCrypt.HashPassword("OldPass1A", 11);
+        var user = new User
+        {
+            UserId = 1, Username = "admin", NormalizedUsername = "admin", PasswordHash = originalHash,
+            FirstName = "Admin", LastName = "User", Role = UserRole.Admin, IsActive = true
+        };
+
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1L, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(user);
+
+        var result = await _service.ChangePasswordAsync(1, "OldPass1A", "OldPass1A");
+
+        result.Should().BeTrue();
+        user.PasswordHash.Should().NotBe(originalHash, "nouveau sel ⇒ hash différent pour le même mot de passe");
+        BCrypt.Net.BCrypt.Verify("OldPass1A", user.PasswordHash).Should().BeTrue();
+    }
+
+    [Fact]
+    public void HashPassword_TwoUsersSamePassword_ProduceDifferentHashes()
+    {
+        var first = _service.HashPassword("SharedPass1");
+        var second = _service.HashPassword("SharedPass1");
+
+        first.Should().NotBe(second, "le sel est unique par hachage");
+        _service.ValidatePassword("SharedPass1", first).Should().BeTrue();
+        _service.ValidatePassword("SharedPass1", second).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// P3-10 : l'authentification recherche le compte par sa forme NORMALISÉE. Quelle que soit la casse ou les
+    /// espaces périphériques saisis, c'est le même compte qui est atteint.
+    /// </summary>
+    [Theory]
+    [InlineData("admin")]
+    [InlineData("Admin")]
+    [InlineData("ADMIN")]
+    [InlineData("  Admin  ")]
+    public async Task AuthenticateAsync_CaseAndSpaceVariants_ReachTheSameAccount(string typedUsername)
+    {
+        var hash = BCrypt.Net.BCrypt.HashPassword("Admin123!", 11);
+        var user = new User
+        {
+            UserId = 1, Username = "admin", NormalizedUsername = "admin", PasswordHash = hash,
+            FirstName = "Admin", LastName = "User", Role = UserRole.Admin, IsActive = true
+        };
+
+        // Le port normalise lui-même son argument : le service lui transmet la saisie brute.
+        _mockUserRepo.Setup(r => r.GetByNormalizedUsernameAsync(typedUsername, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(user);
+        _mockUserRepo.Setup(r => r.GetByIdAsync(1L, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(user);
+
+        var result = await _service.AuthenticateAsync(typedUsername, "Admin123!");
+
+        result.Should().NotBeNull();
+        result!.NormalizedUsername.Should().Be("admin");
     }
 
     #endregion

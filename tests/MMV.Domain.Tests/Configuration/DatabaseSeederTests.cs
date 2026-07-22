@@ -1,8 +1,9 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Policies;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Infrastructure.Configuration;
 using MMV.Infrastructure.Data;
@@ -77,6 +78,7 @@ public sealed class DatabaseSeederTests : IDisposable
             context.Users.Add(new User
             {
                 Username = "admin",
+                NormalizedUsername = UserIdentityPolicy.NormalizeUsername("admin"),
                 PasswordHash = WeakAdminHash,
                 FirstName = "Administrateur",
                 LastName = "Système",
@@ -325,5 +327,235 @@ public sealed class DatabaseSeederTests : IDisposable
         verify.Database.HasPendingModelChanges().Should().BeFalse();
         verify.DocumentSequences.Select(s => s.SequenceName)
             .Should().Contain(new[] { DocumentSequenceNames.Sale, DocumentSequenceNames.Order });
+    }
+
+    // ================================================================================================
+    // P3-10 (R4) — Transition démonstration → production : TOUS les comptes faibles sont neutralisés.
+    // ================================================================================================
+
+    /// <summary>Hash BCrypt du jeu de démonstration (mot de passe « admin »), porté par les quatre comptes.</summary>
+    private const string DemoWeakHash = "$2a$11$QA85M79Q7bLajCAGRrVS1ONdstKLbV0S/vX6OKtN3CsCF3MWSNMoi";
+
+    /// <summary>
+    /// Simule une base autrefois seedée en <b>démonstration</b> puis exploitée en production : quatre comptes
+    /// actifs portant tous le hash faible connu publiquement. C'est le scénario que la version antérieure du
+    /// seeder traitait mal — son <c>FirstOrDefault</c> n'en neutralisait qu'un seul (audit §24, R4).
+    /// </summary>
+    private void SeedDemoWeakAccounts(string dbPath)
+    {
+        using (var context = CreateContext(dbPath))
+        {
+            foreach (var (username, role) in new[]
+                     {
+                         ("admin", UserRole.Admin),
+                         ("marie.optic", UserRole.Optician),
+                         ("pierre.tech", UserRole.Technician),
+                         ("sophie.optic", UserRole.Optician),
+                     })
+            {
+                context.Users.Add(new User
+                {
+                    Username = username,
+                    NormalizedUsername = UserIdentityPolicy.NormalizeUsername(username),
+                    PasswordHash = DemoWeakHash,
+                    FirstName = "Demo",
+                    LastName = username,
+                    Role = role,
+                    IsActive = true,
+                });
+            }
+
+            context.SaveChanges();
+        }
+        SqliteConnection.ClearAllPools();
+    }
+
+    [Fact]
+    public void Production_DemoSeededDatabase_WithoutSecret_DeactivatesEveryWeakAccount()
+    {
+        var dbPath = CreateMigratedDatabase();
+        SeedDemoWeakAccounts(dbPath);
+        var options = new SeedOptions { Environment = ApplicationEnvironment.Production };
+
+        SeedResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            result = new DatabaseSeeder().Seed(context, options);
+        }
+        SqliteConnection.ClearAllPools();
+
+        result.WeakDefaultAdminNeutralized.Should().BeTrue();
+
+        using var verify = CreateContext(dbPath);
+        verify.Users.Should().HaveCount(4, "aucun compte n'est supprimé, seulement désactivé");
+        verify.Users.Where(u => u.PasswordHash == DemoWeakHash).Should()
+            .OnlyContain(u => !u.IsActive, "AUCUN identifiant faible connu ne reste actif");
+    }
+
+    [Fact]
+    public void Production_DemoSeededDatabase_WithSecret_SecuresCanonicalAdmin_AndDeactivatesTheOthers()
+    {
+        var dbPath = CreateMigratedDatabase();
+        SeedDemoWeakAccounts(dbPath);
+        const string strongSecret = "Str0ngBootstrapSecret";
+        var options = new SeedOptions
+        {
+            Environment = ApplicationEnvironment.Production,
+            BootstrapAdminPassword = strongSecret,
+        };
+
+        SeedResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            result = new DatabaseSeeder().Seed(context, options);
+        }
+        SqliteConnection.ClearAllPools();
+
+        result.BootstrapAdminConfigured.Should().BeTrue();
+
+        using var verify = CreateContext(dbPath);
+
+        var admin = verify.Users.Single(u => u.NormalizedUsername == options.BootstrapAdminUsername.ToLowerInvariant());
+        admin.IsActive.Should().BeTrue("le compte administrateur canonique reste utilisable");
+        admin.PasswordHash.Should().NotBe(DemoWeakHash);
+        admin.PasswordHash.Should().StartWith("$2a$11$", "rehaché avec BCrypt WF11");
+        BCrypt.Net.BCrypt.Verify(strongSecret, admin.PasswordHash).Should().BeTrue();
+
+        verify.Users.Where(u => u.PasswordHash == DemoWeakHash).Should()
+            .HaveCount(3).And.OnlyContain(u => !u.IsActive,
+                "fournir un secret ne doit laisser subsister aucun AUTRE identifiant faible actif");
+
+        // Le secret ne doit jamais transiter par le résultat de seed ni ses notes.
+        result.Notes.Should().NotContain(strongSecret);
+    }
+
+    [Fact]
+    public void Production_DemoSeededDatabase_SecondRun_IsIdempotent()
+    {
+        var dbPath = CreateMigratedDatabase();
+        SeedDemoWeakAccounts(dbPath);
+        var options = new SeedOptions { Environment = ApplicationEnvironment.Production };
+
+        using (var context = CreateContext(dbPath))
+        {
+            new DatabaseSeeder().Seed(context, options);
+        }
+        SqliteConnection.ClearAllPools();
+
+        SeedResult second;
+        using (var context = CreateContext(dbPath))
+        {
+            second = new DatabaseSeeder().Seed(context, options);
+        }
+        SqliteConnection.ClearAllPools();
+
+        second.WeakDefaultAdminNeutralized.Should().BeFalse("tout est déjà neutralisé : aucun changement");
+
+        using var verify = CreateContext(dbPath);
+        verify.Users.Should().HaveCount(4);
+        verify.Users.Should().OnlyContain(u => !u.IsActive);
+    }
+
+    /// <summary>
+    /// Un compte réel (mot de passe déjà changé par l'exploitant) ne doit jamais être désactivé par le seed :
+    /// la neutralisation vise les hash faibles CONNUS, pas les comptes en général.
+    /// </summary>
+    [Fact]
+    public void Production_RealAccount_IsNeverDeactivated()
+    {
+        var dbPath = CreateMigratedDatabase();
+        SeedDemoWeakAccounts(dbPath);
+
+        var realHash = BCrypt.Net.BCrypt.HashPassword("R3alStrongPass", 11);
+        using (var context = CreateContext(dbPath))
+        {
+            context.Users.Add(new User
+            {
+                Username = "patron",
+                NormalizedUsername = UserIdentityPolicy.NormalizeUsername("patron"),
+                PasswordHash = realHash,
+                FirstName = "Vrai", LastName = "Compte", Role = UserRole.Admin, IsActive = true,
+            });
+            context.SaveChanges();
+        }
+        SqliteConnection.ClearAllPools();
+
+        using (var context = CreateContext(dbPath))
+        {
+            new DatabaseSeeder().Seed(context, new SeedOptions { Environment = ApplicationEnvironment.Production });
+        }
+        SqliteConnection.ClearAllPools();
+
+        using var verify = CreateContext(dbPath);
+        var real = verify.Users.Single(u => u.NormalizedUsername == "patron");
+        real.IsActive.Should().BeTrue("un compte non faible n'est jamais désactivé");
+        real.PasswordHash.Should().Be(realHash, "ni modifié");
+
+        verify.Users.Where(u => u.PasswordHash == DemoWeakHash).Should().OnlyContain(u => !u.IsActive);
+        verify.Customers.Should().BeEmpty("aucune donnée de démonstration n'est créée en production");
+    }
+
+    /// <summary>
+    /// Revue ciblée avant commit — variante non testée jusqu'ici : un administrateur RÉEL (hash fort) occupe déjà
+    /// le login bootstrap (« admin »), et AUCUN compte faible ne porte ce login (seuls des comptes faibles sous
+    /// D'AUTRES logins subsistent). <c>SecureBootstrap</c> choisit alors <c>weakAccounts.FirstOrDefault()</c> —
+    /// un compte faible ARBITRAIRE — comme compte à « sécuriser » et le renomme vers le login bootstrap. Ce test
+    /// prouve que ce renommage ne doit JAMAIS entrer en collision avec l'administrateur réel déjà présent sous
+    /// ce login, ni écraser silencieusement son identité.
+    /// </summary>
+    [Fact]
+    public void Production_WithBootstrapSecret_RealAdminAlreadyOwnsBootstrapLogin_DoesNotCollideOrRenameArbitraryWeakAccount()
+    {
+        var dbPath = CreateMigratedDatabase();
+
+        var realHash = BCrypt.Net.BCrypt.HashPassword("R3alStrongPass", 11);
+        using (var context = CreateContext(dbPath))
+        {
+            // L'administrateur RÉEL occupe déjà le login bootstrap par défaut ("admin"), hash fort.
+            context.Users.Add(new User
+            {
+                Username = "admin",
+                NormalizedUsername = UserIdentityPolicy.NormalizeUsername("admin"),
+                PasswordHash = realHash,
+                FirstName = "Vrai", LastName = "Admin", Role = UserRole.Admin, IsActive = true,
+            });
+            // Compte faible, mais sous un AUTRE login — aucun compte faible ne porte "admin" ici.
+            context.Users.Add(new User
+            {
+                Username = "marie.optic",
+                NormalizedUsername = UserIdentityPolicy.NormalizeUsername("marie.optic"),
+                PasswordHash = DemoWeakHash,
+                FirstName = "Demo", LastName = "marie.optic", Role = UserRole.Optician, IsActive = true,
+            });
+            context.SaveChanges();
+        }
+        SqliteConnection.ClearAllPools();
+
+        var options = new SeedOptions
+        {
+            Environment = ApplicationEnvironment.Production,
+            BootstrapAdminPassword = "Str0ngBootstrapSecret",
+        };
+
+        using (var context = CreateContext(dbPath))
+        {
+            var act = () => new DatabaseSeeder().Seed(context, options);
+            act.Should().NotThrow("le seed ne doit jamais planter au démarrage sur une collision de login évitable");
+        }
+        SqliteConnection.ClearAllPools();
+
+        using var verify = CreateContext(dbPath);
+
+        var realAdmin = verify.Users.Single(u => u.NormalizedUsername == "admin");
+        realAdmin.PasswordHash.Should().Be(realHash, "l'administrateur réel ne doit jamais être ré-haché");
+        realAdmin.IsActive.Should().BeTrue();
+        realAdmin.LastName.Should().Be("Admin", "son identité ne doit jamais être écrasée par un renommage");
+
+        var demoAccount = verify.Users.Single(u => u.PasswordHash == DemoWeakHash || u.NormalizedUsername == "marie.optic");
+        demoAccount.NormalizedUsername.Should().Be("marie.optic",
+            "le compte faible ne doit jamais être renommé vers le login d'un administrateur réel déjà présent");
+        demoAccount.IsActive.Should().BeFalse("neutralisé comme tout compte à hash faible connu");
+
+        verify.Users.Should().HaveCount(2, "aucun compte supplémentaire créé, aucun perdu");
     }
 }

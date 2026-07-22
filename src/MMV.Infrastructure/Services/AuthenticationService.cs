@@ -1,6 +1,8 @@
 using MMV.Domain.Entities;
+using MMV.Domain.Exceptions;
 using MMV.Domain.Interfaces.Repositories;
 using MMV.Domain.Services;
+using MMV.Domain.Validators;
 
 namespace MMV.Infrastructure.Services;
 
@@ -29,7 +31,12 @@ public class AuthenticationService : IAuthenticationService
         if (string.IsNullOrWhiteSpace(password))
             throw new ArgumentException("Le mot de passe est requis.", nameof(password));
 
-        var user = await _unitOfWork.Users.GetByUsernameAsync(username.Trim(), cancellationToken);
+        // P3-10 : recherche sur la forme normalisée du login (la normalisation appartient au repository, qui
+        // délègue à UserIdentityPolicy). « admin », « Admin » et «  ADMIN  » atteignent donc le même compte.
+        // Comportement d'authentification inchangé par ailleurs : BCrypt WF11, refus des comptes inactifs, et
+        // résultat null uniforme qu'il s'agisse d'un compte inconnu, inactif ou d'un mot de passe erroné
+        // (anti-énumération : le message d'erreur ne révèle pas l'existence d'un compte).
+        var user = await _unitOfWork.Users.GetByNormalizedUsernameAsync(username, cancellationToken);
 
         if (user == null)
             return null;
@@ -104,7 +111,26 @@ public class AuthenticationService : IAuthenticationService
         if (!ValidatePassword(currentPassword, user.PasswordHash))
             return false;
 
-        // Hasher et sauvegarder le nouveau mot de passe
+        // P3-10 — Politique appliquée APRÈS la vérification du mot de passe actuel et AVANT le nouveau hachage.
+        //
+        // Ordre délibéré : valider la politique d'abord révélerait, à un appelant ne connaissant pas le mot de
+        // passe actuel, que le compte existe et que sa proposition était acceptable — une fuite d'information
+        // gratuite. Le contrôle d'identité passe donc en premier ; la qualité du nouveau secret ensuite.
+        //
+        // Jusqu'ici, seul UserProfileViewModel appliquait la politique : tout appelant du service pouvait
+        // remplacer un hash par celui d'un mot de passe faible (audit P3-10 §13, R1). Aucune écriture n'a
+        // désormais lieu dans ce cas — le hash existant reste intact.
+        //
+        // Refus par exception typée, non par retour booléen : ce contrat renvoie déjà `false` pour « utilisateur
+        // introuvable » et « mot de passe actuel erroné ». Y ajouter un troisième sens rendrait un mot de passe
+        // faible indiscernable d'une erreur d'authentification, et l'UI existante afficherait un message faux.
+        // BusinessRuleException porte le message stable du Domain ; aucune exception BCrypt n'est exposée.
+        var (isValid, errorMessage) = UserValidator.ValidatePasswordPolicy(newPassword);
+        if (!isValid)
+            throw new BusinessRuleException(errorMessage);
+
+        // Hasher et sauvegarder le nouveau mot de passe (nouveau sel à chaque changement, propriété de BCrypt :
+        // réutiliser le même mot de passe produit donc un hash différent).
         user.PasswordHash = HashPassword(newPassword);
         await _unitOfWork.Users.UpdateAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

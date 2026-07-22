@@ -1,7 +1,8 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Policies;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Repositories;
 using System.Linq;
@@ -35,6 +36,7 @@ public class UserRepositoryTests
         var user = new User
         {
             Username = "optician",
+            NormalizedUsername = UserIdentityPolicy.NormalizeUsername("optician"),
             PasswordHash = "hash",
             FirstName = "Opti",
             LastName = "Cian",
@@ -45,7 +47,7 @@ public class UserRepositoryTests
         await repository.CreateAsync(user);
         await context.SaveChangesAsync();
 
-        var saved = await repository.GetByUsernameAsync("optician");
+        var saved = await repository.GetByNormalizedUsernameAsync("optician");
 
         Assert.NotNull(saved);
         Assert.Equal(UserRole.Optician, saved!.Role);
@@ -61,6 +63,7 @@ public class UserRepositoryTests
         var active = new User
         {
             Username = "active",
+            NormalizedUsername = UserIdentityPolicy.NormalizeUsername("active"),
             PasswordHash = "hash",
             FirstName = "Active",
             LastName = "User",
@@ -71,6 +74,7 @@ public class UserRepositoryTests
         var inactive = new User
         {
             Username = "inactive",
+            NormalizedUsername = UserIdentityPolicy.NormalizeUsername("inactive"),
             PasswordHash = "hash",
             FirstName = "Inactive",
             LastName = "User",
@@ -101,6 +105,7 @@ public class UserRepositoryTests
         var optician = new User
         {
             Username = "optician",
+            NormalizedUsername = UserIdentityPolicy.NormalizeUsername("optician"),
             PasswordHash = "hash",
             FirstName = "Opti",
             LastName = "Cian",
@@ -111,6 +116,7 @@ public class UserRepositoryTests
         var technician = new User
         {
             Username = "technician",
+            NormalizedUsername = UserIdentityPolicy.NormalizeUsername("technician"),
             PasswordHash = "hash",
             FirstName = "Tech",
             LastName = "Guy",

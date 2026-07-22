@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Users.CreateUser;
@@ -7,7 +7,9 @@ using MMV.Application.UseCases.Users.UpdateUser;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Services;
+using MMV.Domain.Policies;
 using MMV.Infrastructure.Data;
+using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
 using Xunit;
 
@@ -69,11 +71,11 @@ public sealed class UserUseCasesTests : IDisposable
         CreateUserResult result;
         using (var context = CreateContext(dbPath))
         {
-            var useCase = new CreateUserUseCase(new UserRepository(context), new UnitOfWork(context), new FakeAuth());
+            var useCase = new CreateUserUseCase(new UserRepository(context), new UnitOfWork(context), new FakeAuth(), new EfTransactionRunner(context));
             result = await useCase.ExecuteAsync(new CreateUserCommand
             {
                 Username = "jdupont", FirstName = "Jean", LastName = "Dupont",
-                Role = UserRole.Optician, IsActive = true, Password = "S3cret!"
+                Role = UserRole.Optician, IsActive = true, Password = "S3cretPass1"
             });
         }
 
@@ -83,7 +85,8 @@ public sealed class UserUseCasesTests : IDisposable
         using var verify = CreateContext(dbPath);
         var user = verify.Users.AsNoTracking().Single();
         user.Username.Should().Be("jdupont");
-        user.PasswordHash.Should().Be("HASHED::S3cret!");
+        user.PasswordHash.Should().Be("HASHED::S3cretPass1");
+        user.NormalizedUsername.Should().Be("jdupont");
         user.IsActive.Should().BeTrue();
     }
 
@@ -95,13 +98,13 @@ public sealed class UserUseCasesTests : IDisposable
 
         using (var context = CreateContext(dbPath))
         {
-            await new UserRepository(context).CreateAsync(new User { Username = "taken", FirstName = "A", LastName = "B", PasswordHash = "x" });
+            await new UserRepository(context).CreateAsync(new User { Username = "taken", NormalizedUsername = UserIdentityPolicy.NormalizeUsername("taken"), FirstName = "A", LastName = "B", PasswordHash = "x" });
             await new UnitOfWork(context).SaveChangesAsync();
         }
 
         using var ctx = CreateContext(dbPath);
-        var useCase = new CreateUserUseCase(new UserRepository(ctx), new UnitOfWork(ctx), new FakeAuth());
-        var result = await useCase.ExecuteAsync(new CreateUserCommand { Username = "taken", FirstName = "C", LastName = "D", Password = "p" });
+        var useCase = new CreateUserUseCase(new UserRepository(ctx), new UnitOfWork(ctx), new FakeAuth(), new EfTransactionRunner(ctx));
+        var result = await useCase.ExecuteAsync(new CreateUserCommand { Username = "taken", FirstName = "C", LastName = "D", Role = UserRole.Optician, Password = "S3cretPass1" });
 
         result.UsernameTaken.Should().BeTrue();
         ctx.Users.AsNoTracking().Count().Should().Be(1);
@@ -116,14 +119,14 @@ public sealed class UserUseCasesTests : IDisposable
         long id;
         using (var context = CreateContext(dbPath))
         {
-            var created = await new UserRepository(context).CreateAsync(new User { Username = "old", FirstName = "O", LastName = "L", PasswordHash = "KEEP", Role = UserRole.Technician });
+            var created = await new UserRepository(context).CreateAsync(new User { Username = "old", NormalizedUsername = UserIdentityPolicy.NormalizeUsername("old"), FirstName = "O", LastName = "L", PasswordHash = "KEEP", Role = UserRole.Technician });
             await new UnitOfWork(context).SaveChangesAsync();
             id = created.UserId;
         }
 
         using (var context = CreateContext(dbPath))
         {
-            var useCase = new UpdateUserUseCase(new UserRepository(context), new UnitOfWork(context), new FakeAuth());
+            var useCase = new UpdateUserUseCase(new UserRepository(context), new UnitOfWork(context), new FakeAuth(), new EfTransactionRunner(context));
             var result = await useCase.ExecuteAsync(new UpdateUserCommand { UserId = id, Username = "new", FirstName = "N", LastName = "W", Role = UserRole.Admin, IsActive = false, Password = null });
             result.UserFound.Should().BeTrue();
             result.UsernameTaken.Should().BeFalse();
@@ -143,8 +146,8 @@ public sealed class UserUseCasesTests : IDisposable
         var dbPath = PathFor("update-missing.db");
         EnsureSchema(dbPath);
         using var context = CreateContext(dbPath);
-        var useCase = new UpdateUserUseCase(new UserRepository(context), new UnitOfWork(context), new FakeAuth());
-        var result = await useCase.ExecuteAsync(new UpdateUserCommand { UserId = 404, Username = "x", FirstName = "x", LastName = "x" });
+        var useCase = new UpdateUserUseCase(new UserRepository(context), new UnitOfWork(context), new FakeAuth(), new EfTransactionRunner(context));
+        var result = await useCase.ExecuteAsync(new UpdateUserCommand { UserId = 404, Username = "xyz", FirstName = "x", LastName = "x", Role = UserRole.Optician });
         result.UserFound.Should().BeFalse();
     }
 
@@ -157,7 +160,7 @@ public sealed class UserUseCasesTests : IDisposable
         long id;
         using (var context = CreateContext(dbPath))
         {
-            var created = await new UserRepository(context).CreateAsync(new User { Username = "u", FirstName = "F", LastName = "L", PasswordHash = "h", IsActive = true });
+            var created = await new UserRepository(context).CreateAsync(new User { Username = "usr", NormalizedUsername = UserIdentityPolicy.NormalizeUsername("usr"), FirstName = "F", LastName = "L", PasswordHash = "h", IsActive = true });
             await new UnitOfWork(context).SaveChangesAsync();
             id = created.UserId;
         }
@@ -191,8 +194,8 @@ public sealed class UserUseCasesTests : IDisposable
         var dbPath = PathFor("null.db");
         EnsureSchema(dbPath);
         using var context = CreateContext(dbPath);
-        var create = new CreateUserUseCase(new UserRepository(context), new UnitOfWork(context), new FakeAuth());
-        var update = new UpdateUserUseCase(new UserRepository(context), new UnitOfWork(context), new FakeAuth());
+        var create = new CreateUserUseCase(new UserRepository(context), new UnitOfWork(context), new FakeAuth(), new EfTransactionRunner(context));
+        var update = new UpdateUserUseCase(new UserRepository(context), new UnitOfWork(context), new FakeAuth(), new EfTransactionRunner(context));
         var setActive = new SetUserActiveUseCase(new UserRepository(context), new UnitOfWork(context));
 
         await ((Func<Task>)(() => create.ExecuteAsync(null!))).Should().ThrowAsync<ArgumentNullException>();
@@ -203,8 +206,8 @@ public sealed class UserUseCasesTests : IDisposable
     [Fact]
     public void Constructors_RejectNullDependencies()
     {
-        ((Action)(() => _ = new CreateUserUseCase(null!, null!, null!))).Should().Throw<ArgumentNullException>();
-        ((Action)(() => _ = new UpdateUserUseCase(null!, null!, null!))).Should().Throw<ArgumentNullException>();
+        ((Action)(() => _ = new CreateUserUseCase(null!, null!, null!, null!))).Should().Throw<ArgumentNullException>();
+        ((Action)(() => _ = new UpdateUserUseCase(null!, null!, null!, null!))).Should().Throw<ArgumentNullException>();
         ((Action)(() => _ = new SetUserActiveUseCase(null!, null!))).Should().Throw<ArgumentNullException>();
     }
 }

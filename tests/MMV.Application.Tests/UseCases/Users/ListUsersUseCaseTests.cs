@@ -1,9 +1,10 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Users.ListUsers;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Policies;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Repositories;
 using Xunit;
@@ -54,8 +55,8 @@ public sealed class ListUsersUseCaseTests : IDisposable
 
         using (var context = CreateContext(dbPath))
         {
-            await new UserRepository(context).CreateAsync(new User { Username = "jdupont", FirstName = "Jean", LastName = "Dupont", Role = UserRole.Optician, IsActive = true, PasswordHash = "h" });
-            await new UserRepository(context).CreateAsync(new User { Username = "amartin", FirstName = "Alice", LastName = "Martin", Role = UserRole.Admin, IsActive = false, PasswordHash = "h" });
+            await new UserRepository(context).CreateAsync(new User { Username = "jdupont", NormalizedUsername = UserIdentityPolicy.NormalizeUsername("jdupont"), FirstName = "Jean", LastName = "Dupont", Role = UserRole.Optician, IsActive = true, PasswordHash = "h" });
+            await new UserRepository(context).CreateAsync(new User { Username = "amartin", NormalizedUsername = UserIdentityPolicy.NormalizeUsername("amartin"), FirstName = "Alice", LastName = "Martin", Role = UserRole.Admin, IsActive = false, PasswordHash = "h" });
             await new UnitOfWork(context).SaveChangesAsync();
         }
 

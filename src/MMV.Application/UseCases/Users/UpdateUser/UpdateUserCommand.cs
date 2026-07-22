@@ -24,8 +24,11 @@ public sealed class UpdateUserCommand
     /// <summary>Nom.</summary>
     public string LastName { get; init; } = string.Empty;
 
-    /// <summary>Rôle attribué.</summary>
-    public UserRole Role { get; init; }
+    /// <summary>
+    /// Rôle attribué. <b>Obligatoire</b> (P3-10) : <c>null</c> est refusé par une erreur de validation.
+    /// Voir <c>CreateUserCommand.Role</c> — l'omission ne doit jamais valoir <c>Admin</c>.
+    /// </summary>
+    public UserRole? Role { get; init; }
 
     /// <summary>Indique si le compte est actif.</summary>
     public bool IsActive { get; init; }

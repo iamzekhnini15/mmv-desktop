@@ -546,8 +546,12 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   - **6 tests ajoutés** (`SupplierDeletionSqlAndTrackerTests`) ; **1308 tests** au total après revue (0 échec,
     0 ignoré ; Domain 537 · Application 532 · App 239) ; 0 vulnérabilité ; aucune migration en attente ;
     **aucune UI** modifiée.
-- **Sous réserve de CI** : validation locale complète à ce stade (revue ciblée incluse), commit et push en
-  préparation.
+- **✅ P3-9 terminé et vérifié en CI** :
+  - commit : `057df0f3fad91f344a6333f3a52f32b6d1552ba1` ;
+  - CI : run `29831430629` — événement `push`, `completed`, conclusion **`success`** ;
+  - **1308 tests** (0 échec, 0 ignoré ; Domain 537 · Application 532 · App 239) ;
+  - **aucune migration** ; **aucune UI** modifiée ;
+  - verdict : **`P3-9-CI = GO`**.
 
 ### P3-10 — Utilisateurs locaux
 
@@ -559,6 +563,78 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - **Fichiers** : `User`, `UserValidator`, `Create/Update/SetUserActiveUseCase`, `DbInitializer`.
 - **Tests** : mot de passe faible refusé ; désactivation vs suppression ; seed prod sûr.
 - **Sortie** : sécurité locale cohérente.
+- **Audit terminé** — [rapport d'audit
+  P3-10](../implementation/P3-10-local-users-business-rules-audit-report.md) (verdict `P3-10 AUDIT = GO`).
+- **Implémentation backend validée localement** — [rapport d'implémentation
+  P3-10](../implementation/P3-10-local-users-business-rules-implementation-report.md) :
+  - **politique de mot de passe appliquée aux trois chemins runtime** (`CreateUserUseCase`, `UpdateUserUseCase`
+    si un mot de passe est fourni, `AuthenticationService.ChangePasswordAsync`), **avant tout hachage**. Elle
+    n'était jusque-là appliquée que par l'UI : tout appelant entrant par la couche Application persistait un mot
+    de passe faible. `UserValidator.ValidatePasswordPolicy` reste l'**unique** source de vérité — aucune seconde
+    politique, aucune regex parallèle, aucun changement de ses exigences ;
+  - **aucune écriture pour un mot de passe faible**, et le refus précède le hachage — prouvé par un compteur
+    d'appels BCrypt, non par la seule inspection de l'état final ;
+  - **login normalisé et unique** : colonne persistée `User.NormalizedUsername` (`Trim().ToLowerInvariant()`),
+    propriétaire Domain unique `UserIdentityPolicy`, protégée par `idx_users_normalized_username_unique`.
+    `admin`, `Admin` et ` ADMIN ` désignent désormais le même compte, **entre postes** ;
+  - **l'ancien index `idx_users_username_unique` est supprimé** : sous la collation BINARY de SQLite, il n'a
+    jamais garanti l'unicité du login au sens métier ;
+  - **courses d'unicité traduites en erreur métier stable** (`UsernameTaken`) via `ITransactionRunner` ; aucune
+    exception provider n'atteint l'appelant, et seule la catégorie `UniqueConstraint` est traitée comme doublon ;
+  - **rôle réellement validé** (`IsInEnum`, jusque-là jamais invoqué par les use cases) et **défaut `Admin`
+    supprimé** : `Role` devient `UserRole?`, une omission est refusée au lieu de valoir le privilège maximal ;
+  - **limite assumée** : P3-10 valide la *valeur* du rôle, pas le *droit* de la demander — Application ne possède
+    aucun `ICurrentUser`. L'autorisation par acteur reste un **report explicite**, verrouillé par garde
+    d'architecture ;
+  - **comptes faibles historiques neutralisés** : *tous* les comptes portant un hash faible connu, et non
+    seulement le premier. Une base autrefois seedée en démonstration puis exploitée en production laissait
+    `marie.optic`, `pierre.tech` et `sophie.optic` actifs avec un mot de passe public ;
+  - **désactivation conservée** : aucun `DeleteUserUseCase`, aucune suppression physique, FK historiques
+    (`Sale.StaffId`, `StockMovement.PerformedByUserId`) laissées en `SetNull` — l'historique reste attribué ;
+  - **BCrypt WF11, anti-énumération et refus des comptes inactifs : inchangés** ; seule la *recherche* passe par
+    la clé normalisée ;
+  - **migration unique `AddNormalizedUsernameAndSecureLocalUsers`** avec backfill **exact ou échec sûr**
+    (principe P3-4B) : collision insensible à la casse, login vide, hors bornes ou hors du jeu ASCII autorisé
+    ⇒ migration **avortée**, transaction annulée, rien inscrit dans `__EFMigrationsHistory`, **aucune ligne
+    supprimée, fusionnée ni renommée**. Fusionner détruirait un historique ; renommer inventerait un identifiant
+    que personne n'a choisi — l'exploitant tranche ;
+  - **adoption des bases historiques** : la migration est *exécutée* (jamais baselinée) si la colonne est
+    physiquement absente, tout état **partiel ou altéré** est refusé avant toute écriture d'historique, et la
+    cohérence physique est revérifiée **inconditionnellement** après préparation ;
+  - **défaut trouvé et corrigé par les tests** : la vérification de l'index cherchait le mot « UNIQUE » dans le
+    SQL — or le nom de l'index se termine lui-même par `_unique`, rendant la garde vraie même pour un index
+    **non** unique. Lecture désormais autoritaire via PRAGMA `index_list`/`index_info` ;
+  - **1407 tests** au total (0 échec, 0 ignoré ; Domain 589 · Application 579 · App 239) — `MMV.App.Tests` reste
+    exactement à 239, **aucune UI** modifiée ; 0 vulnérabilité ; aucune migration en attente.
+- **Revue ciblée avant commit** — [rapport d'implémentation
+  P3-10 §« Revue ciblée avant commit »](../implementation/P3-10-local-users-business-rules-implementation-report.md#revue-ciblée-avant-commit) :
+  - **trois défauts concrets trouvés et corrigés**, tous invisibles à l'audit statique :
+    - **défaut permanent `''`** sur `NormalizedUsername` — l'artifice transitoire exigé par
+      `ALTER TABLE ADD COLUMN NOT NULL` **subsistait dans le schéma final** : une insertion SQL omettant la
+      colonne était acceptée en silence avec une clé métier vide au lieu d'échouer `NOT NULL`. Corrigé **dans la
+      migration P3-10 existante** (`AlterColumn` final) ; `dflt_value` final = `NULL`, prouvé par PRAGMA **et**
+      par insertion brute ;
+    - **entité rejetée laissée suivie** après un refus `UsernameTaken` : le rollback SQL était correct, mais un
+      `SaveChangesAsync` ultérieur **sans rapport** dans la même portée retentait l'écriture rejetée et
+      échouait. Corrigé par un détachement **ciblé** (`IUserRepository.DetachIfTracked`, patron P3-9) — aucun
+      `ChangeTracker.Clear()`, aucune dépendance EF en Domain/Application, `EfTransactionRunner` inchangé ;
+    - **seed : renommage arbitraire vers le login bootstrap** — `SecureBootstrap` pouvait renommer un compte
+      faible quelconque vers le login bootstrap ; si un administrateur **réel** l'occupait déjà, l'index unique
+      P3-10 faisait échouer le seed **au démarrage de l'application**. De plus, la branche « administrateur réel
+      déjà présent » **ne neutralisait aucun** compte faible, les laissant actifs en production. Les deux points
+      sont corrigés (R4 couvert sur **toutes** les branches) ;
+  - **affirmation documentaire corrigée** : le `Down` ne peut **pas** légitimement échouer sur des comptes ne
+    différant que par la casse — l'index unique les interdit précisément. Un rollback normal est **réversible**
+    pour toute base respectant le schéma P3-10 ; seul un schéma manuellement altéré pourrait le faire échouer ;
+  - **index vérifié physiquement** : `unique = 1` lu via PRAGMA `index_list` (jamais par recherche du mot
+    « UNIQUE » dans le SQL), une seule colonne métier, `partial = 0`, ancien index absent ;
+  - **revus sans défaut** : classe `GLOB` du backfill (tiret en position finale, aucune plage accidentelle),
+    collisions historiques et échec sûr, matrice complète des états d'adoption partiels ou altérés,
+    classification des contraintes, politique de mot de passe et validation des rôles ;
+  - **6 tests ajoutés** ; **1413 tests** au total après revue (0 échec, 0 ignoré ; Domain 593 · Application 581
+    · App 239) ; 0 vulnérabilité ; aucune migration en attente ; **une seule** migration P3-10 ; **aucune UI**
+    modifiée.
+- **Sous réserve de CI** : validation locale complète à ce stade.
 
 ### P3-11 — Scénarios métier de recette
 

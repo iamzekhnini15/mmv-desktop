@@ -475,6 +475,16 @@ public sealed class SqliteDatabaseManagerTests : IDisposable
             connection.Open();
             Exec(connection, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
             Exec(connection, "ALTER TABLE \"Notifications\" DROP COLUMN \"ResolvedAt\"");
+
+            // P3-10 : une base réellement antérieure à P3-8 est aussi antérieure à P3-10. EnsureCreated() ayant
+            // construit le modèle COURANT, il faut retirer également la colonne et l'index du login normalisé —
+            // sinon le fixture décrit une base impossible (P3-8 absent mais P3-10 présent), et l'exécution forcée
+            // de AddNotificationResolution rejouerait ensuite AddNormalizedUsernameAndSecureLocalUsers sur une
+            // colonne déjà là. L'ancien index unique sensible à la casse est restauré, comme sur une vraie base
+            // de cette époque.
+            Exec(connection, "DROP INDEX \"idx_users_normalized_username_unique\"");
+            Exec(connection, "ALTER TABLE \"Users\" DROP COLUMN \"NormalizedUsername\"");
+            Exec(connection, "CREATE UNIQUE INDEX \"idx_users_username_unique\" ON \"Users\" (\"Username\")");
         }
         SqliteConnection.ClearAllPools();
 
