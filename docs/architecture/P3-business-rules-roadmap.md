@@ -67,12 +67,20 @@ branche `p3-business-rules`, build vert, **585 tests**, 0 vulnérabilité, `has-
 | **P3-9** | Fournisseurs | domaine |
 | **P3-10** | Utilisateurs locaux | domaine |
 | **P3-11** | Scénarios métier de recette | recette bout-en-bout |
-| **P3-12** | Audit final P3 | audit |
+| **P3-12** | Audit final P3 **et remédiation** | audit + correctif ciblé |
 
 > Une étape = un domaine = un commit + un rapport + une CI verte (protocole P2). Ordre indicatif : les
 > dépendances réelles observées dans le code peuvent justifier un réordonnancement documenté (ex. P3-1 doit
 > précéder les domaines car il pose le socle de validation ; P3-6B suit P3-6 et précède P3-7 car la fiche
 > atelier dérive de la commande et alimente le suivi de vente).
+
+> **Note factuelle — un commit UI hors étape *(C4)*.** Le commit **`d8af704` — « feat(ui): redesign login
+> screen »** se situe entre P3-3C (`c0c97bd`) et P3-4A (`2709bfe`) et modifie 6 fichiers d'interface
+> (`LoginView.axaml`, `App.axaml.cs`, `Icons.axaml`, `MMV.App.csproj`, un asset). Il n'appartient à **aucune**
+> sous-étape P3 et ne fait l'objet d'aucun rapport ; il n'est **pas** rattaché rétroactivement à l'une d'elles.
+> Il ne contredit pas la règle « backend uniquement à partir de P3-4 » puisqu'il la **précède**. **Impact
+> métier : nul** — écran de connexion seul, aucune règle métier déplacée. Consigné ici pour que l'affirmation
+> « l'UI n'a été touchée que par P3-2C et P3-3C » ne subsiste pas telle quelle.
 
 En parallèle, une **règle optique transverse** (transposition sphère/cylindre/axe) est cadrée en §5 et
 détaillée dans [les notes atelier & transposition](../domain/P3-workshop-sheet-and-transposition-notes.md).
@@ -172,8 +180,11 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   (charger le client, refuser si `IsArchived`, selon la convention P3-1 : refus dur = exception typée). Cf.
   [rapport P3-2B §10](../implementation/P3-2B-customer-archiving-and-deletion-report.md).
 - **Sortie** : cohérence croisée validée ; ordonnance source restant intangible.
-- **État** : **P3-3 TERMINÉ localement** (sous réserve de CI distante) — **P3-3A** (audit), **P3-3B** (métier +
-  validation) et **P3-3C** (UI) livrés.
+- **État** : **P3-3 TERMINÉ** — **P3-3A** (audit), **P3-3B** (métier + validation) et **P3-3C** (UI) livrés.
+  L'implémentation est **incorporée dans le HEAD P3 final** (`c0c97bd` est ancêtre de `4c2a1e5`) et se trouve
+  donc **validée par les CI ultérieures de la branche** ; aucun run CI propre à P3-3 n'avait été consigné à
+  l'époque, et aucun n'est reconstitué ici *(C3)*. La règle de **suppression** des ordonnances, restée
+  incomplète après P3-3, a été complétée par la **remédiation P3-12** (voir ci-dessous).
   - [rapport P3-3A](../implementation/P3-3A-prescription-domain-audit-report.md) — audit. **Découverte
     structurante** : `PrescriptionValidator` était **du code mort** (appelé par aucun use case) — toute la validation
     optique reposait sur l'UI seule.
@@ -195,8 +206,13 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
 - **Réserve honnête sur la « source intangible »** : l'immutabilité **forte** de `Prescription` n'est **toujours pas**
   implémentée (ni versionnement, ni verrouillage après usage, ni FK `SaleItem.PrescriptionId` — le lien passé est
   **irrécupérable**). Les **documents** historiques restent protégés par la **copie par valeur** dans
-  `SaleItem`/`OrderItem`, pas par une règle. La suppression **physique** d'une ordonnance existe toujours : elle est
-  désormais **confirmée** (P3-3C) mais reste **irréversible**. Dette **documentée**, **non résolue**.
+  `SaleItem`/`OrderItem`, pas par une règle. **À la clôture de P3-3**, la suppression **physique** d'une ordonnance
+  restait possible : elle était **confirmée** (P3-3C) mais **irréversible**, et constituait une dette **ouverte**.
+  **Cette dette a été fermée par la remédiation P3-12** (cf. §P3-12 ci-dessous) : toute suppression physique d'une
+  ordonnance existante est désormais **refusée**, sans aucune écriture, par
+  `MMV.Domain.Policies.PrescriptionRetentionPolicy` opposée dans `DeletePrescriptionUseCase`. **La réserve sur
+  l'immutabilité forte, elle, demeure entière** : conservation n'est pas immutabilité — une ordonnance reste
+  modifiable, sans versionnement ni verrouillage, et le lien passé vers les ventes reste irrécupérable.
 - **Toujours ouvert après P3-3** (rien de tout ceci n'est traité par P3-3C) :
   - **transposition** sphère/cylindre/axe ⇒ **reportée à P3-6B** (cf. §5) ;
   - **concurrence multi-poste** (aucun token : deux postes corrigeant des yeux différents d'une même ordonnance ⇒ la
@@ -682,9 +698,18 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   - **Limite explicitement assumée** : la règle porte sur le **flux de consommation du stock**, pas sur une
     taxonomie commerciale (aucune affirmation `Frame == MONTURE` ni `Accessory == CLIPS`). Elle garantit
     **exactement un** chemin de consommation par ligne acceptée — jamais zéro, jamais deux.
-  - **Chemins secondaires documentés, non modifiés** : `CreateOrderUseCase` et `UpdateOrderUseCase` (dont le
-    `SaleId = 0`) restent des dettes ouvertes ; seul leur **danger de stock** est fermé par la garde de
-    fabrication.
+  - **Chemins documentés, non modifiés** : `CreateOrderUseCase` et `UpdateOrderUseCase` (dont le `SaleId = 0`)
+    restent des dettes ouvertes ; seul leur **danger de stock** est fermé par la garde de fabrication.
+  - **Correction de caractérisation *(C5)*.** P3-11 qualifiait `CreateOrderUseCase` de « chemin secondaire ».
+    L'audit P3-12 a établi que c'est **inexact quant à l'exposition** : le chemin est **public**, **enregistré
+    en DI** (`DependencyInjection.cs:87`) et **atteignable par l'utilisateur**
+    (`OrdersViewModel` → `OrderFormViewModel.cs:638`). Il est en revanche **inopérant sous FK actives** :
+    l'`Order` est construit sans jamais affecter `SaleId`, qui vaut donc `0`, et aucune vente ne porte cet
+    identifiant — la création manuelle de commande fournisseur **échoue** avant toute écriture. C'est un
+    **échec fermé** : erreur affichée, aucune ligne écrite, aucune commande orpheline, aucune perte. Défaut
+    **antérieur à P3** (P2B-2D), ni introduit ni aggravé par P3. Le **danger de stock** d'une éventuelle
+    commande hétérodoxe déjà en base est fermé par la garde de fabrication P3-11
+    (`AdvanceOrderStatusUseCase.cs:296`). → **dette importante, reportée au redesign métier.**
 - **Scénarios livrés** : **9 scénarios** (S1 à S9) + 1 vérification de santé du socle = **11 tests de recette**,
   tous verts. S9 est devenu un **test de refus** dans ses deux cas ; les deux tests sont conservés, aucun n'est
   ignoré, et l'invariant n'a pas été affaibli mais **tranché**. Chaque scénario utilise une base migrée
@@ -712,15 +737,42 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   fragments (`Contains`), acceptant à tort une disjonction, un regroupement différent ou une condition
   supplémentaire contenant les mêmes termes ; corrigé par une comparaison littérale du prédicat normalisé (5
   tests adverses F1–F5 ajoutés). **1493 tests** au total localement (Domain 647 · Application 607 · App 239 ;
-  0 échec, 0 ignoré), aucune migration, aucune UI. **Sous réserve de commit et de CI** avant de considérer la
-  dette définitivement close.
+  0 échec, 0 ignoré), aucune migration, aucune UI.
+- **Correctif P3-8 — commit et CI, définitif** *(C2)* :
+  - commit : `4c2a1e56b55d6bfc32ec4a8a288ce7fd56cd8365` ;
+  - run CI : [`29958212378`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/29958212378) ;
+  - conclusion : `success` (`push` / `completed`) ;
+  - **1493 tests** au moment du commit (0 échec, 0 ignoré) ;
+  - **aucune migration** ; **aucune UI**.
+- **Verdict : `CORRECTIF P3-8 PRÉ-P3-12-CI = GO`. Dette P3-8 définitivement close.**
 
-### P3-12 — Audit final P3
+### P3-12 — Audit final P3 et remédiation
 
 - **Objectif** : audit de clôture (mêmes contrôles que P3-0 + revue des règles introduites), verdict GO merge.
-- **Statut : non commencé.** Entrée conditionnée par la CI verte du correctif de la dette P3-8
-  (`InspectActiveLowStockUniqueIndex`, voir note P3-11 ci-dessus) — commit et push restent à faire pour ce
-  correctif.
+- **Statut : audit final exécuté**, sur le HEAD `4c2a1e5` à CI verte. Rapport : [audit final
+  P3-12](../implementation/P3-12-final-business-audit-report.md).
+- **Un blocage trouvé.** L'audit a établi que `DeletePrescriptionUseCase` supprimait **physiquement et
+  inconditionnellement** une ordonnance existante : chemin public, enregistré en DI, appelé depuis
+  `CustomerPrescriptionsViewModel`, sans aucune précondition métier. La seule protection était une boîte de
+  dialogue de confirmation — qui rend l'acte délibéré, mais ne le rend pas impossible et n'oppose rien à un
+  appelant entrant par la couche Application. Le critère de sortie « suppression sûre **partout** » n'était donc
+  **pas** satisfait.
+- **Correctif appliqué et validé localement.** Le use case oppose désormais un refus métier dur
+  (`BusinessRuleException`) porté par un propriétaire Domain unique,
+  `MMV.Domain.Policies.PrescriptionRetentionPolicy` : la suppression physique d'une ordonnance existante est
+  **interdite dans tous les cas**, sans aucune écriture. Le contrat « introuvable » (`PrescriptionFound = false`)
+  est préservé tel quel. **Aucune migration, aucune UI, aucune Infrastructure, aucun paquet.** Détail, preuves et
+  limites : [rapport de remédiation
+  P3-12](../implementation/P3-12-prescription-deletion-remediation-report.md).
+- **Ce que le correctif ne fait pas** : ni archivage, ni versionnement, ni clé étrangère
+  `Prescription ↔ Sale`, ni immutabilité forte. Ces sujets restent des entrées du futur cadrage. P3-12 ferme
+  uniquement la perte **définitive** de l'enregistrement médical.
+- **Totaux** : **1499 tests** (Domain 649 · Application 611 · App 239 ; 0 échec, 0 ignoré), soit baseline 1493
+  + 2 (policy Domain) + 5 (use case, dont un test SQLite réel de conservation et une non-régression P3-2B)
+  − 1 (l'ancien test nominal qui gravait la suppression physique, devenu contradictoire avec la règle).
+  `MMV.App.Tests` reste **exactement** à 239. Build 0 erreur / 0 avertissement ; 0 vulnérabilité ; aucun
+  `pending model change` ; `MMV.Application` toujours pure (Domain uniquement).
+- **Verdict : `P3-12 REMÉDIATION = GO LOCAL`** — **sous réserve de commit et de CI**.
 
 ---
 
@@ -769,3 +821,22 @@ Ces sujets traversent plusieurs étapes ; à trancher explicitement quand l'éta
 sûre partout ; politique de stock unique ; workflow commande explicite ; fiche atelier versionnée avec QC ;
 ventes aux montants fiables ; `MMV.Application` toujours pure ; build/tests verts (> total P3-0) ; 0
 vulnérabilité ; `has-pending-model-changes = false` (ou migrations P3 assumées et documentées).
+
+### 6.1 État du critère « suppression sûre partout » *(C6)*
+
+L'audit final P3-12 a classé ce critère **partiellement satisfait** : cinq domaines étaient protégés, mais
+`DeletePrescriptionUseCase` supprimait physiquement une ordonnance existante sans aucune précondition.
+Après la **remédiation P3-12**, l'inventaire est complet :
+
+| Domaine | Protection opposée |
+|---|---|
+| **Clients** | Refus métier si historique (`DeleteCustomerUseCase`) **+** FK `Restrict` sur ordonnances et ventes ; l'archivage est la voie normale de retrait |
+| **Produits** | Refus métier (`BusinessRuleException`) **+** FK `Restrict` sur `SaleItem` / `OrderItem` / `StockMovement` ; désactivation plutôt que suppression |
+| **Fournisseurs** | Suppression **conditionnelle atomique** (condition et écriture dans la même instruction SQL) **+** FK `Restrict` |
+| **Commandes** | Suppression limitée au statut `New` ; interdite dès `InProgress` |
+| **Utilisateurs** | **Aucun** use case de suppression ; FK historiques en `SetNull`, l'historique reste attribué |
+| **Ordonnances** | **Suppression physique interdite dans tous les cas** (P3-12, `PrescriptionRetentionPolicy`) |
+
+**Le critère est désormais pleinement satisfait.** Réserve d'honnêteté, à ne pas confondre avec lui : la
+conservation n'est **pas** une immutabilité. Une ordonnance reste modifiable, et deux postes qui la corrigent
+concurremment s'écrasent toujours en silence — dette ouverte, portée au futur cadrage.

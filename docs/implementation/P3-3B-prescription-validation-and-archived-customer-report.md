@@ -625,3 +625,39 @@ Le résultat détaillé par étape (`Restore`, `Build`, `Test`, `Audit des packa
 `gh run view` ; le chiffre de **723 tests** (App **211** · Application **218** · Domain **294**, **0
 vulnérabilité**, aucune migration en attente) reste donc le **résultat de la validation locale** documentée en
 §18 et §26, réalisée avant ce commit, et non une lecture directe des logs CI.
+
+---
+
+## Note finale — 2026-07-23 : la suppression physique d'ordonnance est désormais refusée (P3-12)
+
+> **Ajout postérieur.** Rien au-dessus de cette ligne n'a été réécrit : les constats de P3-3B restent le
+> compte rendu fidèle de leur exécution. Cette note consigne uniquement ce qui a changé depuis.
+
+Le constat 🟠-4 de §16 — « **la suppression physique d'ordonnance existe toujours** » — était exact et est
+resté **ouvert** après P3-3B comme après P3-3C. P3-3C n'a ajouté qu'une **confirmation** dans
+`CustomerPrescriptionsViewModel` : elle rend l'acte délibéré, elle ne le rend pas impossible, et elle
+n'oppose rien à un appelant entrant par la couche Application.
+
+L'**audit final P3-12** a identifié ce point comme le **dernier blocage** de P3 : `DeletePrescriptionUseCase`
+était public, enregistré en DI, atteignable depuis l'UI, et supprimait physiquement une ordonnance existante
+sans aucune précondition métier — le critère de sortie « suppression sûre partout » n'était donc pas
+satisfait.
+
+**Ce qui a changé (remédiation P3-12)** :
+
+- `DeletePrescriptionUseCase` **refuse désormais toute suppression physique** d'une ordonnance existante, par
+  une `BusinessRuleException` portant un message métier stable ; **aucun `DeleteAsync`, aucun
+  `SaveChangesAsync`, aucun SQL brut** n'est exécuté sur ce chemin.
+- La règle appartient à un propriétaire **Domain** unique, `MMV.Domain.Policies.PrescriptionRetentionPolicy` —
+  et non à l'UI ni au use case seul.
+- Le comportement « **introuvable** » décrit en §12 est **inchangé** : `PrescriptionFound = false`, aucune
+  exception, aucune écriture.
+
+**Ce qui n'a pas changé, et n'a pas été inventé** : aucun archivage d'ordonnance, aucune clé étrangère
+`Sale ↔ Prescription`, aucun versionnement, **aucune migration**, **aucune modification d'UI**. Le bouton de
+suppression reste visible ; l'action produit maintenant un refus métier, absorbé et affiché par le `catch`
+existant de la ViewModel. Les dettes d'immutabilité et de concurrence des ordonnances restent **ouvertes** et
+portées au futur cadrage.
+
+Détail complet, preuves et limites :
+[rapport de remédiation P3-12](P3-12-prescription-deletion-remediation-report.md).
