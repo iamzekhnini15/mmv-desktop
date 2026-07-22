@@ -576,6 +576,326 @@ public sealed class SqliteDatabaseManagerTests : IDisposable
             "incohérent");
 
     [Fact]
+    public void PrepareDatabase_Historical_IndexHomonymNonUnique_SameColumnsAndFilter_RefusesAdoption()
+        // Correctif pré-P3-12 — le PIÈGE EXACT que la vérification textuelle historique manquait : un index
+        // NON UNIQUE (CREATE INDEX, jamais CREATE UNIQUE INDEX), même nom, mêmes colonnes, même filtre. Le nom
+        // de l'index se termine lui-même par "_unique" : une recherche textuelle insensible à la casse du mot
+        // "UNIQUE" dans le SQL de sqlite_master matcherait ce nom, jamais un réel mot-clé UNIQUE. Seule la
+        // lecture de PRAGMA index_list (colonne "unique") peut distinguer les deux. Doit être refusé comme
+        // schéma partiel — jamais baseliné avec une protection multi-poste qui n'existe pas physiquement.
+        => AssertHistoricalAdoptionRefused(
+            conn =>
+            {
+                Exec(conn, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+                Exec(conn,
+                    "CREATE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                    "(\"Type\", \"EntityType\", \"EntityId\") WHERE \"Type\" = 'LowStock' AND \"EntityType\" = 'Product' " +
+                    "AND \"EntityId\" IS NOT NULL AND \"ResolvedAt\" IS NULL");
+            },
+            "partiel");
+
+    [Fact]
+    public void PrepareDatabase_Historical_IndexHomonymWrongColumns_RefusesAdoption()
+        // Index réellement UNIQUE et partiel, même nom, même filtre, mais sur un jeu de colonnes incomplet
+        // (EntityType manquant) : EntityId redevient ambigu (produit 42 ou commande 42). Doit être refusé.
+        => AssertHistoricalAdoptionRefused(
+            conn =>
+            {
+                Exec(conn, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+                Exec(conn,
+                    "CREATE UNIQUE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                    "(\"Type\", \"EntityId\") WHERE \"Type\" = 'LowStock' AND \"EntityType\" = 'Product' " +
+                    "AND \"EntityId\" IS NOT NULL AND \"ResolvedAt\" IS NULL");
+            },
+            "partiel");
+
+    [Fact]
+    public void PrepareDatabase_Historical_IndexHomonymColumnsWrongOrder_RefusesAdoption()
+        // Bonnes colonnes, unique, partiel, bon filtre — mais ordre différent (EntityType avant Type). Le
+        // contrat physique attendu impose l'ordre exact (Type, EntityType, EntityId).
+        => AssertHistoricalAdoptionRefused(
+            conn =>
+            {
+                Exec(conn, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+                Exec(conn,
+                    "CREATE UNIQUE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                    "(\"EntityType\", \"Type\", \"EntityId\") WHERE \"Type\" = 'LowStock' AND \"EntityType\" = 'Product' " +
+                    "AND \"EntityId\" IS NOT NULL AND \"ResolvedAt\" IS NULL");
+            },
+            "partiel");
+
+    [Fact]
+    public void PrepareDatabase_Historical_IndexHomonymExtraColumn_RefusesAdoption()
+        // Unique, partiel, bon filtre, bonnes trois colonnes en tête — mais une quatrième colonne (IsRead)
+        // s'ajoute à la clé. Doit être refusé : ce n'est plus le contrat exact attendu.
+        => AssertHistoricalAdoptionRefused(
+            conn =>
+            {
+                Exec(conn, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+                Exec(conn,
+                    "CREATE UNIQUE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                    "(\"Type\", \"EntityType\", \"EntityId\", \"IsRead\") WHERE \"Type\" = 'LowStock' " +
+                    "AND \"EntityType\" = 'Product' AND \"EntityId\" IS NOT NULL AND \"ResolvedAt\" IS NULL");
+            },
+            "partiel");
+
+    [Fact]
+    public void PrepareDatabase_Historical_IndexHomonymUniqueButNotPartial_RefusesAdoption()
+        // Réellement UNIQUE, bonnes colonnes dans le bon ordre — mais SANS clause WHERE (non partiel). Une
+        // telle contrainte s'appliquerait à TOUTES les lignes, y compris les alertes résolues et les faits
+        // historiques d'autres types portant un EntityId : elle bloquerait, par exemple, une seconde alerte
+        // LowStock résolue puis rouverte. Doit être refusé.
+        => AssertHistoricalAdoptionRefused(
+            conn =>
+            {
+                Exec(conn, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+                Exec(conn,
+                    "CREATE UNIQUE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                    "(\"Type\", \"EntityType\", \"EntityId\")");
+            },
+            "partiel");
+
+    [Fact]
+    public void PrepareDatabase_Historical_IndexHomonymFilterWrongValue_RefusesAdoption()
+        // Réellement UNIQUE et partiel, bonnes colonnes dans le bon ordre — mais le filtre restreint sur
+        // 'StockOut' au lieu de 'LowStock' : il ne protège pas la clé métier réellement à risque. Doit être
+        // refusé — la présence d'un WHERE ne suffit pas, son contenu doit correspondre exactement.
+        => AssertHistoricalAdoptionRefused(
+            conn =>
+            {
+                Exec(conn, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+                Exec(conn,
+                    "CREATE UNIQUE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                    "(\"Type\", \"EntityType\", \"EntityId\") WHERE \"Type\" = 'StockOut' AND \"EntityType\" = 'Product' " +
+                    "AND \"EntityId\" IS NOT NULL AND \"ResolvedAt\" IS NULL");
+            },
+            "partiel");
+
+    // -----------------------------------------------------------------------------------------------------
+    // Correctif pré-P3-12 — F1 à F5 : le prédicat WHERE ne doit JAMAIS être validé par simple présence de
+    // fragments (Contains). Ces cinq cas contiennent chacun les quatre termes textuels attendus
+    // (Type='LowStock', EntityType='Product', EntityId IS NOT NULL, ResolvedAt IS NULL) mais avec une
+    // sémantique différente (sauf F5) : une vérification par fragments les validerait TOUS à tort.
+    // -----------------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void PrepareDatabase_Historical_IndexFilterF1_DisjunctionTriviallyTrue_RefusesAdoption()
+        // F1 — les quatre fragments attendus sont bien présents, entre parenthèses, mais suivis d'une
+        // disjonction toujours vraie ("OR 1 = 1") : le prédicat réel ne filtre plus rien. Une vérification par
+        // Contains() validerait ce filtre à tort puisque les quatre fragments y figurent tous.
+        => AssertHistoricalAdoptionRefused(
+            conn =>
+            {
+                Exec(conn, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+                Exec(conn,
+                    "CREATE UNIQUE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                    "(\"Type\", \"EntityType\", \"EntityId\") WHERE (\"Type\" = 'LowStock' AND \"EntityType\" = 'Product' " +
+                    "AND \"EntityId\" IS NOT NULL AND \"ResolvedAt\" IS NULL) OR 1 = 1");
+            },
+            "partiel");
+
+    [Fact]
+    public void PrepareDatabase_Historical_IndexFilterF2_WrongLogicalGrouping_RefusesAdoption()
+        // F2 — les quatre fragments textuels sont présents, mais EntityId/ResolvedAt sont reliés par un OR
+        // (au lieu du AND attendu) : sémantique différente malgré une présence textuelle identique.
+        => AssertHistoricalAdoptionRefused(
+            conn =>
+            {
+                Exec(conn, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+                Exec(conn,
+                    "CREATE UNIQUE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                    "(\"Type\", \"EntityType\", \"EntityId\") WHERE \"Type\" = 'LowStock' AND \"EntityType\" = 'Product' " +
+                    "AND (\"EntityId\" IS NOT NULL OR \"ResolvedAt\" IS NULL)");
+            },
+            "partiel");
+
+    [Fact]
+    public void PrepareDatabase_Historical_IndexFilterF3_ExtraBusinessCondition_RefusesAdoption()
+        // F3 — les quatre fragments attendus sont présents et correctement reliés par AND, mais une condition
+        // supplémentaire (IsRead = 0) restreint davantage la clé active. IsRead est explicitement orthogonal
+        // (P3-8) et ne fait pas partie du contrat : ce filtre protège une clé DIFFÉRENTE de celle attendue.
+        => AssertHistoricalAdoptionRefused(
+            conn =>
+            {
+                Exec(conn, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+                Exec(conn,
+                    "CREATE UNIQUE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                    "(\"Type\", \"EntityType\", \"EntityId\") WHERE \"Type\" = 'LowStock' AND \"EntityType\" = 'Product' " +
+                    "AND \"EntityId\" IS NOT NULL AND \"ResolvedAt\" IS NULL AND \"IsRead\" = 0");
+            },
+            "partiel");
+
+    [Fact]
+    public void PrepareDatabase_Historical_IndexFilterF4_NegatedButNonEquivalentCondition_RefusesAdoption()
+        // F4 — un filtre remplaçant "EntityId" IS NOT NULL par une négation NOT ("EntityId" IS NULL). Les deux
+        // formes sont logiquement équivalentes pour SQLite, mais textuellement différentes : la comparaison
+        // appliquée ici est syntaxique (littérale après normalisation des espaces), jamais une équivalence
+        // logique générale — donc ce filtre doit être refusé, pas accepté au motif qu'il "revient au même".
+        => AssertHistoricalAdoptionRefused(
+            conn =>
+            {
+                Exec(conn, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+                Exec(conn,
+                    "CREATE UNIQUE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                    "(\"Type\", \"EntityType\", \"EntityId\") WHERE \"Type\" = 'LowStock' AND \"EntityType\" = 'Product' " +
+                    "AND NOT (\"EntityId\" IS NULL) AND \"ResolvedAt\" IS NULL");
+            },
+            "partiel");
+
+    [Fact]
+    public void PrepareDatabase_Historical_IndexFilterF5_ExactFilter_IsAdopted()
+    {
+        // F5 — contre-preuve : le filtre EXACT de la migration (reconstruit manuellement, hors EnsureCreated),
+        // avec des espaces superflus autour du prédicat (variation bénigne), reste accepté. La comparaison
+        // normalise les espaces mais reste stricte sur le contenu.
+        var dbPath = PathFor("historical-p38-exact-filter.db");
+        using (var seed = CreateContext(dbPath))
+        {
+            seed.Database.EnsureCreated();
+            seed.Customers.Add(new Customer { FirstName = "Faustine", LastName = "FiltreExact" });
+            seed.SaveChanges();
+        }
+        SqliteConnection.ClearAllPools();
+
+        using (var connection = new SqliteConnection($"Data Source={dbPath};Pooling=False"))
+        {
+            connection.Open();
+            Exec(connection, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+            Exec(connection,
+                "CREATE UNIQUE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                "(\"Type\", \"EntityType\", \"EntityId\")  WHERE   \"Type\" = 'LowStock'   AND \"EntityType\" = 'Product' " +
+                "AND \"EntityId\" IS NOT NULL AND \"ResolvedAt\" IS NULL");
+        }
+        SqliteConnection.ClearAllPools();
+
+        var journal = new MigrationJournal();
+        var manager = new SqliteDatabaseManager(journal);
+
+        DatabasePreparationResult result;
+        using (var context = CreateContext(dbPath))
+        {
+            result = manager.PrepareDatabase(context);
+        }
+
+        result.WasAdopted.Should().BeTrue("le filtre exact (à des espaces superflus près) doit être accepté");
+        journal.Entries.Should().NotContain(e => e.Contains("ADOPT REFUSED"));
+
+        using var verify = CreateContext(dbPath);
+        verify.Database.GetPendingMigrations().Should().BeEmpty();
+        verify.Customers.Should().ContainSingle(c => c.FirstName == "Faustine");
+    }
+
+    [Fact]
+    public void ActiveLowStockUniqueIndex_WhenGenuinelyUnique_EnforcesSingleActiveAlertPerProduct()
+    {
+        // T3 — preuve comportementale : avec l'index RÉEL (créé par la migration), une deuxième alerte active
+        // pour le même produit viole réellement la contrainte SQLite.
+        var dbPath = PathFor("behavior-real-unique.db");
+        using var context = CreateContext(dbPath);
+        context.Database.EnsureCreated();
+
+        InsertLowStockNotification(dbPath, entityId: 42, resolvedAt: false);
+
+        var act = () => InsertLowStockNotification(dbPath, entityId: 42, resolvedAt: false);
+        act.Should().Throw<SqliteException>("l'index unique filtré réel doit refuser la deuxième alerte active");
+    }
+
+    [Fact]
+    public void ActiveLowStockUniqueIndex_WhenHomonymNonUnique_AllowsDuplicateActiveAlerts_DespiteIdenticalName()
+    {
+        // T3 — contre-preuve : avec l'homonyme NON unique (même nom, mêmes colonnes, même filtre), les deux
+        // insertions réussissent sans aucune violation. C'est la distinction entre le comportement réel de
+        // SQLite et le simple nommage de l'index, que seule PRAGMA index_list permet de faire.
+        var dbPath = PathFor("behavior-homonym-nonunique.db");
+        using (var context = CreateContext(dbPath))
+        {
+            context.Database.EnsureCreated();
+        }
+        SqliteConnection.ClearAllPools();
+
+        using (var connection = new SqliteConnection($"Data Source={dbPath};Pooling=False"))
+        {
+            connection.Open();
+            Exec(connection, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+            Exec(connection,
+                "CREATE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                "(\"Type\", \"EntityType\", \"EntityId\") WHERE \"Type\" = 'LowStock' AND \"EntityType\" = 'Product' " +
+                "AND \"EntityId\" IS NOT NULL AND \"ResolvedAt\" IS NULL");
+        }
+        SqliteConnection.ClearAllPools();
+
+        InsertLowStockNotification(dbPath, entityId: 42, resolvedAt: false);
+        var act = () => InsertLowStockNotification(dbPath, entityId: 42, resolvedAt: false);
+
+        act.Should().NotThrow("l'homonyme non unique ne protège physiquement rien, malgré son nom");
+
+        using var verifyConnection = new SqliteConnection($"Data Source={dbPath};Pooling=False;Mode=ReadOnly");
+        verifyConnection.Open();
+        using var countCommand = verifyConnection.CreateCommand();
+        countCommand.CommandText =
+            "SELECT COUNT(*) FROM \"Notifications\" WHERE \"Type\" = 'LowStock' AND \"EntityId\" = 42 AND \"ResolvedAt\" IS NULL";
+        Convert.ToInt64(countCommand.ExecuteScalar()).Should().Be(2,
+            "l'homonyme non unique laisse deux alertes actives coexister pour le même produit");
+    }
+
+    private static void InsertLowStockNotification(string databasePath, long entityId, bool resolvedAt)
+    {
+        using var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            "INSERT INTO \"Notifications\" (\"Type\", \"Title\", \"Message\", \"EntityId\", \"EntityType\", " +
+            "\"IsRead\", \"CreatedAt\", \"ResolvedAt\") " +
+            "VALUES ('LowStock', 'Stock faible', 'Message de test', @entityId, 'Product', 0, @createdAt, @resolvedAt)";
+        var entityIdParam = command.CreateParameter();
+        entityIdParam.ParameterName = "@entityId";
+        entityIdParam.Value = entityId;
+        command.Parameters.Add(entityIdParam);
+        var createdAtParam = command.CreateParameter();
+        createdAtParam.ParameterName = "@createdAt";
+        createdAtParam.Value = DateTime.UtcNow.ToString("O");
+        command.Parameters.Add(createdAtParam);
+        var resolvedAtParam = command.CreateParameter();
+        resolvedAtParam.ParameterName = "@resolvedAt";
+        resolvedAtParam.Value = resolvedAt ? DateTime.UtcNow.ToString("O") : DBNull.Value;
+        command.Parameters.Add(resolvedAtParam);
+        command.ExecuteNonQuery();
+    }
+
+    [Fact]
+    public void PrepareDatabase_ManagedDatabase_TamperedNotificationSchema_HomonymNonUniqueIndex_ThrowsInconsistentHistory()
+    {
+        // T11 — historique mensonger : __EFMigrationsHistory affirme AddNotificationResolution appliquée, et un
+        // index du bon nom existe (donc "Exists" = true), mais il n'est pas réellement unique. Une base gérée
+        // altérée après coup ne doit jamais être acceptée silencieusement au seul motif qu'un index du bon nom
+        // est présent.
+        var dbPath = PathFor("managed-p38-tampered-homonym.db");
+        using (var seed = CreateContext(dbPath))
+        {
+            seed.Database.Migrate();
+        }
+        SqliteConnection.ClearAllPools();
+
+        using (var connection = new SqliteConnection($"Data Source={dbPath};Pooling=False"))
+        {
+            connection.Open();
+            Exec(connection, "DROP INDEX \"idx_notifications_active_low_stock_unique\"");
+            Exec(connection,
+                "CREATE INDEX \"idx_notifications_active_low_stock_unique\" ON \"Notifications\" " +
+                "(\"Type\", \"EntityType\", \"EntityId\") WHERE \"Type\" = 'LowStock' AND \"EntityType\" = 'Product' " +
+                "AND \"EntityId\" IS NOT NULL AND \"ResolvedAt\" IS NULL");
+        }
+        SqliteConnection.ClearAllPools();
+
+        var manager = new SqliteDatabaseManager();
+        using var context = CreateContext(dbPath);
+        var act = () => manager.PrepareDatabase(context);
+
+        act.Should().Throw<DatabaseMigrationException>()
+            .Which.Message.Should().Contain("idx_notifications_active_low_stock_unique");
+    }
+
+    [Fact]
     public void PrepareDatabase_ManagedDatabase_TamperedNotificationSchema_ThrowsInconsistentHistory()
     {
         // États "présent (historique) / absent ou mal défini" (§3.2, lignes 6-8) : une migration transactionnelle

@@ -694,17 +694,33 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   + 40 (policy Domain) + 15 (gardes ciblées) + 11 (recette). `MMV.App.Tests` reste **exactement** à 239.
   0 vulnérabilité ; **aucune migration** ; **aucune UI** ; aucun `pending model change` ; `MMV.Application`
   toujours pure (Domain uniquement).
-- **Verdict : `P3-11 = GO LOCAL`** — **sous réserve de commit et de CI**. Détail, preuves, limites et arbitrage :
-  [rapport d'implémentation
-  P3-11 §20](../implementation/P3-11-business-acceptance-scenarios-implementation-report.md).
-- **Reste bloquant avant le verdict P3-12** : la **dette P3-8** (`InspectActiveLowStockUniqueIndex` conclut à
-  l'unicité en cherchant le mot « UNIQUE » dans le SQL, or le nom de l'index se termine par `_unique` — un index
-  **non** unique portant ce nom serait validé ; correction attendue via `PRAGMA index_list`). **Non corrigée en
-  P3-11** : le périmètre l'exclut, et y toucher rouvrirait P3-8.
+- **Verdict : `P3-11 = GO LOCAL`**, confirmé en CI. Détail, preuves, limites et arbitrage : [rapport
+  d'implémentation P3-11 §20](../implementation/P3-11-business-acceptance-scenarios-implementation-report.md).
+- **Commit et CI — définitif** :
+  - commit : `8a6d5b3c1f8dc5dce80ddcc0dc35b6453844c1d4` ;
+  - run CI : [`29952285622`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/29952285622) ;
+  - conclusion : `success` (`push` / `completed`) ;
+  - **1479 tests** au moment du commit (0 échec, 0 ignoré), dont **11 tests de recette** (Acceptance) ;
+  - **aucune migration** ; **aucune UI**.
+- **Verdict : `P3-11-CI = GO`.**
+- **Dette P3-8 — corrigée par un correctif ciblé pré-P3-12** (`InspectActiveLowStockUniqueIndex` concluait à
+  l'unicité en cherchant le mot « UNIQUE » dans le SQL, or le nom de l'index se termine lui-même par `_unique` —
+  un index **non** unique portant ce nom était validé à tort). Correctif validé **localement** (PRAGMA
+  `index_list`/`index_info` remplacent la recherche textuelle) : voir [rapport de correction
+  P3-8](../implementation/P3-8-low-stock-index-verification-correction-report.md). **Revue ciblée avant commit** :
+  un second défaut trouvé dans la même fonction — le prédicat `WHERE` était validé par simple présence de
+  fragments (`Contains`), acceptant à tort une disjonction, un regroupement différent ou une condition
+  supplémentaire contenant les mêmes termes ; corrigé par une comparaison littérale du prédicat normalisé (5
+  tests adverses F1–F5 ajoutés). **1493 tests** au total localement (Domain 647 · Application 607 · App 239 ;
+  0 échec, 0 ignoré), aucune migration, aucune UI. **Sous réserve de commit et de CI** avant de considérer la
+  dette définitivement close.
 
 ### P3-12 — Audit final P3
 
 - **Objectif** : audit de clôture (mêmes contrôles que P3-0 + revue des règles introduites), verdict GO merge.
+- **Statut : non commencé.** Entrée conditionnée par la CI verte du correctif de la dette P3-8
+  (`InspectActiveLowStockUniqueIndex`, voir note P3-11 ci-dessus) — commit et push restent à faire pour ce
+  correctif.
 
 ---
 

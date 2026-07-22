@@ -899,6 +899,86 @@ transactionnel. Aucun test existant modifié ni supprimé.
 
 ---
 
+## Correctif préalable à P3-12 — vérification physique de l'index LowStock
+
+> Section ajoutée lors d'un correctif ciblé pré-P3-12, découvert et traité pendant la recette P3-11 (note
+> roadmap). Périmètre strictement limité à `InspectActiveLowStockUniqueIndex` — aucune migration, aucun
+> changement fonctionnel de Notifications, aucune UI. Détail complet, matrice d'états et preuves : [rapport de
+> correction dédié](P3-8-low-stock-index-verification-correction-report.md).
+
+### Défaut exact
+
+`InspectActiveLowStockUniqueIndex` (`src/MMV.Infrastructure/Data/SqliteDatabaseManager.cs`) concluait à
+l'unicité réelle de l'index `idx_notifications_active_low_stock_unique` en cherchant le mot `UNIQUE`
+(insensible à la casse) dans le SQL brut de `sqlite_master` :
+
+```csharp
+var valid = sql.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) && …
+```
+
+Le nom de l'index se termine **lui-même** par `_unique`. Un index créé par `CREATE INDEX` (jamais
+`CREATE UNIQUE INDEX`) portant ce même nom fait donc correspondre `sql.Contains("UNIQUE", ...)` sur le nom
+cité entre guillemets dans le texte SQL — jamais sur un réel mot-clé `UNIQUE` — et était accepté à tort.
+
+### Preuve du faux positif
+
+Reproduit avant correction par un test réel (`PrepareDatabase_Historical_IndexHomonymNonUnique_SameColumnsAndFilter_RefusesAdoption`,
+exécuté sur le code non corrigé) : un index **non unique**, même nom, mêmes colonnes, même filtre, était
+accepté silencieusement — `PrepareDatabase` adoptait la base et inscrivait `AddNotificationResolution` dans
+`__EFMigrationsHistory` sans lever d'exception, alors qu'aucune protection multi-poste n'existait
+physiquement. Comportement observé confirmé : `Failed MMV.Domain.Tests.Data.SqliteDatabaseManagerTests.…
+[FAIL] Expected a DatabaseMigrationException to be thrown, but no exception was thrown.`
+
+### Remplacement de la recherche textuelle par PRAGMA
+
+- **`PRAGMA index_list('Notifications')`** — autoritaire pour l'existence, le drapeau `unique` (colonne 2) et
+  le drapeau `partial` (colonne 4). Ni l'un ni l'autre n'est plus jamais déduit du texte SQL ou du nom.
+- **`PRAGMA index_info('idx_notifications_active_low_stock_unique')`** — colonnes et ordre exact
+  `(Type, EntityType, EntityId)`, comparés un à un.
+- **`sqlite_master.sql`** — utilisé **uniquement** pour vérifier le prédicat `WHERE` (aucun PRAGMA ne
+  l'expose) : présence de `WHERE`, des littéraux `LowStock`/`Product` et des deux conditions
+  `"EntityId" IS NOT NULL` / `"ResolvedAt" IS NULL`.
+
+### Matrice des états testés
+
+9 tests **nouveaux** (T2, T4, T5, T6, T7, T9, T3a, T3b, T11 — `SqliteDatabaseManagerTests.cs`) : homonyme non
+unique mêmes colonnes/filtre (refusé — le test principal du correctif) ; mauvaises colonnes ; ordre des
+colonnes différent ; colonne supplémentaire ; unique mais non partiel (sans `WHERE`) ; filtre pointant sur une
+mauvaise valeur (`StockOut` au lieu de `LowStock`) ; preuve comportementale, 2 tests (l'index réel refuse une
+deuxième alerte active, l'homonyme non unique laisse les deux coexister) ; historique mensonger sur base déjà
+gérée par migrations (homonyme non unique après un `Migrate()` réel). Le cas « index valide (accepté) » (T1)
+n'est **pas** un test nouveau : il était déjà couvert par un test préexistant
+(`SchemaVerifier_ValidEnsureCreatedDatabase_IsCompatible`), qui continue de passer sans modification.
+
+### Absence de migration, absence de changement fonctionnel Notifications
+
+Aucune migration créée ni modifiée. Aucune règle métier de notification modifiée : seule la **méthode de
+vérification physique** de la protection déjà décidée en P3-8 change. `MMV.Domain`, `MMV.Application`,
+`MMV.App` non touchés.
+
+### Résultats locaux
+
+- `SqliteDatabaseManagerTests` : 33/33 verts (24 existants + 9 nouveaux — dont `T2` couvre aussi le cas
+  d'adoption invalide history-absent/colonne-présente/index-homonyme). Le compte de 24 préexistants est
+  vérifié directement (`git show HEAD:…SqliteDatabaseManagerTests.cs | grep -c '\[Fact\]'`), pas déduit d'un
+  texte historique.
+- Solution après le correctif initial : **1488 tests** (Domain 642 [+9], Application 607 [inchangé],
+  App 239 [inchangé]), 0 échec, 0 ignoré.
+- **Revue ciblée avant commit** (voir [rapport de correction
+  dédié](P3-8-low-stock-index-verification-correction-report.md#revue-ciblée-avant-commit)) : un second défaut
+  a été trouvé et corrigé dans `InspectActiveLowStockUniqueIndex` — le prédicat `WHERE` était validé par
+  simple présence de fragments (`Contains`), acceptant à tort une disjonction, un regroupement différent ou
+  une condition métier supplémentaire contenant les mêmes quatre termes. 5 tests supplémentaires ajoutés
+  (`SqliteDatabaseManagerTests` : 38/38 verts, 24 existants + 9 + 5 nouveaux). **Total final : 1493 tests**
+  (Domain 647, Application 607, App 239), 0 échec, 0 ignoré.
+- 0 vulnérabilité (7 projets) ; aucun `pending model change` ; `MMV.Application` toujours pure (Domain
+  uniquement).
+
+**Sous réserve de commit et de CI** — voir [rapport de correction
+dédié](P3-8-low-stock-index-verification-correction-report.md) pour le détail complet et le verdict.
+
+---
+
 # **P3-8 = GO LOCAL**
 
 **Aucun commit. Aucun push. Aucune UI. STOP.**

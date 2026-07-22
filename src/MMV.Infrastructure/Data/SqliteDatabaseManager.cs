@@ -774,16 +774,6 @@ public sealed class SqliteDatabaseManager
     }
 
     /// <summary>
-    /// Inspecte physiquement l'index unique filtré des alertes de stock bas actives (P3-8) via
-    /// <c>sqlite_master.sql</c> — PRAGMA <c>index_info</c> n'expose pas la clause <c>WHERE</c>, donc seule une
-    /// lecture du texte SQL réel permet de distinguer un index correctement filtré d'un homonyme mal défini.
-    /// </summary>
-    /// <returns>
-    /// <c>Exists</c> : un index de ce nom existe. <c>Valid</c> : il est <c>UNIQUE</c>, porte les trois colonnes
-    /// attendues et filtre exactement sur les quatre termes requis (Type='LowStock', EntityType='Product',
-    /// EntityId IS NOT NULL, ResolvedAt IS NULL).
-    /// </returns>
-    /// <summary>
     /// Inspecte physiquement l'index unique du login normalisé (P3-10).
     /// </summary>
     /// <returns>
@@ -875,6 +865,39 @@ public sealed class SqliteDatabaseManager
         }
     }
 
+    /// <summary>
+    /// Filtre <c>WHERE</c> exact attendu pour l'index unique des alertes de stock bas actives (P3-8), tel que
+    /// produit verbatim par la migration <c>AddNotificationResolution</c> (confirmé par lecture directe de
+    /// <c>sqlite_master.sql</c> : SQLite conserve le texte du prédicat sans le reformater).
+    /// </summary>
+    private static readonly string ExpectedActiveLowStockFilterClause =
+        $"\"Type\" = '{NotificationTypes.LowStock}' AND \"EntityType\" = '{NotificationEntityTypes.Product}' " +
+        "AND \"EntityId\" IS NOT NULL AND \"ResolvedAt\" IS NULL";
+
+    /// <summary>
+    /// Inspecte physiquement l'index unique filtré des alertes de stock bas actives (P3-8).
+    /// </summary>
+    /// <returns>
+    /// <c>Exists</c> : un index de ce nom existe sur <c>Notifications</c>. <c>Valid</c> : il est réellement
+    /// <c>UNIQUE</c> et <b>partiel</b> (drapeaux lus via PRAGMA <c>index_list</c>), porte exactement les trois
+    /// colonnes attendues dans l'ordre <c>(Type, EntityType, EntityId)</c> (PRAGMA <c>index_info</c>), et son
+    /// prédicat <c>WHERE</c> est <b>syntaxiquement identique</b> au filtre exact de la migration (comparaison
+    /// littérale après normalisation des espaces et retrait d'une éventuelle paire de parenthèses extérieures
+    /// superflue — jamais une recherche de sous-chaînes).
+    /// </returns>
+    /// <remarks>
+    /// L'unicité et le caractère partiel sont lus via PRAGMA <c>index_list</c>, <b>jamais</b> par recherche du
+    /// mot « UNIQUE » dans <c>sqlite_master.sql</c> : le nom de l'index se terminant lui-même par <c>_unique</c>,
+    /// une recherche textuelle insensible à la casse matcherait ce nom même pour un index NON unique portant ce
+    /// nom — exactement l'homonyme mal défini que cette fonction doit détecter. Les colonnes et leur ordre sont
+    /// lus via PRAGMA <c>index_info</c>. Le prédicat <c>WHERE</c> est comparé au texte exact attendu — une
+    /// vérification par présence de fragments (<c>Contains</c>) accepterait à tort une disjonction
+    /// (<c>OR 1 = 1</c>), un regroupement différent, une condition additionnelle (ex. <c>AND "IsRead" = 0</c>)
+    /// ou une négation contenant les mêmes quatre termes sans en avoir la même sémantique. Aucun analyseur SQL
+    /// général n'est introduit : seule la partie suivant le premier mot-clé <c>WHERE</c> est extraite, ses
+    /// espaces normalisés, une éventuelle paire de parenthèses extérieures équilibrée retirée, puis comparée
+    /// littéralement au filtre exact.
+    /// </remarks>
     private static (bool Exists, bool Valid) InspectActiveLowStockUniqueIndex(OpticDbContext context)
     {
         var connection = context.Database.GetDbConnection();
@@ -886,28 +909,68 @@ public sealed class SqliteDatabaseManager
                 connection.Open();
             }
 
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = @name";
-            var parameter = command.CreateParameter();
-            parameter.ParameterName = "@name";
-            parameter.Value = ActiveLowStockUniqueIndexName;
-            command.Parameters.Add(parameter);
+            var exists = false;
+            var isUnique = false;
+            var isPartial = false;
 
-            var sql = command.ExecuteScalar() as string;
-            if (string.IsNullOrEmpty(sql))
+            using (var listCommand = connection.CreateCommand())
+            {
+                listCommand.CommandText = $"PRAGMA index_list(\"{NotificationsTableName}\")";
+                using var reader = listCommand.ExecuteReader();
+                while (reader.Read())
+                {
+                    if (!string.Equals(reader.GetString(1), ActiveLowStockUniqueIndexName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    exists = true;
+                    isUnique = reader.GetInt32(2) != 0;  // colonne 2 de index_list = drapeau unique
+                    isPartial = reader.GetInt32(4) != 0; // colonne 4 de index_list = drapeau partiel (index filtré)
+                    break;
+                }
+            }
+
+            if (!exists)
             {
                 return (false, false);
             }
 
-            var valid = sql.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase)
-                && sql.Contains("\"Type\"", StringComparison.Ordinal)
-                && sql.Contains("\"EntityType\"", StringComparison.Ordinal)
-                && sql.Contains("\"EntityId\"", StringComparison.Ordinal)
-                && sql.Contains("WHERE", StringComparison.OrdinalIgnoreCase)
-                && sql.Contains(NotificationTypes.LowStock, StringComparison.Ordinal)
-                && sql.Contains(NotificationEntityTypes.Product, StringComparison.Ordinal)
-                && sql.Contains("\"EntityId\" IS NOT NULL", StringComparison.Ordinal)
-                && sql.Contains("\"ResolvedAt\" IS NULL", StringComparison.Ordinal);
+            var columns = new List<string>();
+            using (var infoCommand = connection.CreateCommand())
+            {
+                infoCommand.CommandText = $"PRAGMA index_info(\"{ActiveLowStockUniqueIndexName}\")";
+                using var reader = infoCommand.ExecuteReader();
+                while (reader.Read())
+                {
+                    if (!reader.IsDBNull(2))
+                    {
+                        columns.Add(reader.GetString(2));
+                    }
+                }
+            }
+
+            string? sql;
+            using (var sqlCommand = connection.CreateCommand())
+            {
+                sqlCommand.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = @name";
+                var parameter = sqlCommand.CreateParameter();
+                parameter.ParameterName = "@name";
+                parameter.Value = ActiveLowStockUniqueIndexName;
+                sqlCommand.Parameters.Add(parameter);
+                sql = sqlCommand.ExecuteScalar() as string;
+            }
+
+            var actualFilterClause = ExtractNormalizedWhereClause(sql);
+
+            var valid = isUnique
+                && isPartial
+                && columns.Count == 3
+                && string.Equals(columns[0], "Type", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(columns[1], "EntityType", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(columns[2], "EntityId", StringComparison.OrdinalIgnoreCase)
+                && actualFilterClause is not null
+                && string.Equals(actualFilterClause, ExpectedActiveLowStockFilterClause, StringComparison.Ordinal);
 
             return (true, valid);
         }
@@ -918,6 +981,72 @@ public sealed class SqliteDatabaseManager
                 connection.Close();
             }
         }
+    }
+
+    /// <summary>
+    /// Extrait le prédicat suivant le premier <c>WHERE</c> d'un texte de <c>CREATE INDEX</c>, normalise ses
+    /// espaces (espaces, tabulations, retours à la ligne réduits à un espace unique) et retire une éventuelle
+    /// paire de parenthèses extérieures qui englobe l'intégralité du prédicat sans en changer la sémantique.
+    /// Ne fait <b>aucune</b> analyse sémantique : une parenthèse qui n'englobe qu'une partie du prédicat (ex.
+    /// une disjonction ajoutée en dehors, ou un sous-groupe interne) n'est jamais retirée.
+    /// </summary>
+    private static string? ExtractNormalizedWhereClause(string? createIndexSql)
+    {
+        if (string.IsNullOrEmpty(createIndexSql))
+        {
+            return null;
+        }
+
+        var whereIndex = createIndexSql.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
+        if (whereIndex < 0)
+        {
+            return null;
+        }
+
+        var rawClause = createIndexSql[(whereIndex + "WHERE".Length)..];
+        var normalized = string.Join(' ', rawClause.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+        return StripBalancedOuterParentheses(normalized);
+    }
+
+    /// <summary>
+    /// Retire, de façon répétée, une paire de parenthèses qui englobe la totalité de la chaîne (la parenthèse
+    /// ouvrante en position 0 se referme exactement à la dernière position). Une parenthèse qui se referme
+    /// avant la fin de la chaîne (donc n'englobant qu'un sous-groupe, comme dans une disjonction ajoutée après
+    /// coup) n'est jamais retirée.
+    /// </summary>
+    private static string StripBalancedOuterParentheses(string clause)
+    {
+        while (clause.Length >= 2 && clause[0] == '(' && clause[^1] == ')')
+        {
+            var depth = 0;
+            var outerPairClosesAtEnd = false;
+            for (var i = 0; i < clause.Length; i++)
+            {
+                if (clause[i] == '(')
+                {
+                    depth++;
+                }
+                else if (clause[i] == ')')
+                {
+                    depth--;
+                    if (depth == 0)
+                    {
+                        outerPairClosesAtEnd = i == clause.Length - 1;
+                        break;
+                    }
+                }
+            }
+
+            if (!outerPairClosesAtEnd)
+            {
+                break;
+            }
+
+            clause = clause[1..^1].Trim();
+        }
+
+        return clause;
     }
 
     private static List<string> GetTableNames(OpticDbContext context)
