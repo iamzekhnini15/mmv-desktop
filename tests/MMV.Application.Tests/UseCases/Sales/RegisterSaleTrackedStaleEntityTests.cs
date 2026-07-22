@@ -5,6 +5,7 @@ using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Sales.RegisterSale;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Domain.Services;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
@@ -120,6 +121,16 @@ public sealed class RegisterSaleTrackedStaleEntityTests : IDisposable
     private static RegisterSaleLineCommand Frame(long productId, int quantity, decimal unitPrice)
         => new() { ProductId = productId, ItemType = OrderItemType.Frame, Quantity = quantity, UnitPrice = unitPrice };
 
+    /// <remarks>
+    /// <b>Intention d'origine conservée, résultat attendu corrigé par P3-11.</b> Ce test prouve depuis P3-7 que la
+    /// décision suit la catégorie <b>réelle en base</b> et non la copie suivie et périmée. Il l'affirmait alors en
+    /// observant l'<i>absence</i> de décrément — c'est-à-dire, on le sait depuis la recette P3-11, en gravant le
+    /// cas B du défaut de classification (une ligne <c>Frame</c> sur un produit <c>VERRE</c> encaissée sans jamais
+    /// sortir du stock). L'invariant observé devient donc le <b>refus métier</b>, qui distingue les deux lectures
+    /// de façon strictement plus nette : si la copie suivie <c>MONTURE</c> décidait, la ligne <c>Frame</c> serait
+    /// <b>compatible</b> et la vente <b>acceptée</b> ; c'est parce que la catégorie fraîche <c>VERRE</c> est lue
+    /// que la vente est refusée. Aucune tolérance n'est introduite, et l'écart d'inventaire silencieux disparaît.
+    /// </remarks>
     [Fact]
     public async Task ProduitSuiviCommeMonture_ChangeDeCategorieEnBase_LaDecisionDeStockSuitLaCategorieReelle()
     {
@@ -143,7 +154,7 @@ public sealed class RegisterSaleTrackedStaleEntityTests : IDisposable
             other.SaveChanges();
         }
 
-        await CreateUseCase(context).ExecuteAsync(new RegisterSaleCommand
+        var act = () => CreateUseCase(context).ExecuteAsync(new RegisterSaleCommand
         {
             CustomerId = customerId,
             IsCounterSale = true,
@@ -151,10 +162,16 @@ public sealed class RegisterSaleTrackedStaleEntityTests : IDisposable
             Lines = new[] { Frame(productId, 1, 30m) }
         });
 
+        var thrown = await act.Should().ThrowAsync<MMV.Domain.Exceptions.BusinessRuleException>();
+        thrown.Which.Message.Should().Be(
+            SaleLineStockFlowPolicy.SaleLineProductCategoryMismatchMessage,
+            "la catégorie RÉELLE est VERRE : une ligne Frame la contredit et doit être refusée ; si la copie suivie MONTURE décidait, la vente serait acceptée");
+
         using var verify = CreateContext(dbPath);
+        verify.Sales.Count().Should().Be(0, "aucune vente ne subsiste après un refus");
         verify.Products.AsNoTracking().Single(p => p.ProductId == productId).StockQuantity
-            .Should().Be(5, "la catégorie RÉELLE est VERRE : aucun décrément à la vente, la copie suivie MONTURE ne doit pas décider");
-        verify.StockMovements.Count().Should().Be(0, "un verre n'est jamais mouvementé au moment de la vente");
+            .Should().Be(5, "un refus ne touche jamais le stock");
+        verify.StockMovements.Count().Should().Be(0, "un refus ne produit aucun mouvement");
     }
 
     [Fact]

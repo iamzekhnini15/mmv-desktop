@@ -75,6 +75,14 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
     public const string ProductInactiveMessage =
         "Ce produit est désactivé et ne peut plus être vendu.";
 
+    /// <summary>
+    /// Message métier stable renvoyé lorsqu'une ligne est classée autrement que le produit qu'elle référence
+    /// (P3-11). Réutilise <b>littéralement</b> la constante de <see cref="SaleLineStockFlowPolicy"/>, propriétaire
+    /// unique de la classification : la vente et la fabrication opposent donc le <b>même</b> texte.
+    /// </summary>
+    public const string SaleLineProductCategoryMismatchMessage =
+        SaleLineStockFlowPolicy.SaleLineProductCategoryMismatchMessage;
+
     /// <summary>Message métier stable renvoyé lorsque le client indiqué n'existe pas.</summary>
     public const string CustomerNotFoundMessage =
         "Le client de cette vente est introuvable. Aucune modification n'a été conservée.";
@@ -216,15 +224,22 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
         // --- 2) Produits obligatoires, existants et ACTIFS : prise atomique puis chargement pour la catégorie.
         var products = await AcquireProductsAsync(lines, cancellationToken);
 
-        // --- 3) Numéro de vente fiable (P2A-1E, R-03) : séquence déterministe attribuée DANS la transaction ; un
+        // --- 3) Classification cohérente (P3-11) : le type de chaque ligne doit s'accorder avec la catégorie
+        // RÉELLE de son produit sur un seul et même moment de consommation du stock. Vérifié ICI, une fois les
+        // produits réellement acquis et AVANT toute écriture ou numérotation.
+        RequireConsistentStockFlow(lines, products);
+
+        // --- 4) Numéro de vente fiable (P2A-1E, R-03) : séquence déterministe attribuée DANS la transaction ; un
         // numéro attribué pour une vente annulée n'est pas consommé.
         var saleNumber = await _numberSequenceService.NextNumberAsync(DocumentSequenceNames.Sale, cancellationToken);
 
-        // Une commande fournisseur naît dès qu'un verre est présent — indépendamment de IsCounterSale, comme
-        // avant P3-7. Le statut initial de la vente doit donc suivre CE fait, et non le type de vente déclaré.
-        var hasLenses = lines.Any(l => l.ItemType is OrderItemType.LensOd or OrderItemType.LensOg);
+        // Une commande fournisseur naît dès qu'un article à consommation DIFFÉRÉE est présent — indépendamment de
+        // IsCounterSale, comme avant P3-7. Le statut initial de la vente doit suivre CE fait, et non le type de
+        // vente déclaré. Depuis P3-11, la question est posée au propriétaire unique de la classification, et la
+        // garde ci-dessus garantit que la catégorie du produit donnerait la même réponse.
+        var hasLenses = lines.Any(l => SaleLineStockFlowPolicy.IsFabricationItemType(l.ItemType));
 
-        // --- 4) Vente : TOUS les montants proviennent de SalePricingPolicy, aucun de la commande.
+        // --- 5) Vente : TOUS les montants proviennent de SalePricingPolicy, aucun de la commande.
         var sale = new Sale
         {
             CustomerId = command.CustomerId,
@@ -248,7 +263,7 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
         // désalignement possible avec le statut reste une dette documentée, hors périmètre P3-7.
         sale.EstimatedDelivery = command.IsCounterSale ? DateTime.Now : DateTime.Now.AddDays(14);
 
-        // --- 5) Lignes : TotalPrice calculé (jamais fourni), données optiques validées et canoniques.
+        // --- 6) Lignes : TotalPrice calculé (jamais fourni), données optiques validées et canoniques.
         for (var i = 0; i < lines.Count; i++)
         {
             var line = lines[i];
@@ -277,7 +292,7 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
         await _saleRepository.CreateAsync(sale, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        // --- 6) Commande fournisseur si la vente contient des verres.
+        // --- 7) Commande fournisseur si la vente contient des verres.
         if (hasLenses)
         {
             // Numéro de commande fournisseur fiable (P2A-1E, R-03), même transaction que la vente.
@@ -293,8 +308,10 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
                 Notes = $"Commande verres pour vente {sale.SaleNumber}"
             };
 
-            // Ajouter uniquement les verres à la commande fournisseur (mêmes données optiques canoniques).
-            foreach (var line in lines.Where(l => l.ItemType is OrderItemType.LensOd or OrderItemType.LensOg))
+            // Ajouter uniquement les articles à consommation différée à la commande fournisseur (mêmes données
+            // optiques canoniques). Même propriétaire de classification que `hasLenses` ci-dessus : la commande ne
+            // peut donc jamais être créée sans ligne, ni recevoir une ligne consommée à la vente.
+            foreach (var line in lines.Where(l => SaleLineStockFlowPolicy.IsFabricationItemType(l.ItemType)))
             {
                 order.OrderItems.Add(new OrderItem
                 {
@@ -317,7 +334,7 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
             createdOrder = order;
         }
 
-        // --- 7) Décrément du stock des produits NON-VERRE à l'enregistrement de la vente, que la vente soit
+        // --- 8) Décrément du stock des produits NON-VERRE à l'enregistrement de la vente, que la vente soit
         // comptoir OU fabrication (P3-5). Les VERRES / LENTILLES sont commandés aux fournisseurs (mis dans l'Order
         // ci-dessus) et décrémentés plus tard, au passage en fabrication (AdvanceOrderStatusUseCase). Un non-verre
         // n'entrant jamais dans l'Order, il n'est décrémenté qu'une fois ici.
@@ -326,8 +343,10 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
             // Le produit est garanti chargé : son absence a déjà été refusée par la prise atomique (§2).
             var product = products[line.ProductId];
 
-            // Exclure les verres/lentilles de la décrémentation à la vente (décrémentés à la fabrication).
-            if (product.Category is ProductCategoryEnum.VERRE or ProductCategoryEnum.LENTILLE)
+            // Exclure les articles à consommation différée de la décrémentation à la vente (décrémentés à la
+            // fabrication). Même propriétaire de classification que le versement dans la commande ci-dessus : la
+            // garde P3-11 ayant prouvé que les deux clés s'accordent, « sauté ici » ⇔ « présent dans la commande ».
+            if (SaleLineStockFlowPolicy.IsDeferredStockCategory(product.Category))
                 continue;
 
             // Décrément atomique conditionnel (P2A-1D, R-09) : ne rend jamais le stock négatif et élimine la mise
@@ -365,6 +384,36 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
             RemainingAmount = sale.RemainingAmount ?? 0m,
             Sale = sale
         };
+    }
+
+    /// <summary>
+    /// Exige que chaque ligne soit classée <b>comme son produit</b> (P3-11) : le type de ligne et la catégorie
+    /// réelle du produit doivent désigner le <b>même</b> moment de consommation du stock.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Seule la catégorie chargée depuis la base fait foi.</b> Aucune catégorie fournie par la commande, par
+    /// l'UI, par le nom ou par la référence du produit n'est consultée : les produits ont été acquis fraîchement et
+    /// sans suivi juste avant, et c'est cette valeur — et elle seule — qui est opposée.
+    /// </para>
+    /// <para>
+    /// <b>Refus avant toute écriture.</b> La garde s'exécute après l'acquisition des produits mais avant le numéro
+    /// de vente, le numéro de commande, la vente, ses lignes, la commande, le décrément, le mouvement et toute
+    /// sauvegarde : une ligne incohérente ne consomme donc <b>aucune</b> séquence et ne laisse aucune trace.
+    /// </para>
+    /// </remarks>
+    private static void RequireConsistentStockFlow(
+        IReadOnlyList<ValidatedSaleLine> lines,
+        IReadOnlyDictionary<long, Product> products)
+    {
+        foreach (var line in lines)
+        {
+            // Le produit est garanti chargé : son absence a déjà été refusée par la prise atomique.
+            var product = products[line.ProductId];
+
+            if (!SaleLineStockFlowPolicy.IsCompatible(line.ItemType, product.Category))
+                throw new BusinessRuleException(SaleLineProductCategoryMismatchMessage);
+        }
     }
 
     /// <summary>

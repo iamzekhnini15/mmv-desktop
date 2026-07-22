@@ -248,6 +248,9 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   modification, migration non enregistrée).
 - **799 tests** verts localement (Domain 297 / Application 263 / App 239), 0 vulnérabilité, aucune migration en
   attente, frontière `Application → Domain` préservée.
+- **Note P3-11 (n'altère ni le commit, ni la CI, ni le verdict de P3-4B)** : un correctif transverse découvert en
+  recette P3-11 complète la garantie de flux stock, en croisant l'`ItemType` d'une ligne avec la `Category` du
+  produit (propriétaire Domain `SaleLineStockFlowPolicy`). Le commit P3-4B ne contenait **pas** cette règle.
 - **P3-4 backend terminé** ; CI verte du commit P3-4. L'**UI Produits** est reportée au **redesign global**
   (cf. décision de périmètre ci-dessus) : **P3-4C** n'a pas été créée.
 - Reports **inchangés** : **écriture directe du stock → P3-5** ; **règles/intégrité fournisseur → P3-9**.
@@ -279,6 +282,9 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   le stock ; non-verres décrémentés à la vente fabrication.
 - **819 tests** au moment du commit P3-5 (799 + 20), 0 échec, 0 ignoré.
 - **Aucune UI** modifiée. **Aucune migration** (schéma inchangé).
+- **Note P3-11 (n'altère ni le commit, ni la CI, ni le verdict de P3-5)** : un correctif transverse découvert en
+  recette P3-11 complète la garantie « exactement un décrément par ligne acceptée », en croisant l'`ItemType`
+  d'une ligne avec la `Category` du produit. Le commit P3-5 ne contenait **pas** cette règle.
 - **Reports maintenus** : matrice complète des statuts Commande → **P3-6** ; validations monétaires / client
   archivé en vente → **P3-7**. Autres reports (PerformedByUserId, liens `SaleId`/`OrderId`, `CHECK` DB, provider
   serveur) détaillés dans le rapport d'implémentation §18.
@@ -426,6 +432,12 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   - conclusion : `success` (`push` / `completed`) ;
   - **1134 tests** au moment du commit ; **aucune migration** ; **aucune UI**.
 - **Verdict : `P3-7-CI = GO`.**
+- **Note P3-11 (n'altère ni le commit, ni la CI, ni le verdict de P3-7)** : un correctif transverse découvert en
+  recette P3-11 ajoute à `RegisterSaleUseCase` une garde croisant l'`ItemType` de chaque ligne avec la
+  `Category` réelle du produit (propriétaire Domain `SaleLineStockFlowPolicy`), et unifie sur cette politique les
+  trois décisions qui divergeaient (`hasLenses`, lignes versées dans l'`Order`, saut du décrément à la vente).
+  Le commit P3-7 ne contenait **pas** cette règle : le défaut n'était observable qu'en traversant la vente
+  **puis** la fabrication.
 
 ### P3-8 — Notifications métier
 
@@ -634,7 +646,11 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   - **6 tests ajoutés** ; **1413 tests** au total après revue (0 échec, 0 ignoré ; Domain 593 · Application 581
     · App 239) ; 0 vulnérabilité ; aucune migration en attente ; **une seule** migration P3-10 ; **aucune UI**
     modifiée.
-- **Sous réserve de CI** : validation locale complète à ce stade.
+- **CI vérifiée — verdict définitif** : commit `8d4bf49da1c14ea1d6664eb94878c025b5420656`, run CI
+  [`29938082120`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/29938082120), `event = push`,
+  `status = completed`, `conclusion = success`, aucun job obligatoire en échec ⇒ **`P3-10-CI = GO`**.
+  **1413 tests** (Domain 593 · Application 581 · App 239 ; 0 échec, 0 ignoré) ; migration
+  `AddNormalizedUsernameAndSecureLocalUsers` ; **aucune UI** modifiée.
 
 ### P3-11 — Scénarios métier de recette
 
@@ -642,6 +658,49 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   commande → fabrication → fiche atelier → QC → livraison → encaissement solde).
 - **Périmètre** : tests de scénario haut niveau, non-régression métier.
 - **Sortie** : parcours nominal + parcours d'erreur couverts.
+- **Audit terminé** : [rapport d'audit
+  P3-11](../implementation/P3-11-business-acceptance-scenarios-audit-report.md) (verdict `P3-11 AUDIT = GO`).
+- **Premier cycle — `P3-11 = NO-GO LOCAL`** (conservé pour mémoire). Le socle de recette
+  (`tests/MMV.Application.Tests/Acceptance/`, base SQLite **migrée** par test, seed Production sûr, mutations
+  par use cases uniquement, assertions par contexte neuf) et le **parcours nominal S1** étaient verts, mais le
+  **gate d'intégrité S9** a confirmé **par exécution** un défaut de classification `ItemType` ⇄ `Category` : une
+  ligne de vente dont le type ne correspond pas à la catégorie du produit était **acceptée**, et produisait soit
+  un **double décrément** de stock, soit **aucun décrément**. S2 à S8 n'avaient donc pas été implémentés, et un
+  arbitrage de périmètre était requis.
+- **Second cycle — remédiation arbitrée et appliquée.** La correction du défaut a été **explicitement
+  autorisée** dans P3-11 (correctif transverse découvert par la recette, bloquant pour S2 à S8). Elle ne rouvre
+  **ni** P3-4B, **ni** P3-5, **ni** P3-6, **ni** P3-7 : leurs commits, CI et verdicts restent inchangés.
+  - **Propriétaire Domain unique** : `SaleLineStockFlowPolicy` (Domain **pur**) — classification
+    **différée** (`LensOd`/`LensOg` ⇄ `VERRE`/`LENTILLE`) vs **immédiate** (`Frame`/`Accessory` ⇄ `CLIPS`,
+    `PLASTIC`, `MONTURE`, `SOLAIRE`). Aucune valeur d'énumération inconnue n'est jamais compatible.
+  - **Garde principale** dans `RegisterSaleUseCase` : refus **avant** toute écriture et toute numérotation ;
+    seule la `Product.Category` chargée en base fait foi. Les trois décisions qui divergeaient (`hasLenses`,
+    lignes versées dans l'`Order`, saut du décrément) interrogent désormais **la même** politique.
+  - **Garde historique** dans `AdvanceOrderStatusUseCase` (`ToFabricate → InProgress`) : une commande héritée,
+    créée par un autre chemin ou altérée en base ne peut plus produire de double décrément. Statut, stock,
+    mouvements, fiche et notifications restent strictement inchangés en cas de refus.
+  - **Limite explicitement assumée** : la règle porte sur le **flux de consommation du stock**, pas sur une
+    taxonomie commerciale (aucune affirmation `Frame == MONTURE` ni `Accessory == CLIPS`). Elle garantit
+    **exactement un** chemin de consommation par ligne acceptée — jamais zéro, jamais deux.
+  - **Chemins secondaires documentés, non modifiés** : `CreateOrderUseCase` et `UpdateOrderUseCase` (dont le
+    `SaleId = 0`) restent des dettes ouvertes ; seul leur **danger de stock** est fermé par la garde de
+    fabrication.
+- **Scénarios livrés** : **9 scénarios** (S1 à S9) + 1 vérification de santé du socle = **11 tests de recette**,
+  tous verts. S9 est devenu un **test de refus** dans ses deux cas ; les deux tests sont conservés, aucun n'est
+  ignoré, et l'invariant n'a pas été affaibli mais **tranché**. Chaque scénario utilise une base migrée
+  indépendante, une portée neuve par action utilisateur et un contexte frais `AsNoTracking()` pour ses
+  assertions.
+- **Totaux** : **1479 tests** (Domain 633 · Application 607 · App 239 ; 0 échec, 0 ignoré), soit baseline 1413
+  + 40 (policy Domain) + 15 (gardes ciblées) + 11 (recette). `MMV.App.Tests` reste **exactement** à 239.
+  0 vulnérabilité ; **aucune migration** ; **aucune UI** ; aucun `pending model change` ; `MMV.Application`
+  toujours pure (Domain uniquement).
+- **Verdict : `P3-11 = GO LOCAL`** — **sous réserve de commit et de CI**. Détail, preuves, limites et arbitrage :
+  [rapport d'implémentation
+  P3-11 §20](../implementation/P3-11-business-acceptance-scenarios-implementation-report.md).
+- **Reste bloquant avant le verdict P3-12** : la **dette P3-8** (`InspectActiveLowStockUniqueIndex` conclut à
+  l'unicité en cherchant le mot « UNIQUE » dans le SQL, or le nom de l'index se termine par `_unique` — un index
+  **non** unique portant ce nom serait validé ; correction attendue via `PRAGMA index_list`). **Non corrigée en
+  P3-11** : le périmètre l'exclut, et y toucher rouvrirait P3-8.
 
 ### P3-12 — Audit final P3
 

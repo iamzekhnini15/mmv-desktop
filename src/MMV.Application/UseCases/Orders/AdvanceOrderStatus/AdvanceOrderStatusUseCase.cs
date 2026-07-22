@@ -100,6 +100,14 @@ public sealed class AdvanceOrderStatusUseCase : IAdvanceOrderStatusUseCase
                 return new AdvanceOrderStatusResult { OrderFound = false };
             }
 
+            // Garde de CLASSIFICATION (P3-11), opposée au seul passage qui consomme réellement du stock. Elle
+            // s'exécute AVANT la prise atomique du statut : un refus laisse donc le statut, le stock, les
+            // mouvements, la fiche et les notifications strictement inchangés.
+            if (previousStatus == OrderStatus.ToFabricate && nextStatus == OrderStatus.InProgress)
+            {
+                RequireConsistentStockFlow(fresh);
+            }
+
             // Prise ATOMIQUE du statut : ne réussit que si le statut stocké est encore celui attendu. Empêche le
             // double décrément (concurrence / répétition) sans implémenter la matrice de transitions (P3-6).
             //
@@ -256,6 +264,38 @@ public sealed class AdvanceOrderStatusUseCase : IAdvanceOrderStatusUseCase
         }
 
         return (sheet.WorkshopSheetId, sheet.TechnicalFingerprint);
+    }
+
+    /// <summary>
+    /// Garde de classification du flux de stock (P3-11) opposée à l'entrée en fabrication : chaque article dont le
+    /// produit est <b>réellement chargé</b> doit être classé comme lui.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Pourquoi ici alors que la vente est déjà gardée.</b> La garde de
+    /// <c>RegisterSaleUseCase</c> protège les ventes enregistrées <b>après</b> P3-11. Elle ne dit rien des
+    /// commandes déjà persistées — historiques, créées manuellement par un autre chemin d'écriture, ou altérées en
+    /// base. Sans cette seconde garde, une telle commande produirait encore le double décrément que P3-11 a
+    /// précisément découvert. Elle protège la <b>donnée</b>, pas seulement le flux nominal.
+    /// </para>
+    /// <para>
+    /// <b>Aucune politique inventée sur les articles sans produit.</b> Un article dont <c>ProductId</c> est nul, ou
+    /// dont le produit n'est pas chargé, est laissé <b>exactement</b> comme avant : il n'était déjà décrémenté par
+    /// personne (<see cref="CreateStockMovementsForFabricationAsync"/> ne retient que les articles porteurs d'un
+    /// <c>ProductId</c>), et P3-11 n'a pas mandat pour trancher son sort.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="BusinessRuleException">si un article contredit la catégorie de son produit.</exception>
+    private static void RequireConsistentStockFlow(Order order)
+    {
+        foreach (var item in order.OrderItems)
+        {
+            if (item.Product is null)
+                continue;
+
+            if (!SaleLineStockFlowPolicy.IsCompatible(item.ItemType, item.Product.Category))
+                throw new BusinessRuleException(SaleLineStockFlowPolicy.SaleLineProductCategoryMismatchMessage);
+        }
     }
 
     /// <summary>
