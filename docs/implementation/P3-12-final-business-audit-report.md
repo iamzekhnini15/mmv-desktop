@@ -14,6 +14,10 @@
 > exécutée sous un mandat distinct (`REMEDIATE_FINAL_P3_BLOCKER…`) : elle a modifié du code, des tests et des
 > documents, et elle **révise les deux verdicts de §35**, laissés barrés et non réécrits. Lire §35 sans §36
 > donnerait un verdict périmé.
+>
+> ⚠️ **La §37 est postérieure au commit et à la CI.** Elle consigne la validation CI définitive du correctif
+> P3-12. Le verdict `GO LOCAL` de §36.8, prononcé **avant** commit, y est levé. **Le verdict opposable de ce
+> document est celui de §37.**
 
 ---
 
@@ -249,7 +253,7 @@ Construit à partir de la roadmap, des rapports d'audit et d'implémentation, et
 | **P3-10** | Utilisateurs locaux | `P3-10` audit + impl. | `8d4bf49` | `29938082120` ✅ | 1413 | **oui** (`AddNormalizedUsername…`) | non | `P3-10-CI = GO` |
 | **P3-11** | Recette bout-en-bout | `P3-11` audit + impl. | `8a6d5b3` | `29952285622` ✅ | 1479 | non | non | `P3-11-CI = GO` |
 | **Correctif P3-8** | Index unique vérifié physiquement | `P3-8-low-stock-index-verification-correction-report.md` | `4c2a1e5` | `29958212378` ✅ | **1493** | non | non | `GO LOCAL` *(doc à finaliser, §32)* |
-| **P3-12** | Audit final | **le présent rapport** | *(aucun — non committé)* | *(aucune)* | 1493 | non | non | §34 |
+| **P3-12** | Audit final | **le présent rapport** | *(aucun — non committé **au moment de l'audit** ; voir §37)* | *(aucune **à cet instant** ; voir §37)* | 1493 | non | non | §34 |
 
 Aucun commit ni run CI n'a été inventé pour une sous-étape qui n'en possède pas : les cellules concernées
 portent explicitement « — » ou le nom du run tel que déclaré dans la documentation.
@@ -1332,7 +1336,12 @@ l'absence de preuve, la conservation prime.
   `CanDelete(…)` répondant invariablement `false` laisserait croire qu'une condition existe.
 - **Point de refus** : `DeletePrescriptionUseCase` lève une `BusinessRuleException` dès que l'ordonnance
   existe — **avant** toute mutation. Ni `DeleteAsync`, ni `SaveChangesAsync`, ni `ExecuteDeleteAsync`, ni SQL
-  brut. L'`IUnitOfWork` est validé puis volontairement **non conservé** : plus rien n'est à valider.
+  brut. L'`IUnitOfWork` a été **retiré du constructeur** : plus rien n'est à valider, et le use case ne détient
+  plus aucune dépendance capable d'écrire. *(Formulation corrigée : une version antérieure de cette ligne
+  décrivait un `IUnitOfWork` « validé puis non conservé », c'est-à-dire encore reçu en paramètre. Le dépôt
+  prime — `DeletePrescriptionUseCase` déclare un unique constructeur à un unique paramètre
+  `IPrescriptionRepository`, propriété opposée par le test
+  `Constructor_DeclaresOnlyThePrescriptionRepository`.)*
 - **Contrat « introuvable » préservé** : `PrescriptionFound = false`, aucune exception, aucune écriture. Ce
   cas n'est pas un refus métier mais un état multi-poste banal, que la ViewModel traite par un rechargement.
 - **Use case conservé, non supprimé** : trois ViewModels le résolvent par DI. Le retirer aurait cassé la
@@ -1385,3 +1394,113 @@ une vente et l'ordonnance qui l'a motivée demeure irrécupérable faute de FK. 
 # **P3 = GO MERGE CANDIDATE LOCAL**
 
 **Sous réserve de commit et de CI verte.** Aucun commit, aucun push, aucun merge à ce stade.
+
+> **Étape intermédiaire, datée.** Ces deux verdicts décrivent fidèlement l'état **avant** commit. Ils sont
+> conservés comme trace ; la réserve est **levée** en §37, qui porte le verdict définitif.
+
+---
+
+## 37. Validation CI définitive de la remédiation P3-12
+
+> Section postérieure au commit et au push. Elle ne réécrit **rien** de ce qui précède : le défaut découvert
+> (§13.2), le premier verdict `NO-GO` de la remédiation, le classement initial « 🟡 dette acceptée », la
+> remédiation (§36) et le verdict local `GO LOCAL` (§36.8) restent lisibles **tels quels**. Elle ajoute la
+> seule chose qui manquait : la preuve CI sur le SHA exact.
+
+### 37.1 Commit
+
+| Champ | Valeur |
+|---|---|
+| SHA | `c1751007b8f8304154306381b2986f628a256c28` |
+| Message | `fix(P3-12): preserve prescription history` |
+| Branche | `p3-business-rules` |
+| Fichiers | **9** — 5 modifiés, 4 créés, 0 supprimé (production 3 · tests 2 · documentation 4) |
+
+Les neuf fichiers ont été **indexés un à un** (jamais `git add .` ni `git add -A`). Les trois dossiers
+`design-handoff/`, `design/` et `docs/ui/` sont restés **non indexés et non suivis**.
+
+### 37.2 Run CI
+
+`gh run view 29964844698 --json databaseId,headSha,headBranch,status,conclusion,event,url,jobs`
+
+| Champ | Valeur |
+|---|---|
+| `databaseId` | `29964844698` |
+| `headSha` | `c1751007b8f8304154306381b2986f628a256c28` **(SHA exact du commit)** |
+| `headBranch` | `p3-business-rules` |
+| `event` | `push` |
+| `status` | `completed` |
+| `conclusion` | **`success`** |
+
+Job unique **« Restore / Build / Test / Scan »** — `success`. Étapes obligatoires toutes `success` :
+**Restore** (5), **Build** (6), **Test** (7), **Audit des packages vulnérables** (8), **Check EF Core pending
+model changes** (10). **Aucun job obligatoire en échec.**
+
+### 37.3 Totaux finaux et contrôles
+
+| Contrôle | Résultat |
+|---|---|
+| Domain | **649** |
+| Application | **611** |
+| App | **239** |
+| **Total** | **1499**, **0 échec**, **0 ignoré** |
+| Build | **0 erreur / 0 avertissement** |
+| Vulnérabilités | **0** — « no vulnerable packages » sur les **7** projets |
+| Modèle EF | **« No changes have been made to the model since the last migration. »** |
+| Pureté Application | `MMV.Application` → **`MMV.Domain` seulement** (référence projet unique) |
+| Migration | **aucune** |
+| Infrastructure | **aucune** modification |
+| UI | **aucune** modification (`MMV.App.Tests` exactement à 239) |
+
+### 37.4 État Git après push
+
+```
+git rev-parse HEAD                     → c1751007b8f8304154306381b2986f628a256c28
+git rev-parse origin/p3-business-rules → c1751007b8f8304154306381b2986f628a256c28
+git status --short                     → ?? design-handoff/   ?? design/   ?? docs/ui/
+git diff --check                       → (vide, exit 0)
+```
+
+HEAD local et distant **identiques**. Aucun fichier suivi modifié. Seuls les trois dossiers hors périmètre
+restent non suivis.
+
+### 37.5 Relation avec `origin/main` — inchangée
+
+| Contrôle | Résultat |
+|---|---|
+| `git rev-parse origin/main` | `1e28f1e6a8e9de08ab75e042cad37800c0390495` |
+| `git merge-base origin/main HEAD` | `1e28f1e6…` — **la base de fusion est `origin/main`** |
+| `git rev-list --left-right --count origin/main...HEAD` | **`0  29`** |
+| `git merge-tree --write-tree origin/main HEAD` | **exit 0**, arbre `e53e2c83518dad1ebddd78f92bdcf75839a785ff`, **aucun conflit** |
+| Nature | **fast-forward possible** |
+
+`origin/main` n'a pas avancé. Le décompte passe de **28** (§3, mesuré au HEAD `4c2a1e5`) à **29** : le seul
+commit ajouté est `c175100`. Aucun conflit détecté.
+
+### 37.6 Aucun merge effectué
+
+**Le merge vers `main` n'a pas été réalisé.** Aucun `git merge`, `git rebase`, `git cherry-pick` ni
+`gh pr merge`. `origin/main` reste à `1e28f1e`. **P4 n'est pas commencé** et aucune roadmap P4 n'est définie.
+
+### 37.7 Verdict définitif
+
+| Condition | État |
+|---|---|
+| CI verte sur le **SHA exact** du correctif | ✅ `29964844698` — `push` / `completed` / `success` |
+| 1499 tests (649 · 611 · 239), 0 échec, 0 ignoré | ✅ |
+| Build 0 erreur / 0 avertissement | ✅ |
+| 0 vulnérabilité, aucun `pending model change` | ✅ |
+| `MMV.Application` pure (Domain seulement) | ✅ |
+| Aucune migration, Infrastructure ni UI | ✅ |
+| Critère « suppression sûre partout » pleinement satisfait | ✅ roadmap §6.1 |
+| Branche fusionnable en fast-forward, sans conflit | ✅ §37.5 |
+| Aucun merge effectué | ✅ §37.6 |
+
+# **P3-12-CI = GO**
+
+# **P3 = GO MERGE CANDIDATE**
+
+**Réserve maintenue, à ne jamais confondre avec ce verdict** : *P3 merge-ready* n'est **pas**
+*V1 production multi-poste ready* (§27.2, §33.3). Le provider serveur exigé par ADR-PROD-DB-001 n'est ni
+choisi ni implémenté. Les dettes de §30 et §31 restent **ouvertes**, notamment l'immutabilité forte et la
+concurrence des ordonnances : la conservation empêche la perte, elle n'est pas une immutabilité.

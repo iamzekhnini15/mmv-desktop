@@ -772,7 +772,88 @@ Elle n'est **pas** une étape autonome : elle est consommée par P3-3 (validatio
   − 1 (l'ancien test nominal qui gravait la suppression physique, devenu contradictoire avec la règle).
   `MMV.App.Tests` reste **exactement** à 239. Build 0 erreur / 0 avertissement ; 0 vulnérabilité ; aucun
   `pending model change` ; `MMV.Application` toujours pure (Domain uniquement).
-- **Verdict : `P3-12 REMÉDIATION = GO LOCAL`** — **sous réserve de commit et de CI**.
+- **Verdict local intermédiaire (conservé, daté)** : `P3-12 REMÉDIATION = GO LOCAL`, prononcé **avant** commit et
+  CI. Cette réserve est **levée** par la validation CI ci-dessous ; le verdict définitif de P3-12 est celui du
+  §« Commit et CI définitifs ».
+
+#### P3-12 — audit final et remédiation, consignation définitive
+
+**Audit final exécuté** sur le HEAD `4c2a1e5` à CI verte. **Blocage initial** : la suppression **physique et
+publique** d'une ordonnance existante (`DeletePrescriptionUseCase`, enregistré en DI, atteignable depuis
+`CustomerPrescriptionsViewModel`, sans aucune précondition métier — seule une boîte de dialogue s'y opposait).
+
+**Remédiation** : conservation obligatoire des ordonnances.
+
+| Élément | Valeur |
+|---|---|
+| **Propriétaire Domain** | `MMV.Domain.Policies.PrescriptionRetentionPolicy` — classe statique pure, message métier stable, **aucun prédicat** (la règle est inconditionnelle) |
+| **Point d'opposition** | `DeletePrescriptionUseCase` — `BusinessRuleException` levée dès que l'ordonnance existe, **avant toute mutation** |
+| **Comportement « introuvable »** | **Conservé tel quel** — `PrescriptionFound = false`, aucune exception, aucune écriture (contrat P2C-4 intact) |
+| **Mutation d'une ordonnance existante** | **Aucune possible sur ce chemin** : `IUnitOfWork` est **retiré du constructeur**, le use case ne détient plus aucune dépendance capable d'écrire |
+| **Migration** | **Aucune** |
+| **Infrastructure** | **Aucune** |
+| **UI** | **Aucune** (`MMV.App.Tests` reste exactement à 239) |
+
+##### Commit et CI définitifs
+
+| Champ | Valeur |
+|---|---|
+| Commit | `c1751007b8f8304154306381b2986f628a256c28` |
+| Message | `fix(P3-12): preserve prescription history` |
+| Run CI | [`29964844698`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/29964844698) |
+| Événement | `push` |
+| Statut | `completed` |
+| Conclusion | **`success`** |
+| Tests | Domain **649** · Application **611** · App **239** = **1499** |
+| Échecs / ignorés | **0** / **0** |
+| Build | **0 erreur / 0 avertissement** |
+| Vulnérabilités | **0** (7 projets) |
+| Modèle EF | **aucun `pending model change`** |
+
+Job unique « Restore / Build / Test / Scan » : **Restore**, **Build**, **Test**, **Audit des packages
+vulnérables** et **Check EF Core pending model changes** tous `success`. **Aucun job obligatoire en échec.**
+
+##### Verdict
+
+# **P3-12-CI = GO**
+
+# **P3 = GO MERGE CANDIDATE**
+
+> **`P3 = MERGED` n'est pas inscrit** : le merge vers `main` **n'a pas eu lieu**. La branche en est seulement
+> **candidate**.
+
+##### Critère de sortie « suppression sûre partout » — satisfait
+
+| Domaine | Comportement opposé |
+|---|---|
+| **Client avec historique** | **refus** |
+| **Produit utilisé** | **refus** |
+| **Fournisseur utilisé** | **refus** |
+| **Commande** | suppression **limitée au statut autorisé** (`New` seul) |
+| **Utilisateur** | **aucune suppression physique** (aucun use case de suppression) |
+| **Ordonnance** | suppression physique **désormais toujours refusée** |
+
+Inventaire détaillé et réserve d'honnêteté (conservation ≠ immutabilité) : §6.1.
+
+##### Relation avec `origin/main` au moment de cette consignation
+
+| Contrôle | Résultat |
+|---|---|
+| `git rev-parse origin/main` | `1e28f1e6a8e9de08ab75e042cad37800c0390495` |
+| `git merge-base origin/main HEAD` | `1e28f1e6a8e9de08ab75e042cad37800c0390495` — **la base de fusion est `origin/main`** |
+| `git rev-list --left-right --count origin/main...HEAD` | **`0  29`** — 0 commit exclusif à `main`, **29** exclusifs à P3 |
+| `git merge-tree --write-tree origin/main HEAD` | **exit 0**, arbre `e53e2c83518dad1ebddd78f92bdcf75839a785ff`, **aucun conflit** |
+| Nature du merge | **fast-forward possible**, sans mise à jour préalable de la branche |
+
+`origin/main` **n'a pas avancé** depuis le point de départ de P3. À revérifier si `main` bouge avant le merge.
+
+##### État de P3
+
+- **Développement P3 : terminé.**
+- **Tests et CI : verts** (1499 tests, run `29964844698`).
+- **Branche `p3-business-rules` : candidate au merge.**
+- **Merge vers `main` : encore à effectuer.** Il n'a pas eu lieu et n'est pas engagé par ce document.
+- **P4 : non commencé** — aucune roadmap P4 n'est définie ici.
 
 ---
 

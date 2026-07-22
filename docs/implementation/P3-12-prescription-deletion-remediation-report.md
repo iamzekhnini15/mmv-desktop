@@ -3,6 +3,11 @@
 > **Mode** : `REMEDIATE_FINAL_P3_BLOCKER_AND_WRITE_REPORT_NO_COMMIT`.
 > Aucun commit, push, merge, rebase ou cherry-pick. Aucune migration, aucun snapshot EF, aucune UI, aucune
 > Infrastructure, aucun paquet, aucun nouveau projet. P4 non commencé.
+>
+> ⚠️ **Portée de cet en-tête.** Il décrit le **mandat de rédaction initial**, où rien n'était encore committé.
+> Le correctif a **depuis** été committé, poussé et validé en CI : voir **§18**, qui porte le verdict
+> définitif. Les mentions « aucun commit » du corps décrivent l'état au moment de leur écriture et sont
+> conservées comme trace.
 
 ---
 
@@ -304,7 +309,7 @@ et ne peut pas devenir un faux positif. Ajouter un scan fragile aurait été de 
 
 | # | Correction |
 |---|---|
-| **C1** | P3-12 n'est plus « non commencé » : audit exécuté, blocage trouvé sur la suppression d'ordonnance, correctif appliqué et validé localement, sous réserve de commit et CI |
+| **C1** | P3-12 n'est plus « non commencé » : audit exécuté, blocage trouvé sur la suppression d'ordonnance, correctif appliqué et validé localement. *(La réserve « sous réserve de commit et CI » alors portée par la roadmap a depuis été **levée** : commit `c175100`, run `29964844698`, `success` — cf. §18.)* |
 | **C2** | Correctif P3-8 inscrit définitivement : commit `4c2a1e5…`, run `29958212378`, `success`, 1493 tests, **dette close**, verdict `CORRECTIF P3-8 PRÉ-P3-12-CI = GO` |
 | **C3** | P3-3 n'est plus « sous réserve de CI distante » : implémentation incorporée dans le HEAD P3 final, validée par les CI ultérieures de la branche. **Aucun ancien run n'est inventé** ; la complétion par P3-12 est signalée |
 | **C4** | Note factuelle sur le commit UI `d8af704` (redesign de l'écran de connexion), antérieur à la décision backend-only de P3-4, sans règle métier concernée, **non rattaché** à une sous-étape inexistante |
@@ -497,7 +502,90 @@ git diff --check → exit 0
 
 # **P3 = GO MERGE CANDIDATE LOCAL**
 
-**Verdict local au moment de la rédaction** — sous réserve de commit et de CI verte. La revue finale a levé cette
-réserve : le correctif a été commité et poussé, et la CI du SHA exact fait foi (cf. mise à jour du §16).
+**Verdict local au moment de la rédaction** — sous réserve de commit et de CI verte. Cette réserve est **levée**
+par le §18 : le correctif a été commité, poussé, et la CI du SHA exact est verte.
 
 Aucun merge vers `main`. P4 non commencé. **STOP.**
+
+---
+
+## 18. Commit et validation CI
+
+> Section postérieure à la rédaction initiale. Les mentions « aucun commit » / « sous réserve de CI » du corps
+> ci-dessus décrivent fidèlement le début de l'exécution et sont **conservées**. Seules les formulations
+> **finales** devenues périmées sont levées ici.
+
+### 18.1 Commit
+
+| Champ | Valeur |
+|---|---|
+| SHA complet | `c1751007b8f8304154306381b2986f628a256c28` |
+| Message | `fix(P3-12): preserve prescription history` |
+| Branche | `p3-business-rules` |
+
+### 18.2 Périmètre committé — 9 fichiers
+
+| Catégorie | Modifiés | Créés | Supprimés | Total |
+|---|---:|---:|---:|---:|
+| Production | 2 | 1 | 0 | **3** |
+| Tests | 1 | 1 | 0 | **2** |
+| Documentation | 2 | 2 | 0 | **4** |
+| **Total** | **5** | **4** | **0** | **9** |
+
+Décompte confirmé par `git show --stat c175100` : **9 fichiers, 2 340 insertions, 85 suppressions**. Les neuf
+fichiers ont été **indexés un à un** ; `design-handoff/`, `design/` et `docs/ui/` sont restés non indexés.
+
+### 18.3 Ce que le commit contient de structurant
+
+- **Retrait d'`IUnitOfWork`** du constructeur de `DeletePrescriptionUseCase` : l'absence d'écriture cesse d'être
+  comportementale pour devenir **structurelle**. Le use case déclare un unique constructeur, à un unique
+  paramètre `IPrescriptionRepository` — propriété opposée par `Constructor_DeclaresOnlyThePrescriptionRepository`.
+- **Recherche exhaustive des chemins de suppression** (§5.1) : aucun service parallèle, aucune ViewModel
+  appelant un repository, aucun SQL brut ni `ExecuteDeleteAsync` visant `Prescriptions`, aucun second use case,
+  aucune cascade client (`Restrict` des deux côtés). `DeletePrescriptionUseCase` est le **seul chemin runtime**
+  de suppression d'ordonnance du dépôt.
+- **Résultat UI observé, sans modification d'UI** : `CustomerPrescriptionsViewModel.ExecuteDeleteAsync` enveloppe
+  l'appel dans un `try/catch (Exception ex)` existant qui affecte `ErrorMessage`. Le refus est **absorbé et
+  affiché**, sans exception non gérée. `src/MMV.App/**` et `tests/MMV.App.Tests/**` sont **inchangés** (App reste
+  exactement à **239**).
+
+### 18.4 CI
+
+| Champ | Valeur |
+|---|---|
+| Run | [`29964844698`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/29964844698) |
+| `headSha` | `c1751007b8f8304154306381b2986f628a256c28` **(exact)** |
+| `headBranch` | `p3-business-rules` |
+| `event` | `push` |
+| `status` | `completed` |
+| `conclusion` | **`success`** |
+
+Job unique « Restore / Build / Test / Scan » : **Restore**, **Build**, **Test**, **Audit des packages
+vulnérables** et **Check EF Core pending model changes** tous `success`. **Aucun job obligatoire en échec.**
+
+| Contrôle | Résultat |
+|---|---|
+| Tests | **1499** (Domain 649 · Application 611 · App 239), 0 échec, 0 ignoré |
+| Build | 0 erreur / 0 avertissement |
+| Vulnérabilités | 0 (7 projets) |
+| Modèle EF | aucun `pending model change` |
+
+### 18.5 Ce que le commit ne contient pas
+
+**Aucune migration. Aucune Infrastructure. Aucune UI.** Aucun `ModelSnapshot`, aucune entité, aucune
+configuration EF, aucun repository, aucun paquet, aucun projet.
+
+### 18.6 Merge et suite
+
+**Aucun merge vers `main` n'a été effectué** — ni `merge`, ni `rebase`, ni `cherry-pick`, ni `gh pr merge`.
+`origin/main` reste à `1e28f1e`, dont la branche descend directement : le merge serait un **fast-forward**,
+`merge-tree` sortant en code 0 sans conflit. **P4 n'est pas commencé.**
+
+### 18.7 Verdict définitif
+
+# **P3-12-CI = GO**
+
+# **P3 = GO MERGE CANDIDATE**
+
+Le verdict `GO LOCAL` du §17 est **levé, non effacé** : il décrivait exactement l'état avant commit. La CI du
+SHA exact fait désormais foi. **P3 n'est pas `MERGED`** — la branche en est candidate.
