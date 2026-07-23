@@ -921,3 +921,39 @@ Après la **remédiation P3-12**, l'inventaire est complet :
 **Le critère est désormais pleinement satisfait.** Réserve d'honnêteté, à ne pas confondre avec lui : la
 conservation n'est **pas** une immutabilité. Une ordonnance reste modifiable, et deux postes qui la corrigent
 concurremment s'écrasent toujours en silence — dette ouverte, portée au futur cadrage.
+
+---
+
+## Clôture P3 sur main
+
+Le développement, les tests et la CI de P3 étant verts sur `p3-business-rules`, la branche a été
+**fusionnée dans `main` par fast-forward**, sans merge commit, sans rebase et sans force push.
+
+| Élément | Valeur |
+|---|---|
+| Méthode de fusion | **fast-forward** (`1e28f1e..89ccc91`) |
+| SHA P3 fusionné dans `main` | `89ccc9180e43052559c8699931c67a0a20020c4c` |
+| `origin/main` après fusion | `89ccc9180e43052559c8699931c67a0a20020c4c` |
+| Divergence `main` ↔ `p3-business-rules` | `0  0` |
+| CI de `main` sur ce SHA | run `29968110269` |
+| Conclusion de la CI | **success** (Restore, Build, Test, audit vulnérabilités, contrôle EF — tous verts) |
+| Tests | **1499** (Domain 649 · Application 611 · App 239), 0 échec, 0 ignoré |
+| Build | 0 erreur / 0 avertissement |
+| Vulnérabilités | 0 |
+| Pending model changes EF | aucun |
+
+**P3 est définitivement clos.** La branche `p3-business-rules` est **conservée pour traçabilité**
+(non supprimée). Aucun code, test, migration, snapshot EF ni UI n'a été modifié lors de cette clôture.
+
+### Verdicts
+
+# **P3-MAIN-CI = GO**
+
+# **P3 = MERGED TO MAIN**
+
+### Ce qui n'est PAS déclaré
+
+- **`V1 MULTI-POSTE = GO` n'est pas inscrit.** La V1 multi-poste nécessite encore **P4**.
+- **P4 : non commencé** — il sera **cadré séparément**, sur prompt explicite.
+- **Aucun choix final PostgreSQL / SQL Server Express n'est arrêté ici** ; ce choix relève de P4
+  (cf. [ADR-PROD-DB-001](adr-prod-db-001-multi-poste-database-strategy.md)).
