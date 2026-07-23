@@ -803,3 +803,78 @@ P4-0 = GO LOCAL, SOUS RÉSERVE DU COMMIT ET DE LA CI
 
 Aucun provider n'est choisi, aucun spike n'est commencé, aucun package n'est ajouté, aucun code, test, migration,
 snapshot EF ou fichier d'UI n'est modifié.
+
+*(Cette réserve est levée en §37 : le commit de contenu et sa CI ont été obtenus et vérifiés.)*
+
+---
+
+## 37. Clôture de P4-0 (commit de contenu et CI vérifiés)
+
+### 37.1 Commit de contenu
+
+| Élément | Valeur |
+|---|---|
+| SHA complet | `8cf09193758c8d74a7f98ca01beb7e22e61ff66c` |
+| Message | `chore(P4-0): establish multi-poste audit and CI` |
+| Branche | `p4-multi-poste` (parent `3ed883634dae83399d3e93dbc1dc65ffaabdf243`) |
+| `M` | `.github/workflows/ci.yml` (**+1 ligne** : motif `'p4*'`) |
+| `A` | `docs/architecture/P4-multi-poste-roadmap.md` |
+| `A` | `docs/implementation/P4-0-multi-poste-initial-audit-report.md` |
+| Total | **3 fichiers, 1075 insertions, 0 suppression** |
+
+### 37.2 CI du commit de contenu
+
+| Élément | Valeur |
+|---|---|
+| Run | **`30045502517`** |
+| URL | <https://github.com/iamzekhnini15/mmv-desktop/actions/runs/30045502517> |
+| `headSha` | `8cf09193758c8d74a7f98ca01beb7e22e61ff66c` (**exact**) |
+| `headBranch` | `p4-multi-poste` |
+| `event` | `push` |
+| `status` | `completed` |
+| `conclusion` | **`success`** |
+| Durée | 6 min 16 s |
+
+Résultats des jobs et steps — **tous `success`, aucun job obligatoire en échec** :
+
+| Step | Résultat |
+|---|---|
+| Checkout · Setup .NET · Diagnostic SDK | ✅ |
+| **Restore** | ✅ |
+| **Build** | ✅ |
+| **Test** | ✅ — App **239** · Application **611** · Domain **649** → **1499**, 0 échec, 0 ignoré |
+| **Audit des packages vulnérables (JSON + sévérité)** | ✅ — *« Aucune vulnerabilite High/Critical detectee. »* |
+| Restore .NET tools | ✅ |
+| **Check EF Core pending model changes** | ✅ — *« No changes have been made to the model since the last migration. »* |
+
+> La seule annotation du run est l'avertissement **« Node.js 20 is deprecated »** (`actions/checkout@v4`,
+> `actions/setup-dotnet@v4`). C'est un **avertissement d'annotation, pas un échec** ; sa correction est
+> **délibérément hors périmètre** de P4-0.
+
+**La baseline distante est désormais produite par la branche P4 elle-même** : la CI `main` `29968668277` n'est plus
+le seul témoin, `p4*` est réellement couvert.
+
+### 37.3 Ce que ce commit ne contient pas
+
+Aucun fichier sous `src/**`, `tests/**`, `src/MMV.Infrastructure/Migrations/**`, `*.csproj`, `*.sln`,
+`src/MMV.App/**`, `docs/ui/**`, `design/**`, `design-handoff/**`. **Aucun code**, **aucun test**, **aucune
+migration**, **aucun snapshot EF**, **aucune UI**, **aucun package**, **aucun provider**. La seule modification non
+documentaire est l'ajout du motif `'p4*'` au filtre `push` du workflow.
+
+### 37.4 État officiel des phases
+
+- **P4-0 : définitivement close.** Audit produit et corrigé, roadmap produite, CI `p4*` activée, commit poussé,
+  CI verte sur le SHA exact.
+- **P4-1 : prête à commencer**, **non commencée**. Aucun spike n'a été démarré, aucun serveur installé, aucun
+  package provider ajouté.
+- **Aucun provider n'est choisi** : PostgreSQL (candidat principal) et SQL Server Express (candidat secondaire),
+  issus de l'ADR P3-0B, restent tous deux candidats, sans notation ni gagnant.
+
+### 37.5 Verdicts documentaires finaux
+
+```
+P4-BRANCH-CREATION = GO
+P4-0-CI            = GO
+P4                 = STARTED
+P4-1               = READY
+```

@@ -22,7 +22,7 @@
 
 Au départ, **une seule** étape est officiellement figée :
 
-### **P4-0 — Audit initial multi-poste et roadmap** — *étape officielle **exécutée localement***
+### **P4-0 — Audit initial multi-poste et roadmap** ✅ *étape officielle **close** (commit + CI vertes)*
 
 - **Objectif** : vérifier la clôture P3, créer la branche `p4-multi-poste`, établir la baseline, inventorier
   l'ensemble du couplage SQLite et des garanties P3, produire l'audit et cette roadmap, puis **activer la CI sur
@@ -32,9 +32,19 @@ Au départ, **une seule** étape est officiellement figée :
   `push` de `.github/workflows/ci.yml`.
 - **Changements interdits** : code, tests, migrations, snapshot EF, UI, packages, provider, toute autre partie du
   workflow.
-- **Statut** : **exécutée localement — sous réserve du commit de clôture et de sa CI**, jusqu'à obtention de
-  celle-ci. Tant que la CI du commit de contenu n'est pas verte, P4-0 **n'est pas** close.
-- **Sortie visée** : `P4-BRANCH-CREATION = GO`, `P4-0-CI = GO`, `P4 = STARTED`, `P4-1 = READY`.
+- **Statut** : **définitivement close.** La réserve « sous réserve du commit et de sa CI » est **levée** :
+
+  | Élément | Valeur |
+  |---|---|
+  | Commit de contenu | **`8cf09193758c8d74a7f98ca01beb7e22e61ff66c`** — `chore(P4-0): establish multi-poste audit and CI` |
+  | Fichiers | `M .github/workflows/ci.yml` (+1 ligne `'p4*'`) · `A` roadmap P4 · `A` rapport d'audit P4-0 (3 fichiers, 1075 insertions) |
+  | CI | run **`30045502517`** · `event=push` · `headSha` **exact** · `status=completed` · **`conclusion=success`** |
+  | URL | <https://github.com/iamzekhnini15/mmv-desktop/actions/runs/30045502517> |
+  | Jobs | Restore ✅ · Build ✅ · Test ✅ · Audit vulnérabilités ✅ · Contrôle EF ✅ — aucun job obligatoire en échec |
+  | Tests | **1499** (Domain 649 · Application 611 · App 239), 0 échec, 0 ignoré — **reproduits en CI** |
+  | Contenu | **aucun** code, test, migration, snapshot EF, UI, package ni provider |
+
+- **Sortie obtenue** : `P4-BRANCH-CREATION = GO`, `P4-0-CI = GO`, `P4 = STARTED`, `P4-1 = READY`.
 
 **Toutes les étapes ci-dessous sont dérivées de l'audit réel** mais **ne sont pas définitives** : leur découpage
 final dépend des résultats du spike (P4-1) et de l'ADR (P4-2).
@@ -45,7 +55,8 @@ final dépend des résultats du spike (P4-1) et de l'ADR (P4-2).
 
 ### P4-1 — Spike comparatif des providers — **prochaine étape officielle**
 
-- **Statut** : **prochaine étape officielle de P4**. Elle n'est **pas commencée**.
+- **Statut** : **`P4-1 = READY`** — prochaine étape officielle de P4, **prête à commencer** et **non commencée**.
+  Aucun spike n'a été démarré, aucun serveur de base de données installé, aucun package provider ajouté.
 - **Objectif** : mesurer PostgreSQL et SQL Server Express sur les points réellement bloquants identifiés par l'audit,
   **sans désigner de gagnant à l'avance**.
 - **Dépendances** : P4-0 close (commit + CI verte).
@@ -267,3 +278,24 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 5. **Chaîne de migrations non portable** → chaîne serveur distincte requise.
 6. **Cycle de vie mono-processus** (`Migrate()` par poste, backup par copie de fichier, adoption PRAGMA).
 7. **Aucun déploiement, aucun outil d'import, aucun test multi-processus ou serveur.**
+
+---
+
+## 6. État officiel de P4
+
+| Phase | État |
+|---|---|
+| **P4-0** — audit initial et roadmap | **CLOSE** — commit `8cf0919`, CI `30045502517` verte sur le SHA exact |
+| **P4-1** — spike comparatif des providers | **READY** — prête à commencer, **non commencée** |
+| **P4-2 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** après P4-1 et P4-2 |
+
+```
+P4-BRANCH-CREATION = GO
+P4-0-CI            = GO
+P4                 = STARTED
+P4-1               = READY
+```
+
+**Aucun provider n'est choisi.** **Aucun spike n'a commencé.** La CI couvre désormais les branches `p4*` :
+tout commit de la phase P4 est vérifié à distance (restore, build, 1499 tests, audit de vulnérabilités,
+contrôle EF des changements de modèle non matérialisés).
