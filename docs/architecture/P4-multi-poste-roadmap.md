@@ -77,6 +77,34 @@ final dépend des résultats du spike (P4-1) et de l'ADR (P4-2).
 - **Sortie** : matrice de preuves complétée, sans score inventé. **Aucun provider n'est choisi par P4-1 elle-même** —
   la décision appartient à l'ADR P4-2.
 
+#### P4-1 — état après Lots A et B *(exécution locale ; P4-1 non close)*
+
+État factuel enregistrant l'exécution **locale** des Lots A et B du spike. Il **ne clôt pas** P4-1 et
+**ne choisit aucun provider**.
+
+- **Lot A** — spike comparatif exécuté **localement** (E1 → E10 sur les deux providers, conteneurs jetables).
+- **Lot B** — complétion technique exécutée **localement** (E11 → E17 sur les deux providers).
+- Résultats **E1 à E17** disponibles ([rapport Lot A](../implementation/P4-1-provider-comparison-spike-report.md) ·
+  [rapport Lot B](../implementation/P4-1-technical-completion-lot-b-report.md)).
+- Inventaire des primitives **réconcilié à 14** (doublon conceptuel de l'audit §15 retiré).
+- **13 / 14** primitives exercées **via les implémentations de production** ; **1 en échec mesuré**
+  (`NotificationRepository.TryCreateActiveLowStockAsync` — `SqliteParameter`, échec **identique** sur les deux providers).
+- Import **SQLite réduit** exécuté et réconcilié (prototype 10 tables, sans volumétrie réelle).
+- **Deadlocks, pertes de connexion, retries bornés et RCSI** exécutés et mesurés.
+- **Aucun provider choisi ; aucun provider éliminé.**
+- P4-1 **reste incomplète** : installation Windows native non validée (les deux providers) ; accès **depuis un
+  autre poste** non testé.
+- P4-2 (ADR) **reste bloquée**.
+- **Lot C — installation Windows native et tests réseau réels — requis** avant clôture de P4-1.
+
+```
+P4-1 LOT A  = GO LOCAL
+P4-1 LOT B  = GO LOCAL
+P4-1 SPIKE  = INCOMPLETE
+P4-2 ADR    = BLOCKED
+P4-1 LOT C  = READY
+```
+
 ---
 
 > **Statut des étapes P4-2 à P4-12.** Elles constituent la **trajectoire officielle de travail issue de l'audit

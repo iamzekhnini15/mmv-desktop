@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Worker du spike E9 — PROCESSUS INDÉPENDANT.
+
+    E9 exige une preuve MULTI-PROCESSUS, pas seulement multi-tâches dans un même processus.
+    Ce petit exécutable ouvre sa PROPRE connexion, attend un signal externe (événement nommé
+    Windows — aucun Thread.Sleep comme mécanisme de synchronisation), exécute UNE opération, puis
+    rend un code de sortie et une ligne de résultat sur stdout.
+
+    Hors de MMV.sln. Aucun secret : la chaîne vient de l'environnement.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12.0</LangVersion>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>MMV.P4.Worker</AssemblyName>
+    <RootNamespace>MMV.P4.Worker</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" Version="8.0.7" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+  </ItemGroup>
+
+</Project>

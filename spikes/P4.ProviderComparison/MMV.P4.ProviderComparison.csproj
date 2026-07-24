@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    P4-1 — Harness de spike comparatif PostgreSQL / SQL Server Express.
+
+    Ce projet est DÉLIBÉRÉMENT hors de MMV.sln : il ne doit jamais participer au build
+    ni à la CI de production. Il référence MMV.Domain et MMV.Infrastructure en LECTURE
+    SEULE afin d'exercer le VRAI OpticDbContext (stratégie A du brief §12) plutôt qu'un
+    modèle réduit. Aucun fichier de src/** n'est modifié.
+
+    Aucun secret n'est stocké ici : les chaînes de connexion proviennent exclusivement
+    des variables d'environnement MMV_P4_POSTGRES_CONNECTION et MMV_P4_SQLSERVER_CONNECTION.
+    En leur absence, les tests concernés sont SKIPPED (jamais verts artificiellement).
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12.0</LangVersion>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <!-- Permet un SKIPPED explicite quand un provider n'est pas configuré. -->
+    <PackageReference Include="Xunit.SkippableFact" Version="1.4.13" />
+
+    <!-- Providers du spike UNIQUEMENT. Jamais ajoutés à un projet de production. -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.27" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.27" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MMV.Domain\MMV.Domain.csproj" />
+    <ProjectReference Include="..\..\src\MMV.Infrastructure\MMV.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!--
+    Le worker E9 est un projet AUTONOME situé sous Worker/. Sans cette exclusion, le glob par
+    défaut du SDK compilerait son Program.cs dans le projet de test (deux points d'entrée).
+  -->
+  <ItemGroup>
+    <Compile Remove="Worker\**" />
+    <None Remove="Worker\**" />
+    <EmbeddedResource Remove="Worker\**" />
+  </ItemGroup>
+
+</Project>
