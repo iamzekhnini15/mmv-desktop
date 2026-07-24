@@ -105,6 +105,25 @@ P4-2 ADR    = BLOCKED
 P4-1 LOT C  = READY
 ```
 
+**Enregistrement — commit et CI (Lots A + B).** Les preuves des Lots A et B sont enregistrées par le commit
+**`0039e5c410f85937a3eb70f29f2dd5545f285f1d`** — `test(P4-1): capture provider spike evidence` (32 fichiers : la
+présente roadmap modifiée + les 2 rapports P4-1 + `spikes/P4.ProviderComparison/**`, **aucun** changement de
+production). CI **verte sur le SHA exact** : run
+[`30128760083`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/30128760083) · `event=push` ·
+`status=completed` · **`conclusion=success`** · job *Restore / Build / Test / Scan* ✅ (Restore · Build ·
+**1499 tests** · audit vulnérabilités · contrôle EF — tous verts). Le harness est validé **localement** sans
+provider (45 tests explicitement *Skipped*, aucun secret) ; la CI valide la **solution MMV**, pas le harness situé
+hors `MMV.sln`.
+
+```
+P4-1 LOT A     = GO
+P4-1 LOT B     = GO
+P4-1 LOT B CI  = GO
+P4-1 SPIKE     = INCOMPLETE
+P4-2 ADR       = BLOCKED
+P4-1 LOT C     = READY
+```
+
 ---
 
 > **Statut des étapes P4-2 à P4-12.** Elles constituent la **trajectoire officielle de travail issue de l'audit

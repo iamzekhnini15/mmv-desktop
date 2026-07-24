@@ -715,3 +715,32 @@ exploitable. **Aucune désinstallation n'est recommandée.** Les voies possibles
 - ✅ aucun secret n'apparaît dans le dépôt ni dans ce rapport ;
 - ✅ conteneurs, bases et secrets temporaires **supprimés** ;
 - ✅ **aucun commit, aucun push**.
+
+---
+
+## 25. Enregistrement du commit et de la CI (Lots A + B)
+
+Le Lot B et le Lot A sont enregistrés ensemble, **sans choix de provider** :
+
+| Élément | Valeur |
+|---|---|
+| Commit | **`0039e5c410f85937a3eb70f29f2dd5545f285f1d`** — `test(P4-1): capture provider spike evidence` |
+| Fichiers | **32** — `M` roadmap P4 · `A` 2 rapports P4-1 · `A` `spikes/P4.ProviderComparison/**` (29 fichiers) ; **aucun** changement de production |
+| CI | run **`30128760083`** · `event=push` · `headSha` **exact** · `status=completed` · **`conclusion=success`** |
+| URL | <https://github.com/iamzekhnini15/mmv-desktop/actions/runs/30128760083> |
+| Job | *Restore / Build / Test / Scan* ✅ — Restore · Build · Test · Audit vulnérabilités · Contrôle EF, tous verts |
+| Baseline | **1499** (Domain 649 · Application 611 · App 239), 0 échec, 0 ignoré — avant **et** après les expérimentations |
+| Harness | validé **localement** sans provider (45 tests *Skipped*, aucun secret) ; **hors `MMV.sln`** |
+| Production | **aucune modification** |
+
+```
+P4-1 LOT A     = GO
+P4-1 LOT B     = GO
+P4-1 LOT B CI  = GO
+P4-1 SPIKE     = INCOMPLETE
+P4-2 ADR       = BLOCKED
+P4-1 LOT C     = READY
+```
+
+**P4-1 reste incomplète** ; **P4-2 (ADR) reste bloquée** ; **Lot C — installation Windows native et tests réseau
+réels — requis**. **Aucun provider n'est choisi ni éliminé.**
