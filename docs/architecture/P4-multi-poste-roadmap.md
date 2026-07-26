@@ -53,11 +53,18 @@ final dépend des résultats du spike (P4-1) et de l'ADR (P4-2).
 
 ## 2. Étapes suivantes
 
-### P4-1 — Spike comparatif des providers — **étape officielle engagée, non close**
+### P4-1 — Spike comparatif des providers — **techniquement complète ; enregistrement du Lot D en attente de commit et de CI**
 
-- **Statut courant** : **`P4-1 SPIKE = INCOMPLETE`** — le spike est **engagé**. **Lots A, B et C exécutés**
-  (Lot C = **`PASS`** sur les deux providers) ; **Lot D requis** avant clôture (voir *P4-1 — Lot D* ci-dessous).
-  **Aucun provider n'est choisi ni éliminé.** État consolidé en §6.
+- **Statut courant** : **`P4-1 SPIKE = COMPLETE` au niveau des preuves locales.** Les **Lots A, B, C et D**
+  sont exécutés. Le Lot D **passe** sur SQLite, PostgreSQL et SQL Server : **14 / 14 primitives** exercées via
+  leurs implémentations de production, et **20 / 20 tours de concurrence conformes par provider serveur**.
+  L'**enregistrement officiel** du Lot D reste soumis à son commit et à une **CI verte sur le nouveau SHA
+  exact**. **`P4-2 ADR = READY`**, mais l'ADR n'est **ni créée ni acceptée**. **Aucun provider n'est choisi ni
+  éliminé.** État consolidé en §6.
+- **Statut antérieur — historique (jusqu'au 2026-07-26)** : `P4-1 SPIKE = INCOMPLETE`, `P4-2 ADR = BLOCKED`,
+  Lot D requis. **Cet énoncé est périmé** : il est remplacé par le statut courant ci-dessus et conservé
+  uniquement comme trace. Les blocs d'état antérieurs marqués `[HISTORIQUE]` plus bas suivent la même règle —
+  leur **contenu évidentiel est préservé**, seule leur **valeur courante** est retirée.
 - **Statut initial — historique (2026-07-23)** : `P4-1 = READY` — prochaine étape officielle de P4, prête à
   commencer et **non commencée** ; aucun spike démarré, aucun serveur de base de données installé, aucun package
   provider ajouté. **Cet énoncé est périmé** ; il est conservé uniquement comme trace de l'état de départ.
@@ -83,11 +90,13 @@ final dépend des résultats du spike (P4-1) et de l'ADR (P4-2).
 
 #### P4-1 — état après Lots A et B *(exécution locale ; enregistrement **historique**)*
 
-> **Sous-section historique.** Elle enregistre l'état **au terme des Lots A et B**, avant l'exécution du Lot C.
-> Ses deux manques déclarés (installation Windows native non validée ; accès depuis un autre poste non testé)
-> ont **depuis été couverts par le Lot C**, désormais **`PASS`** — et non plus `READY`. Les blocs d'état
-> ci-dessous sont **conservés tels quels** comme trace des Lots A et B ; l'**état courant** est celui de la
-> sous-section *« Lot C … exécuté »* et du tableau §6.
+> **Sous-section historique.** Elle enregistre l'état **au terme des Lots A et B**, avant l'exécution des
+> Lots C et D. Ses deux manques déclarés (installation Windows native non validée ; accès depuis un autre poste
+> non testé) ont **depuis été couverts par le Lot C**, désormais **`PASS`** — et non plus `READY`. Le
+> **13 / 14** et la primitive **en échec** énoncés ci-dessous ont **depuis été résolus par le Lot D**
+> (**14 / 14**, `PASS`), et les mentions « P4-1 reste incomplète » / « P4-2 reste bloquée » sont **périmées**.
+> Les blocs d'état ci-dessous sont **conservés tels quels** comme trace des Lots A et B ; l'**état courant**
+> est celui de la sous-section *« Lot D … exécuté et `PASS` »* et du tableau §6.
 
 État factuel enregistrant l'exécution **locale** des Lots A et B du spike. Il **ne clôt pas** P4-1 et
 **ne choisit aucun provider**.
@@ -110,8 +119,8 @@ final dépend des résultats du spike (P4-1) et de l'ADR (P4-2).
 ```
 P4-1 LOT A  = GO LOCAL
 P4-1 LOT B  = GO LOCAL
-P4-1 SPIKE  = INCOMPLETE
-P4-2 ADR    = BLOCKED
+P4-1 SPIKE  = INCOMPLETE       [HISTORIQUE — Lot D exécuté depuis : SPIKE = COMPLETE]
+P4-2 ADR    = BLOCKED          [HISTORIQUE — remplacé depuis par : ADR = READY]
 P4-1 LOT C  = READY            [HISTORIQUE — Lot C exécuté depuis : PASS]
 ```
 
@@ -129,8 +138,8 @@ hors `MMV.sln`.
 P4-1 LOT A     = GO
 P4-1 LOT B     = GO
 P4-1 LOT B CI  = GO
-P4-1 SPIKE     = INCOMPLETE
-P4-2 ADR       = BLOCKED
+P4-1 SPIKE     = INCOMPLETE       [HISTORIQUE — Lot D exécuté depuis : SPIKE = COMPLETE]
+P4-2 ADR       = BLOCKED          [HISTORIQUE — remplacé depuis par : ADR = READY]
 P4-1 LOT C     = READY            [HISTORIQUE — Lot C exécuté depuis : PASS]
 ```
 
@@ -159,8 +168,8 @@ installations ont depuis été réalisées ; voir la sous-section suivante.)*
 ```
 P4-1 LOT C READINESS = READY TO EXECUTE
 P4-1 LOT C            = NOT STARTED      [HISTORIQUE — remplacé ci-dessous par : PASS]
-P4-1 SPIKE            = INCOMPLETE
-P4-2 ADR              = BLOCKED
+P4-1 SPIKE            = INCOMPLETE       [HISTORIQUE — Lot D exécuté depuis : SPIKE = COMPLETE]
+P4-2 ADR              = BLOCKED          [HISTORIQUE — remplacé depuis par : ADR = READY]
 ```
 
 #### P4-1 — Lot C : installation Windows native et réseau réel — **exécuté et `PASS`** (2026-07-26)
@@ -196,7 +205,8 @@ limites : [rapport Lot C](../implementation/P4-1-windows-network-lot-c-report.md
   `MMV.Application`, `MMV.Infrastructure` ni de l'`OpticDbContext` n'a été exercé contre ces serveurs ;
   `mmv_app`, `mmv_p4_lab` et `network_test` sont des objets SQL créés à la main.
 - **Aucun provider n'est choisi ni éliminé** : deux `PASS` symétriques ne constituent pas une décision.
-- **P4-1 reste incomplète** et **P4-2 (ADR) reste bloquée** — voir *Lot D* ci-dessous.
+- **P4-1 restait incomplète** et **P4-2 (ADR) restait bloquée** à la clôture du Lot C — voir *Lot D* ci-dessous.
+  *(Constat historique : le Lot D a depuis été exécuté et est `PASS`.)*
 
 ```
 P4-1 LOT A                  = GO
@@ -205,15 +215,89 @@ P4-1 LOT C READINESS        = READY TO EXECUTE
 P4-1 LOT C POSTGRESQL TRACK = PASS
 P4-1 LOT C SQL SERVER TRACK = PASS
 P4-1 LOT C                  = PASS
-P4-1 SPIKE                  = INCOMPLETE
-P4-2 ADR                    = BLOCKED
+P4-1 SPIKE                  = INCOMPLETE       [HISTORIQUE — Lot D exécuté depuis : SPIKE = COMPLETE]
+P4-2 ADR                    = BLOCKED          [HISTORIQUE — remplacé depuis par : ADR = READY]
 ```
 
-#### P4-1 — Lot D : complétion de la portabilité applicative — **prochain lot bloquant**
+#### P4-1 — Lot D : complétion de la portabilité applicative — **exécuté et `PASS`** (2026-07-26)
 
-Le socle Windows/réseau étant couvert par le Lot C, le **seul** critère du spike P4-1 encore non satisfait est
-la **portabilité applicative**. Le **Lot D** en est le **prochain lot technique bloquant** : il est **requis**
-avant la clôture de P4-1, donc avant l'ADR P4-2. Définition détaillée :
+Le Lot D a **résolu le dernier échec applicatif mesuré du spike**,
+`NotificationRepository.TryCreateActiveLowStockAsync`. Preuves détaillées, limites et verdict :
+[rapport Lot D](../implementation/P4-1-lot-d-active-low-stock-portability-report.md).
+
+- **Cause racine mesurée** : sept `SqliteParameter` construits **en dur** étaient rejetés par les collections
+  de paramètres Npgsql et SQL Server **avant toute exécution SQL** — le moteur ne voyait jamais la requête. Le
+  problème était donc le **type d'objet paramètre**, pas seulement le dialecte.
+- **Paramètres** : désormais fabriqués par le **provider ADO.NET courant**, via
+  `Database.GetDbConnection().CreateCommand().CreateParameter()`. **Aucun paquet provider n'est ajouté** à
+  `MMV.Infrastructure`, et **aucune référence provider n'atteint Domain ni Application**.
+- **SQLite et PostgreSQL** : conservent la forme `INSERT … ON CONFLICT DO NOTHING` — texte SQLite **inchangé
+  au caractère près**.
+- **SQL Server** : forme **à instruction unique** `INSERT … SELECT … WHERE NOT EXISTS (… WITH (UPDLOCK,
+  HOLDLOCK))`. Un provider non reconnu **lève** plutôt que de deviner un dialecte.
+- **Aucun `check-then-act` applicatif** : la décision « créer ou refuser » reste prise **par la base**, en une
+  seule instruction. La garantie d'unicité n'est ni déplacée vers l'application ni affaiblie.
+- **Implémentation de production exercée contre SQLite, PostgreSQL et SQL Server** — les tests appellent la
+  méthode elle-même, sans SQL recopié ni substitut.
+- **Compatibilité SQLite** : 6 nouveaux tests ciblés passent ; les **43** tests Notifications préexistants
+  passent **sans modification**.
+- **Concurrence** : **20 / 20 tours conformes sur PostgreSQL** et **20 / 20 sur SQL Server** — 0 anomalie,
+  0 erreur non gérée, 0 interblocage observé, **au plus une alerte active**.
+- **Résultat cumulé : 14 / 14 primitives** exercées via leurs implémentations de production sur les deux
+  candidats (13 acquises aux Lots A + B, 1 résolue par le Lot D).
+- **Aucune migration, aucun changement de modèle EF, aucun paquet provider ajouté.**
+- **Aucun provider n'est choisi ni éliminé** : la correction est **neutre** entre les deux candidats.
+
+**Portée des preuves — à ne pas confondre :**
+
+- **preuves locales** : les 4 tests serveur E18 et la mesure de concurrence dépendent de conteneurs
+  PostgreSQL/SQL Server locaux ;
+- **preuves de solution** : `MMV.sln` totalise **1505 tests** (Domain 649 · Application 617 · App 239), build
+  0 avertissement / 0 erreur, aucune vulnérabilité, aucun changement de modèle EF en attente ;
+- le harness `spikes/P4.ProviderComparison` est **hors `MMV.sln`** : **la CI normale ne rejouera pas E18** tant
+  que `.github/workflows/**` n'est pas explicitement modifié — ce que le Lot D **ne fait pas**.
+
+**Constats mesurés encore ouverts — entrées obligatoires de l'ADR P4-2 :**
+
+1. **`DateTime.Now` / `Kind = Local`** : **refusé** par le chemin **EF** PostgreSQL mesuré ; par le chemin SQL
+   brut, l'heure locale est stockée **comme si elle était UTC**. Sur SQL Server, le chemin SQL brut montre un
+   **arrondi de type `datetime`** là où le chemin EF mesuré a conservé une précision supérieure. Mesuré **sans
+   assertion**, **non résolu**, et **non introduit par le Lot D**.
+2. **Filtres d'index booléens PostgreSQL** : adaptation encore appliquée **dans le spike uniquement**.
+3. **Mapping monétaire `REAL`** : perte de valeur mesurée sur **les deux** providers.
+
+Ces trois constats doivent être **évalués** par l'ADR P4-2 et leur **implémentation affectée** aux phases P4
+ultérieures appropriées — vraisemblablement **P4-3** (composition/configuration), **P4-4** (comportement des
+primitives à l'exécution, conversions de valeurs) et/ou **P4-5** (types de colonnes, index, schéma, migrations)
+selon la décision retenue. **Aucune correction de code n'appartient à P4-2 elle-même**, qui est une décision
+**documentaire**.
+
+**Ce que le Lot D ne prouve pas** : la **compatibilité applicative complète** de MMV sur l'un ou l'autre
+serveur. Il prouve **une** primitive ; il n'exécute ni `MMV.App`, ni les cas d'usage complets, ni l'ensemble du
+modèle contre un serveur.
+
+```
+P4-1 LOT C                  = PASS
+P4-1 LOT D SQLITE TRACK     = PASS
+P4-1 LOT D POSTGRESQL TRACK = PASS
+P4-1 LOT D SQL SERVER TRACK = PASS
+P4-1 LOT D CONCURRENCY      = PASS
+P4-1 PRIMITIVES             = 14 / 14
+P4-1 LOT D                  = PASS
+P4-1 SPIKE                  = COMPLETE
+P4-2 ADR                    = READY
+```
+
+##### Mandat d'origine du Lot D *(historique — satisfait)*
+
+> **Sous-section historique.** Elle enregistre la **définition** du Lot D telle qu'énoncée à la clôture du
+> Lot C, quand il était le **prochain lot bloquant**. Son contenu est **conservé tel quel** comme trace du
+> mandat ; **tous ses points ont depuis été satisfaits** — l'état courant est celui de la sous-section
+> ci-dessus et du tableau §6.
+
+Le socle Windows/réseau étant couvert par le Lot C, le **seul** critère du spike P4-1 alors non satisfait était
+la **portabilité applicative**. Le **Lot D** en était le **prochain lot technique bloquant** : il était
+**requis** avant la clôture de P4-1, donc avant l'ADR P4-2. Définition détaillée :
 [rapport Lot C](../implementation/P4-1-windows-network-lot-c-report.md) §21.
 
 - **Objectif** : résoudre `NotificationRepository.TryCreateActiveLowStockAsync`, **seule primitive en échec**
@@ -237,9 +321,9 @@ avant la clôture de P4-1, donc avant l'ADR P4-2. Définition détaillée :
   sur les deux candidats (13 acquises + 1 résolue par le Lot D) — **condition d'entrée** de l'ADR P4-2.
 
 ```
-P4-1 LOT D = REQUIRED — NEXT BLOCKING LOT
-P4-1 SPIKE = INCOMPLETE
-P4-2 ADR   = BLOCKED
+P4-1 LOT D = REQUIRED — NEXT BLOCKING LOT   [HISTORIQUE — Lot D exécuté depuis : PASS]
+P4-1 SPIKE = INCOMPLETE                     [HISTORIQUE — remplacé depuis par : COMPLETE]
+P4-2 ADR   = BLOCKED                        [HISTORIQUE — remplacé depuis par : READY]
 ```
 
 ---
@@ -253,10 +337,20 @@ P4-2 ADR   = BLOCKED
 
 ### P4-2 — ADR de choix du provider
 
+- **Statut courant** : **`READY`** — les preuves nécessaires à la décision existent, **sous réserve** de
+  l'enregistrement du Lot D par commit et CI verte sur son SHA exact. L'ADR **n'est ni créée ni acceptée**, et
+  **aucun provider n'est choisi ni éliminé**.
 - **Objectif** : trancher PostgreSQL vs SQL Server Express **sur les preuves du spike**.
 - **Dépendances** : P4-1.
 - **Autorisé** : un ADR documentaire.
 - **Interdit** : implémentation, packages, migrations.
+- **Entrées obligatoires issues du spike** : preuves E1–E18 (Lots A + B), Lot C (installation Windows native,
+  réseau réel, sauvegarde/restauration), Lot D (14 / 14 primitives, concurrence 20 / 20 par provider), **plus
+  les trois constats encore ouverts** : mapping `DateTime`, filtres d'index booléens PostgreSQL, précision
+  monétaire `REAL`.
+- **Nature exacte de P4-2** : une décision **documentaire uniquement**. Elle **évalue** l'impact de ces
+  constats sur le choix du provider et **affecte leur implémentation** aux phases P4 ultérieures ; elle
+  **n'implémente elle-même aucune correction**, aucun paquet, aucun schéma, aucune migration.
 - **Critères** (audit §26) : intégrité transactionnelle · EF Core · portabilité des primitives P3 · concurrence réelle ·
   installation en magasin · maintenance · backup/restore · diagnostic · sécurité · coût/licence **vérifiés** ·
   Windows · migration SQLite · limites opérationnelles · compétences de support.
@@ -271,7 +365,7 @@ P4-2 ADR   = BLOCKED
   **inerte**), `OpticDbContext.OnConfiguring`, `OpticDbContextFactory` — soit **4 sites `UseSqlite`** à unifier (audit §8).
 - **Autorisé** : abstraction de composition, configuration, package provider.
 - **Interdit** : toute référence provider dans Domain/Application (audit §27) ; changement de règle métier.
-- **Tests attendus** : SQLite conserve **1499** verts ; sélection provider testée.
+- **Tests attendus** : SQLite conserve **1505** tests verts de la baseline courante ; sélection provider testée.
 - **Sortie (GO)** : SQLite inchangé en dev/test, provider serveur sélectionnable par configuration.
 
 ### P4-4 — Traduction des erreurs et portage des primitives atomiques
@@ -281,18 +375,20 @@ P4-2 ADR   = BLOCKED
   *(L'audit §15 recensait **15** primitives ; un **doublon conceptuel** a été retiré au Lot A. Le total en
   vigueur est **14** ; « 15 » est un comptage **historique**.)*
 - **Dépendances** : P4-3.
-- **État réel réconcilié (Lots A + B)** : **13 des 14 primitives ont une surface d'API favorable au portage**
-  (ports Domain + API EF `ExecuteUpdateAsync`/`ExecuteDeleteAsync`/transaction/index) et disposent d'une
-  **preuve de spike exercée contre les deux candidats réels** (PostgreSQL et SQL Server, conteneurs jetables)
-  via leurs implémentations de production. **Cette preuve de spike n'équivaut ni à une validation de mise en
-  production finale, ni à la re-preuve exigée par la chaîne de portage P4-4 sur le provider retenu** — cette
-  dernière reste requise, y compris contre l'installation Windows native validée au Lot C, contre laquelle
-  **aucune primitive applicative n'a encore été exercée** (§20). **Une primitive contient du SQL
-  et des paramètres explicitement SQLite** et reste **en échec sur les deux providers**
-  (`NotificationRepository.TryCreateActiveLowStockAsync` : `INSERT … ON CONFLICT DO NOTHING` + `SqliteParameter`)
-  — sa résolution constitue le **Lot D** de P4-1, préalable à P4-2.
+- **État réel réconcilié (après Lots A à D)** : les **14 primitives** disposent désormais d'une **preuve de
+  spike exercée contre les deux candidats réels** (PostgreSQL et SQL Server, conteneurs jetables) via leurs
+  implémentations de production. Les 13 primitives à surface d'API favorable au portage (ports Domain + API EF
+  `ExecuteUpdateAsync`/`ExecuteDeleteAsync`/transaction/index) l'avaient été aux Lots A + B ; la **14ᵉ**,
+  `NotificationRepository.TryCreateActiveLowStockAsync` — seule primitive alors **en échec sur les deux
+  providers** (`INSERT … ON CONFLICT DO NOTHING` + `SqliteParameter`) — a été **résolue et prouvée au Lot D**,
+  y compris en concurrence. **Cette preuve de spike n'équivaut ni à une validation de mise en production
+  finale, ni à la re-preuve exigée par la chaîne de portage P4-4 sur le provider retenu** — cette dernière
+  reste requise, y compris contre l'installation Windows native validée au Lot C, contre laquelle **aucune
+  primitive applicative n'a encore été exercée** (§20).
   Les dépendances restant à prouver sont explicitées en colonne 5 de l'audit §15 : index filtré, type monétaire,
   niveau d'isolation, lignes affectées, classification d'erreur, transaction et retry, comportement de concurrence.
+  S'y ajoutent, **si l'ADR P4-2 les lui affecte**, la **conversion des valeurs `DateTime`** (constat Lot D,
+  non résolu) et la **classification d'erreurs** propre au provider retenu.
 - **Fichiers probables** : `PersistenceErrorMapper` (aujourd'hui **entièrement couplé** à `SqliteException` — audit §16),
   `NotificationRepository.TryCreateActiveLowStockAsync`, `EfTransactionRunner` (isolation, retry — audit §14).
 - **Autorisé** : classification provider-spécifique en Infrastructure ; upsert provider ; isolation explicite.
@@ -434,16 +530,17 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 
 - **Domain et Application sont déjà provider-neutres** au niveau de leurs dépendances et de leur code — la frontière
   hexagonale attendue est respectée en amont.
-- **13 des 14 primitives atomiques** (inventaire **réconcilié** ; l'audit §15 lisait « 14 sur 15 » avant retrait
-  du doublon conceptuel — comptage **historique**) utilisent des **ports ou des API EF provider-neutres au niveau
-  du code** (`ExecuteUpdateAsync`, `ExecuteDeleteAsync`, transaction, index) : leur surface d'API est **favorable
-  au portage**, et elles disposent d'une **preuve de spike exercée contre les deux candidats réels** (PostgreSQL
-  et SQL Server, conteneurs jetables, Lots A + B) via leurs implémentations de production. **Cette preuve de
-  spike n'équivaut ni à une validation de mise en production finale, ni à la re-preuve exigée par la chaîne de
-  portage P4-4** sur le provider serveur retenu — celle-ci reste requise, y compris contre l'installation
-  Windows native validée au Lot C, contre laquelle **aucune primitive applicative n'a encore été exercée**
-  (§20). **Une primitive contient du SQL et des paramètres explicitement SQLite** et reste **en échec sur
-  les deux candidats** (point dur n° 3 ci-dessous) — objet du **Lot D**.
+- **Les 14 primitives atomiques** (inventaire **réconcilié** ; l'audit §15 lisait « 14 sur 15 » avant retrait
+  du doublon conceptuel — comptage **historique**) disposent désormais d'une **preuve de spike exercée contre
+  les deux candidats réels** (PostgreSQL et SQL Server, conteneurs jetables) via leurs implémentations de
+  production. **13** d'entre elles utilisent des **ports ou des API EF provider-neutres au niveau du code**
+  (`ExecuteUpdateAsync`, `ExecuteDeleteAsync`, transaction, index) — surface **favorable au portage**, acquise
+  aux **Lots A + B**. La **14ᵉ**, `NotificationRepository.TryCreateActiveLowStockAsync — seule primitive dont
+  le SQL et les paramètres étaient explicitement SQLite** (point dur n° 3 ci-dessous), a été **corrigée et
+  prouvée au Lot D**, y compris en concurrence, sur les deux candidats. **Cette preuve de spike n'équivaut ni
+  à une validation de mise en production finale, ni à la re-preuve exigée par la chaîne de portage P4-4** sur
+  le provider serveur retenu — celle-ci reste requise, y compris contre l'installation Windows native validée
+  au Lot C, contre laquelle **aucune primitive applicative n'a encore été exercée** (§20).
 - Les garanties métier sont exprimées comme **décisions prises par la base en une instruction** (CAS, update/delete
   conditionnel), pas comme des `check-then-act` applicatifs.
 - **Aucun secret** dans le dépôt ; défaut de configuration **sûr** (Production, sans seed).
@@ -452,8 +549,10 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 
 1. **Montants en `REAL`** (flottant) — risque de **précision monétaire** sur serveur *(le plus grave)*.
 2. **`PersistenceErrorMapper` entièrement couplé** à `SqliteException` et ses codes.
-3. **Upsert `ON CONFLICT DO NOTHING`** + `SqliteParameter` — **seule primitive dont le SQL et les paramètres sont
-   explicitement SQLite**.
+3. **Upsert `ON CONFLICT DO NOTHING`** + `SqliteParameter` — **seule primitive dont le SQL et les paramètres
+   étaient explicitement SQLite**. **✅ Résolu au Lot D** (paramètres fabriqués par le provider courant,
+   dialecte SQL Server à instruction unique) : prouvé sur les deux candidats, concurrence incluse. La
+   **re-preuve P4-4** sur le provider retenu reste due.
 4. **Deux index uniques filtrés** au SQL littéral (`"IsCurrent" = 1`, filtre LowStock actif).
 5. **Chaîne de migrations non portable** → chaîne serveur distincte requise.
 6. **Cycle de vie mono-processus** (`Migrate()` par poste, backup par copie de fichier, adoption PRAGMA).
@@ -466,8 +565,9 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 | Phase | État |
 |---|---|
 | **P4-0** — audit initial et roadmap | **CLOSE** — commit `8cf0919`, CI `30045502517` verte sur le SHA exact |
-| **P4-1** — spike comparatif des providers | **ENGAGÉE, NON CLOSE** — Lots A, B et C exécutés (**Lot C = `PASS`**, les deux providers) ; **Lot D requis** avant clôture |
-| **P4-2 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** après P4-1 et P4-2 |
+| **P4-1** — spike comparatif des providers | **TECHNIQUEMENT COMPLÈTE** — Lots A, B, C et D exécutés (**Lot C = `PASS`**, **Lot D = `PASS`**, les deux providers) ; **14 / 14 primitives**. **Clôture enregistrée encore due** : commit du Lot D + CI verte sur le nouveau SHA exact |
+| **P4-2** — ADR de choix du provider | **`READY`** — **ni créée ni acceptée** ; aucun provider choisi ni éliminé |
+| **P4-3 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** après P4-2 |
 
 **État courant en vigueur** *(les blocs d'état antérieurs marqués `[HISTORIQUE]` plus haut sont remplacés par
 celui-ci)* :
@@ -482,15 +582,37 @@ P4-1 LOT C READINESS        = READY TO EXECUTE
 P4-1 LOT C POSTGRESQL TRACK = PASS
 P4-1 LOT C SQL SERVER TRACK = PASS
 P4-1 LOT C                  = PASS
-P4-1 LOT D                  = REQUIRED — NEXT BLOCKING LOT
-P4-1 SPIKE                  = INCOMPLETE
-P4-2 ADR                    = BLOCKED
+P4-1 LOT D SQLITE TRACK     = PASS
+P4-1 LOT D POSTGRESQL TRACK = PASS
+P4-1 LOT D SQL SERVER TRACK = PASS
+P4-1 LOT D CONCURRENCY      = PASS
+P4-1 PRIMITIVES             = 14 / 14
+P4-1 LOT D                  = PASS
+P4-1 SPIKE                  = COMPLETE
+P4-2 ADR                    = READY
 ```
 
-**Aucun provider n'est choisi ni éliminé.** Le spike P4-1 est **engagé et incomplet** : Lots A et B exécutés
+**Réserve d'enregistrement.** Ces verdicts reposent aujourd'hui sur les **preuves locales** du Lot D. La
+**clôture enregistrée** de P4-1 exige encore :
+
+1. le **commit** des cinq fichiers du Lot D ;
+2. le **push** normal sur `p4-multi-poste` ;
+3. une **CI GitHub Actions verte sur le nouveau SHA exact**.
+
+La CI couvre les branches `p4*` : tout commit de la phase P4 est vérifié à distance (restore, build, tests de
+`MMV.sln` — **1505** depuis le Lot D, audit de vulnérabilités, contrôle EF des changements de modèle non
+matérialisés). En revanche, le harness `spikes/P4.ProviderComparison` est **hors `MMV.sln`** : les résultats
+**E18** (PostgreSQL, SQL Server, concurrence) sont des **preuves locales du spike** et **ne doivent pas** être
+présentés comme reproduits par la CI tant que le workflow n'est pas explicitement modifié pour les exécuter.
+
+**Aucun provider n'est choisi ni éliminé.** Le spike P4-1 est **techniquement complet** : Lots A et B exécutés
 localement, **Lot C exécuté et `PASS`** (installation Windows native, réseau réel multi-poste, sauvegarde et
-restauration — pour les **deux** candidats), **Lot D restant** (portabilité applicative :
-`NotificationRepository.TryCreateActiveLowStockAsync`). Le Lot C **ne prouve pas** l'intégration applicative
-MMV. **P4-2 reste bloquée.** La CI couvre les branches `p4*` : tout commit de la phase P4 est vérifié à
-distance (restore, build, 1499 tests, audit de vulnérabilités, contrôle EF des changements de modèle non
-matérialisés).
+restauration — pour les **deux** candidats), **Lot D exécuté et `PASS`** (portabilité applicative de
+`NotificationRepository.TryCreateActiveLowStockAsync`, **14 / 14** primitives, concurrence **20 / 20** par
+provider serveur). Le Lot C **ne prouve pas** l'intégration applicative MMV, et le Lot D prouve **une**
+primitive : **la compatibilité applicative complète de MMV sur serveur n'est pas prouvée**.
+
+`P4-2 ADR = READY` signifie **uniquement** que les preuves nécessaires à la décision sont disponibles. L'ADR
+devra notamment considérer les constats **encore ouverts** — mapping `DateTime`, filtres d'index booléens
+PostgreSQL, précision monétaire `REAL` — **évaluer leur impact** sur la décision, puis **affecter leur
+implémentation** aux phases P4 ultérieures. **P4-2 ne corrige elle-même aucun de ces sujets.**
