@@ -1,10 +1,11 @@
 # ADR-PROD-DB-002 — Choix du SGBD serveur de production (MMV V1 multi-poste)
 
-> **Statut : PROPOSÉ (`Proposed`) — décision documentaire rédigée, NON acceptée.**
-> Cet ADR **propose** le SGBD serveur de production de MMV V1 multi-poste sur la base des preuves du spike P4-1
+> **Statut : ACCEPTÉ (`Accepted`) — décision documentaire approuvée.**
+> Cet ADR **retient** le SGBD serveur de production de MMV V1 multi-poste sur la base des preuves du spike P4-1
 > (Lots A, B, C, D). Il **ne modifie aucun code source, aucun test, aucun paquet, aucune migration, aucun
 > snapshot EF, aucun workflow**. Il **n'implémente rien**.
-> **Il ne devient `ACCEPTÉ` qu'après revue, commit et CI verte sur le SHA exact du commit qui le porte.**
+> **Le statut `ACCEPTÉ` du présent commit ne devient opérationnel qu'après sa propre CI verte sur le SHA exact
+> du commit qui le porte.**
 >
 > Références : [ADR-PROD-DB-001](adr-prod-db-001-multi-poste-database-strategy.md) ·
 > [roadmap P4](P4-multi-poste-roadmap.md) · [audit P4-0](../implementation/P4-0-multi-poste-initial-audit-report.md) ·
@@ -17,8 +18,9 @@
 >
 > Date : 26 juillet 2026. **Révisé le 27 juillet 2026** — correction matérielle du raisonnement décisionnel
 > avant acceptation (§9, §11, §12.6 ; sources **S18** et **S19** ajoutées ; constats décisifs réconciliés à
-> **deux**). **Le provider proposé est inchangé : PostgreSQL.**
-> Branche : `p4-multi-poste`. Base : `e8d054631815c0410de4bb2f209ce3892588e75c`,
+> **deux**). **Draft proposé enregistré le 31 juillet 2026 par `37812c7`, CI `30656580004` verte sur le SHA
+> exact. Accepté le 31 juillet 2026. Le provider retenu est inchangé depuis le draft : PostgreSQL.**
+> Branche : `p4-multi-poste`. Base P4-1 (spike) : `e8d054631815c0410de4bb2f209ce3892588e75c`,
 > CI `30215445242` verte sur le SHA exact, **1505** tests.
 > **Le dépôt réel prime toujours sur ce document.**
 
@@ -26,19 +28,21 @@
 
 ## 1. Statut
 
-**`PROPOSÉ` (`Proposed`).**
+**`ACCEPTÉ` (`Accepted`).**
 
 | Élément | Valeur |
 |---|---|
 | Identifiant | **ADR-PROD-DB-002** (suivant de [ADR-PROD-DB-001](adr-prod-db-001-multi-poste-database-strategy.md) dans la série `PROD-DB`, seule série numérotée du dépôt) |
-| Statut | **`PROPOSÉ`** — **pas** `ACCEPTÉ` |
-| Décision proposée | **PostgreSQL** |
+| Statut | **`ACCEPTÉ`** |
+| Décision | **PostgreSQL** |
+| Effet | PostgreSQL est officiellement retenu pour MMV V1 multi-poste ; P4-3 est débloquée |
+| Portée | l'acceptation n'implémente aucun travail de P4-3 |
+| Réversibilité | SQL Server Express reste non éliminé et réexaminable selon §20 |
 | Autorité de la décision | P4-2, sur les preuves de P4-1 — **jamais** sur la mémoire, la préférence ou la familiarité |
-| Ce que ce statut interdit | toute implémentation, tout paquet provider, toute migration serveur, toute présentation du choix comme acquis |
-| Condition de passage à `ACCEPTÉ` | revue humaine **+** commit **+** CI GitHub Actions verte sur le **SHA exact** du commit |
+| Condition d'acceptation | revue humaine **+** commit **+** CI GitHub Actions verte sur le **SHA exact** du commit — **satisfaite le 31 juillet 2026** |
 
-> **`PROPOSÉ` ne signifie pas « presque accepté ».** Tant que ce statut vaut, **aucun provider n'est
-> officiellement retenu** et **P4-3 reste bloquée**. **SQL Server Express n'est pas éliminé** (§19).
+> **`ACCEPTÉ` signifie que PostgreSQL est officiellement retenu pour la V1.** **SQL Server Express reste non
+> éliminé** (§19). **P4-3 devient `READY — NOT STARTED`.** **La V1 multi-poste n'est pas déclarée `GO`.**
 
 ---
 
@@ -111,12 +115,12 @@ dev/test/démo/mono-poste), SQLite sur dossier réseau (**interdit** en producti
 
 ## 4. Décision
 
-### 4.1 Décision proposée
+### 4.1 Décision acceptée
 
-> **MMV V1 multi-poste propose de retenir PostgreSQL comme SGBD serveur de production.**
-> **Statut de cette décision : `PROPOSÉ`. Elle n'est pas acceptée.**
+> **MMV V1 multi-poste retient PostgreSQL comme SGBD serveur de production.**
+> **Statut de cette décision : `ACCEPTÉ`.**
 
-Version de référence proposée : **PostgreSQL 17** (série testée : **17.10**, supportée jusqu'au
+Version de référence retenue : **PostgreSQL 17** (série testée : **17.10**, supportée jusqu'au
 **2029-11-08** — `OFFICIAL_DOCUMENTATION`, S2). Le **numéro de version mineure n'est pas figé** par cet ADR : la
 politique officielle recommande de suivre la dernière mineure de la majeure.
 
@@ -129,8 +133,9 @@ politique officielle recommande de suivre la dernière mineure de la majeure.
 3. **Elle ne choisit ni type monétaire, ni précision, ni mapping `DateTime`, ni forme de chaîne de migrations.**
    Ces choix appartiennent aux phases affectées en §15.
 4. **Elle ne retire pas SQLite.**
-5. **Elle n'autorise aucune ligne de code.** P4-2 est documentaire ; P4-3 reste **bloquée** jusqu'à
-   l'acceptation.
+5. **Elle n'autorise aucune ligne de code.** P4-2 est documentaire ; **P4-3 est désormais `READY — NOT
+   STARTED`** ; toute implémentation appartient à P4-3 et aux phases ultérieures ; **la compatibilité
+   applicative complète reste `NOT_PROVED`** (§16.5).
 
 ### 4.3 Base Git/CI de la décision
 
@@ -719,9 +724,9 @@ obligations elles-mêmes ne le sont pas.
 ## 16. Risques non résolus — connus, non masqués, non résolus par cet ADR
 
 Ces risques sont des **entrées** de cet ADR, pas des travaux qu'il exécute. **P4-2 ne corrige aucun d'entre
-eux.** Trois sont des **désavantages acceptés du choix proposé**.
+eux.** Trois sont des **désavantages acceptés du choix retenu**.
 
-### 16.1 `DateTime` — le désavantage le plus lourd du choix proposé
+### 16.1 `DateTime` — le désavantage le plus lourd du choix retenu
 
 `EXECUTED_SPIKE`, **mesuré sans assertion**, **non résolu**.
 
@@ -789,8 +794,9 @@ PostgreSQL serait dégradée en `Unknown` ou laissée non traduite. → **O5**.
   modèle contre un serveur.
 - Le **Lot C prouve le socle serveur**, pas l'intégration applicative : **aucun code** MMV n'a été exercé
   contre les installations Windows natives.
-- **`P4-2 ADR = PROPOSÉ` ne signifie donc pas que MMV tourne sur PostgreSQL.** Cela signifie que la porte
-  d'entrée de l'ADR est franchie et que la décision est **rédigée**, non acceptée.
+- **`P4-2 ADR = ACCEPTÉ` ne signifie donc pas que MMV tourne sur PostgreSQL.** Cela signifie que PostgreSQL est
+  **officiellement retenu** pour la V1 et que P4-3 peut commencer — **pas** que la compatibilité applicative
+  complète est prouvée.
 
 ### 16.6 Risques additionnels enregistrés
 
@@ -807,7 +813,7 @@ PostgreSQL serait dégradée en `Unknown` ou laissée non traduite. → **O5**.
 
 ## 17. Implications exploitation et sauvegarde
 
-| Sujet | État actuel (dépôt) | Cible PostgreSQL proposée | Niveau |
+| Sujet | État actuel (dépôt) | Cible PostgreSQL retenue | Niveau |
 |---|---|---|---|
 | Sauvegarde | **copie de fichier** SQLite + sidecars `-wal`/`-shm` | **`pg_dump -F c`** sur la base centrale — dump **internement cohérent**, *« does not block other operations »* | `OD` (S14) + `ES` + `EWL` |
 | Restauration | `File.Copy` inverse | **`pg_restore`** après `dropdb --force` + `createdb`, **purge du pool obligatoire** (sinon `57P01`) | `ES` + `EWL` |
@@ -1017,15 +1023,16 @@ P4-1 LOT C                   = PASS
 P4-1 LOT D                   = PASS
 P4-1 PRIMITIVES              = 14 / 14
 P4-2 ADR DRAFT               = COMPLETE
-P4-2 ADR STATUS              = PROPOSED
-P4-2 PROVIDER DECISION       = PROPOSED — POSTGRESQL
-P4-3                         = BLOCKED — ADR ACCEPTANCE REQUIRED
+P4-2 ADR STATUS              = ACCEPTED
+P4-2 PROVIDER DECISION       = ACCEPTED — POSTGRESQL
+P4-2                         = CLOSE
+P4-3                         = READY — NOT STARTED
 ```
 
-**Lecture stricte.** `PROPOSED` signifie que la décision est **rédigée et argumentée**, **pas** qu'elle est
-acceptée. Tant que ce statut vaut : **aucun provider n'est officiellement retenu**, **SQL Server Express n'est
-pas éliminé**, **P4-3 ne peut pas commencer**, et **aucune ligne de code n'est autorisée**. La V1 multi-poste
-**n'est pas déclarée `GO`** — les 18 critères de sortie de la roadmap §4 restent à satisfaire.
+**Lecture stricte.** PostgreSQL est **officiellement retenu** pour MMV V1 multi-poste. **SQL Server Express
+n'est pas éliminé** (§19). **P4-3 peut commencer, dans un lot séparé** — **aucune implémentation n'est
+contenue dans le présent ADR**. La V1 multi-poste **n'est pas déclarée `GO`** — les 18 critères de sortie de la
+roadmap §4 restent à satisfaire.
 
 ---
 
@@ -1087,7 +1094,7 @@ pour une limite, une licence, un cycle de vie ou un comportement de type.
 | 3 | **Exactement deux** fichiers de documentation modifiés : ce fichier + `P4-multi-poste-roadmap.md` | ✅ |
 | 4 | **Aucun** fichier `src/**`, `tests/**`, `spikes/**`, migration, snapshot EF, `*.csproj`, `MMV.sln`, `.github/**`, UI | ✅ |
 | 5 | **Aucune implémentation**, aucun paquet, aucun schéma, aucune migration | ✅ |
-| 6 | Statut = **`PROPOSÉ`**, jamais `ACCEPTÉ` | ✅ |
+| 6 | Statut = **`ACCEPTÉ`** ; exactement un provider officiellement retenu : PostgreSQL ; décision acceptée ; SQL Server Express rejeté pour V1 mais non éliminé ; risques et obligations inchangés ; aucune revendication d'implémentation | ✅ |
 | 7 | ADR et roadmap **concordants** (§23 ↔ roadmap §6) | ✅ |
 | 8 | Tables Markdown et blocs de code **valides** | ✅ |
 | 9 | **Aucun secret, aucun mot de passe, aucune chaîne de connexion complète** | ✅ |
@@ -1104,7 +1111,7 @@ pour une limite, une licence, un cycle de vie ou un comportement de type.
 | 15 | Toute affirmation externe porte une **citation officielle** (§24) ; les non vérifiées sont **listées** (§24.1) | ✅ |
 | 16 | **Aucun score pondéré arbitraire** ; matrice de preuves + raisonnement (§8) | ✅ |
 | 17 | Décision **non** fondée sur « candidat principal / secondaire » (§2.2), la préférence, la familiarité, un décompte de `PASS` (§13) ou un coût non vérifié (§12.4) | ✅ |
-| 18 | **Exactement un** provider est proposé pour être retenu : PostgreSQL (§4.1) ; décision non acceptée | ✅ |
+| 18 | **Exactement un** provider est retenu : PostgreSQL (§4.1) ; décision acceptée | ✅ |
 | 19 | Constats **décisifs** (§9, §11) et **non décisifs** (§10, §12) distingués | ✅ |
 | 20 | **Rejet distingué de l'élimination** ; option future **explicitement maintenue** (§19.2) | ✅ |
 
@@ -1141,19 +1148,24 @@ pour une limite, une licence, un cycle de vie ou un comportement de type.
 ```
 P4-1 SPIKE                   = COMPLETE
 P4-2 ADR DRAFT               = COMPLETE
-P4-2 ADR STATUS              = PROPOSED
-P4-2 PROVIDER DECISION       = PROPOSED — POSTGRESQL
-P4-3                         = BLOCKED — ADR ACCEPTANCE REQUIRED
+P4-2 ADR STATUS              = ACCEPTED
+P4-2 PROVIDER DECISION       = ACCEPTED — POSTGRESQL
+P4-2                         = CLOSE
+P4-3                         = READY — NOT STARTED
 ```
 
-**Contraintes respectées** : aucun commit ; aucun push ; aucun `git add .` / `git add -A` ; aucun
-force-push ; `src/**`, `tests/**`, `spikes/**`, migrations, snapshot EF, paquets, `MMV.sln`, `.github/**` et UI
-**intacts** ; implémentation du Lot D **non modifiée** ; aucun paquet provider ajouté ; aucune migration
-serveur créée ; `DateTime`, mapping monétaire et filtres d'index PostgreSQL **non corrigés** ; aucun secret ni
-chaîne de connexion complète ; statut **`PROPOSÉ`**, non `ACCEPTÉ` ; **SQL Server Express rejeté pour V1 mais
-NON éliminé**.
+**Contraintes respectées** : aucun `git add .` / `git add -A` ; aucun force-push ; `src/**`, `tests/**`,
+`spikes/**`, migrations, snapshot EF, paquets, `MMV.sln`, `.github/**` et UI **intacts** ; implémentation du
+Lot D **non modifiée** ; aucun paquet provider ajouté ; aucune migration serveur créée ; `DateTime`, mapping
+monétaire et filtres d'index PostgreSQL **non corrigés** ; aucun secret ni chaîne de connexion complète.
+**Faits enregistrés** : draft proposé enregistré par `37812c7` ; CI `30656580004` verte sur le SHA exact ;
+présent changement **exclusivement documentaire** — aucun code, paquet, migration, snapshot, workflow ou UI
+modifié ; acceptation effective après CI verte du commit courant. Statut **`ACCEPTÉ`** ; **SQL Server Express
+rejeté pour V1 mais NON éliminé**.
 
 ---
 
-*ADR-PROD-DB-002 — rédigé le 2026-07-26 sur la base `e8d0546` / CI `30215445242` (verte, `headSha` exact,
-1505 tests). Décision **PROPOSÉE**, non acceptée. Aucun commit effectué.*
+*ADR-PROD-DB-002 — rédaction initiale le 2026-07-26 sur la base `e8d0546` / CI `30215445242` (verte, `headSha`
+exact, 1505 tests). Révision le 2026-07-27. Draft proposé enregistré le 2026-07-31 par `37812c7`, CI
+`30656580004` verte sur le SHA exact. Acceptation formelle le 2026-07-31. PostgreSQL retenu. SQL Server
+Express non éliminé.*

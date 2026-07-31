@@ -6,19 +6,19 @@
 > **Le dépôt réel prime toujours sur ce document.**
 >
 > - **PostgreSQL** et **SQL Server Express**, **issus de l'ADR P3-0B**, ont été mesurés par le spike P4-1
->   (Lots A → D). **Aucun choix définitif n'est encore pris** : l'ADR
->   [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) **propose de retenir PostgreSQL**
->   mais son statut est **`PROPOSÉ`**, non `ACCEPTÉ` — **aucun provider n'est donc officiellement retenu, et
->   aucun n'est éliminé**. **Aucune notation pondérée** n'est attribuée. **Licences, limites et cycles de vie
->   ont été vérifiés dans les sources officielles** (ADR §24) — jamais affirmés de mémoire.
->   Les étiquettes « candidat principal / secondaire » de P3-0B sont **antérieures à toute mesure** et **n'ont
->   aucune valeur probante** (ADR §2.2).
+>   (Lots A → D). L'ADR [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) est
+>   **`ACCEPTÉE`** — **PostgreSQL est officiellement retenu pour la V1**. **SQL Server Express n'est pas
+>   éliminé** — rejeté pour V1, réexaminable selon l'ADR §20. **Aucune notation pondérée** n'est attribuée.
+>   **Licences, limites et cycles de vie ont été vérifiés dans les sources officielles** (ADR §24) — jamais
+>   affirmés de mémoire. Les étiquettes « candidat principal / secondaire » de P3-0B sont **antérieures à toute
+>   mesure** et **n'ont aucune valeur probante** (ADR §2.2). **P4-3 est prête mais non commencée** ; **la V1
+>   multi-poste n'est pas déclarée `GO`**.
 > - **SQLite sur dossier réseau est interdit** comme base de production multi-poste.
 > - **SQLite local reste utile** pour dev / test / démo / mono-poste, et n'est pas retiré.
 > - **P4 n'est ni une phase SaaS ni multi-tenant** : un seul magasin, une seule base centrale, plusieurs postes.
 >
 > Sources : [ADR-PROD-DB-001](adr-prod-db-001-multi-poste-database-strategy.md) ·
-> [**ADR-PROD-DB-002**](adr-prod-db-002-server-database-provider-selection.md) *(statut `PROPOSÉ`)* ·
+> [**ADR-PROD-DB-002**](adr-prod-db-002-server-database-provider-selection.md) *(statut `ACCEPTÉ`)* ·
 > [Audit P4-0](../implementation/P4-0-multi-poste-initial-audit-report.md) (constats et numéros de section cités ci-dessous).
 
 ---
@@ -67,10 +67,11 @@ final dépend des résultats du spike (P4-1) et de l'ADR (P4-2).
   (`fix(P4-1): complete active LowStock portability`, **5 fichiers**), CI
   [`30215445242`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/30215445242) · `event=push` ·
   `headSha` **exact** · **`conclusion=success`** · **1505 tests** (Domain 649 · Application 617 · App 239).
-  **La « réserve d'enregistrement » antérieure est donc levée.** **`P4-2 ADR = DRAFTED — PROPOSED`** : l'ADR
-  [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) est **rédigée** et **propose de retenir
-  PostgreSQL**, mais elle **n'est pas acceptée** — **aucun provider n'est donc encore officiellement retenu, et
-  aucun n'est éliminé.** État consolidé en §6.
+  **La « réserve d'enregistrement » antérieure est donc levée.** **`P4-2 ADR = ACCEPTED`** : le draft de l'ADR
+  [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) a été **enregistré par `37812c7`**,
+  CI **`30656580004`** verte sur le SHA exact, et l'ADR est désormais **acceptée par le présent commit** —
+  **PostgreSQL est officiellement retenu**, **SQL Server Express n'est pas éliminé**, **P4-3 = `READY — NOT
+  STARTED`**. État consolidé en §6.
 - **Statut antérieur — historique (2026-07-26, avant le commit du Lot D)** : « techniquement complète ;
   enregistrement du Lot D **en attente de commit et de CI** ». **Cet énoncé est périmé** — le commit et la CI
   existent (ci-dessus) ; il est conservé uniquement comme trace.
@@ -133,7 +134,7 @@ final dépend des résultats du spike (P4-1) et de l'ADR (P4-2).
 P4-1 LOT A  = GO LOCAL
 P4-1 LOT B  = GO LOCAL
 P4-1 SPIKE  = INCOMPLETE       [HISTORIQUE — Lot D exécuté depuis : SPIKE = COMPLETE]
-P4-2 ADR    = BLOCKED          [HISTORIQUE — remplacé depuis par : DRAFTED — PROPOSED]
+P4-2 ADR    = BLOCKED          [HISTORIQUE — remplacé depuis par : ACCEPTED — CLOSE]
 P4-1 LOT C  = READY            [HISTORIQUE — Lot C exécuté depuis : PASS]
 ```
 
@@ -152,7 +153,7 @@ P4-1 LOT A     = GO
 P4-1 LOT B     = GO
 P4-1 LOT B CI  = GO
 P4-1 SPIKE     = INCOMPLETE       [HISTORIQUE — Lot D exécuté depuis : SPIKE = COMPLETE]
-P4-2 ADR       = BLOCKED          [HISTORIQUE — remplacé depuis par : DRAFTED — PROPOSED]
+P4-2 ADR       = BLOCKED          [HISTORIQUE — remplacé depuis par : ACCEPTED — CLOSE]
 P4-1 LOT C     = READY            [HISTORIQUE — Lot C exécuté depuis : PASS]
 ```
 
@@ -182,7 +183,7 @@ installations ont depuis été réalisées ; voir la sous-section suivante.)*
 P4-1 LOT C READINESS = READY TO EXECUTE
 P4-1 LOT C            = NOT STARTED      [HISTORIQUE — remplacé ci-dessous par : PASS]
 P4-1 SPIKE            = INCOMPLETE       [HISTORIQUE — Lot D exécuté depuis : SPIKE = COMPLETE]
-P4-2 ADR              = BLOCKED          [HISTORIQUE — remplacé depuis par : DRAFTED — PROPOSED]
+P4-2 ADR              = BLOCKED          [HISTORIQUE — remplacé depuis par : ACCEPTED — CLOSE]
 ```
 
 #### P4-1 — Lot C : installation Windows native et réseau réel — **exécuté et `PASS`** (2026-07-26)
@@ -229,7 +230,7 @@ P4-1 LOT C POSTGRESQL TRACK = PASS
 P4-1 LOT C SQL SERVER TRACK = PASS
 P4-1 LOT C                  = PASS
 P4-1 SPIKE                  = INCOMPLETE       [HISTORIQUE — Lot D exécuté depuis : SPIKE = COMPLETE]
-P4-2 ADR                    = BLOCKED          [HISTORIQUE — remplacé depuis par : DRAFTED — PROPOSED]
+P4-2 ADR                    = BLOCKED          [HISTORIQUE — remplacé depuis par : ACCEPTED — CLOSE]
 ```
 
 #### P4-1 — Lot D : complétion de la portabilité applicative — **exécuté et `PASS`** (2026-07-26)
@@ -298,7 +299,7 @@ P4-1 LOT D CONCURRENCY      = PASS
 P4-1 PRIMITIVES             = 14 / 14
 P4-1 LOT D                  = PASS
 P4-1 SPIKE                  = COMPLETE
-P4-2 ADR                    = READY            [HISTORIQUE — remplacé depuis par : DRAFTED — PROPOSED]
+P4-2 ADR                    = READY            [HISTORIQUE — remplacé depuis par : ACCEPTED — CLOSE]
 ```
 
 **Enregistrement — commit et CI (Lot D).** La **réserve d'enregistrement** qui accompagnait le verdict ci-dessus
@@ -361,14 +362,15 @@ P4-2 ADR   = BLOCKED                        [HISTORIQUE — remplacé depuis par
 > critères de sortie multi-poste** listés en §4 : un découpage différent reste admissible, un critère de sortie non
 > satisfait ne l'est pas.
 
-### P4-2 — ADR de choix du provider — **ADR RÉDIGÉE, STATUT `PROPOSÉ`** (non acceptée)
+### P4-2 — ADR de choix du provider — **`ACCEPTÉE`**
 
-- **Statut courant** : **`DRAFTED — PROPOSED`.** L'ADR
+- **Statut courant** : **`ACCEPTED — CLOSE`.** L'ADR
   [**ADR-PROD-DB-002**](adr-prod-db-002-server-database-provider-selection.md) — *Choix du SGBD serveur de
-  production (MMV V1 multi-poste)* — est **rédigée**, sur la base `e8d0546` / CI `30215445242` verte
-  (1505 tests). Son statut est **`PROPOSÉ`**, **pas `ACCEPTÉ`**.
-  - **Provider proposé : PostgreSQL** (série testée **17.10**) — **proposition, non décision acquise**.
-  - **Constats décisifs — deux** (ADR §9, §11) : **D1** — **plafonds d'édition** de SQL Server Express
+  production (MMV V1 multi-poste)* — a été **rédigée** sur la base `e8d0546` / CI `30215445242` verte
+  (1505 tests), **enregistrée en draft par `37812c7`** (CI `30656580004` verte sur le SHA exact), puis
+  **acceptée par le présent commit**.
+  - **Provider retenu : PostgreSQL** (série testée **17.10**) — **décision acceptée**.
+  - **Constats décisifs — deux, inchangés** (ADR §9, §11) : **D1** — **plafonds d'édition** de SQL Server Express
     (**10 Go** par base, **1 410 Mo** de buffer pool, **1 socket ou 4 cœurs**), face à un modèle MMV
     **monotone croissant par conception** (suppression physique d'ordonnance refusée inconditionnellement en
     P3, archivage logique, fiches versionnées, historique d'alertes conservé) ; la **volumétrie réelle de MMV
@@ -389,19 +391,23 @@ P4-2 ADR   = BLOCKED                        [HISTORIQUE — remplacé depuis par
     maintenance — est **rétrogradée en désavantage d'exploitation non décisif** (ADR §10, §12.6). Elle **ne
     fonde plus le rejet**. **MMV doit de toute façon construire, sécuriser, superviser, doter d'une rétention
     et documenter sa chaîne de sauvegarde planifiée pour l'un comme pour l'autre candidat.**
-  - **Désavantages explicitement acceptés** (ADR §16, §22.2) : PostgreSQL **refuse** `DateTime.Now`
+  - **Désavantages explicitement acceptés, inchangés** (ADR §16, §22.2) : PostgreSQL **refuse** `DateTime.Now`
     (`Kind = Local`) par le chemin **EF** — remédiation **obligatoire** ; réécriture du **filtre d'index
     booléen** due (SQL Server n'en exigeait aucune) ; **toute erreur avorte la transaction entière** (`25P02`),
-    imposant un audit des `catch` intra-transactionnels ; trois classes d'erreur **sans `SqlState`**.
+    imposant un audit des `catch` intra-transactionnels ; trois classes d'erreur **sans `SqlState`**. **Trois
+    chantiers mesurés restent ouverts** : mapping `DateTime`, filtres d'index booléens PostgreSQL, précision
+    monétaire `REAL`. Les **obligations O1–O15** de l'ADR (§15) sont **inchangées**. **La compatibilité
+    applicative complète reste `NOT_PROVED`** (ADR §16.5).
   - **SQL Server Express est rejeté pour V1, mais NON éliminé** (ADR §19) : son dialecte
     `INSERT … SELECT … WHERE NOT EXISTS (… WITH (UPDLOCK, HOLDLOCK))` est **implémenté et prouvé dans le code
     de production**, la sélection se fait sur `Database.ProviderName`, et Domain/Application restent
     provider-neutres. Il **reste une option future**.
-- **Ce que ce statut interdit** : présenter PostgreSQL comme retenu ; commencer **P4-3** ; ajouter un paquet
-  provider ; créer une migration serveur ; corriger `DateTime`, le mapping monétaire ou les filtres d'index.
-  **Aucune implémentation n'est engagée ni revendiquée.**
-- **Condition de passage à `ACCEPTÉ`** : revue humaine **+** commit **+** CI GitHub Actions verte sur le
-  **SHA exact** du commit portant l'ADR.
+- **Ce que P4-2 n'autorise pas** : **aucun code n'est produit par P4-2** — aucun paquet provider, aucune
+  migration serveur, aucune correction de `DateTime`, du mapping monétaire ou des filtres d'index. Toute
+  implémentation appartient à **P4-3** et aux phases ultérieures.
+- **Condition de sortie de P4-2** : revue humaine **+** commit **+** CI GitHub Actions verte sur le
+  **SHA exact** du commit portant l'acceptation — **atteinte, sous réserve de la CI verte du présent commit
+  d'acceptation sur son SHA exact**.
 - **Statut antérieur — historique (jusqu'au 2026-07-26)** : `P4-2 ADR = READY` — « les preuves nécessaires
   existent, l'ADR n'est ni créée ni acceptée ». **Cet énoncé est périmé** : l'ADR est désormais **rédigée**
   (statut `PROPOSÉ`). Il est conservé uniquement comme trace.
@@ -420,17 +426,19 @@ P4-2 ADR   = BLOCKED                        [HISTORIQUE — remplacé depuis par
   installation en magasin · maintenance · backup/restore · diagnostic · sécurité · coût/licence **vérifiés** ·
   Windows · migration SQLite · limites opérationnelles · compétences de support.
 - **Sortie (GO)** : ADR accepté, provider désigné, décision justifiée par des preuves — **pas** par la mémoire.
-  **Non encore atteinte** : l'ADR existe mais son statut est **`PROPOSÉ`**.
+  **Atteinte, sous réserve de la CI verte du commit d'acceptation courant** : le statut est désormais
+  **`ACCEPTÉ`**.
 
-### P4-3 — Fondation Infrastructure multi-provider — **`BLOCKED — ADR ACCEPTANCE REQUIRED`**
+### P4-3 — Fondation Infrastructure multi-provider — **`READY — NOT STARTED`**
 
-- **Statut courant** : **bloquée.** L'ADR P4-2 est **rédigée** mais **`PROPOSÉE`**, donc **aucun provider n'est
-  officiellement retenu**. P4-3 ne peut pas commencer avant que
-  [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) soit **`ACCEPTÉE`** (revue + commit +
-  CI verte sur le SHA exact). **Aucune ligne de code n'est autorisée d'ici là.**
+- **Statut courant** : **`READY — NOT STARTED`.**
+  [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) est **`ACCEPTÉE`** — **PostgreSQL
+  est officiellement retenu**. La **dépendance P4-2 est satisfaite**. **Aucune implémentation P4-3 n'est
+  encore engagée par ce commit** : le prochain travail doit faire l'objet d'un **prompt et d'un commit
+  séparés**. **Les obligations de l'ADR (O1–O15, §15) restent contraignantes.**
 - **Objectif** : centraliser la sélection du provider et rendre `MMV.Infrastructure` multi-provider **sans** toucher
   Domain/Application.
-- **Dépendances** : P4-2 **acceptée** (pas seulement rédigée).
+- **Dépendances** : P4-2 **acceptée** — **satisfaite**.
 - **Fichiers probables** : `App.axaml.cs` (composition root), `MMV.Infrastructure/DependencyInjection.cs` (aujourd'hui
   **inerte**), `OpticDbContext.OnConfiguring`, `OpticDbContextFactory` — soit **4 sites `UseSqlite`** à unifier (audit §8).
 - **Autorisé** : abstraction de composition, configuration, package provider.
@@ -636,8 +644,8 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 |---|---|
 | **P4-0** — audit initial et roadmap | **CLOSE** — commit `8cf0919`, CI `30045502517` verte sur le SHA exact |
 | **P4-1** — spike comparatif des providers | **COMPLÈTE ET ENREGISTRÉE** — Lots A, B, C et D exécutés (**Lot C = `PASS`**, **Lot D = `PASS`**, les deux providers) ; **14 / 14 primitives** ; clôture enregistrée par le commit **`e8d0546`** + CI **`30215445242`** verte sur le SHA exact (**1505** tests). **Réserve d'enregistrement levée.** |
-| **P4-2** — ADR de choix du provider | **`DRAFTED — PROPOSED`** — [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) **rédigée**, statut **`PROPOSÉ`**, **provider proposé : PostgreSQL**. **NON acceptée** ⇒ **aucun provider officiellement retenu, aucun éliminé** |
-| **P4-3** — fondation Infrastructure multi-provider | **`BLOCKED — ADR ACCEPTANCE REQUIRED`** |
+| **P4-2** — ADR de choix du provider | **`ACCEPTED — CLOSE`** — [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) **acceptée**, **PostgreSQL officiellement retenu**, **SQL Server Express non éliminé** |
+| **P4-3** — fondation Infrastructure multi-provider | **`READY — NOT STARTED`** |
 | **P4-4 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** après acceptation de P4-2 |
 
 **État courant en vigueur** *(les blocs d'état antérieurs marqués `[HISTORIQUE]` plus haut sont remplacés par
@@ -662,9 +670,10 @@ P4-1 LOT D                  = PASS
 P4-1 LOT D CI               = GO
 P4-1 SPIKE                  = COMPLETE
 P4-2 ADR DRAFT              = COMPLETE
-P4-2 ADR STATUS             = PROPOSED
-P4-2 PROVIDER DECISION      = PROPOSED — POSTGRESQL
-P4-3                        = BLOCKED — ADR ACCEPTANCE REQUIRED
+P4-2 ADR STATUS             = ACCEPTED
+P4-2 PROVIDER DECISION      = ACCEPTED — POSTGRESQL
+P4-2                        = CLOSE
+P4-3                        = READY — NOT STARTED
 ```
 
 **Réserve d'enregistrement — LEVÉE.** La clôture enregistrée de P4-1 exigeait le commit des cinq fichiers du
@@ -679,21 +688,24 @@ matérialisés). En revanche, le harness `spikes/P4.ProviderComparison` est **ho
 **E18** (PostgreSQL, SQL Server, concurrence) sont des **preuves locales du spike** et **ne doivent pas** être
 présentés comme reproduits par la CI tant que le workflow n'est pas explicitement modifié pour les exécuter.
 
-**Aucun provider n'est encore officiellement retenu, et aucun n'est éliminé.** Le spike P4-1 est **complet et
-enregistré** : Lots A et B exécutés localement, **Lot C exécuté et `PASS`** (installation Windows native, réseau
-réel multi-poste, sauvegarde et restauration — pour les **deux** candidats), **Lot D exécuté et `PASS`**
-(portabilité applicative de `NotificationRepository.TryCreateActiveLowStockAsync`, **14 / 14** primitives,
-concurrence **20 / 20** par provider serveur). Le Lot C **ne prouve pas** l'intégration applicative MMV, et le
-Lot D prouve **une** primitive : **la compatibilité applicative complète de MMV sur serveur n'est pas prouvée**.
+**PostgreSQL est officiellement retenu comme SGBD serveur de production pour MMV V1 multi-poste ; SQL Server
+Express n'est pas éliminé.** Le spike P4-1 est **complet et enregistré** : Lots A et B exécutés localement,
+**Lot C exécuté et `PASS`** (installation Windows native, réseau réel multi-poste, sauvegarde et restauration —
+pour les **deux** candidats), **Lot D exécuté et `PASS`** (portabilité applicative de
+`NotificationRepository.TryCreateActiveLowStockAsync`, **14 / 14** primitives, concurrence **20 / 20** par
+provider serveur). Le Lot C **ne prouve pas** l'intégration applicative MMV, et le Lot D prouve **une**
+primitive : **la compatibilité applicative complète de MMV sur serveur n'est pas prouvée**.
 
-**État de P4-2.** L'ADR [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) est **rédigée**
-et **propose de retenir PostgreSQL**, avec statut **`PROPOSÉ`**. Elle a **évalué** les trois constats encore
-ouverts — mapping `DateTime`, filtres d'index booléens PostgreSQL, précision monétaire `REAL` — et **affecté
-leur implémentation** aux phases ultérieures sous forme d'obligations (ADR §15 : O2 → P4-5, O3 → P4-5,
-O4 → P4-4 et/ou P4-5, O5 → P4-4). **P4-2 n'a corrigé aucun de ces sujets** : elle est **documentaire**, et
-**aucune implémentation n'est engagée ni revendiquée**.
+**État de P4-2.** L'ADR [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) est **`ACCEPTÉE`**
+et **retient PostgreSQL**. Elle a **évalué** les trois constats encore ouverts — mapping `DateTime`, filtres
+d'index booléens PostgreSQL, précision monétaire `REAL` — et **affecté leur implémentation** aux phases
+ultérieures sous forme d'obligations (ADR §15 : O2 → P4-5, O3 → P4-5, O4 → P4-4 et/ou P4-5, O5 → P4-4).
+**P4-2 n'a corrigé aucun de ces sujets** : elle est **documentaire**, et **aucune implémentation P4-3 n'est
+engagée ni revendiquée par ce commit**.
 
-**Ce que `PROPOSED` implique, strictement** : tant que l'ADR n'est pas **`ACCEPTÉE`** (revue + commit + CI verte
-sur le SHA exact), **PostgreSQL ne doit pas être présenté comme retenu**, **SQL Server Express n'est pas
-éliminé** — son dialecte reste implémenté et prouvé dans le code de production — et **P4-3 reste bloquée**. La
+**Ce que l'acceptation implique, strictement.** **PostgreSQL est officiellement retenu.** **SQL Server Express
+n'est pas éliminé** — son dialecte reste implémenté et prouvé dans le code de production. **P4-2 est `CLOSE`.**
+**P4-3 est `READY — NOT STARTED`** : prête, mais non commencée — le prochain travail fait l'objet d'un prompt
+et d'un commit séparés. **Trois chantiers techniques restent ouverts** (`DateTime`, filtres d'index booléens
+PostgreSQL, mapping monétaire `REAL`) et **aucune compatibilité applicative complète n'est revendiquée**. La
 **V1 multi-poste n'est pas déclarée `GO`** : les 18 critères de sortie du §4 restent à satisfaire.
