@@ -10,6 +10,10 @@
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.27" />
+    <!-- P4-3 (ADR-PROD-DB-002) : fournisseur serveur retenu pour la V1 multi-poste. Référencé
+         UNIQUEMENT ici — Domain et Application restent neutres vis-à-vis du fournisseur. Sélectionne
+         le provider EF ; ni migration serveur, ni mapping spécifique (P4-4/P4-5). -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.27">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

@@ -113,13 +113,20 @@ public partial class App : Avalonia.Application
     {
         var services = new ServiceCollection();
 
+        // Fournisseur de base sélectionné par configuration (P4-3, ADR-PROD-DB-002) : variable
+        // d'environnement MMV_DATABASE_PROVIDER, défaut SQLite (comportement historique inchangé).
+        // Résolu UNE SEULE FOIS pour toute la composition. Un nom de fournisseur invalide bloque ici.
+        var databaseProviderOptions = DatabaseProviderResolver.Resolve();
+        var usesSqlite = databaseProviderOptions.Provider == DatabaseProvider.Sqlite;
+
         // Chemin de base unique (P2A-1A) : variable d'environnement MMV_DATABASE_PATH,
         // sinon %LOCALAPPDATA%\ManageMyVision\mmv.db. Source unique partagée avec le design-time.
-        var databasePath = SqliteDatabasePathResolver.ResolveDatabasePath();
+        // Pertinent pour SQLite uniquement : non résolu lorsqu'un fournisseur serveur est sélectionné.
+        var databasePath = usesSqlite ? SqliteDatabasePathResolver.ResolveDatabasePath() : null;
 
         // Enregistrer le DbContext
         services.AddDbContext<OpticDbContext>(options =>
-            options.UseSqlite(SqliteDatabasePathResolver.GetConnectionString(databasePath)));
+            DatabaseProviderResolver.Configure(options, databaseProviderOptions, databasePath));
 
         // Enregistrer UnitOfWork et Repositories
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -182,24 +189,46 @@ public partial class App : Avalonia.Application
         // démarrage. Une configuration absente/ambiguë retombe sur le défaut sûr (Production, sans seed).
         var seedOptions = SeedOptionsResolver.Resolve();
 
+        // Garde-fou de démarrage serveur (P4-3), VOLONTAIRE et placé AVANT le bloc try afin qu'aucun
+        // catch générique ne puisse le masquer par un repli silencieux sur SQLite. Le fournisseur est
+        // correctement sélectionné côté EF ; ce qui manque est la chaîne de préparation/migrations
+        // serveur (P4-5/P4-6). Tant qu'elle n'existe pas, on refuse de démarrer plutôt que d'exécuter
+        // un cycle de vie SQLite (sauvegarde, migrations, adoption) contre une base PostgreSQL.
+        if (!usesSqlite)
+        {
+            throw new DatabaseConfigurationException(
+                $"Le fournisseur '{databaseProviderOptions.Provider}' est correctement sélectionné comme " +
+                "fournisseur EF, mais la préparation et les migrations serveur ne sont pas encore " +
+                "disponibles : elles arrivent avec P4-5/P4-6. Le démarrage est bloqué volontairement " +
+                "(aucun repli sur SQLite, aucune migration SQLite exécutée contre un serveur). " +
+                $"Pour démarrer aujourd'hui, retirez {DatabaseProviderResolver.ProviderVariableName} " +
+                "ou positionnez-la sur 'sqlite'.");
+        }
+
+        // À partir d'ici, SQLite est le fournisseur retenu : le chemin de fichier est donc résolu.
+        var sqliteDatabasePath = databasePath!;
+
         // Préparer la base : cycle de vie SQLite professionnel et sûr (P2A-1A).
         try
         {
             var journalPath = Path.Combine(
-                Path.GetDirectoryName(databasePath) ?? ".", "migration-journal.log");
+                Path.GetDirectoryName(sqliteDatabasePath) ?? ".", "migration-journal.log");
             var databaseManager = new SqliteDatabaseManager(new MigrationJournal(journalPath));
 
-            System.Diagnostics.Debug.WriteLine($"[App] Database path: {databasePath}");
+            System.Diagnostics.Debug.WriteLine($"[App] Database path: {sqliteDatabasePath}");
 
             // 0) Reprise contrôlée de l'ancien fichier mmv-optic.db (P2A-1B) — sûre et sans perte :
             //    diagnostiquée, copiée vers le chemin courant UNIQUEMENT si valide/compatible et que
             //    le chemin courant est vide ; jamais de suppression/écrasement de l'ancien fichier ;
             //    conflit (les deux présents) = ancien conservé, courant utilisé. Toujours journalisée.
+            //    P4-3 : cette reprise concerne EXCLUSIVEMENT un ancien FICHIER SQLite local ; son DbContext
+            //    ad hoc reste donc délibérément SQLite-only et n'est jamais multi-fournisseur. Elle n'est
+            //    atteinte que lorsque SQLite est le fournisseur sélectionné (cf. garde-fou ci-dessus).
             var legacyPath = SqliteDatabasePathResolver.ResolveLegacyDatabasePath();
             var recovery = new LegacyDatabaseRecoveryService(databaseManager.Journal);
             var recoveryResult = recovery.Recover(
                 legacyPath,
-                databasePath,
+                sqliteDatabasePath,
                 path => new OpticDbContext(new DbContextOptionsBuilder<OpticDbContext>()
                     .UseSqlite(SqliteDatabasePathResolver.GetConnectionString(path)).Options));
             System.Diagnostics.Debug.WriteLine(

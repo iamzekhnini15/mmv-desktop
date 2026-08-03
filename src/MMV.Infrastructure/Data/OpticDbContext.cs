@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
+using MMV.Infrastructure.Configuration;
 using MMV.Infrastructure.Data.Configurations;
 
 namespace MMV.Infrastructure.Data;
@@ -132,12 +133,22 @@ public class OpticDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
+        // Garde inchangée : lorsque les options viennent du conteneur DI ou d'un test (UseSqlite(connection)),
+        // rien n'est reconfiguré ici — le fournisseur fourni par l'appelant fait autorité.
         if (!optionsBuilder.IsConfigured)
         {
-            // Chemin unique résolu par SqliteDatabasePathResolver (P2A-1A).
-            var dbPath = SqliteDatabasePathResolver.ResolveDatabasePath();
-            SqliteDatabasePathResolver.EnsureDirectoryExists(dbPath);
-            optionsBuilder.UseSqlite(SqliteDatabasePathResolver.GetConnectionString(dbPath));
+            // P4-3 : fournisseur sélectionné par configuration (MMV_DATABASE_PROVIDER), défaut SQLite.
+            var providerOptions = DatabaseProviderResolver.Resolve();
+
+            string? dbPath = null;
+            if (providerOptions.Provider == DatabaseProvider.Sqlite)
+            {
+                // Chemin unique résolu par SqliteDatabasePathResolver (P2A-1A).
+                dbPath = SqliteDatabasePathResolver.ResolveDatabasePath();
+                SqliteDatabasePathResolver.EnsureDirectoryExists(dbPath);
+            }
+
+            DatabaseProviderResolver.Configure(optionsBuilder, providerOptions, dbPath);
         }
 
         base.OnConfiguring(optionsBuilder);
