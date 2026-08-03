@@ -1,8 +1,12 @@
 # P4-3 — Fondation Infrastructure multi-provider — rapport d'implémentation
 
-> **Statut : `IMPLEMENTED LOCALLY — PENDING HUMAN REVIEW / COMMIT / CI`.**
-> Cette passe est **locale** : aucun `git add`, aucun commit, aucun push. **P4-3 n'est pas close.**
-> **La V1 multi-poste n'est pas déclarée `GO`.**
+> **Statut : `COMPLETE AND RECORDED — COMMIT + CI SUCCESS`.**
+> **P4-3 est close.** L'implémentation a d'abord été **validée localement** (passe locale, sans staging ni
+> commit ni push), puis **enregistrée par commit et CI** : commit
+> **`b312a6c901b1e620a3694a32ce0cd14e2f0fc707`**, CI
+> [**`30823399148`**](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/30823399148) — `event=push`,
+> `headSha` **exact**, **`conclusion=success`**, **1529 tests** (Domain 673 · Application 617 · App 239).
+> **La V1 multi-poste n'est toujours pas déclarée `GO`.**
 
 - **Base Git** : `724ffecc61a891b150193d838315edc61e238a1a` (branche `p4-multi-poste`,
   identique à `origin/p4-multi-poste` au démarrage de la passe).
@@ -35,7 +39,7 @@
 | `src/MMV.Infrastructure/Data/OpticDbContext.cs` | `OnConfiguring` passe par le configurateur central (garde `IsConfigured` **inchangée**). |
 | `src/MMV.Infrastructure/Data/OpticDbContextFactory.cs` | Passe par le configurateur central, **explicitement figée sur SQLite**. |
 | `src/MMV.Infrastructure/MMV.Infrastructure.csproj` | Ajout du seul package `Npgsql.EntityFrameworkCore.PostgreSQL`. |
-| `docs/architecture/P4-multi-poste-roadmap.md` | Mise à jour d'état minimale (P4-3 implémentée localement, non close). |
+| `docs/architecture/P4-multi-poste-roadmap.md` | Mise à jour d'état minimale — **telle qu'écrite lors de la passe locale**, où P4-3 était alors implémentée localement et non close. Cet état a depuis été remplacé par la clôture enregistrée (§14). |
 
 **Aucun fichier hors de ce périmètre n'a été modifié.** Aucun fichier `MMV.Domain` ou `MMV.Application`
 n'est touché. Les dossiers non suivis `design-handoff/`, `design/` et `docs/ui/` sont restés **intacts**.
@@ -254,12 +258,17 @@ préexistants sont **tous présents et verts**. **0 échec, 0 ignoré.**
    volontairement figé.
 5. **Aucun travail P4-4 ni P4-5 n'a été engagé** par cette passe.
 6. **Aucune primitive applicative n'a été exercée contre un serveur PostgreSQL réel** dans cette passe.
-7. **P4-3 n'est pas close** : sa clôture exige **revue humaine + commit + CI GitHub Actions verte** sur le
-   SHA exact. **La V1 multi-poste n'est pas `GO`.**
+7. **La clôture de P4-3 est administrative, pas une preuve de compatibilité.** Sa condition — revue humaine
+   **+** commit **+** CI GitHub Actions verte sur le SHA exact — est **satisfaite** (§14) : **P4-3 est close.**
+   Cette clôture atteste **l'enregistrement de la fondation**, et **rien de plus** : **la V1 multi-poste n'est
+   toujours pas `GO`**, et **`PersistenceErrorMapper` reste entièrement à traiter en P4-4**.
 
 ---
 
-## 13. Vérifications finales du diff
+## 13. Vérifications finales du diff *(passe locale)*
+
+> Les points ci-dessous ont été vérifiés **sur le diff de la passe locale d'implémentation**, avant tout
+> enregistrement. Ils restent vrais du contenu committé — l'enregistrement lui-même est décrit au §14.
 
 - ✅ **Aucun secret**, aucune chaîne de connexion réelle, aucun identifiant.
 - ✅ **Aucun repli PostgreSQL → SQLite**, en aucun point du code.
@@ -270,6 +279,53 @@ préexistants sont **tous présents et verts**. **0 échec, 0 ignoré.**
 - ✅ **Aucune implémentation P4-4 / P4-5.**
 - ✅ **Aucun fichier UI / design touché** (`design-handoff/`, `design/`, `docs/ui/` restent non suivis et intacts).
 - ✅ **`src/MMV.Infrastructure/DependencyInjection.cs` non modifié** (site inerte).
-- ✅ **Aucun staging, aucun commit, aucun push.**
+- ✅ *(historique)* Lors de la passe locale initiale, **aucun staging, aucun commit ni push n'avait été
+  effectué** — l'énoncé était exact **à cette date** et ne décrit **plus** l'état du dépôt : le contenu a
+  depuis été enregistré par le commit `b312a6c` (§14).
 
-**Verdict : `P4_3_IMPLEMENTATION_LOCAL = READY_FOR_HUMAN_REVIEW`.**
+---
+
+## 14. Enregistrement officiel — commit et CI
+
+La condition de clôture de P4-3 — **revue humaine + commit + CI GitHub Actions verte sur le SHA exact** — est
+**satisfaite**.
+
+| Élément | Valeur |
+|---|---|
+| **Commit** | **`b312a6c901b1e620a3694a32ce0cd14e2f0fc707`** |
+| **Parent** | `724ffecc61a891b150193d838315edc61e238a1a` |
+| **Message** | `feat(P4-3): add multi-provider infrastructure foundation` |
+| **Fichiers** | **11** — **5 modifiés** + **6 ajoutés** |
+| **CI** | run **`30823399148`** — <https://github.com/iamzekhnini15/mmv-desktop/actions/runs/30823399148> |
+| `event` | `push` |
+| `headBranch` | `p4-multi-poste` |
+| `headSha` | **`b312a6c901b1e620a3694a32ce0cd14e2f0fc707`** (SHA **exact** du commit) |
+| `status` | `completed` |
+| **`conclusion`** | **`success`** |
+| **Tests** | **1529** — Domain **673** · Application **617** · App **239** |
+| Échecs | **0** |
+| Ignorés | **0** |
+| **Build** | **0 erreur, 0 avertissement** |
+| **Audit** | **aucune vulnérabilité** |
+| **Contrôle EF** | **aucun changement de modèle** |
+| **Migrations** | **aucune créée** |
+
+**Portée exacte de cette CI — à ne pas surinterpréter.** La CI a rejoué les **1529 tests de `MMV.sln`**. Elle
+**n'a exécuté ni les tests E18**, **ni le harness `spikes/P4.ProviderComparison`**, qui reste **hors
+`MMV.sln`** : les preuves serveur PostgreSQL / SQL Server du spike demeurent des **preuves locales** et **ne
+doivent pas** être présentées comme reproduites par la CI.
+
+---
+
+## 15. Verdict
+
+```
+P4_3_IMPLEMENTATION_LOCAL          = PASS
+P4_3_IMPLEMENTATION_COMMIT_AND_CI  = PASS
+P4_3                               = CLOSE
+P4_4                               = READY — NOT STARTED
+V1 MULTI-POSTE                     = NOT GO
+```
+
+La **clôture documentaire** de P4-3 devient **définitive** après la **CI verte du présent commit de
+documentation sur son SHA exact**.

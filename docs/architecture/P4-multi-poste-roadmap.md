@@ -11,8 +11,10 @@
 >   éliminé** — rejeté pour V1, réexaminable selon l'ADR §20. **Aucune notation pondérée** n'est attribuée.
 >   **Licences, limites et cycles de vie ont été vérifiés dans les sources officielles** (ADR §24) — jamais
 >   affirmés de mémoire. Les étiquettes « candidat principal / secondaire » de P3-0B sont **antérieures à toute
->   mesure** et **n'ont aucune valeur probante** (ADR §2.2). **P4-3 est implémentée localement mais non
->   commitée, non passée en CI et non close** ; **la V1 multi-poste n'est pas déclarée `GO`**.
+>   mesure** et **n'ont aucune valeur probante** (ADR §2.2). **P4-3 est implémentée, enregistrée et validée
+>   par CI** — commit **`b312a6c`**, CI [**`30823399148`**](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/30823399148)
+>   **verte sur le SHA exact**, **1529 tests** — donc **`P4-3 = CLOSE`** et **`P4-4 = READY — NOT STARTED`** ;
+>   **la V1 multi-poste n'est toujours pas déclarée `GO`**.
 > - **SQLite sur dossier réseau est interdit** comme base de production multi-poste.
 > - **SQLite local reste utile** pour dev / test / démo / mono-poste, et n'est pas retiré.
 > - **P4 n'est ni une phase SaaS ni multi-tenant** : un seul magasin, une seule base centrale, plusieurs postes.
@@ -70,8 +72,9 @@ final dépend des résultats du spike (P4-1) et de l'ADR (P4-2).
   **La « réserve d'enregistrement » antérieure est donc levée.** **`P4-2 ADR = ACCEPTED`** : le draft de l'ADR
   [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) a été **enregistré par `37812c7`**,
   CI **`30656580004`** verte sur le SHA exact, et l'ADR est désormais **acceptée par le présent commit** —
-  **PostgreSQL est officiellement retenu**, **SQL Server Express n'est pas éliminé**, **P4-3 = `READY — NOT
-  STARTED`**. État consolidé en §6.
+  **PostgreSQL est officiellement retenu**, **SQL Server Express n'est pas éliminé**. P4-3, alors ouverte en
+  `READY — NOT STARTED`, a **depuis été implémentée et close** (commit `b312a6c`, CI `30823399148`) ; **P4-4**
+  est désormais **`READY — NOT STARTED`**. État consolidé en §6.
 - **Statut antérieur — historique (2026-07-26, avant le commit du Lot D)** : « techniquement complète ;
   enregistrement du Lot D **en attente de commit et de CI** ». **Cet énoncé est périmé** — le commit et la CI
   existent (ci-dessus) ; il est conservé uniquement comme trace.
@@ -429,32 +432,58 @@ P4-2 ADR   = BLOCKED                        [HISTORIQUE — remplacé depuis par
   **Atteinte, sous réserve de la CI verte du commit d'acceptation courant** : le statut est désormais
   **`ACCEPTÉ`**.
 
-### P4-3 — Fondation Infrastructure multi-provider — **`IMPLEMENTED LOCALLY — PENDING HUMAN REVIEW / COMMIT / CI`**
+### P4-3 — Fondation Infrastructure multi-provider — **`CLOSE — COMMIT + CI SUCCESS`**
 
-- **Statut courant** : **`IMPLEMENTED LOCALLY — PENDING HUMAN REVIEW / COMMIT / CI`.**
-  La fondation est **implémentée et validée localement** sur la base `724ffecc…` — voir
-  [rapport P4-3](../implementation/P4-3-multi-provider-foundation-report.md). **Elle n'est ni commitée, ni
-  poussée, ni passée en CI** : sa clôture exige **revue humaine + commit + CI GitHub Actions verte** sur le
-  SHA exact. **P4-3 n'est donc PAS `CLOSE`, PAS `GO`, et la V1 multi-poste n'est PAS `GO`.**
+- **Statut courant** : **`CLOSE — COMMIT + CI SUCCESS`.** La fondation, implémentée sur la base `724ffecc…`
+  puis **validée localement**, est désormais **enregistrée et vérifiée à distance** — voir
+  [rapport P4-3](../implementation/P4-3-multi-provider-foundation-report.md) §14. Sa condition de clôture
+  (**revue humaine + commit + CI GitHub Actions verte sur le SHA exact**) est **satisfaite** :
+
+  | Élément | Valeur |
+  |---|---|
+  | Commit | **`b312a6c901b1e620a3694a32ce0cd14e2f0fc707`** — `feat(P4-3): add multi-provider infrastructure foundation` |
+  | Fichiers | **11** — 5 modifiés + 6 ajoutés |
+  | CI | run **`30823399148`** · `event=push` · `headBranch=p4-multi-poste` · `headSha` **exact** · `status=completed` · **`conclusion=success`** |
+  | URL | <https://github.com/iamzekhnini15/mmv-desktop/actions/runs/30823399148> |
+  | Jobs | Restore ✅ · Build ✅ · Test ✅ · Audit vulnérabilités ✅ · Contrôle EF ✅ |
+  | Tests | **1529** (Domain **673** · Application **617** · App **239**), **0 échec**, **0 ignoré** |
+  | Build | **0 erreur, 0 avertissement** |
+  | Migrations | **aucune créée** — contrôle EF vert, aucun changement de modèle |
+
+  **`P4-3 = CLOSE`** et **`P4-4 = READY — NOT STARTED`**. **La V1 multi-poste n'est PAS `GO`.**
   **Les obligations de l'ADR (O1–O15, §15) restent contraignantes.**
-- **Ce qui est acquis localement** : le provider est **sélectionnable par configuration**
+- **Portée exacte de la CI** : elle a rejoué les **1529 tests de `MMV.sln`**. Elle **n'a exécuté ni E18 ni le
+  harness `spikes/P4.ProviderComparison`**, qui reste **hors `MMV.sln`** — les preuves serveur du spike
+  demeurent **locales**.
+- **Statut antérieur — historique (avant le commit `b312a6c`)** : « `IMPLEMENTED LOCALLY — PENDING HUMAN
+  REVIEW / COMMIT / CI` » — la fondation était alors implémentée et validée **en local**, **non commitée, non
+  poussée, non passée en CI, non close**. **Cet énoncé est périmé** ; il est conservé uniquement comme trace
+  de la passe locale.
+- **Ce qui est acquis** : le provider est **sélectionnable par configuration**
   (`MMV_DATABASE_PROVIDER`, défaut **SQLite** ; `MMV_DATABASE_CONNECTION_STRING` obligatoire pour PostgreSQL,
   secret hors dépôt) ; les **3 sites réellement multi-provider** (composition root, `OnConfiguring`, factory
   design-time) passent par un **configurateur central unique** ; le **4ᵉ site** — `DbContext` ad hoc de
   `LegacyDatabaseRecoveryService`, qui ouvre l'ancien **fichier** `mmv-optic.db` — reste **délibérément
   SQLite-only** ; le **5ᵉ site**, `DependencyInjection.AddInfrastructure` (**inerte**, sans appelant), **n'a
   pas été touché**. `Npgsql.EntityFrameworkCore.PostgreSQL 8.0.11` est ajouté **au seul** `MMV.Infrastructure`.
-  Suite locale : **1529 verts** (1505 baseline **+ 24** nouveaux tests), 0 échec, 0 ignoré, 0 avertissement ;
-  `has-pending-model-changes` **vert**, **aucune migration créée** ; **aucune vulnérabilité**.
+  Suite : **1529 verts** (1505 baseline **+ 24** nouveaux tests), 0 échec, 0 ignoré, 0 avertissement —
+  d'abord mesurés localement, puis **reproduits par la CI `30823399148`** ; `has-pending-model-changes`
+  **vert**, **aucune migration créée** ; **aucune vulnérabilité**.
 - **Garde-fou volontaire** : sélectionner PostgreSQL **bloque explicitement le démarrage** (exception levée
   **avant** toute opération dépendante de la base, hors du `try` afin qu'aucun `catch` générique ne la
   masque). Le provider est **correctement sélectionné côté EF** ; ce qui manque est la **chaîne de
   préparation et de migrations serveur (P4-5/P4-6)**. **Aucun repli sur SQLite**, et **jamais** de migration
   SQLite exécutée contre PostgreSQL. La factory design-time reste **figée sur SQLite** (la CI exécute le
   contrôle EF sans configuration serveur).
+- **Portée exacte de la clôture** : **PostgreSQL est sélectionnable par configuration**, **SQLite reste le
+  défaut**, **aucun fallback** d'un provider vers l'autre n'existe, le **site legacy demeure SQLite-only**,
+  **`Npgsql` n'est référencé directement que dans `MMV.Infrastructure`** et **Domain / Application restent
+  provider-neutres**. **Aucune migration serveur** n'est créée et **aucun travail P4-4 ni P4-5 n'est engagé**
+  par P4-3.
 - **Restent ouverts, non traités par P4-3** : conversion `DateTime` (constat Lot D), mapping monétaire,
   index filtrés booléens PostgreSQL, classification d'erreurs (`PersistenceErrorMapper` toujours couplé à
-  `SqliteException`), isolation et retry. **Aucune compatibilité applicative complète n'est revendiquée.**
+  `SqliteException`, **à porter en P4-4**), isolation et retry. **Aucune compatibilité applicative complète
+  n'est revendiquée.**
 - **Objectif** : centraliser la sélection du provider et rendre `MMV.Infrastructure` multi-provider **sans** toucher
   Domain/Application.
 - **Dépendances** : P4-2 **acceptée** — **satisfaite**.
@@ -465,8 +494,15 @@ P4-2 ADR   = BLOCKED                        [HISTORIQUE — remplacé depuis par
 - **Tests attendus** : SQLite conserve **1505** tests verts de la baseline courante ; sélection provider testée.
 - **Sortie (GO)** : SQLite inchangé en dev/test, provider serveur sélectionnable par configuration.
 
-### P4-4 — Traduction des erreurs et portage des primitives atomiques
+### P4-4 — Traduction des erreurs et portage des primitives atomiques — **`READY — NOT STARTED`**
 
+- **Statut courant** : **`READY — NOT STARTED`.** Sa **dépendance P4-3 est satisfaite** (P4-3 `CLOSE`, commit
+  `b312a6c`, CI `30823399148` verte sur le SHA exact). P4-4 est donc la **prochaine étape officielle de P4**,
+  **prête à commencer et non commencée** : **aucune implémentation n'est engagée**. Son objet futur est la
+  **classification PostgreSQL des erreurs**, l'**audit transactionnel** (isolation, retry, `catch`
+  intra-transactionnels sous `25P02`) et la **re-preuve des 14 primitives** sur le provider retenu, selon le
+  périmètre déjà défini ci-dessous. **Aucun travail P4-4 n'est réalisé par le commit documentaire de clôture
+  de P4-3.**
 - **Objectif** : porter les **14 primitives** de l'inventaire **réconcilié** sans perte de garantie, et doter le
   provider serveur de sa **propre classification d'erreurs**.
   *(L'audit §15 recensait **15** primitives ; un **doublon conceptuel** a été retiré au Lot A. Le total en
@@ -664,8 +700,9 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 | **P4-0** — audit initial et roadmap | **CLOSE** — commit `8cf0919`, CI `30045502517` verte sur le SHA exact |
 | **P4-1** — spike comparatif des providers | **COMPLÈTE ET ENREGISTRÉE** — Lots A, B, C et D exécutés (**Lot C = `PASS`**, **Lot D = `PASS`**, les deux providers) ; **14 / 14 primitives** ; clôture enregistrée par le commit **`e8d0546`** + CI **`30215445242`** verte sur le SHA exact (**1505** tests). **Réserve d'enregistrement levée.** |
 | **P4-2** — ADR de choix du provider | **`ACCEPTED — CLOSE`** — [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) **acceptée**, **PostgreSQL officiellement retenu**, **SQL Server Express non éliminé** |
-| **P4-3** — fondation Infrastructure multi-provider | **`IMPLEMENTED LOCALLY — PENDING HUMAN REVIEW / COMMIT / CI`** — provider sélectionnable par configuration (défaut **SQLite**), 3 sites centralisés, `Npgsql` en Infrastructure seule, **1529** tests verts en local ; **démarrage PostgreSQL volontairement bloqué** jusqu'à P4-5/P4-6. **Non commitée, non passée en CI, non close.** ([rapport](../implementation/P4-3-multi-provider-foundation-report.md)) |
-| **P4-4 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** après acceptation de P4-2 |
+| **P4-3** — fondation Infrastructure multi-provider | **CLOSE** — commit **`b312a6c`**, CI **`30823399148`** verte sur le SHA exact, **1529** tests (Domain 673 · Application 617 · App 239). Provider sélectionnable par configuration (défaut **SQLite**), 3 sites centralisés, `Npgsql` en Infrastructure seule ; **démarrage PostgreSQL volontairement bloqué** jusqu'à P4-5/P4-6. ([rapport](../implementation/P4-3-multi-provider-foundation-report.md)) |
+| **P4-4** — traduction des erreurs et portage des primitives | **`READY — NOT STARTED`** — dépendance P4-3 **satisfaite** ; **prochaine étape officielle**, **non commencée**, aucune implémentation engagée |
+| **P4-5 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** après acceptation de P4-2 |
 
 **État courant en vigueur** *(les blocs d'état antérieurs marqués `[HISTORIQUE]` plus haut sont remplacés par
 celui-ci)* :
@@ -692,18 +729,26 @@ P4-2 ADR DRAFT              = COMPLETE
 P4-2 ADR STATUS             = ACCEPTED
 P4-2 PROVIDER DECISION      = ACCEPTED — POSTGRESQL
 P4-2                        = CLOSE
-P4-3 IMPLEMENTATION LOCAL   = IMPLEMENTED LOCALLY — PENDING HUMAN REVIEW / COMMIT / CI
-P4-3                        = NOT CLOSE
+P4-3 IMPLEMENTATION LOCAL   = PASS
+P4-3 COMMIT                 = b312a6c
+P4-3 CI                     = 30823399148 — SUCCESS
+P4-3 TESTS                  = 1529
+P4-3                        = CLOSE
+P4-4                        = READY — NOT STARTED
 V1 MULTI-POSTE              = NOT GO
 ```
 
-> **P4-3 — nature exacte de l'état local.** La fondation multi-provider est **implémentée et validée
-> localement** (build 0 avertissement, **1529** tests verts, contrôle EF vert, aucune vulnérabilité), mais
-> **aucun commit, aucun push et aucune CI** ne l'ont enregistrée. **P4-3 n'est ni `CLOSE` ni `GO`.** Le
-> provider serveur est **sélectionnable dans la composition EF** ; le **démarrage applicatif sur PostgreSQL
+> **P4-3 — nature exacte de la clôture.** La fondation multi-provider a été **implémentée et validée
+> localement** (build 0 avertissement, **1529** tests verts, contrôle EF vert, aucune vulnérabilité), puis
+> **enregistrée par le commit `b312a6c`** et **vérifiée par la CI `30823399148`**, verte sur le **SHA exact**
+> (`event=push`, `headBranch=p4-multi-poste`, `conclusion=success`, **1529** tests — Domain 673 ·
+> Application 617 · App 239 — 0 échec, 0 ignoré). **P4-3 est `CLOSE`.** Cette clôture est **administrative** :
+> le provider serveur est **sélectionnable dans la composition EF** ; le **démarrage applicatif sur PostgreSQL
 > reste volontairement bloqué** jusqu'à la chaîne de migrations serveur (**P4-5/P4-6**). **Aucune
 > compatibilité applicative complète n'est revendiquée** (`DateTime`, mapping monétaire, index filtrés,
-> classification d'erreurs, isolation/retry restent ouverts). **La V1 multi-poste n'est pas `GO`.**
+> classification d'erreurs — `PersistenceErrorMapper` **reste à porter en P4-4** —, isolation/retry restent
+> ouverts). **P4-4 est `READY — NOT STARTED`** et **P4-5 n'est pas commencée**. **La V1 multi-poste n'est pas
+> `GO`.**
 
 **Réserve d'enregistrement — LEVÉE.** La clôture enregistrée de P4-1 exigeait le commit des cinq fichiers du
 Lot D, son push sur `p4-multi-poste` et une CI verte sur le nouveau SHA exact. **Les trois conditions sont
@@ -712,7 +757,8 @@ remplies** : commit **`e8d054631815c0410de4bb2f209ce3892588e75c`**, CI **`302154
 0 ignoré, audit de vulnérabilités et contrôle EF verts.
 
 La CI couvre les branches `p4*` : tout commit de la phase P4 est vérifié à distance (restore, build, tests de
-`MMV.sln` — **1505** depuis le Lot D, audit de vulnérabilités, contrôle EF des changements de modèle non
+`MMV.sln` — **1505** depuis le Lot D, **1529** depuis P4-3, audit de vulnérabilités, contrôle EF des
+changements de modèle non
 matérialisés). En revanche, le harness `spikes/P4.ProviderComparison` est **hors `MMV.sln`** : les résultats
 **E18** (PostgreSQL, SQL Server, concurrence) sont des **preuves locales du spike** et **ne doivent pas** être
 présentés comme reproduits par la CI tant que le workflow n'est pas explicitement modifié pour les exécuter.
@@ -729,16 +775,19 @@ primitive : **la compatibilité applicative complète de MMV sur serveur n'est p
 et **retient PostgreSQL**. Elle a **évalué** les trois constats encore ouverts — mapping `DateTime`, filtres
 d'index booléens PostgreSQL, précision monétaire `REAL` — et **affecté leur implémentation** aux phases
 ultérieures sous forme d'obligations (ADR §15 : O2 → P4-5, O3 → P4-5, O4 → P4-4 et/ou P4-5, O5 → P4-4).
-**P4-2 n'a corrigé aucun de ces sujets** : elle est **documentaire**, et **aucune implémentation P4-3 n'est
-engagée ni revendiquée par ce commit**.
+**P4-2 n'a corrigé aucun de ces sujets** : elle est **documentaire**, et **n'engageait elle-même aucune
+implémentation P4-3** — celle-ci a été **réalisée ensuite**, puis **close** (commit `b312a6c`, CI
+`30823399148`). **Ces trois chantiers restent ouverts** : P4-3 ne les a pas traités.
 
-**Ce que l'acceptation implique, strictement.** **PostgreSQL est officiellement retenu.** **SQL Server Express
-n'est pas éliminé** — son dialecte reste implémenté et prouvé dans le code de production. **P4-2 est `CLOSE`.**
-**P4-3 est `IMPLEMENTED LOCALLY — PENDING HUMAN REVIEW / COMMIT / CI`** : la fondation multi-provider est
-implémentée et validée **en local** ([rapport](../implementation/P4-3-multi-provider-foundation-report.md)),
-mais **non commitée, non poussée, non vérifiée par la CI — donc non close**. Le provider serveur est
-**sélectionnable dans la composition EF** ; le **démarrage applicatif sur PostgreSQL reste volontairement
-bloqué** jusqu'à la chaîne de migrations serveur (P4-5/P4-6).
-**Trois chantiers techniques restent ouverts** (`DateTime`, filtres d'index booléens
-PostgreSQL, mapping monétaire `REAL`) et **aucune compatibilité applicative complète n'est revendiquée**. La
-**V1 multi-poste n'est pas déclarée `GO`** : les 18 critères de sortie du §4 restent à satisfaire.
+**État consolidé, strictement.** **PostgreSQL est officiellement retenu** comme SGBD serveur de production
+pour la V1 multi-poste. **SQL Server Express n'est pas éliminé** — son dialecte reste implémenté et prouvé
+dans le code de production. **P4-2 est `CLOSE`.** **P4-3 est `CLOSE`** : la fondation multi-provider est
+implémentée, **enregistrée par le commit `b312a6c`** et **validée par la CI `30823399148`**, verte sur le
+SHA exact (**1529** tests) ([rapport](../implementation/P4-3-multi-provider-foundation-report.md)).
+**P4-4 est `READY — NOT STARTED`** : prochaine étape officielle, **aucune implémentation engagée**.
+Le provider serveur est **sélectionnable dans la composition EF** ; le **démarrage applicatif sur PostgreSQL
+reste volontairement bloqué** jusqu'à la chaîne de migrations serveur (P4-5/P4-6).
+**Trois chantiers techniques restent ouverts** (`DateTime`, filtres d'index booléens PostgreSQL, mapping
+monétaire `REAL`), **`PersistenceErrorMapper` reste entièrement à porter en P4-4**, et **aucune compatibilité
+applicative complète n'est revendiquée**. La **V1 multi-poste n'est pas déclarée `GO`** : les 18 critères de
+sortie du §4 restent à satisfaire.
