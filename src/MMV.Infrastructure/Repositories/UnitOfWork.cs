@@ -100,7 +100,10 @@ public class UnitOfWork : IUnitOfWork
         }
         catch
         {
-            await RollbackTransactionAsync(cancellationToken);
+            // P4-4B1 : rollback défensif exécuté avec CancellationToken.None — un jeton client déjà
+            // annulé ne doit ni empêcher l'annulation ni masquer l'erreur initiale (même garantie
+            // que EfTransactionRunner.SafeRollbackAsync).
+            await RollbackTransactionAsync(CancellationToken.None);
             throw;
         }
     }
