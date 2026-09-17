@@ -15,7 +15,10 @@
 >   par CI** — commit **`b312a6c`**, CI [**`30823399148`**](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/30823399148)
 >   **verte sur le SHA exact**, **1529 tests** — donc **`P4-3 = CLOSE`**. **`P4-4` est depuis passée en
 >   `IN PROGRESS`** — quatre sous-lots livrés et commités (`P4-4A0`, `P4-4A1`, `P4-4B0`, `P4-4B1`), voir §6 ;
->   **la V1 multi-poste n'est toujours pas déclarée `GO`**.
+>   **`P4-5` est ouverte** avec deux sous-lots **strictement documentaires** : `P4-5A` (audit du schéma) et
+>   `P4-5B` (décisions d'architecture — **six ADR acceptées**, [ADR-PROD-DB-003](adr-prod-db-003-money-persistence.md)
+>   … [008](adr-prod-db-008-postgresql-integration-testing.md)). **Aucune ligne de code n'a encore été écrite
+>   pour le schéma serveur**, et **la V1 multi-poste n'est toujours pas déclarée `GO`**.
 > - **SQLite sur dossier réseau est interdit** comme base de production multi-poste.
 > - **SQLite local reste utile** pour dev / test / démo / mono-poste, et n'est pas retiré.
 > - **P4 n'est ni une phase SaaS ni multi-tenant** : un seul magasin, une seule base centrale, plusieurs postes.
@@ -567,7 +570,7 @@ P4-2 ADR   = BLOCKED                        [HISTORIQUE — remplacé depuis par
   API favorable **effectivement validées par test** et l'upsert SQLite (`TryCreateActiveLowStockAsync`) réécrit et
   prouvé — + erreurs traduites.
 
-### P4-5 — Schéma et migrations serveur
+### P4-5 — Schéma et migrations serveur — **`IN PROGRESS` (P4-5A et P4-5B livrés)**
 
 - **Objectif** : produire une **chaîne de migrations serveur distincte** (baseline propre).
 - **Dépendances** : P4-3.
@@ -582,6 +585,30 @@ P4-2 ADR   = BLOCKED                        [HISTORIQUE — remplacé depuis par
   pour SQLite local** en dev/test/démo/mono-poste).
 - **Tests attendus** : migration d'une base serveur **neuve** reproductible ; index/contraintes vérifiés **physiquement**.
 - **Sortie (GO)** : base serveur neuve créée par migrations, contraintes prouvées.
+
+#### Découpage de P4-5 — arrêté par P4-5B
+
+La **forme non figée** annoncée ci-dessus **est désormais figée** : elle a été tranchée par
+[ADR-PROD-DB-005](adr-prod-db-005-migration-architecture.md) (**deux assemblys de migrations, un seul
+`DbContext`, un seul modèle**). Les sous-lots ci-dessous sont **ordonnés par dépendances réelles** ; chacun
+se termine par **commit + CI verte sur le SHA exact**.
+
+| Sous-lot | Contenu | ADR appliquées | Dépend de | État |
+|---|---|---|---|---|
+| **P4-5A** | **Audit du schéma de production** — aucun code modifié, aucun test exécuté ([rapport](../implementation/P4-5A-postgresql-schema-audit-report.md)) | — | P4-4 partiel | **COMPLETE — DECISIONS REQUIRED** |
+| **P4-5B** | **Décisions d'architecture** — 6 ADR créées et acceptées ([rapport](../implementation/P4-5B-postgresql-architecture-decisions-report.md)) | — | P4-5A | **COMPLETE — ADRs ACCEPTED** |
+| **P4-5C** | **Neutralisation du modèle** : `HasPrecision(12,2)` + point de sélection monétaire unique, filtre d'index sélectionné par provider, retrait des **18** littéraux `"REAL"` optiques | [003](adr-prod-db-003-money-persistence.md), [006](adr-prod-db-006-index-and-model-portability.md) | P4-5B | **NOT STARTED** |
+| **P4-5D** | **Stratégie temporelle** : `IClock`, UTC partout, convertisseur validant, test d'architecture, `DateOnly` + **migration de données écrite à la main** | [004](adr-prod-db-004-datetime-strategy.md) | P4-5B | **NOT STARTED** |
+| **P4-5E** | **Chaîne de migrations PostgreSQL** + factory design-time sélective + **double contrôle de dérive en CI** | [005](adr-prod-db-005-migration-architecture.md), [007](adr-prod-db-007-schema-drift-prevention.md) | P4-5C, P4-5D | **NOT STARTED** |
+| **P4-5F** | **Tests d'intégration PostgreSQL** : projet dans `MMV.sln`, job CI avec serveur, corpus **N1 … N8** | [007](adr-prod-db-007-schema-drift-prevention.md), [008](adr-prod-db-008-postgresql-integration-testing.md) | P4-5E | **NOT STARTED** |
+| **P4-5G** | **Levée du garde-fou de démarrage** ([App.axaml.cs:198](../../src/MMV.App/App.axaml.cs#L198)) + chaîne de préparation serveur — **uniquement après P4-5F vert** | toutes | P4-5F | **NOT STARTED** |
+
+> **Deux points d'attention issus de P4-5B**, à ne pas perdre :
+> **(1)** le volet monétaire et le volet index **ne produisent aucune migration SQLite** — le modèle vu par
+> SQLite reste inchangé ; **seul** le passage des dates civiles à `DateOnly` exige une migration, **de
+> données**, écrite à la main, car **EF ne détectera aucun changement de schéma** alors que le format des
+> valeurs change. **(2)** `.github/workflows/ci.yml` sera modifié **deux fois** (P4-5E puis P4-5F) — ce sont
+> les premières modifications du workflow depuis P4-0.
 
 ### P4-6 — Application des migrations en multi-poste
 
@@ -739,7 +766,8 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 | **P4-2** — ADR de choix du provider | **`ACCEPTED — CLOSE`** — [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) **acceptée**, **PostgreSQL officiellement retenu**, **SQL Server Express non éliminé** |
 | **P4-3** — fondation Infrastructure multi-provider | **CLOSE** — commit **`b312a6c`**, CI **`30823399148`** verte sur le SHA exact, **1529** tests (Domain 673 · Application 617 · App 239). Provider sélectionnable par configuration (défaut **SQLite**), 3 sites centralisés, `Npgsql` en Infrastructure seule ; **démarrage PostgreSQL volontairement bloqué** jusqu'à P4-5/P4-6. ([rapport](../implementation/P4-3-multi-provider-foundation-report.md)) |
 | **P4-4** — traduction des erreurs et portage des primitives | **`IN PROGRESS — NOT CLOSE`** — dépendance P4-3 **satisfaite** ; **étape officielle en cours**. **Livré** : `P4-4A0` (`b84c7e3`, CI `33411724068`), `P4-4A1` (`dc4c492`, CI `33436908075`), `P4-4B0` (`d5a3656`, CI **non enregistrée**), `P4-4B1` (`2976401`, CI **non enregistrée**) — **1569** tests. **Restant** : O2 mapping monétaire, O3 index filtrés PostgreSQL, O4 stratégie `DateTime`, **validation PostgreSQL au runtime** (dont re-preuve des 14 primitives) **après disponibilité du schéma serveur (P4-5)**. ([réconciliation P4-4C](../implementation/P4-4C-state-reconciliation-report.md)) |
-| **P4-5 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** après acceptation de P4-2 |
+| **P4-5** — schéma et migrations serveur | **`IN PROGRESS — NOT CLOSE`** — **P4-5A** (audit, [rapport](../implementation/P4-5A-postgresql-schema-audit-report.md)) et **P4-5B** (décisions, [rapport](../implementation/P4-5B-postgresql-architecture-decisions-report.md)) livrés, **tous deux strictement documentaires** : aucun code, aucun test exécuté, aucune migration. **Six ADR acceptées** — [003 monétaire](adr-prod-db-003-money-persistence.md), [004 `DateTime`](adr-prod-db-004-datetime-strategy.md), [005 migrations](adr-prod-db-005-migration-architecture.md), [006 index](adr-prod-db-006-index-and-model-portability.md), [007 dérive](adr-prod-db-007-schema-drift-prevention.md), [008 tests d'intégration](adr-prod-db-008-postgresql-integration-testing.md). **Restant** : P4-5C … P4-5G, **aucune ligne implémentée**. `POSTGRESQL CLEAN START = BLOCKED` |
+| **P4-6 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** |
 
 **État courant en vigueur** *(les blocs d'état antérieurs marqués `[HISTORIQUE]` plus haut sont remplacés par
 celui-ci)* :
@@ -780,9 +808,32 @@ P4-4 OBLIGATION O5          = DONE
 P4-4 OBLIGATIONS O2, O3, O4 = OPEN
 P4-4 RUNTIME VALIDATION     = BLOCKED BY P4-5 SCHEMA
 P4-4                        = IN PROGRESS — NOT CLOSE
-P4-5 … P4-12                = NOT STARTED
+P4-5A SCHEMA AUDIT          = COMPLETE — DOCUMENTAIRE, AUCUN CODE
+P4-5B ARCHITECTURE DECISIONS= COMPLETE — 6 ADR ACCEPTED, AUCUN CODE
+P4-5B ADRs                  = ADR-PROD-DB-003 … 008
+P4-5 OBLIGATIONS O2, O3, O4 = DECIDED — NOT IMPLEMENTED
+P4-5 OBLIGATION O7          = DECIDED — NOT IMPLEMENTED
+P4-5C … P4-5G               = NOT STARTED
+P4-5                        = IN PROGRESS — NOT CLOSE
+POSTGRESQL CLEAN START      = BLOCKED
+P4-6 … P4-12                = NOT STARTED
 V1 MULTI-POSTE              = NOT GO
 ```
+
+> **P4-5A et P4-5B — nature exacte.** Les deux lots sont **strictement documentaires** : **aucun fichier
+> `.cs`, de test, de migration, de projet, de configuration ou de CI n'a été modifié**, et **aucun test n'a
+> été exécuté** (P4-5A n'a pas pu en exécuter — restauration NuGet indisponible sur le poste, cf. son §0.2 ;
+> P4-5B n'avait pas à en exécuter). La baseline **1569** reste celle de P4-4C : elle est **citée**, jamais
+> revendiquée par ces lots. **Les six ADR décident ; elles n'implémentent rien.** Les obligations
+> **O2, O3, O4, O7** sont **tranchées**, pas **closes** : elles ne le seront qu'après P4-5C … P4-5F, preuves
+> à l'appui. **`POSTGRESQL CLEAN START` reste `BLOCKED`** par ses trois causes cumulatives — garde-fou de
+> démarrage (volontaire, P4-3), absence de chaîne de migrations serveur, modèle EF non portable.
+>
+> **Inversion de dépendance P4-4 ↔ P4-5, constatée et non tranchée.** P4-4 est `IN PROGRESS` mais sa
+> validation runtime est `BLOCKED_BY_P4_5_SCHEMA` : **c'est P4-5 qui débloque P4-4**, et non l'inverse. La
+> re-preuve des 14 primitives (**O12**) est portée par le corpus **N6** d'
+> [ADR-PROD-DB-008](adr-prod-db-008-postgresql-integration-testing.md), livré en **P4-5F**. **L'arbitrage de
+> cette inversion appartient au Lead Software Architect** ; la roadmap la constate, elle ne la tranche pas.
 
 > **P4-3 — nature exacte de la clôture.** La fondation multi-provider a été **implémentée et validée
 > localement** (build 0 avertissement, **1529** tests verts, contrôle EF vert, aucune vulnérabilité), puis
