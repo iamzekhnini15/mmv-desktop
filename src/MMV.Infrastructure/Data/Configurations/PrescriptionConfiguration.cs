@@ -23,20 +23,18 @@ public class PrescriptionConfiguration : IEntityTypeConfiguration<Prescription>
         builder.Property(p => p.DoctorName)
             .HasMaxLength(200);
 
-        // ŒIL DROIT (OD) - Double pour données optiques
-        builder.Property(p => p.OdSphere)
-            .HasColumnType("REAL");
+        // ŒIL DROIT (OD) — données optiques en double. P4-5C / ADR-PROD-DB-006 X3 : le littéral « REAL »
+        // est RETIRÉ (8 octets sur SQLite, 4 seulement sur PostgreSQL). Le mapping par défaut d'un double
+        // donne REAL sur SQLite (inchangé) et double precision sur PostgreSQL : aucune perte.
+        builder.Property(p => p.OdSphere);
 
-        builder.Property(p => p.OdCylinder)
-            .HasColumnType("REAL");
+        builder.Property(p => p.OdCylinder);
 
         builder.Property(p => p.OdAxis);
 
-        builder.Property(p => p.OdAddition)
-            .HasColumnType("REAL");
+        builder.Property(p => p.OdAddition);
 
-        builder.Property(p => p.OdPrismValue)
-            .HasColumnType("REAL");
+        builder.Property(p => p.OdPrismValue);
 
         builder.Property(p => p.OdPrismBase)
             .HasConversion<string>();
@@ -45,19 +43,15 @@ public class PrescriptionConfiguration : IEntityTypeConfiguration<Prescription>
             .HasMaxLength(10);
 
         // ŒIL GAUCHE (OG) - Double pour données optiques
-        builder.Property(p => p.OgSphere)
-            .HasColumnType("REAL");
+        builder.Property(p => p.OgSphere);
 
-        builder.Property(p => p.OgCylinder)
-            .HasColumnType("REAL");
+        builder.Property(p => p.OgCylinder);
 
         builder.Property(p => p.OgAxis);
 
-        builder.Property(p => p.OgAddition)
-            .HasColumnType("REAL");
+        builder.Property(p => p.OgAddition);
 
-        builder.Property(p => p.OgPrismValue)
-            .HasColumnType("REAL");
+        builder.Property(p => p.OgPrismValue);
 
         builder.Property(p => p.OgPrismBase)
             .HasConversion<string>();

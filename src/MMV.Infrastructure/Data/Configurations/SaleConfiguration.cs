@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MMV.Domain.Entities;
+using MMV.Infrastructure.Data.Portability;
 using MMV.Domain.Enums;
 
 namespace MMV.Infrastructure.Data.Configurations;
@@ -10,6 +11,15 @@ namespace MMV.Infrastructure.Data.Configurations;
 /// </summary>
 public class SaleConfiguration : IEntityTypeConfiguration<Sale>
 {
+    private readonly ModelPortability _portability;
+
+    /// <param name="portability">
+    /// Point de sélection unique du provider, fourni par <c>OpticDbContext.OnModelCreating</c> (P4-5C).
+    /// Cette configuration ne l'interroge jamais elle-même.
+    /// </param>
+    public SaleConfiguration(ModelPortability portability)
+        => _portability = portability ?? throw new ArgumentNullException(nameof(portability));
+
     public void Configure(EntityTypeBuilder<Sale> builder)
     {
         builder.HasKey(s => s.SaleId);
@@ -25,23 +35,27 @@ public class SaleConfiguration : IEntityTypeConfiguration<Sale>
         // SaleDate : horodatage géré par l'application (initialiseur d'entité, futur IClock).
         // Pas de défaut SQL figé au build (R-19 / P2A-1R19).
 
+        // P4-5C / ADR-PROD-DB-003 : colonnes monétaires. RemainingAmount et FinalAmount sont les deux
+        // colonnes sur lesquelles la BASE opère elle-même (CAS « RemainingAmount > 0 » du règlement de
+        // solde et SUM(FinalAmount) — SaleRepository) : leur type physique porte une garantie métier, pas
+        // seulement une fidélité de stockage. Le type SQLite est donc reconduit à l'identique.
         builder.Property(s => s.TotalAmount)
-            .HasColumnType("REAL")
+            .HasMoneyMapping(_portability, LegacySqliteMoneyStoreType.Real)
             .IsRequired();
 
         builder.Property(s => s.DiscountAmount)
-            .HasColumnType("REAL")
+            .HasMoneyMapping(_portability, LegacySqliteMoneyStoreType.Real)
             .HasDefaultValue(0);
 
         builder.Property(s => s.FinalAmount)
-            .HasColumnType("REAL")
+            .HasMoneyMapping(_portability, LegacySqliteMoneyStoreType.Real)
             .IsRequired();
 
         builder.Property(s => s.DepositAmount)
-            .HasColumnType("REAL");
+            .HasMoneyMapping(_portability, LegacySqliteMoneyStoreType.Real);
 
         builder.Property(s => s.RemainingAmount)
-            .HasColumnType("REAL");
+            .HasMoneyMapping(_portability, LegacySqliteMoneyStoreType.Real);
 
         builder.Property(s => s.PaymentMethod)
             .IsRequired()

@@ -3,6 +3,7 @@ using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Infrastructure.Configuration;
 using MMV.Infrastructure.Data.Configurations;
+using MMV.Infrastructure.Data.Portability;
 
 namespace MMV.Infrastructure.Data;
 
@@ -158,25 +159,33 @@ public class OpticDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // P4-5C : POINT DE LECTURE UNIQUE du provider pour la construction du modèle (ADR-PROD-DB-006 X2).
+        // Deux constructions du modèle ne s'écrivent pas de la même façon sur SQLite et sur PostgreSQL —
+        // le type physique des colonnes monétaires et le filtre de l'index unique partiel des fiches
+        // atelier. Le nom du provider est lu ICI, une seule fois, puis PASSÉ aux configurations qui en ont
+        // besoin : aucune IEntityTypeConfiguration n'interroge le provider pour son propre compte, et un
+        // provider inconnu fait lever ModelPortability.For au lieu de deviner une forme.
+        var portability = ModelPortability.For(Database.ProviderName);
+
         // Appliquer les configurations Fluent API
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfiguration(new SupplierConfiguration());
         modelBuilder.ApplyConfiguration(new ProductCategoryConfiguration());
-        modelBuilder.ApplyConfiguration(new ProductConfiguration());
+        modelBuilder.ApplyConfiguration(new ProductConfiguration(portability));
         modelBuilder.ApplyConfiguration(new GlassDetailConfiguration());
         modelBuilder.ApplyConfiguration(new LensDetailConfiguration());
         modelBuilder.ApplyConfiguration(new AccessoryDetailConfiguration());
-        modelBuilder.ApplyConfiguration(new SupplementConfiguration());
+        modelBuilder.ApplyConfiguration(new SupplementConfiguration(portability));
         modelBuilder.ApplyConfiguration(new GlassSupplementConfiguration());
-        modelBuilder.ApplyConfiguration(new GlassPricingTierConfiguration());
+        modelBuilder.ApplyConfiguration(new GlassPricingTierConfiguration(portability));
         modelBuilder.ApplyConfiguration(new CustomerConfiguration());
         modelBuilder.ApplyConfiguration(new PrescriptionConfiguration());
         modelBuilder.ApplyConfiguration(new OrderConfiguration());
-        modelBuilder.ApplyConfiguration(new OrderItemConfiguration());
-        modelBuilder.ApplyConfiguration(new WorkshopSheetConfiguration());
+        modelBuilder.ApplyConfiguration(new OrderItemConfiguration(portability));
+        modelBuilder.ApplyConfiguration(new WorkshopSheetConfiguration(portability));
         modelBuilder.ApplyConfiguration(new WorkshopSheetItemConfiguration());
-        modelBuilder.ApplyConfiguration(new SaleConfiguration());
-        modelBuilder.ApplyConfiguration(new SaleItemConfiguration());
+        modelBuilder.ApplyConfiguration(new SaleConfiguration(portability));
+        modelBuilder.ApplyConfiguration(new SaleItemConfiguration(portability));
         modelBuilder.ApplyConfiguration(new StockMovementConfiguration());
         modelBuilder.ApplyConfiguration(new NotificationConfiguration());
         modelBuilder.ApplyConfiguration(new DocumentSequenceConfiguration());

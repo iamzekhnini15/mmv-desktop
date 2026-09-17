@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MMV.Domain.Entities;
+using MMV.Infrastructure.Data.Portability;
 using MMV.Domain.Enums;
 
 namespace MMV.Infrastructure.Data.Configurations;
@@ -10,6 +11,15 @@ namespace MMV.Infrastructure.Data.Configurations;
 /// </summary>
 public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
 {
+    private readonly ModelPortability _portability;
+
+    /// <param name="portability">
+    /// Point de sélection unique du provider, fourni par <c>OpticDbContext.OnModelCreating</c> (P4-5C).
+    /// Cette configuration ne l'interroge jamais elle-même.
+    /// </param>
+    public OrderItemConfiguration(ModelPortability portability)
+        => _portability = portability ?? throw new ArgumentNullException(nameof(portability));
+
     public void Configure(EntityTypeBuilder<OrderItem> builder)
     {
         builder.HasKey(oi => oi.OrderItemId);
@@ -24,24 +34,25 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.Property(oi => oi.Quantity)
             .HasDefaultValue(1);
 
+        // P4-5C / ADR-PROD-DB-003 : colonne monétaire.
         builder.Property(oi => oi.UnitPrice)
-            .HasColumnType("REAL")
+            .HasMoneyMapping(_portability, LegacySqliteMoneyStoreType.Real)
             .IsRequired();
 
         builder.Property(oi => oi.UsageType)
             .HasConversion<string>();
 
-        builder.Property(oi => oi.Sphere)
-            .HasColumnType("REAL");
+        // P4-5C / ADR-PROD-DB-006 X3 : valeurs optiques (double). Le littéral « REAL » est RETIRÉ — il
+        // désigne 8 octets sur SQLite mais seulement 4 sur PostgreSQL. Le mapping par défaut d'un double
+        // donne REAL sur SQLite (inchangé) et double precision sur PostgreSQL : aucune perte, aucun
+        // littéral de moteur. Le type CLR reste double, adéquat pour une dioptrie (pas de 0,25).
+        builder.Property(oi => oi.Sphere);
 
-        builder.Property(oi => oi.Cylinder)
-            .HasColumnType("REAL");
+        builder.Property(oi => oi.Cylinder);
 
-        builder.Property(oi => oi.Addition)
-            .HasColumnType("REAL");
+        builder.Property(oi => oi.Addition);
 
-        builder.Property(oi => oi.PrismValue)
-            .HasColumnType("REAL");
+        builder.Property(oi => oi.PrismValue);
 
         builder.Property(oi => oi.PrismBase)
             .HasConversion<string>();

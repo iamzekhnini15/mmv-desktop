@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MMV.Domain.Entities;
+using MMV.Infrastructure.Data.Portability;
 
 namespace MMV.Infrastructure.Data.Configurations;
 
@@ -9,6 +10,15 @@ namespace MMV.Infrastructure.Data.Configurations;
 /// </summary>
 public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
+    private readonly ModelPortability _portability;
+
+    /// <param name="portability">
+    /// Point de sélection unique du provider, fourni par <c>OpticDbContext.OnModelCreating</c> (P4-5C).
+    /// Cette configuration ne l'interroge jamais elle-même.
+    /// </param>
+    public ProductConfiguration(ModelPortability portability)
+        => _portability = portability ?? throw new ArgumentNullException(nameof(portability));
+
     public void Configure(EntityTypeBuilder<Product> builder)
     {
         builder.HasKey(p => p.ProductId);
@@ -35,16 +45,18 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.Description)
             .HasMaxLength(1000);
 
+        // P4-5C / ADR-PROD-DB-003 : colonnes monétaires. Précision (12,2) sur les deux providers
+        // (⇒ numeric(12,2) exact sur PostgreSQL) ; type physique SQLite historique reconduit à l'identique.
         builder.Property(p => p.PurchasePrice)
-            .HasColumnType("REAL")
+            .HasMoneyMapping(_portability, LegacySqliteMoneyStoreType.Real)
             .IsRequired();
 
         builder.Property(p => p.SalePrice)
-            .HasColumnType("REAL")
+            .HasMoneyMapping(_portability, LegacySqliteMoneyStoreType.Real)
             .IsRequired();
 
         builder.Property(p => p.RecommendedPrice)
-            .HasColumnType("REAL");
+            .HasMoneyMapping(_portability, LegacySqliteMoneyStoreType.Real);
 
         builder.Property(p => p.Category)
             .HasConversion<string>()
@@ -56,8 +68,11 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.StockAlertThreshold)
             .HasDefaultValue(5);
 
+        // JSON stocké en texte. LITTÉRAL CONSERVÉ DÉLIBÉRÉMENT (ADR-PROD-DB-006 §5.6) : « TEXT » est un
+        // type valide sur les DEUX moteurs, ce mapping est donc portable tel quel. Le passage à « jsonb »
+        // est rejeté pour la V1 — aucun besoin de requête JSON n'est constaté dans le dépôt.
         builder.Property(p => p.TechnicalSpecs)
-            .HasColumnType("TEXT"); // JSON stocké en TEXT
+            .HasColumnType("TEXT");
 
         builder.Property(p => p.IsActive)
             .HasDefaultValue(true);

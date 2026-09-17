@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MMV.Domain.Entities;
+using MMV.Infrastructure.Data.Portability;
 using MMV.Domain.Enums;
 
 namespace MMV.Infrastructure.Data.Configurations;
@@ -10,6 +11,15 @@ namespace MMV.Infrastructure.Data.Configurations;
 /// </summary>
 public class SaleItemConfiguration : IEntityTypeConfiguration<SaleItem>
 {
+    private readonly ModelPortability _portability;
+
+    /// <param name="portability">
+    /// Point de sélection unique du provider, fourni par <c>OpticDbContext.OnModelCreating</c> (P4-5C).
+    /// Cette configuration ne l'interroge jamais elle-même.
+    /// </param>
+    public SaleItemConfiguration(ModelPortability portability)
+        => _portability = portability ?? throw new ArgumentNullException(nameof(portability));
+
     public void Configure(EntityTypeBuilder<SaleItem> builder)
     {
         builder.HasKey(si => si.SaleItemId);
@@ -25,12 +35,13 @@ public class SaleItemConfiguration : IEntityTypeConfiguration<SaleItem>
         builder.Property(si => si.Quantity)
             .IsRequired();
 
+        // P4-5C / ADR-PROD-DB-003 : colonnes monétaires.
         builder.Property(si => si.UnitPrice)
-            .HasColumnType("REAL")
+            .HasMoneyMapping(_portability, LegacySqliteMoneyStoreType.Real)
             .IsRequired();
 
         builder.Property(si => si.TotalPrice)
-            .HasColumnType("REAL")
+            .HasMoneyMapping(_portability, LegacySqliteMoneyStoreType.Real)
             .IsRequired();
 
         // Prescription fields (nullable)

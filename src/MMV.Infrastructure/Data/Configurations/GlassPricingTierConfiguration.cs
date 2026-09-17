@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MMV.Domain.Entities;
+using MMV.Infrastructure.Data.Portability;
 
 namespace MMV.Infrastructure.Data.Configurations;
 
@@ -10,10 +11,21 @@ namespace MMV.Infrastructure.Data.Configurations;
 /// </summary>
 public class GlassPricingTierConfiguration : IEntityTypeConfiguration<GlassPricingTier>
 {
+    private readonly ModelPortability _portability;
+
+    /// <param name="portability">
+    /// Point de sélection unique du provider, fourni par <c>OpticDbContext.OnModelCreating</c> (P4-5C).
+    /// Cette configuration ne l'interroge jamais elle-même.
+    /// </param>
+    public GlassPricingTierConfiguration(ModelPortability portability)
+        => _portability = portability ?? throw new ArgumentNullException(nameof(portability));
+
     public void Configure(EntityTypeBuilder<GlassPricingTier> builder)
     {
         builder.HasKey(t => t.TierId);
 
+        // PowerMin / PowerMax sont des colonnes de PUISSANCE, pas de prix : leur HasPrecision(5,2)
+        // existant est conservé sans changement (ADR-PROD-DB-003 §6).
         builder.Property(t => t.PowerMin)
             .HasPrecision(5, 2)
             .IsRequired();
@@ -22,10 +34,14 @@ public class GlassPricingTierConfiguration : IEntityTypeConfiguration<GlassPrici
             .HasPrecision(5, 2)
             .IsRequired();
 
+        // P4-5C / ADR-PROD-DB-003 : colonnes monétaires sans type déclaré jusqu'ici (TEXT sur SQLite),
+        // défaut reconduit tel quel sur SQLite, numeric(12,2) sur PostgreSQL.
         builder.Property(t => t.PurchasePriceGrid)
+            .HasMoneyMapping(_portability, LegacySqliteMoneyStoreType.ProviderDefault)
             .IsRequired();
 
         builder.Property(t => t.SalePriceGrid)
+            .HasMoneyMapping(_portability, LegacySqliteMoneyStoreType.ProviderDefault)
             .IsRequired();
 
         // Relations

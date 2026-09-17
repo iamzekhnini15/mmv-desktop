@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MMV.Domain.Entities;
+using MMV.Infrastructure.Data.Portability;
 
 namespace MMV.Infrastructure.Data.Configurations;
 
@@ -9,6 +10,15 @@ namespace MMV.Infrastructure.Data.Configurations;
 /// </summary>
 public class WorkshopSheetConfiguration : IEntityTypeConfiguration<WorkshopSheet>
 {
+    private readonly ModelPortability _portability;
+
+    /// <param name="portability">
+    /// Point de sélection unique du provider, fourni par <c>OpticDbContext.OnModelCreating</c> (P4-5C).
+    /// Cette configuration ne l'interroge jamais elle-même.
+    /// </param>
+    public WorkshopSheetConfiguration(ModelPortability portability)
+        => _portability = portability ?? throw new ArgumentNullException(nameof(portability));
+
     public void Configure(EntityTypeBuilder<WorkshopSheet> builder)
     {
         builder.HasKey(w => w.WorkshopSheetId);
@@ -57,9 +67,14 @@ public class WorkshopSheetConfiguration : IEntityTypeConfiguration<WorkshopSheet
         // Index unique FILTRÉ : au plus UNE version courante par commande. C'est la garantie structurelle qu'il
         // n'existe jamais deux versions autoritaires simultanées — la bascule « ancienne à false / nouvelle à
         // true » ne peut donc pas produire d'ambiguïté, même en concurrence.
+        // P4-5C / ADR-PROD-DB-006 X1 : le FILTRE est sélectionné par provider, en un point unique.
+        // SQLite n'a pas de booléen (IsCurrent y est un INTEGER 0/1) ⇒ « "IsCurrent" = 1 » ; PostgreSQL
+        // crée une colonne boolean et REFUSE la comparaison booléen ↔ entier ⇒ « "IsCurrent" ». Porter la
+        // forme SQLite telle quelle y ferait échouer la création de l'index, donc du schéma entier.
+        // La garantie reste celle de la BASE des deux côtés : seule son écriture change.
         builder.HasIndex(w => w.OrderId)
             .IsUnique()
-            .HasFilter("\"IsCurrent\" = 1")
+            .HasFilter(_portability.CurrentWorkshopSheetIndexFilter)
             .HasDatabaseName("idx_workshop_sheets_current_unique");
 
         // Restrict : une fiche atelier est un document historique. La base refuse la suppression d'une commande

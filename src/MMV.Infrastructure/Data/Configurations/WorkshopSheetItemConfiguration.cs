@@ -42,13 +42,15 @@ public class WorkshopSheetItemConfiguration : IEntityTypeConfiguration<WorkshopS
             .HasConversion<string>()
             .HasMaxLength(20);
 
-        // Cohérent avec OrderItemConfiguration : les valeurs optiques sont stockées en REAL.
-        builder.Property(i => i.SourceSphere).HasColumnType("REAL");
-        builder.Property(i => i.SourceCylinder).HasColumnType("REAL");
-        builder.Property(i => i.Addition).HasColumnType("REAL");
-        builder.Property(i => i.PrismValue).HasColumnType("REAL");
-        builder.Property(i => i.TransposedSphere).HasColumnType("REAL");
-        builder.Property(i => i.TransposedCylinder).HasColumnType("REAL");
+        // Cohérent avec OrderItemConfiguration. P4-5C / ADR-PROD-DB-006 X3 : le littéral « REAL » est
+        // RETIRÉ — mapping par défaut du double, soit REAL sur SQLite (inchangé) et double precision sur
+        // PostgreSQL.
+        builder.Property(i => i.SourceSphere);
+        builder.Property(i => i.SourceCylinder);
+        builder.Property(i => i.Addition);
+        builder.Property(i => i.PrismValue);
+        builder.Property(i => i.TransposedSphere);
+        builder.Property(i => i.TransposedCylinder);
 
         builder.Property(i => i.PrismBase)
             .HasConversion<string>()
