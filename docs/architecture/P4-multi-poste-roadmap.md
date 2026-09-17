@@ -13,7 +13,8 @@
 >   affirmés de mémoire. Les étiquettes « candidat principal / secondaire » de P3-0B sont **antérieures à toute
 >   mesure** et **n'ont aucune valeur probante** (ADR §2.2). **P4-3 est implémentée, enregistrée et validée
 >   par CI** — commit **`b312a6c`**, CI [**`30823399148`**](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/30823399148)
->   **verte sur le SHA exact**, **1529 tests** — donc **`P4-3 = CLOSE`** et **`P4-4 = READY — NOT STARTED`** ;
+>   **verte sur le SHA exact**, **1529 tests** — donc **`P4-3 = CLOSE`**. **`P4-4` est depuis passée en
+>   `IN PROGRESS`** — quatre sous-lots livrés et commités (`P4-4A0`, `P4-4A1`, `P4-4B0`, `P4-4B1`), voir §6 ;
 >   **la V1 multi-poste n'est toujours pas déclarée `GO`**.
 > - **SQLite sur dossier réseau est interdit** comme base de production multi-poste.
 > - **SQLite local reste utile** pour dev / test / démo / mono-poste, et n'est pas retiré.
@@ -74,7 +75,7 @@ final dépend des résultats du spike (P4-1) et de l'ADR (P4-2).
   CI **`30656580004`** verte sur le SHA exact, et l'ADR est désormais **acceptée par le présent commit** —
   **PostgreSQL est officiellement retenu**, **SQL Server Express n'est pas éliminé**. P4-3, alors ouverte en
   `READY — NOT STARTED`, a **depuis été implémentée et close** (commit `b312a6c`, CI `30823399148`) ; **P4-4**
-  est désormais **`READY — NOT STARTED`**. État consolidé en §6.
+  est désormais **`IN PROGRESS`** (sous-lots `A0`, `A1`, `B0`, `B1` livrés). État consolidé en §6.
 - **Statut antérieur — historique (2026-07-26, avant le commit du Lot D)** : « techniquement complète ;
   enregistrement du Lot D **en attente de commit et de CI** ». **Cet énoncé est périmé** — le commit et la CI
   existent (ci-dessus) ; il est conservé uniquement comme trace.
@@ -450,7 +451,8 @@ P4-2 ADR   = BLOCKED                        [HISTORIQUE — remplacé depuis par
   | Build | **0 erreur, 0 avertissement** |
   | Migrations | **aucune créée** — contrôle EF vert, aucun changement de modèle |
 
-  **`P4-3 = CLOSE`** et **`P4-4 = READY — NOT STARTED`**. **La V1 multi-poste n'est PAS `GO`.**
+  **`P4-3 = CLOSE`.** **`P4-4` était alors `READY — NOT STARTED` ; elle est aujourd'hui `IN PROGRESS`**
+  (voir §6 et la fiche P4-4 ci-dessous). **La V1 multi-poste n'est PAS `GO`.**
   **Les obligations de l'ADR (O1–O15, §15) restent contraignantes.**
 - **Portée exacte de la CI** : elle a rejoué les **1529 tests de `MMV.sln`**. Elle **n'a exécuté ni E18 ni le
   harness `spikes/P4.ProviderComparison`**, qui reste **hors `MMV.sln`** — les preuves serveur du spike
@@ -484,6 +486,9 @@ P4-2 ADR   = BLOCKED                        [HISTORIQUE — remplacé depuis par
   index filtrés booléens PostgreSQL, classification d'erreurs (`PersistenceErrorMapper` toujours couplé à
   `SqliteException`, **à porter en P4-4**), isolation et retry. **Aucune compatibilité applicative complète
   n'est revendiquée.**
+  *(Mise à jour P4-4C : la **classification d'erreurs** a depuis été portée par **P4-4A1** (`dc4c492`) et le
+  **rollback défensif de `UnitOfWork`** par **P4-4B1** (`2976401`). `DateTime`, mapping monétaire et index
+  filtrés **restent ouverts**. Cette puce décrit l'état **au terme de P4-3** et est conservée comme trace.)*
 - **Objectif** : centraliser la sélection du provider et rendre `MMV.Infrastructure` multi-provider **sans** toucher
   Domain/Application.
 - **Dépendances** : P4-2 **acceptée** — **satisfaite**.
@@ -494,15 +499,45 @@ P4-2 ADR   = BLOCKED                        [HISTORIQUE — remplacé depuis par
 - **Tests attendus** : SQLite conserve **1505** tests verts de la baseline courante ; sélection provider testée.
 - **Sortie (GO)** : SQLite inchangé en dev/test, provider serveur sélectionnable par configuration.
 
-### P4-4 — Traduction des erreurs et portage des primitives atomiques — **`READY — NOT STARTED`**
+### P4-4 — Traduction des erreurs et portage des primitives atomiques — **`IN PROGRESS`**
 
-- **Statut courant** : **`READY — NOT STARTED`.** Sa **dépendance P4-3 est satisfaite** (P4-3 `CLOSE`, commit
-  `b312a6c`, CI `30823399148` verte sur le SHA exact). P4-4 est donc la **prochaine étape officielle de P4**,
-  **prête à commencer et non commencée** : **aucune implémentation n'est engagée**. Son objet futur est la
-  **classification PostgreSQL des erreurs**, l'**audit transactionnel** (isolation, retry, `catch`
-  intra-transactionnels sous `25P02`) et la **re-preuve des 14 primitives** sur le provider retenu, selon le
-  périmètre déjà défini ci-dessous. **Aucun travail P4-4 n'est réalisé par le commit documentaire de clôture
-  de P4-3.**
+- **Statut courant** : **`IN PROGRESS` — commencée, partiellement livrée, `NOT CLOSE`.** Sa **dépendance P4-3
+  est satisfaite** (P4-3 `CLOSE`, commit `b312a6c`, CI `30823399148` verte sur le SHA exact). **Quatre
+  sous-lots sont implémentés, documentés et commités** sur `p4-multi-poste` :
+
+  | Sous-lot | Objet | Commit | CI | Rapport |
+  |---|---|---|---|---|
+  | **P4-4A0** | Preuve du comportement des exceptions PostgreSQL (forme structurelle Npgsql, sondes E19/E20) | **`b84c7e3`** | **`33411724068`** — SUCCESS sur le SHA exact | [rapport](../implementation/P4-4A0-npgsql-exception-shape-report.md) |
+  | **P4-4A1** | Portage de la classification d'erreurs de persistance PostgreSQL (`PersistenceErrorMapper`) — **obligation ADR O5** | **`dc4c492`** | **`33436908075`** — SUCCESS sur le SHA exact | [rapport](../implementation/P4-4A1-postgresql-persistence-error-mapper-report.md) |
+  | **P4-4B0** | Preuve du comportement transactionnel PostgreSQL (spike E21, `25P02`, isolation, retry) | **`d5a3656`** | **numéro non enregistré dans le dépôt** | [rapport](../implementation/P4-4B0-postgresql-transaction-behavior-report.md) |
+  | **P4-4B1** | Sûreté d'annulation du rollback de `UnitOfWork.CommitAsync` | **`2976401`** | **numéro non enregistré dans le dépôt** | [rapport](../implementation/P4-4B1-unitofwork-defensive-rollback-report.md) |
+
+  **Deux de ces sous-lots modifient du code de production** (`PersistenceErrorMapper` en A1, `UnitOfWork` en
+  B1) ; A0 et B0 sont des **passes de mesure** dont les sondes restent **hors `MMV.sln`**. La suite de tests
+  est passée de **1529** à **1569** (+36 en A1, +4 en B1). **Les numéros de CI de `d5a3656` et `2976401` ne
+  figurent nulle part dans le dépôt** : ils sont déclarés **`NOT FOUND IN REPOSITORY`** et **ne doivent pas
+  être supposés verts** tant qu'ils ne sont pas enregistrés ici.
+
+- **Restant à faire dans P4-4** (aucune de ces lignes n'est engagée à ce jour) :
+  - **O2 — décision de mapping monétaire** (remplacement de `HasColumnType("REAL")`) : type et précision
+    **non tranchés**. *L'ADR-PROD-DB-002 §15 affecte O2 à **P4-5** ; l'obligation reste ouverte et sa phase
+    d'exécution n'est pas modifiée par le présent réalignement.*
+  - **O3 — adaptation PostgreSQL des index uniques filtrés** (`"IsCurrent" = 1`, filtre LowStock actif).
+    *Affectée à **P4-5** par l'ADR §15 ; ouverte.*
+  - **O4 — stratégie `DateTime`** (PostgreSQL refuse `Kind = Local` par le chemin EF) : conversion de valeur
+    (UTC + horloge injectable, ADR-005) **ou** type de colonne — **non tranché**. *L'ADR §15 l'affecte à
+    **P4-4 et/ou P4-5** : cette alternative n'est **pas** arbitrée par le présent lot documentaire.*
+  - **Validation PostgreSQL au runtime** — dont la **re-preuve des 14 primitives** sur le provider retenu :
+    **impossible tant que le schéma serveur n'est pas disponible** (P4-5). Le rapport P4-4B0 §15 l'établit
+    explicitement (`BLOCKED_BY_P4_5_SCHEMA`). **P4-4 ne peut donc pas être déclarée `CLOSE` en l'état** ;
+    l'arbitrage de cette inversion de dépendance P4-4 ↔ P4-5 appartient à l'architecte et **n'est pas rendu
+    par le présent lot**.
+- **Statut antérieur — historique (jusqu'au commit `b84c7e3`)** : « `READY — NOT STARTED` — prochaine étape
+  officielle de P4, prête à commencer et non commencée, aucune implémentation engagée ». **Cet énoncé est
+  périmé** : il était déjà contredit par le dépôt au moment de l'audit de reprise
+  ([MMV-PROJECT-RECOVERY-AUDIT](../reports/MMV-PROJECT-RECOVERY-AUDIT.md)) et n'est conservé que comme trace.
+  Sa correction est l'objet du lot **P4-4C**
+  ([rapport](../implementation/P4-4C-state-reconciliation-report.md)).
 - **Objectif** : porter les **14 primitives** de l'inventaire **réconcilié** sans perte de garantie, et doter le
   provider serveur de sa **propre classification d'erreurs**.
   *(L'audit §15 recensait **15** primitives ; un **doublon conceptuel** a été retiré au Lot A. Le total en
@@ -681,7 +716,9 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 **Points durs (travail réel de P4)**
 
 1. **Montants en `REAL`** (flottant) — risque de **précision monétaire** sur serveur *(le plus grave)*.
-2. **`PersistenceErrorMapper` entièrement couplé** à `SqliteException` et ses codes.
+2. **`PersistenceErrorMapper` entièrement couplé** à `SqliteException` et ses codes. **✅ Porté en
+   `P4-4A1`** (`dc4c492`, CI `33436908075`) : classification PostgreSQL ajoutée **sans régression SQLite**
+   et **sans exposer `Npgsql`** à Domain/Application (obligation ADR **O5** traitée).
 3. **Upsert `ON CONFLICT DO NOTHING`** + `SqliteParameter` — **seule primitive dont le SQL et les paramètres
    étaient explicitement SQLite**. **✅ Résolu au Lot D** (paramètres fabriqués par le provider courant,
    dialecte SQL Server à instruction unique) : prouvé sur les deux candidats, concurrence incluse. La
@@ -701,7 +738,7 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 | **P4-1** — spike comparatif des providers | **COMPLÈTE ET ENREGISTRÉE** — Lots A, B, C et D exécutés (**Lot C = `PASS`**, **Lot D = `PASS`**, les deux providers) ; **14 / 14 primitives** ; clôture enregistrée par le commit **`e8d0546`** + CI **`30215445242`** verte sur le SHA exact (**1505** tests). **Réserve d'enregistrement levée.** |
 | **P4-2** — ADR de choix du provider | **`ACCEPTED — CLOSE`** — [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) **acceptée**, **PostgreSQL officiellement retenu**, **SQL Server Express non éliminé** |
 | **P4-3** — fondation Infrastructure multi-provider | **CLOSE** — commit **`b312a6c`**, CI **`30823399148`** verte sur le SHA exact, **1529** tests (Domain 673 · Application 617 · App 239). Provider sélectionnable par configuration (défaut **SQLite**), 3 sites centralisés, `Npgsql` en Infrastructure seule ; **démarrage PostgreSQL volontairement bloqué** jusqu'à P4-5/P4-6. ([rapport](../implementation/P4-3-multi-provider-foundation-report.md)) |
-| **P4-4** — traduction des erreurs et portage des primitives | **`READY — NOT STARTED`** — dépendance P4-3 **satisfaite** ; **prochaine étape officielle**, **non commencée**, aucune implémentation engagée |
+| **P4-4** — traduction des erreurs et portage des primitives | **`IN PROGRESS — NOT CLOSE`** — dépendance P4-3 **satisfaite** ; **étape officielle en cours**. **Livré** : `P4-4A0` (`b84c7e3`, CI `33411724068`), `P4-4A1` (`dc4c492`, CI `33436908075`), `P4-4B0` (`d5a3656`, CI **non enregistrée**), `P4-4B1` (`2976401`, CI **non enregistrée**) — **1569** tests. **Restant** : O2 mapping monétaire, O3 index filtrés PostgreSQL, O4 stratégie `DateTime`, **validation PostgreSQL au runtime** (dont re-preuve des 14 primitives) **après disponibilité du schéma serveur (P4-5)**. ([réconciliation P4-4C](../implementation/P4-4C-state-reconciliation-report.md)) |
 | **P4-5 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** après acceptation de P4-2 |
 
 **État courant en vigueur** *(les blocs d'état antérieurs marqués `[HISTORIQUE]` plus haut sont remplacés par
@@ -734,7 +771,16 @@ P4-3 COMMIT                 = b312a6c
 P4-3 CI                     = 30823399148 — SUCCESS
 P4-3 TESTS                  = 1529
 P4-3                        = CLOSE
-P4-4                        = READY — NOT STARTED
+P4-4A0                      = RECORDED — b84c7e3 — CI 33411724068 SUCCESS
+P4-4A1                      = RECORDED — dc4c492 — CI 33436908075 SUCCESS
+P4-4B0                      = COMMITTED — d5a3656 — CI NOT FOUND IN REPOSITORY
+P4-4B1                      = COMMITTED — 2976401 — CI NOT FOUND IN REPOSITORY
+P4-4 TESTS                  = 1569
+P4-4 OBLIGATION O5          = DONE
+P4-4 OBLIGATIONS O2, O3, O4 = OPEN
+P4-4 RUNTIME VALIDATION     = BLOCKED BY P4-5 SCHEMA
+P4-4                        = IN PROGRESS — NOT CLOSE
+P4-5 … P4-12                = NOT STARTED
 V1 MULTI-POSTE              = NOT GO
 ```
 
@@ -746,9 +792,10 @@ V1 MULTI-POSTE              = NOT GO
 > le provider serveur est **sélectionnable dans la composition EF** ; le **démarrage applicatif sur PostgreSQL
 > reste volontairement bloqué** jusqu'à la chaîne de migrations serveur (**P4-5/P4-6**). **Aucune
 > compatibilité applicative complète n'est revendiquée** (`DateTime`, mapping monétaire, index filtrés,
-> classification d'erreurs — `PersistenceErrorMapper` **reste à porter en P4-4** —, isolation/retry restent
-> ouverts). **P4-4 est `READY — NOT STARTED`** et **P4-5 n'est pas commencée**. **La V1 multi-poste n'est pas
-> `GO`.**
+> classification d'erreurs — `PersistenceErrorMapper` **restait alors à porter en P4-4**, ce qui a depuis
+> été fait par **P4-4A1** —, isolation/retry restent ouverts). **P4-4 était `READY — NOT STARTED` à la
+> clôture de P4-3 ; elle est aujourd'hui `IN PROGRESS`** (quatre sous-lots livrés) et **P4-5 n'est pas
+> commencée**. **La V1 multi-poste n'est pas `GO`.**
 
 **Réserve d'enregistrement — LEVÉE.** La clôture enregistrée de P4-1 exigeait le commit des cinq fichiers du
 Lot D, son push sur `p4-multi-poste` et une CI verte sur le nouveau SHA exact. **Les trois conditions sont
@@ -784,10 +831,14 @@ pour la V1 multi-poste. **SQL Server Express n'est pas éliminé** — son diale
 dans le code de production. **P4-2 est `CLOSE`.** **P4-3 est `CLOSE`** : la fondation multi-provider est
 implémentée, **enregistrée par le commit `b312a6c`** et **validée par la CI `30823399148`**, verte sur le
 SHA exact (**1529** tests) ([rapport](../implementation/P4-3-multi-provider-foundation-report.md)).
-**P4-4 est `READY — NOT STARTED`** : prochaine étape officielle, **aucune implémentation engagée**.
+**P4-4 est `IN PROGRESS — NOT CLOSE`** : elle est **commencée et partiellement livrée** — `P4-4A0`
+(`b84c7e3`), `P4-4A1` (`dc4c492`), `P4-4B0` (`d5a3656`) et `P4-4B1` (`2976401`) sont commités, **1569**
+tests, **obligation ADR O5 traitée**. **Les CI de `d5a3656` et `2976401` ne sont pas enregistrées dans le
+dépôt** et ne doivent pas être supposées vertes.
 Le provider serveur est **sélectionnable dans la composition EF** ; le **démarrage applicatif sur PostgreSQL
 reste volontairement bloqué** jusqu'à la chaîne de migrations serveur (P4-5/P4-6).
-**Trois chantiers techniques restent ouverts** (`DateTime`, filtres d'index booléens PostgreSQL, mapping
-monétaire `REAL`), **`PersistenceErrorMapper` reste entièrement à porter en P4-4**, et **aucune compatibilité
+**Trois chantiers techniques restent ouverts** (`DateTime` — O4, filtres d'index booléens PostgreSQL — O3,
+mapping monétaire `REAL` — O2), **la validation PostgreSQL au runtime — dont la re-preuve des 14 primitives —
+reste due et demeure bloquée par la disponibilité du schéma serveur (P4-5)**, et **aucune compatibilité
 applicative complète n'est revendiquée**. La **V1 multi-poste n'est pas déclarée `GO`** : les 18 critères de
 sortie du §4 restent à satisfaire.
