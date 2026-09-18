@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Orders.GetOrderDetails;
@@ -65,8 +65,8 @@ public sealed class GetOrderDetailsUseCaseTests : IDisposable
         };
         var order = new Order
         {
-            OrderNumber = "CMD-000123", OrderDate = new DateTime(2024, 5, 20),
-            EstimatedDelivery = new DateTime(2024, 6, 5), Status = OrderStatus.ToFabricate,
+            OrderNumber = "CMD-000123", OrderDate = new DateTime(2024, 5, 20, 0, 0, 0, DateTimeKind.Utc),
+            EstimatedDelivery = new DateTime(2024, 6, 5, 0, 0, 0, DateTimeKind.Utc), Status = OrderStatus.ToFabricate,
             Notes = "Livraison rapide", Sale = sale,
         };
         order.OrderItems.Add(new OrderItem
@@ -102,7 +102,7 @@ public sealed class GetOrderDetailsUseCaseTests : IDisposable
         result!.Should().BeOfType<OrderDetailsDto>();
         result!.OrderNumber.Should().Be("CMD-000123");
         result.Status.Should().Be(OrderStatus.ToFabricate);
-        result.EstimatedDelivery.Should().Be(new DateTime(2024, 6, 5));
+        result.EstimatedDelivery.Should().Be(new DateTime(2024, 6, 5, 0, 0, 0, DateTimeKind.Utc));
         result.Notes.Should().Be("Livraison rapide");
 
         result.Sale.Should().NotBeNull();

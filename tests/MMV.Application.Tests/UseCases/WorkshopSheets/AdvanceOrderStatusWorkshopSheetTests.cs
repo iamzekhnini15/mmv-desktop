@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.WorkshopSheets.GenerateWorkshopSheet;
 using MMV.Application.UseCases.WorkshopSheets.ValidateWorkshopSheetQc;
@@ -8,6 +8,7 @@ using MMV.Domain.Services;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 using Xunit;
 
 namespace MMV.Application.Tests.UseCases.WorkshopSheets;
@@ -28,6 +29,7 @@ public sealed class AdvanceOrderStatusWorkshopSheetTests : WorkshopSheetTestBase
             new UnitOfWork(context),
             new EfTransactionRunner(context),
             new EfStockMutationService(context),
+            SystemClock.Instance,
             new NotificationRepository(context));
 
     private static async Task<AdvanceOrderStatusResult> AdvanceAsync(

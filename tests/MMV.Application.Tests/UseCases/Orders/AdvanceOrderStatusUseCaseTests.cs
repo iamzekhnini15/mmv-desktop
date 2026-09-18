@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
@@ -8,6 +8,7 @@ using MMV.Domain.Exceptions;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 using Xunit;
 
 namespace MMV.Application.Tests.UseCases.Orders;
@@ -81,6 +82,7 @@ public sealed class AdvanceOrderStatusUseCaseTests : IDisposable
             new UnitOfWork(context),
             new EfTransactionRunner(context),
             new EfStockMutationService(context),
+            SystemClock.Instance,
             withNotifications ? new NotificationRepository(context) : null);
     }
 
@@ -360,7 +362,8 @@ public sealed class AdvanceOrderStatusUseCaseTests : IDisposable
             new StockMovementRepository(context),
             new UnitOfWork(context),
             new EfTransactionRunner(context),
-            new EfStockMutationService(context));
+            new EfStockMutationService(context),
+            SystemClock.Instance);
 
         act.Should().Throw<ArgumentNullException>();
     }

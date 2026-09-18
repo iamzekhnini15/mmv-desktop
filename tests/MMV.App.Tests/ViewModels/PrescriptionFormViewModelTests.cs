@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -146,7 +146,7 @@ public class PrescriptionFormViewModelTests
         {
             PrescriptionId = 55,
             CustomerId = 7,
-            IssueDate = new DateTime(2025, 1, 1),
+            IssueDate = new DateOnly(2025, 1, 1),
             DoctorName = "Dr House"
         });
 
@@ -423,7 +423,7 @@ public class PrescriptionFormViewModelTests
         var update = new SpyUpdatePrescriptionUseCase(
             cmd => Task.FromResult(new UpdatePrescriptionResult { PrescriptionFound = false, PrescriptionId = cmd.PrescriptionId }));
         var vm = new PrescriptionFormViewModel(new SpyCreatePrescriptionUseCase(), update, new StubDialogService());
-        vm.LoadPrescription(new PrescriptionListItemDto { PrescriptionId = 55, CustomerId = 7, IssueDate = new DateTime(2025, 1, 1), DoctorName = "Dr House" });
+        vm.LoadPrescription(new PrescriptionListItemDto { PrescriptionId = 55, CustomerId = 7, IssueDate = new DateOnly(2025, 1, 1), DoctorName = "Dr House" });
 
         var raised = false;
         vm.PrescriptionSaved += (_, _) => raised = true;
@@ -446,7 +446,7 @@ public class PrescriptionFormViewModelTests
                 ValidationErrors = new List<ValidationError> { new("OgAxis", "L'axe est incohérent.") }
             }));
         var vm = new PrescriptionFormViewModel(new SpyCreatePrescriptionUseCase(), update, new StubDialogService());
-        vm.LoadPrescription(new PrescriptionListItemDto { PrescriptionId = 55, CustomerId = 7, IssueDate = new DateTime(2025, 1, 1), DoctorName = "Dr House" });
+        vm.LoadPrescription(new PrescriptionListItemDto { PrescriptionId = 55, CustomerId = 7, IssueDate = new DateOnly(2025, 1, 1), DoctorName = "Dr House" });
         vm.Notes = "Conservé";
 
         var raised = false;
@@ -467,7 +467,7 @@ public class PrescriptionFormViewModelTests
         // aucun blocage local fondé sur IsArchived.
         var update = new SpyUpdatePrescriptionUseCase();
         var vm = new PrescriptionFormViewModel(new SpyCreatePrescriptionUseCase(), update, new StubDialogService());
-        vm.LoadPrescription(new PrescriptionListItemDto { PrescriptionId = 55, CustomerId = 7, IssueDate = new DateTime(2025, 1, 1) });
+        vm.LoadPrescription(new PrescriptionListItemDto { PrescriptionId = 55, CustomerId = 7, IssueDate = new DateOnly(2025, 1, 1) });
 
         vm.SaveCommand.Execute(null);
         await WaitUntilAsync(() => update.ExecuteCount > 0);

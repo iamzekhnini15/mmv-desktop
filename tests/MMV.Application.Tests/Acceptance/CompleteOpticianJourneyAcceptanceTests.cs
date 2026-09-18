@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Application.UseCases.Sales.RegisterSale;
@@ -110,7 +110,7 @@ public sealed class CompleteOpticianJourneyAcceptanceTests : AcceptanceScenarioB
     {
         // --- Arrange : base migrée neuve, propre à ce test.
         var databasePath = CreateMigratedDatabase();
-        var issueDate = new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc);
+        var issueDate = new DateOnly(2026, 7, 20);
 
         long supplierId, frameId, lensOdId, lensOgId, customerId, prescriptionId;
         long saleId, orderId;

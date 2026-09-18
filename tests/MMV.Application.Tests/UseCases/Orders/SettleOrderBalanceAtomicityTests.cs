@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
@@ -7,6 +7,7 @@ using MMV.Domain.Enums;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 using Xunit;
 
 namespace MMV.Application.Tests.UseCases.Orders;
@@ -63,6 +64,7 @@ public sealed class SettleOrderBalanceAtomicityTests : IDisposable
             new SaleRepository(context),
             new UnitOfWork(context),
             new EfTransactionRunner(context),
+            SystemClock.Instance,
             new NotificationRepository(context));
 
     private static void EnsureSchema(string databasePath)
@@ -101,7 +103,7 @@ public sealed class SettleOrderBalanceAtomicityTests : IDisposable
         {
             SaleId = sale.SaleId,
             OrderNumber = "CMD-000001",
-            OrderDate = DateTime.Now,
+            OrderDate = DateTime.UtcNow,
             Status = status,
         };
         context.Orders.Add(order);

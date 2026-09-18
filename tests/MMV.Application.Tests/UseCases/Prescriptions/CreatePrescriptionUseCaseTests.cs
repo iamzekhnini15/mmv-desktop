@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
@@ -100,7 +100,7 @@ public sealed class CreatePrescriptionUseCaseTests : IDisposable
     private static CreatePrescriptionCommand SampleCommand(long customerId) => new()
     {
         CustomerId = customerId,
-        IssueDate = new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc),
+        IssueDate = new DateOnly(2026, 1, 15),
         DoctorName = "Dr House",
         OdSphere = -1.25,
         OdCylinder = -0.5,
@@ -149,7 +149,7 @@ public sealed class CreatePrescriptionUseCaseTests : IDisposable
         stored.OdPrismBase.Should().Be(PrismBase.In);
         stored.OgVisualAcuity.Should().Be("9/10");
         stored.Notes.Should().Be("Première paire");
-        stored.IssueDate.Should().Be(new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc));
+        stored.IssueDate.Should().Be(new DateOnly(2026, 1, 15));
     }
 
     // ------------------------------------------------------------------
@@ -166,7 +166,7 @@ public sealed class CreatePrescriptionUseCaseTests : IDisposable
         var command = new CreatePrescriptionCommand
         {
             CustomerId = customerId,
-            IssueDate = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
+            IssueDate = new DateOnly(2026, 2, 1),
             DoctorName = "   ", // blanc : conservé tel quel (le flux d'origine ne normalisait pas)
             Notes = string.Empty
         };
@@ -201,7 +201,7 @@ public sealed class CreatePrescriptionUseCaseTests : IDisposable
         var result = await useCase.ExecuteAsync(new CreatePrescriptionCommand
         {
             CustomerId = 1,
-            IssueDate = new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc),
+            IssueDate = new DateOnly(2026, 1, 15),
             OdSphere = 999,
             OgAxis = 90
         });
@@ -230,7 +230,7 @@ public sealed class CreatePrescriptionUseCaseTests : IDisposable
         var result = await useCase.ExecuteAsync(new CreatePrescriptionCommand
         {
             CustomerId = 1,
-            IssueDate = new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc),
+            IssueDate = new DateOnly(2026, 1, 15),
             OdSphere = value
         });
 
@@ -328,7 +328,7 @@ public sealed class CreatePrescriptionUseCaseTests : IDisposable
         var command = new CreatePrescriptionCommand
         {
             CustomerId = customerId,
-            IssueDate = new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc),
+            IssueDate = new DateOnly(2026, 1, 15),
             OdCylinder = -1.0,
             OdAxis = submittedAxis,
             OgCylinder = -0.75,
@@ -360,7 +360,7 @@ public sealed class CreatePrescriptionUseCaseTests : IDisposable
         var command = new CreatePrescriptionCommand
         {
             CustomerId = customerId,
-            IssueDate = new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc),
+            IssueDate = new DateOnly(2026, 1, 15),
             OdSphere = -1.25 // OG entièrement vide
         };
 
@@ -389,7 +389,7 @@ public sealed class CreatePrescriptionUseCaseTests : IDisposable
         var command = new CreatePrescriptionCommand
         {
             CustomerId = customerId,
-            IssueDate = new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc)
+            IssueDate = new DateOnly(2026, 1, 15)
         };
 
         CreatePrescriptionResult result;

@@ -1,6 +1,7 @@
-using MMV.Domain.Entities;
+﻿using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Infrastructure.Data;
+using MMV.Infrastructure.Services;
 
 namespace MMV.Infrastructure.Seeders;
 
@@ -213,7 +214,7 @@ public static class DbSeeder
                 LastName = "Dupont",
                 Email = "marie.dupont@example.com",
                 Phone = "+33 6 12 34 56 78",
-                BirthDate = new DateTime(1985, 3, 15),
+                BirthDate = new DateOnly(1985, 3, 15),
                 Address = "123 Rue de la Paix, 75000 Paris",
                 City = "Paris",
                 PostalCode = "75000",
@@ -226,7 +227,7 @@ public static class DbSeeder
                 LastName = "Martin",
                 Email = "jean.martin@example.com",
                 Phone = "+33 6 98 76 54 32",
-                BirthDate = new DateTime(1978, 7, 22),
+                BirthDate = new DateOnly(1978, 7, 22),
                 Address = "456 Avenue des Champs, 75008 Paris",
                 City = "Paris",
                 PostalCode = "75008",
@@ -239,7 +240,7 @@ public static class DbSeeder
                 LastName = "Bernard",
                 Email = "sophie.bernard@example.com",
                 Phone = "+33 6 45 67 89 01",
-                BirthDate = new DateTime(1990, 11, 8),
+                BirthDate = new DateOnly(1990, 11, 8),
                 Address = "789 Rue de Rivoli, 75001 Paris",
                 City = "Paris",
                 PostalCode = "75001",
@@ -258,7 +259,8 @@ public static class DbSeeder
             {
                 CustomerId = customers[0].CustomerId,
                 DoctorName = "Dr. Leclerc",
-                IssueDate = DateTime.Now.AddMonths(-6),
+                // P4-5D : date civile ⇒ DateOnly, et DateTime.Now disparaît (ADR-PROD-DB-004 §5, décisions 3 et 7).
+                IssueDate = SystemClock.Instance.LocalToday.AddMonths(-6),
                 OdSphere = -1.50,
                 OdCylinder = -0.75,
                 OdAxis = 180,
@@ -276,7 +278,7 @@ public static class DbSeeder
             {
                 CustomerId = customers[1].CustomerId,
                 DoctorName = "Dr. Moreau",
-                IssueDate = DateTime.Now.AddMonths(-3),
+                IssueDate = SystemClock.Instance.LocalToday.AddMonths(-3),
                 OdSphere = -2.00,
                 OdCylinder = -1.00,
                 OdAxis = 90,

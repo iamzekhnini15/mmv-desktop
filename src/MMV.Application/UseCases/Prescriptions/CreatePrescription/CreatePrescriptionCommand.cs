@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using MMV.Domain.Enums;
 
 namespace MMV.Application.UseCases.Prescriptions.CreatePrescription;
@@ -19,8 +19,14 @@ public sealed class CreatePrescriptionCommand
     /// <summary>Identifiant du client propriétaire de l'ordonnance.</summary>
     public long CustomerId { get; init; }
 
-    /// <summary>Date d'émission (déjà convertie en UTC par la ViewModel, comme le flux d'origine).</summary>
-    public DateTime IssueDate { get; init; }
+    /// <summary>Date d'émission de l'ordonnance — date civile.</summary>
+    /// <remarks>
+    /// P4-5D : le commentaire d'origine disait « déjà convertie en UTC par la ViewModel ». C'était
+    /// précisément la faute — <c>DateTimeOffset.UtcDateTime</c> sur une date choisie dans un sélecteur
+    /// local reculait la date d'un jour dès que l'heure locale était en avance sur UTC
+    /// (ADR-PROD-DB-004 §2.4). La ViewModel transmet désormais la date civile telle quelle.
+    /// </remarks>
+    public DateOnly IssueDate { get; init; }
 
     /// <summary>Nom du médecin prescripteur.</summary>
     public string? DoctorName { get; init; }

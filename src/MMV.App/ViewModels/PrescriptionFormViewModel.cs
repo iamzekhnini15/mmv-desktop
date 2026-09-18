@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MMV.App.Commands;
 using MMV.App.Services;
+using MMV.App.Time;
 using MMV.Application.Common;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
 using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
@@ -13,6 +14,8 @@ using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
+using MMV.Domain.Interfaces.Time;
+using MMV.Infrastructure.Services;
 
 namespace MMV.App.ViewModels;
 
@@ -81,10 +84,18 @@ public class PrescriptionFormViewModel : BaseViewModel
     private readonly IUpdatePrescriptionUseCase _updatePrescriptionUseCase;
     private readonly IDialogService _dialogService;
 
+    // P4-5D : horloge injectable (ADR-PROD-DB-004 T1). Paramètre OPTIONNEL, défaut SystemClock.Instance —
+    // même instance que celle enregistrée par le composition root. Elle sert ici à produire la DATE CIVILE du
+    // jour (IClock.LocalToday), pas un instant : la date par défaut d'une ordonnance est celle du calendrier
+    // de l'opérateur, et c'est aussi ce qui rend testable « une ordonnance créée aujourd'hui ».
+    private readonly IClock _clock;
+
     // 0 = création ; > 0 = édition d'une ordonnance existante (renseigné par LoadPrescription).
     private long _prescriptionId;
     private long _customerId;
-    private DateTimeOffset _issueDate = DateTimeOffset.Now;
+    // Initialisé dans le constructeur depuis l'horloge (était DateTimeOffset.Now, interdit par
+    // ADR-PROD-DB-004 §5, décision 5).
+    private DateTimeOffset _issueDate;
     private string _doctorName = string.Empty;
     private double? _odSphere;
     private double? _odCylinder;
@@ -351,13 +362,16 @@ public class PrescriptionFormViewModel : BaseViewModel
     public PrescriptionFormViewModel(
         ICreatePrescriptionUseCase createPrescriptionUseCase,
         IUpdatePrescriptionUseCase updatePrescriptionUseCase,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IClock? clock = null)
     {
         _createPrescriptionUseCase = createPrescriptionUseCase ?? throw new ArgumentNullException(nameof(createPrescriptionUseCase));
         _updatePrescriptionUseCase = updatePrescriptionUseCase ?? throw new ArgumentNullException(nameof(updatePrescriptionUseCase));
         // P3-3C : le refus métier « client archivé » doit être incontournable — il passe donc aussi par le mécanisme
         // de dialogue existant du dépôt, en plus du message inline.
         _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+        _clock = clock ?? SystemClock.Instance;
+        _issueDate = DatePickerCivilDate.ToPickerValue(_clock.LocalToday);
 
         SaveCommand = new RelayCommand(async () => await SavePrescriptionAsync());
         CancelCommand = new RelayCommand(ExecuteCancel);
@@ -381,7 +395,8 @@ public class PrescriptionFormViewModel : BaseViewModel
     private void ClearForm()
     {
         _prescriptionId = 0;
-        IssueDate = DateTimeOffset.Now;
+        // P4-5D : date CIVILE du jour, pas un instant local (ADR-PROD-DB-004 §5, décisions 5 et 7).
+        IssueDate = DatePickerCivilDate.ToPickerValue(_clock.LocalToday);
         DoctorName = string.Empty;
         OdSphere = null;
         OdCylinder = null;
@@ -411,7 +426,7 @@ public class PrescriptionFormViewModel : BaseViewModel
     {
         _prescriptionId = prescription.PrescriptionId;
         CustomerId = prescription.CustomerId;
-        IssueDate = new DateTimeOffset(prescription.IssueDate);
+        IssueDate = DatePickerCivilDate.ToPickerValue(prescription.IssueDate);
         DoctorName = prescription.DoctorName ?? string.Empty;
 
         OdSphere = prescription.OdSphere;
@@ -536,7 +551,7 @@ public class PrescriptionFormViewModel : BaseViewModel
         var result = await _createPrescriptionUseCase.ExecuteAsync(new CreatePrescriptionCommand
         {
             CustomerId = CustomerId,
-            IssueDate = IssueDate.UtcDateTime,
+            IssueDate = DatePickerCivilDate.ToCivilDate(IssueDate),
             DoctorName = DoctorName,
             OdSphere = OdSphere,
             OdCylinder = OdCylinder,
@@ -582,7 +597,7 @@ public class PrescriptionFormViewModel : BaseViewModel
         var result = await _updatePrescriptionUseCase.ExecuteAsync(new UpdatePrescriptionCommand
         {
             PrescriptionId = _prescriptionId,
-            IssueDate = IssueDate.UtcDateTime,
+            IssueDate = DatePickerCivilDate.ToCivilDate(IssueDate),
             DoctorName = DoctorName,
             OdSphere = OdSphere,
             OdCylinder = OdCylinder,
@@ -623,7 +638,7 @@ public class PrescriptionFormViewModel : BaseViewModel
     private Prescription BuildPrescriptionSnapshot() => new()
     {
         CustomerId = CustomerId,
-        IssueDate = IssueDate.UtcDateTime,
+        IssueDate = DatePickerCivilDate.ToCivilDate(IssueDate),
         DoctorName = DoctorName,
         OdSphere = OdSphere,
         OdCylinder = OdCylinder,

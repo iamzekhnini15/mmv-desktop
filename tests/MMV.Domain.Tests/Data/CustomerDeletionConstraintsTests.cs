@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Domain.Entities;
@@ -95,7 +95,7 @@ public sealed class CustomerDeletionConstraintsTests : IDisposable
     private static Prescription NewPrescription(long customerId) => new()
     {
         CustomerId = customerId,
-        IssueDate = DateTime.UtcNow.AddDays(-5),
+        IssueDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-5),
         DoctorName = "Dr Martin"
     };
 

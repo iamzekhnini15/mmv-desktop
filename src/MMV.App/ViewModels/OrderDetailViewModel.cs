@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -7,6 +7,8 @@ using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.Orders.GetOrderDetails;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
 using MMV.Domain.Enums;
+using MMV.Domain.Interfaces.Time;
+using MMV.Infrastructure.Services;
 
 namespace MMV.App.ViewModels;
 
@@ -227,9 +229,18 @@ public class OrderDetailViewModel : BaseViewModel
 
     #endregion
 
+    // P4-5D : horloge injectable (ADR-PROD-DB-004 T1). Paramètre OPTIONNEL, à l'image du paramètre optionnel
+    // déjà en usage dans les use cases : les ViewModels de ce dépôt sont construits à la main (navigation,
+    // code-behind), pas résolues par le conteneur, et rendre l'horloge obligatoire aurait imposé de toucher
+    // leurs sites de construction sans rien apporter au runtime. Le défaut est SystemClock.Instance —
+    // exactement l'instance que le composition root enregistre — de sorte qu'il n'existe jamais deux horloges
+    // dans le processus, tout en laissant un test fixer le temps.
+    private readonly IClock _clock;
+
     public OrderDetailViewModel(
         IAdvanceOrderStatusUseCase advanceOrderStatusUseCase,
-        ISettleOrderBalanceUseCase settleOrderBalanceUseCase)
+        ISettleOrderBalanceUseCase settleOrderBalanceUseCase,
+        IClock? clock = null)
     {
         // Use case d'avancement de statut (P2B-2E) obligatoire : le flux d'avancement est délégué à la couche
         // Application (plus de mise à jour de statut / mouvements de stock / notification directs dans la VM).
@@ -239,6 +250,7 @@ public class OrderDetailViewModel : BaseViewModel
         // P2B-2J : IOrderRepository / IUnitOfWork / INotificationRepository retirés (dépendances mortes depuis
         // P2B-2E/P2B-2G — plus aucun accès direct au repository ni à l'unité de travail dans cette VM).
         _settleOrderBalanceUseCase = settleOrderBalanceUseCase ?? throw new ArgumentNullException(nameof(settleOrderBalanceUseCase));
+        _clock = clock ?? SystemClock.Instance;
 
         AdvanceStatusCommand = new RelayCommand(async () => await AdvanceStatusAsync(), () => CanAdvanceStatus);
         BackCommand = new RelayCommand(() => BackRequested?.Invoke(this, EventArgs.Empty));
@@ -289,7 +301,12 @@ public class OrderDetailViewModel : BaseViewModel
         // Calcul du retard
         if (Order?.EstimatedDelivery.HasValue == true && CurrentStatus != OrderStatus.Delivered)
         {
-            var remaining = (Order.EstimatedDelivery!.Value - DateTime.Now).Days;
+            // P4-5D : était DateTime.Now, et c'était FAUX — EstimatedDelivery est un instant UTC relu depuis
+            // la base, que l'on soustrayait d'une heure LOCALE. Le nombre de jours restants était donc décalé
+            // du décalage horaire du poste, et pouvait basculer « en retard » une à deux heures trop tôt ou
+            // trop tard. Les deux termes de la soustraction sont désormais UTC (ADR-PROD-DB-004 §5, décision 6 :
+            // la conversion en heure locale n'a lieu qu'au FORMATAGE d'une date affichée, jamais dans un calcul).
+            var remaining = (Order.EstimatedDelivery!.Value - _clock.UtcNow).Days;
             DaysRemaining = remaining;
             IsOverdue = remaining < 0;
         }

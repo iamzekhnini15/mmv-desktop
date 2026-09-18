@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Customers.DeleteCustomer;
@@ -104,7 +104,7 @@ public sealed class DeleteCustomerUseCaseTests : IDisposable
         context.Prescriptions.Add(new Prescription
         {
             CustomerId = customerId,
-            IssueDate = DateTime.UtcNow.AddDays(-5),
+            IssueDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-5),
             DoctorName = "Dr Martin"
         });
         context.SaveChanges();

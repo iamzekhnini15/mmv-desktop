@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Sales.RegisterSale;
@@ -8,6 +8,7 @@ using MMV.Domain.Interfaces.Repositories;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 using Xunit;
 
 namespace MMV.Application.Tests.UseCases.Sales;
@@ -187,7 +188,8 @@ public sealed class RegisterSaleProductAcquisitionOrderTests : IDisposable
             new UnitOfWork(context),
             new EfTransactionRunner(context),
             new EfStockMutationService(context),
-            new EfNumberSequenceService(context));
+            new EfNumberSequenceService(context),
+            SystemClock.Instance);
 
     [Fact]
     public async Task OrdrePanierOppose_ProduitLaMemeSequenceDePrise_TrieeParProductId()

@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Notifications.GenerateLowStockNotifications;
@@ -8,6 +8,7 @@ using MMV.Domain.Enums;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 using Xunit;
 
 namespace MMV.Application.Tests.UseCases.Notifications;
@@ -59,8 +60,8 @@ public sealed class NotificationUseCasesTests : IDisposable
         using (var context = CreateContext(dbPath))
         {
             var repo = new NotificationRepository(context);
-            await repo.CreateAsync(new Notification { Type = "A", Title = "t1", Message = "m", IsRead = false });
-            await repo.CreateAsync(new Notification { Type = "B", Title = "t2", Message = "m", IsRead = false });
+            await repo.CreateAsync(new Notification { Type = "A", Title = "t1", Message = "m", IsRead = false, CreatedAt = new DateTime(2026, 9, 18, 8, 0, 0, DateTimeKind.Utc) });
+            await repo.CreateAsync(new Notification { Type = "B", Title = "t2", Message = "m", IsRead = false, CreatedAt = new DateTime(2026, 9, 18, 9, 0, 0, DateTimeKind.Utc) });
             await new UnitOfWork(context).SaveChangesAsync();
         }
 
@@ -92,7 +93,7 @@ public sealed class NotificationUseCasesTests : IDisposable
 
         using (var context = CreateContext(dbPath))
         {
-            var useCase = new GenerateLowStockNotificationsUseCase(new ProductRepository(context), new NotificationRepository(context), new UnitOfWork(context), new EfTransactionRunner(context));
+            var useCase = new GenerateLowStockNotificationsUseCase(new ProductRepository(context), new NotificationRepository(context), new UnitOfWork(context), new EfTransactionRunner(context), SystemClock.Instance);
             var first = await useCase.ExecuteAsync();
             first.CreatedCount.Should().Be(1, "un seul produit est sous son seuil d'alerte");
             first.UnreadCount.Should().Be(1);
@@ -101,7 +102,7 @@ public sealed class NotificationUseCasesTests : IDisposable
         // Deuxième exécution : anti-doublon ⇒ aucune nouvelle notification.
         using (var context = CreateContext(dbPath))
         {
-            var useCase = new GenerateLowStockNotificationsUseCase(new ProductRepository(context), new NotificationRepository(context), new UnitOfWork(context), new EfTransactionRunner(context));
+            var useCase = new GenerateLowStockNotificationsUseCase(new ProductRepository(context), new NotificationRepository(context), new UnitOfWork(context), new EfTransactionRunner(context), SystemClock.Instance);
             var second = await useCase.ExecuteAsync();
             second.CreatedCount.Should().Be(0);
         }
@@ -114,6 +115,6 @@ public sealed class NotificationUseCasesTests : IDisposable
     public void Constructors_RejectNullDependencies()
     {
         ((Action)(() => _ = new MarkAllNotificationsReadUseCase(null!, null!))).Should().Throw<ArgumentNullException>();
-        ((Action)(() => _ = new GenerateLowStockNotificationsUseCase(null!, null!, null!, null!))).Should().Throw<ArgumentNullException>();
+        ((Action)(() => _ = new GenerateLowStockNotificationsUseCase(null!, null!, null!, null!, SystemClock.Instance))).Should().Throw<ArgumentNullException>();
     }
 }

@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -154,7 +154,7 @@ public sealed class DateTimeDefaultValuesMigrationTests : IDisposable
             var prescription = new Prescription
             {
                 CustomerId = customer.CustomerId,
-                IssueDate = DateTime.UtcNow.Date
+                IssueDate = DateOnly.FromDateTime(DateTime.UtcNow)
             };
             context.Products.Add(product);
             context.Sales.Add(sale);

@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Orders.SettleOrderBalance;
@@ -8,6 +8,7 @@ using MMV.Domain.Interfaces.Repositories;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 using Xunit;
 
 namespace MMV.Application.Tests.UseCases.Orders;
@@ -79,6 +80,7 @@ public sealed class SettleOrderBalanceUseCaseTests : IDisposable
             new SaleRepository(context),
             new UnitOfWork(context),
             new EfTransactionRunner(context),
+            SystemClock.Instance,
             notificationRepository);
     }
 
@@ -315,7 +317,8 @@ public sealed class SettleOrderBalanceUseCaseTests : IDisposable
             new OrderRepository(context),
             new SaleRepository(context),
             new UnitOfWork(context),
-            transactionRunner: null!);
+            transactionRunner: null!,
+            SystemClock.Instance);
 
         act.Should().Throw<ArgumentNullException>();
     }
@@ -332,7 +335,8 @@ public sealed class SettleOrderBalanceUseCaseTests : IDisposable
             orderRepository: null!,
             new SaleRepository(context),
             new UnitOfWork(context),
-            new EfTransactionRunner(context));
+            new EfTransactionRunner(context),
+            SystemClock.Instance);
 
         act.Should().Throw<ArgumentNullException>();
     }

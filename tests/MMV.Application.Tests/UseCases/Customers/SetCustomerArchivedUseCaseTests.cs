@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Customers.SetCustomerArchived;
@@ -277,7 +277,7 @@ public sealed class SetCustomerArchivedUseCaseTests : IDisposable
             seed.Prescriptions.Add(new Prescription
             {
                 CustomerId = customerId,
-                IssueDate = DateTime.UtcNow.AddDays(-5)
+                IssueDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-5)
             });
             seed.Sales.Add(new Sale
             {

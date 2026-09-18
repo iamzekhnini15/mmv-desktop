@@ -1,4 +1,4 @@
-using MMV.Domain.Entities;
+﻿using MMV.Domain.Entities;
 
 namespace MMV.Domain.Interfaces.Repositories;
 
@@ -13,9 +13,15 @@ public interface IPrescriptionRepository : IGenericRepository<Prescription, long
     Task<IList<Prescription>> GetByCustomerIdAsync(long customerId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Récupère les ordonnances créées entre deux dates.
+    /// Récupère les ordonnances émises entre deux dates civiles, <b>bornes incluses</b>.
     /// </summary>
-    Task<IList<Prescription>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+    /// <remarks>
+    /// P4-5D : les bornes sont des <see cref="DateOnly"/> depuis que <c>Prescription.IssueDate</c> en est
+    /// un. En <c>DateTime</c>, la borne haute portait une heure implicite — un filtre « jusqu'au 31 »
+    /// excluait donc, en pratique, toutes les ordonnances du 31 après minuit. Le type supprime la
+    /// question (ADR-PROD-DB-004 §5, décision 7).
+    /// </remarks>
+    Task<IList<Prescription>> GetByDateRangeAsync(DateOnly startDate, DateOnly endDate, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Récupère la dernière ordonnance d'un client.

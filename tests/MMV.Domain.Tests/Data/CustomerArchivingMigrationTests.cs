@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -78,10 +78,20 @@ public sealed class CustomerArchivingMigrationTests : IDisposable
             "VALUES (1, 'Jean', 'Historique', $timestamp, $timestamp)",
             timestamp);
 
+        // P4-5D : IssueDate est une DATE CIVILE (DateOnly) depuis ADR-PROD-DB-004 §5 décision 7. Le type de
+        // colonne SQLite ne change pas — il reste TEXT — mais le FORMAT des valeurs change :
+        // « yyyy-MM-dd HH:mm:ss.fffffff » → « yyyy-MM-dd ». Cette fixture écrit donc désormais le format
+        // civil, comme le fera toute base après la reprise de données.
+        //
+        // <b>La reprise elle-même n'existe pas encore</b> : elle est l'obligation T5/T8, explicitement hors
+        // périmètre de P4-5D, et son absence est PROUVÉE — pas supposée — par
+        // LegacyCivilDateFormatMigrationTests, qui montre qu'une base au format historique échoue à la
+        // lecture. Voir ADR-PROD-DB-004 §7.2 : c'est le point le plus dangereux de cet ADR.
         ExecNonQuery(dbPath,
             "INSERT INTO \"Prescriptions\" (\"PrescriptionId\", \"CustomerId\", \"IssueDate\", \"CreatedAt\") " +
-            "VALUES (1, 1, $timestamp, $timestamp)",
-            timestamp);
+            "VALUES (1, 1, $issueDate, $timestamp)",
+            timestamp,
+            DateOnly.FromDateTime(timestamp).ToString("yyyy-MM-dd"));
 
         ExecNonQuery(dbPath,
             "INSERT INTO \"Sales\" (\"SaleId\", \"SaleNumber\", \"CustomerId\", \"SaleDate\", \"TotalAmount\", " +
@@ -92,7 +102,7 @@ public sealed class CustomerArchivingMigrationTests : IDisposable
         SqliteConnection.ClearAllPools();
     }
 
-    private static void ExecNonQuery(string dbPath, string sql, DateTime? timestamp = null)
+    private static void ExecNonQuery(string dbPath, string sql, DateTime? timestamp = null, string? issueDate = null)
     {
         using var connection = new SqliteConnection($"Data Source={dbPath};Pooling=False");
         connection.Open();
@@ -102,6 +112,13 @@ public sealed class CustomerArchivingMigrationTests : IDisposable
         if (timestamp.HasValue)
         {
             command.Parameters.AddWithValue("$timestamp", timestamp.Value);
+        }
+
+        if (issueDate is not null)
+        {
+            // Passé en CHAÎNE, délibérément : c'est la représentation civile « yyyy-MM-dd » telle qu'elle
+            // sera stockée, et non un DateTime que le pilote reformaterait à sa façon (P4-5D).
+            command.Parameters.AddWithValue("$issueDate", issueDate);
         }
 
         command.ExecuteNonQuery();

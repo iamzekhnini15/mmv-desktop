@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Notifications.CountUnreadNotifications;
@@ -51,9 +51,9 @@ public sealed class NotificationQueryUseCasesTests : IDisposable
     {
         using var context = CreateContext(dbPath);
         var repo = new NotificationRepository(context);
-        await repo.CreateAsync(new Notification { Type = "LowStock", Title = "Ancien", Message = "m1", IsRead = true, CreatedAt = new DateTime(2026, 1, 1) });
-        await repo.CreateAsync(new Notification { Type = "StockOut", Title = "Récent", Message = "m2", IsRead = false, CreatedAt = new DateTime(2026, 6, 1) });
-        await repo.CreateAsync(new Notification { Type = "LowStock", Title = "Milieu", Message = "m3", IsRead = false, CreatedAt = new DateTime(2026, 3, 1) });
+        await repo.CreateAsync(new Notification { Type = "LowStock", Title = "Ancien", Message = "m1", IsRead = true, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) });
+        await repo.CreateAsync(new Notification { Type = "StockOut", Title = "Récent", Message = "m2", IsRead = false, CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc) });
+        await repo.CreateAsync(new Notification { Type = "LowStock", Title = "Milieu", Message = "m3", IsRead = false, CreatedAt = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc) });
         await new UnitOfWork(context).SaveChangesAsync();
     }
 

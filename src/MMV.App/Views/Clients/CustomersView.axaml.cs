@@ -1,10 +1,11 @@
-using System.Windows.Input;
+﻿using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using MMV.App.ViewModels;
 using MMV.Application.UseCases.Customers.ListCustomers;
+using MMV.Infrastructure.Services;
 
 namespace MMV.App.Views.Clients;
 
@@ -32,7 +33,12 @@ public partial class CustomersView : UserControl
                 SocialSecurityNumber = string.Empty,
                 InsuranceName = string.Empty,
                 Notes = string.Empty,
-                CreatedAt = DateTime.Now
+                // P4-5D : était DateTime.Now. Ce DTO amorce le formulaire « nouveau client » ; sa date de
+                // création est réécrite par CreateCustomerUseCase à l'enregistrement réel. Elle n'en reste pas
+                // moins un instant, affiché et comparé avec ceux de la liste — donc UTC comme tous les autres
+                // (ADR-PROD-DB-004 §5, invariant 1). SystemClock.Instance : ce code-behind est construit par
+                // Avalonia, sans conteneur, et lit donc la MÊME instance d'horloge que le reste du processus.
+                CreatedAt = SystemClock.Instance.UtcNow
             };
             vm.IsCreatingNew = true;
             vm.IsInEditMode = true;

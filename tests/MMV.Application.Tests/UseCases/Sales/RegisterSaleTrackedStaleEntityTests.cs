@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Prescriptions.CreatePrescription;
@@ -9,6 +9,7 @@ using MMV.Domain.Services;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 using Xunit;
 
 namespace MMV.Application.Tests.UseCases.Sales;
@@ -84,7 +85,8 @@ public sealed class RegisterSaleTrackedStaleEntityTests : IDisposable
             new UnitOfWork(context),
             new EfTransactionRunner(context),
             new EfStockMutationService(context),
-            new EfNumberSequenceService(context));
+            new EfNumberSequenceService(context),
+            SystemClock.Instance);
 
     private static long SeedCustomer(string databasePath)
     {

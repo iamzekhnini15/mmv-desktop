@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
@@ -158,13 +158,19 @@ public class OrderRepository : BaseRepository<Order, long>, IOrderRepository
     }
 
     /// <summary>
-    /// Récupère les commandes en retard (dépassé la date estimée de livraison).
+    /// Récupère les commandes en retard à l'instant fourni par l'appelant.
     /// </summary>
-    public async Task<IList<Order>> GetOverdueOrdersAsync(CancellationToken cancellationToken = default)
+    /// <remarks>
+    /// P4-5D : <c>DateTime.Now</c> est retiré d'ici. La comparaison étant traduite en SQL, un instant
+    /// local y était confronté à une colonne UTC (ADR-PROD-DB-004 §2.2, décision 3b). Le convertisseur
+    /// validant du modèle s'applique aussi aux <b>paramètres</b> de requête : un <paramref name="asOfUtc"/>
+    /// non-UTC fait désormais lever <c>NonUtcDateTimeException</c> au lieu de filtrer de travers.
+    /// </remarks>
+    public async Task<IList<Order>> GetOverdueOrdersAsync(DateTime asOfUtc, CancellationToken cancellationToken = default)
     {
         return await GetQueryable()
             .Where(o => o.EstimatedDelivery.HasValue &&
-                        o.EstimatedDelivery < DateTime.Now &&
+                        o.EstimatedDelivery < asOfUtc &&
                         o.Status != OrderStatus.Delivered)
             .OrderBy(o => o.EstimatedDelivery)
             .ToListAsync(cancellationToken);

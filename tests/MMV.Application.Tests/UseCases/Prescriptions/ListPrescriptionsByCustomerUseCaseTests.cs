@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
@@ -71,7 +71,7 @@ public sealed class ListPrescriptionsByCustomerUseCaseTests : IDisposable
             context.Prescriptions.Add(new Prescription
             {
                 CustomerId = customerId,
-                IssueDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                IssueDate = new DateOnly(2026, 1, 1),
                 DoctorName = "Dr Ancien",
                 OdSphere = -1.25,
                 OdCylinder = -0.5,
@@ -86,14 +86,14 @@ public sealed class ListPrescriptionsByCustomerUseCaseTests : IDisposable
             context.Prescriptions.Add(new Prescription
             {
                 CustomerId = customerId,
-                IssueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+                IssueDate = new DateOnly(2026, 6, 1),
                 DoctorName = "Dr Récent",
             });
             // Ordonnance d'un AUTRE client : ne doit pas apparaître.
             context.Prescriptions.Add(new Prescription
             {
                 CustomerId = otherId,
-                IssueDate = new DateTime(2026, 12, 1, 0, 0, 0, DateTimeKind.Utc),
+                IssueDate = new DateOnly(2026, 12, 1),
                 DoctorName = "Dr Autre",
             });
             context.SaveChanges();

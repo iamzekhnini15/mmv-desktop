@@ -1,9 +1,10 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Infrastructure.Configuration;
 using MMV.Infrastructure.Data.Configurations;
 using MMV.Infrastructure.Data.Portability;
+using MMV.Infrastructure.Data.Time;
 
 namespace MMV.Infrastructure.Data;
 
@@ -189,6 +190,17 @@ public class OpticDbContext : DbContext
         modelBuilder.ApplyConfiguration(new StockMovementConfiguration());
         modelBuilder.ApplyConfiguration(new NotificationConfiguration());
         modelBuilder.ApplyConfiguration(new DocumentSequenceConfiguration());
+
+        // P4-5D : INVARIANT TEMPOREL UNIQUE (ADR-PROD-DB-004 §5.1 / T3). Appliqué EN DERNIER, après
+        // toutes les configurations, afin de balayer le modèle complet — y compris une propriété datée
+        // qu'une configuration future ajouterait. Écriture : lève si Kind != Utc. Lecture :
+        // SpecifyKind(Utc), ce qui supprime la divergence de Kind entre SQLite (Unspecified) et
+        // PostgreSQL (Utc). Aucune décision par provider ici : le convertisseur impose le MÊME
+        // invariant des deux côtés, de sorte que la suite SQLite détecte sans serveur une écriture que
+        // Npgsql refuserait en production. Le type physique des colonnes est inchangé : aucune
+        // migration n'est requise.
+        UtcDateTimeConverter.ApplyTo(modelBuilder);
+
         // Les données initiales (admin, etc.) sont gérées dans DbInitializer.cs
     }
 

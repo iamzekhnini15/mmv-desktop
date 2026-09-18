@@ -1,4 +1,4 @@
-using System.Data.Common;
+﻿using System.Data.Common;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +10,7 @@ using MMV.Domain.Enums;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 using Xunit;
 
 namespace MMV.Application.Tests.UseCases.Notifications;
@@ -93,7 +94,7 @@ public sealed class LowStockConcurrencyAndQueryCountTests : IDisposable
         EntityId = productId,
         EntityType = NotificationEntityTypes.Product,
         IsRead = false,
-        CreatedAt = DateTime.Now,
+        CreatedAt = DateTime.UtcNow,
     };
 
     // =========================================================================================================
@@ -161,7 +162,7 @@ public sealed class LowStockConcurrencyAndQueryCountTests : IDisposable
             for (var i = 0; i < 3; i++)
             {
                 var resolved = LowStockFor(productId);
-                resolved.ResolvedAt = DateTime.Now;
+                resolved.ResolvedAt = DateTime.UtcNow;
                 context.Notifications.Add(resolved);
             }
 
@@ -192,7 +193,7 @@ public sealed class LowStockConcurrencyAndQueryCountTests : IDisposable
                     EntityId = 42,
                     EntityType = NotificationEntityTypes.Order,
                     IsRead = false,
-                    CreatedAt = DateTime.Now,
+                    CreatedAt = DateTime.UtcNow,
                 });
             }
 
@@ -206,7 +207,7 @@ public sealed class LowStockConcurrencyAndQueryCountTests : IDisposable
                     EntityId = 42,
                     EntityType = NotificationEntityTypes.Order,
                     IsRead = false,
-                    CreatedAt = DateTime.Now,
+                    CreatedAt = DateTime.UtcNow,
                 });
             }
 
@@ -218,7 +219,7 @@ public sealed class LowStockConcurrencyAndQueryCountTests : IDisposable
                     Title = "Information",
                     Message = $"Note {i}",
                     IsRead = false,
-                    CreatedAt = DateTime.Now,
+                    CreatedAt = DateTime.UtcNow,
                 });
             }
 
@@ -325,7 +326,8 @@ public sealed class LowStockConcurrencyAndQueryCountTests : IDisposable
                 new ProductRepository(context),
                 new NotificationRepository(context),
                 new UnitOfWork(context),
-                new EfTransactionRunner(context));
+                new EfTransactionRunner(context),
+                SystemClock.Instance);
 
             var result = await useCase.ExecuteAsync();
             result.CreatedCount.Should().Be(productCount);

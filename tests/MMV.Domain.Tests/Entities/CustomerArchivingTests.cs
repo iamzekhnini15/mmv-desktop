@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using MMV.Domain.Entities;
 using Xunit;
 
@@ -67,7 +67,7 @@ public sealed class CustomerArchivingTests
     public void ArchiveAndReactivate_KeepNavigationHistoryUntouched()
     {
         var customer = new Customer { FirstName = "Jean", LastName = "Dupont" };
-        customer.Prescriptions.Add(new Prescription { IssueDate = DateTime.UtcNow });
+        customer.Prescriptions.Add(new Prescription { IssueDate = DateOnly.FromDateTime(DateTime.UtcNow) });
         customer.Sales.Add(new Sale { SaleNumber = "VTE-TEST-0001" });
 
         customer.Archive();

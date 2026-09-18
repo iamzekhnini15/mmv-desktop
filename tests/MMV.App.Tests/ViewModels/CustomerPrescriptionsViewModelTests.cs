@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -114,7 +114,7 @@ public class CustomerPrescriptionsViewModelTests
         list.Invocations.Count(i => i.Method.Name == nameof(IListPrescriptionsByCustomerUseCase.ExecuteAsync));
 
     private static PrescriptionListItemDto NewPrescription(long id = 42) =>
-        new() { PrescriptionId = id, CustomerId = 7, IssueDate = new DateTime(2026, 1, 15), DoctorName = "Dr House" };
+        new() { PrescriptionId = id, CustomerId = 7, IssueDate = new DateOnly(2026, 1, 15), DoctorName = "Dr House" };
 
     // ==================================================================
     // P3-3C — Confirmation avant suppression physique

@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Prescriptions.UpdatePrescription;
@@ -91,7 +91,7 @@ public sealed class UpdatePrescriptionUseCaseTests : IDisposable
         var prescription = new Prescription
         {
             CustomerId = customerId,
-            IssueDate = new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            IssueDate = new DateOnly(2025, 6, 1),
             DoctorName = "Dr Origine",
             OdSphere = -1.0,
             Notes = "avant",
@@ -120,7 +120,7 @@ public sealed class UpdatePrescriptionUseCaseTests : IDisposable
             result = await useCase.ExecuteAsync(new UpdatePrescriptionCommand
             {
                 PrescriptionId = prescriptionId,
-                IssueDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                IssueDate = new DateOnly(2026, 3, 10),
                 DoctorName = "Dr Modifié",
                 OdSphere = -2.5,
                 // AMENDÉ (P3-3B) : la fixture portait une base prismatique SANS valeur de prisme — la combinaison
@@ -144,7 +144,7 @@ public sealed class UpdatePrescriptionUseCaseTests : IDisposable
         stored.OdPrismValue.Should().Be(2.0);
         stored.OdPrismBase.Should().Be(PrismBase.Up);
         stored.Notes.Should().Be("après");
-        stored.IssueDate.Should().Be(new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc));
+        stored.IssueDate.Should().Be(new DateOnly(2026, 3, 10));
     }
 
     // ------------------------------------------------------------------
@@ -194,7 +194,7 @@ public sealed class UpdatePrescriptionUseCaseTests : IDisposable
             await useCase.ExecuteAsync(new UpdatePrescriptionCommand
             {
                 PrescriptionId = prescriptionId,
-                IssueDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                IssueDate = new DateOnly(2026, 3, 10),
                 DoctorName = "Dr Modifié",
                 Notes = "après"
             });
@@ -266,7 +266,7 @@ public sealed class UpdatePrescriptionUseCaseTests : IDisposable
             result = await CreateUseCase(context).ExecuteAsync(new UpdatePrescriptionCommand
             {
                 PrescriptionId = prescriptionId,
-                IssueDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                IssueDate = new DateOnly(2026, 3, 10),
                 DoctorName = "Dr Modifié",
                 OdSphere = 999,          // hors plage
                 OgPrismBase = PrismBase.In // base sans valeur de prisme
@@ -301,7 +301,7 @@ public sealed class UpdatePrescriptionUseCaseTests : IDisposable
             result = await CreateUseCase(context).ExecuteAsync(new UpdatePrescriptionCommand
             {
                 PrescriptionId = prescriptionId,
-                IssueDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                IssueDate = new DateOnly(2026, 3, 10),
                 OdSphere = value
             });
         }
@@ -328,7 +328,7 @@ public sealed class UpdatePrescriptionUseCaseTests : IDisposable
             await CreateUseCase(context).ExecuteAsync(new UpdatePrescriptionCommand
             {
                 PrescriptionId = prescriptionId,
-                IssueDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                IssueDate = new DateOnly(2026, 3, 10),
                 OdCylinder = -1.0,
                 OdAxis = 0,
                 OgCylinder = -0.75,
@@ -369,7 +369,7 @@ public sealed class UpdatePrescriptionUseCaseTests : IDisposable
             result = await CreateUseCase(context).ExecuteAsync(new UpdatePrescriptionCommand
             {
                 PrescriptionId = prescriptionId,
-                IssueDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                IssueDate = new DateOnly(2026, 3, 10),
                 DoctorName = "Dr Corrigé",
                 OdSphere = -2.0
             });
@@ -401,7 +401,7 @@ public sealed class UpdatePrescriptionUseCaseTests : IDisposable
             result = await CreateUseCase(context).ExecuteAsync(new UpdatePrescriptionCommand
             {
                 PrescriptionId = prescriptionId,
-                IssueDate = new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+                IssueDate = new DateOnly(2026, 3, 10),
                 OgSphere = -0.75 // OD entièrement vidé
             });
         }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -7,6 +7,7 @@ using MMV.Domain.Constants;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
+using MMV.Domain.Interfaces.Time;
 
 namespace MMV.Application.UseCases.Notifications.GenerateLowStockNotifications;
 
@@ -50,16 +51,24 @@ public sealed class GenerateLowStockNotificationsUseCase : IGenerateLowStockNoti
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITransactionRunner _transactionRunner;
 
+    // P4-5D : horloge injectée (ADR-PROD-DB-004 §5, décision 2). Les deux horodatages produits par ce use
+    // case — résolution d'alerte et ouverture d'alerte — sont des ÉVÉNEMENTS MÉTIER inscrits dans une base
+    // partagée entre postes : leur ordre chronologique doit être interprétable indépendamment du fuseau du
+    // poste qui les a écrits (§2.3).
+    private readonly IClock _clock;
+
     public GenerateLowStockNotificationsUseCase(
         IProductRepository productRepository,
         INotificationRepository notificationRepository,
         IUnitOfWork unitOfWork,
-        ITransactionRunner transactionRunner)
+        ITransactionRunner transactionRunner,
+        IClock clock)
     {
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
     }
 
     /// <inheritdoc />
@@ -67,6 +76,11 @@ public sealed class GenerateLowStockNotificationsUseCase : IGenerateLowStockNoti
     {
         // Fermeture et ouverture sont tout-ou-rien : une réconciliation partiellement appliquée laisserait la base
         // dans un état qu'aucune exécution ultérieure ne distinguerait d'un état normal.
+        // Un seul instant pour toute la réconciliation : les alertes fermées et les alertes ouvertes d'un
+        // même passage partagent l'horodatage de ce passage. Relire l'horloge à chaque écriture produirait
+        // des microdécalages qui feraient passer une opération atomique pour une suite d'événements.
+        var now = _clock.UtcNow;
+
         return await _transactionRunner.RunAsync(async token =>
         {
             // (1) Population cible — une seule requête, filtrée en SQL (actif ET au niveau ou sous le seuil).
@@ -85,7 +99,7 @@ public sealed class GenerateLowStockNotificationsUseCase : IGenerateLowStockNoti
             var productsToCreate = lowStockProducts.Where(p => !activeAlertIds.Contains(p.ProductId)).ToList();
 
             // (4) Fermeture : une seule mise à jour ensembliste conditionnelle pour tout le lot.
-            var resolved = await _notificationRepository.ResolveActiveLowStockAsync(idsToResolve, DateTime.Now, token);
+            var resolved = await _notificationRepository.ResolveActiveLowStockAsync(idsToResolve, now, token);
 
             // (5) Ouverture : une insertion atomique par alerte réellement manquante. Le volume d'ÉCRITURES croît
             //     légitimement avec le nombre de nouvelles alertes — c'est le coût irréductible d'une création ;
@@ -101,7 +115,7 @@ public sealed class GenerateLowStockNotificationsUseCase : IGenerateLowStockNoti
                     EntityId = product.ProductId,
                     EntityType = NotificationEntityTypes.Product,
                     IsRead = false,
-                    CreatedAt = DateTime.Now,
+                    CreatedAt = now,
                 };
 
                 // Un « false » signifie qu'un autre poste a ouvert la même alerte entre nos étapes (2) et (5) : ce

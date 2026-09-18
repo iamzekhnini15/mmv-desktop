@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -9,6 +9,7 @@ using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
+using MMV.Domain.Interfaces.Time;
 using MMV.Domain.Services;
 
 namespace MMV.Application.UseCases.Sales.RegisterSale;
@@ -105,6 +106,11 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
     private readonly IStockMutationService _stockMutationService;
     private readonly INumberSequenceService _numberSequenceService;
 
+    // P4-5D : horloge injectée (ADR-PROD-DB-004 §5, décision 2). Ce use case portait à lui seul CINQ des
+    // dix-sept DateTime.Now du dépôt — date de vente, échéance de livraison, date et échéance de la commande
+    // fournisseur, horodatage des mouvements de stock.
+    private readonly IClock _clock;
+
     public RegisterSaleUseCase(
         ISaleRepository saleRepository,
         IOrderRepository orderRepository,
@@ -114,7 +120,8 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
         IUnitOfWork unitOfWork,
         ITransactionRunner transactionRunner,
         IStockMutationService stockMutationService,
-        INumberSequenceService numberSequenceService)
+        INumberSequenceService numberSequenceService,
+        IClock clock)
     {
         _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
@@ -129,6 +136,9 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
         _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
         // Numérotation fiable obligatoire (P2A-1E, R-03).
         _numberSequenceService = numberSequenceService ?? throw new ArgumentNullException(nameof(numberSequenceService));
+        // Horloge obligatoire (P4-5D) : une vente est l'événement métier horodaté central du logiciel ; sa
+        // chronologie doit rester exacte dans une base partagée par plusieurs postes (§2.3).
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
     }
 
     /// <inheritdoc />
@@ -218,6 +228,12 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
         SalePricing pricing,
         CancellationToken cancellationToken)
     {
+        // P4-5D : UN SEUL instant pour toute la vente. Les cinq horodatages produits ici (vente, échéance,
+        // commande fournisseur, échéance fournisseur, mouvements de stock) décrivent un seul acte de gestion,
+        // écrit dans une seule transaction : cinq lectures d'horloge en auraient fait cinq événements
+        // légèrement distincts, et auraient rendu tout test daté dépendant de sa propre durée d'exécution.
+        var now = _clock.UtcNow;
+
         // --- 1) Client facultatif, mais ACTIF lorsqu'il est fourni : prise atomique DANS la transaction.
         await AcquireCustomerAsync(command.CustomerId, cancellationToken);
 
@@ -243,7 +259,7 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
         var sale = new Sale
         {
             CustomerId = command.CustomerId,
-            SaleDate = DateTime.Now,
+            SaleDate = now,
             SaleNumber = saleNumber,
             TotalAmount = pricing.TotalAmount,
             DiscountAmount = pricing.DiscountAmount,
@@ -261,7 +277,7 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
         sale.Status = hasLenses ? SaleStatus.AwaitingLenses : SaleStatus.Delivered;
         // Échéance de livraison : sémantique d'origine conservée telle quelle (pilotée par IsCounterSale). Son
         // désalignement possible avec le statut reste une dette documentée, hors périmètre P3-7.
-        sale.EstimatedDelivery = command.IsCounterSale ? DateTime.Now : DateTime.Now.AddDays(14);
+        sale.EstimatedDelivery = command.IsCounterSale ? now : now.AddDays(14);
 
         // --- 6) Lignes : TotalPrice calculé (jamais fourni), données optiques validées et canoniques.
         for (var i = 0; i < lines.Count; i++)
@@ -302,8 +318,8 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
             {
                 SaleId = sale.SaleId,
                 OrderNumber = orderNumber,
-                OrderDate = DateTime.Now,
-                EstimatedDelivery = DateTime.Now.AddDays(14),
+                OrderDate = now,
+                EstimatedDelivery = now.AddDays(14),
                 Status = OrderStatus.New,
                 Notes = $"Commande verres pour vente {sale.SaleNumber}"
             };
@@ -365,7 +381,7 @@ public sealed class RegisterSaleUseCase : IRegisterSaleUseCase
                 Reason = command.CustomerId.HasValue
                     ? $"Vente {sale.SaleNumber} - Client #{command.CustomerId.Value}"
                     : $"Vente {sale.SaleNumber} - Vente sans client",
-                CreatedAt = DateTime.Now
+                CreatedAt = now
             };
             await _stockMovementRepository.CreateAsync(stockMovement, cancellationToken);
         }

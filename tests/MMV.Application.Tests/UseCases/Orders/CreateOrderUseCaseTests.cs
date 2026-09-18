@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Orders.CreateOrder;
@@ -117,7 +117,7 @@ public sealed class CreateOrderUseCaseTests : IDisposable
         EnsureSchema(dbPath);
         var lensId = SeedProduct(dbPath, ProductCategoryEnum.VERRE, "VER-001");
 
-        var estimated = DateTime.Now.AddDays(14);
+        var estimated = DateTime.UtcNow.AddDays(14);
         CreateOrderResult result;
         using (var context = CreateContext(dbPath))
         {

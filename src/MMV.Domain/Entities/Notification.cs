@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace MMV.Domain.Entities;
 
@@ -45,9 +45,26 @@ public class Notification
     public bool IsRead { get; set; }
 
     /// <summary>
-    /// Date de création de la notification.
+    /// Date de création de la notification, en UTC.
+    ///
+    /// <para>
+    /// <b>P4-5D (revue architecte) — aucune valeur par défaut.</b> Le défaut était <c>DateTime.Now</c>,
+    /// puis <c>DateTime.UtcNow</c> ; il n'y en a désormais plus aucun. Une entité du Domain ne lit pas
+    /// l'horloge du système : l'instant est une <b>donnée d'entrée</b>, fournie par celui qui crée la
+    /// notification, et <c>required</c> le rend obligatoire <b>à la compilation</b>. Un chemin de création
+    /// qui oublierait l'horodatage ne compile pas — il ne peut plus naître silencieusement avec l'heure
+    /// locale du poste, ni avec un instant lu en dehors de la transaction courante.
+    /// </para>
+    ///
+    /// <para>
+    /// Les chemins applicatifs qui créent une notification (<c>GenerateLowStockNotifications</c>,
+    /// <c>AdvanceOrderStatus</c>, <c>SettleOrderBalance</c>) renseignent tous <c>CreatedAt</c> depuis
+    /// <c>IClock.UtcNow</c>. Le <c>Kind = Utc</c> reste imposé à la persistance par
+    /// <c>UtcDateTimeConverter</c> : <c>required</c> garantit qu'une valeur est choisie, le convertisseur
+    /// garantit qu'elle est UTC.
+    /// </para>
     /// </summary>
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public required DateTime CreatedAt { get; set; }
 
     /// <summary>
     /// Date de <b>résolution métier</b> de la notification (P3-8), ou <c>null</c> si la condition qu'elle décrit est

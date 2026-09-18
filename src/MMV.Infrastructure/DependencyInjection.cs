@@ -1,8 +1,9 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
+using MMV.Domain.Interfaces.Time;
 using MMV.Domain.Services;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
@@ -60,6 +61,12 @@ public static class DependencyInjection
         // Numérotation fiable des documents (P2A-1E, R-03) : incrément atomique conditionnel d'un compteur
         // persistant ; partage le DbContext de la portée → participe à la transaction de la vente.
         services.AddScoped<INumberSequenceService, EfNumberSequenceService>();
+
+        // Horloge injectable (P4-5D, ADR-PROD-DB-004 T1). SINGLETON — et non Scoped comme les repositories :
+        // SystemClock est sans état, ne touche ni au DbContext ni à une transaction, et il ne doit exister
+        // qu'UNE horloge dans le processus. L'instance enregistrée est celle exposée par SystemClock.Instance,
+        // de sorte que les rares chemins non injectés (code-behind Avalonia) lisent la même horloge.
+        services.AddSingleton<IClock>(SystemClock.Instance);
 
         // Services métier
         services.AddScoped<ICustomerService, CustomerService>();

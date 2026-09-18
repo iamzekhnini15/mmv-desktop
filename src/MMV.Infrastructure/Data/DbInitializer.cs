@@ -2,6 +2,7 @@
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Policies;
+using MMV.Infrastructure.Services;
 
 namespace MMV.Infrastructure.Data;
 
@@ -265,7 +266,8 @@ public static class DbInitializer
                 LastName = lastNames[i % lastNames.Length],
                 Email = $"{firstNames[i % firstNames.Length].ToLower()}.{lastNames[i % lastNames.Length].ToLower()}@email.com",
                 Phone = $"0{_random.Next(1, 10)}{_random.Next(10000000, 99999999)}",
-                BirthDate = new DateTime(birthYear, birthMonth, birthDay),
+                // P4-5D : date civile ⇒ DateOnly (ADR-PROD-DB-004 §5, décision 7).
+                BirthDate = new DateOnly(birthYear, birthMonth, birthDay),
                 Address = $"{_random.Next(1, 200)} {new[] { "Rue", "Avenue", "Boulevard", "Place" }[_random.Next(4)]} {new[] { "de la Paix", "Victor Hugo", "des Champs", "Saint-Michel", "de Rivoli", "Nationale" }[_random.Next(6)]}",
                 City = cities[_random.Next(cities.Length)],
                 PostalCode = $"{_random.Next(10, 99):D2}{_random.Next(0, 1000):D3}",
@@ -742,7 +744,9 @@ public static class DbInitializer
                 prescriptions.Add(new Prescription
                 {
                     CustomerId = customer.CustomerId,
-                    IssueDate = DateTime.UtcNow.AddMonths(-_random.Next(1, 36)).AddDays(-_random.Next(0, 30)),
+                    // P4-5D : date civile ⇒ DateOnly. Le point de départ reste la date du jour du poste,
+                    // comme avant : une ordonnance de démonstration porte une date de calendrier, pas un instant.
+                    IssueDate = SystemClock.Instance.LocalToday.AddMonths(-_random.Next(1, 36)).AddDays(-_random.Next(0, 30)),
                     DoctorName = doctors[_random.Next(doctors.Length)],
 
                     // Œil droit

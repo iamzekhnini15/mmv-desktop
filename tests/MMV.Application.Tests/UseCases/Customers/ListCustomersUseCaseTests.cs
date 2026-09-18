@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Customers.ListCustomers;
@@ -53,7 +53,7 @@ public sealed class ListCustomersUseCaseTests : IDisposable
         var dbPath = PathFor("list.db");
         EnsureSchema(dbPath);
 
-        var birth = new DateTime(1980, 5, 3);
+        var birth = new DateOnly(1980, 5, 3);
         using (var context = CreateContext(dbPath))
         {
             context.Customers.Add(new Customer

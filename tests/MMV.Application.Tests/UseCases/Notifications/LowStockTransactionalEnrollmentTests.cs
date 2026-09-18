@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Domain.Constants;
@@ -90,7 +90,7 @@ public sealed class LowStockTransactionalEnrollmentTests : IDisposable
                 EntityId = resolvingProductId,
                 EntityType = NotificationEntityTypes.Product,
                 IsRead = false,
-                CreatedAt = DateTime.Now,
+                CreatedAt = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
         }
@@ -106,7 +106,7 @@ public sealed class LowStockTransactionalEnrollmentTests : IDisposable
         EntityId = productId,
         EntityType = NotificationEntityTypes.Product,
         IsRead = false,
-        CreatedAt = DateTime.Now,
+        CreatedAt = DateTime.UtcNow,
     };
 
     [Fact]
@@ -122,7 +122,7 @@ public sealed class LowStockTransactionalEnrollmentTests : IDisposable
             var act = async () => await runner.RunAsync(async token =>
             {
                 // (1) Résolution ensembliste — ExecuteUpdateAsync, suivi EF.
-                var resolved = await repository.ResolveActiveLowStockAsync(new[] { resolvingProductId }, DateTime.Now, token);
+                var resolved = await repository.ResolveActiveLowStockAsync(new[] { resolvingProductId }, DateTime.UtcNow, token);
                 resolved.Should().Be(1, "l'alerte du produit A doit être résolue par cette étape, avant l'échec");
 
                 // (2) Création atomique — SQL brut, ExecuteSqlRawAsync, HORS suivi EF.
@@ -164,7 +164,7 @@ public sealed class LowStockTransactionalEnrollmentTests : IDisposable
 
             await runner.RunAsync(async token =>
             {
-                await repository.ResolveActiveLowStockAsync(new[] { resolvingProductId }, DateTime.Now, token);
+                await repository.ResolveActiveLowStockAsync(new[] { resolvingProductId }, DateTime.UtcNow, token);
                 await repository.TryCreateActiveLowStockAsync(LowStockFor(creatingProductId), token);
                 return true;
             });

@@ -1,4 +1,4 @@
-namespace MMV.Domain.Entities;
+﻿namespace MMV.Domain.Entities;
 
 /// <summary>
 /// Représente un client du magasin d'optique.
@@ -21,9 +21,22 @@ public class Customer
     public string LastName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Date de naissance.
+    /// Date de naissance — <b>date civile</b>, pas un instant (P4-5D / ADR-PROD-DB-004 §5, décision 7).
+    ///
+    /// <para>
+    /// Le type <see cref="DateOnly"/> exprime ce que la donnée <b>est</b>. Tant qu'elle était un
+    /// <c>DateTime</c>, toute conversion de fuseau pouvait <b>changer le jour</b> : une naissance saisie
+    /// à 00:00 locale devenait la veille à 22:00 en heure d'été française. Sur une date de naissance,
+    /// c'est une erreur métier, pas un détail de présentation (ADR-PROD-DB-004 §2.4).
+    /// </para>
+    ///
+    /// <para>
+    /// Conséquence directe : ce champ n'est <b>ni converti en UTC, ni soumis au convertisseur d'instants</b>
+    /// (<c>UtcDateTimeConverter</c>). Il est stocké <c>date</c> sur PostgreSQL et <c>TEXT yyyy-MM-dd</c>
+    /// sur SQLite.
+    /// </para>
     /// </summary>
-    public DateTime? BirthDate { get; set; }
+    public DateOnly? BirthDate { get; set; }
 
     /// <summary>
     /// Numéro de téléphone.

@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Products.ListProducts;
@@ -62,7 +62,7 @@ public sealed class ListProductsUseCaseTests : IDisposable
             {
                 Reference = "V-1", Name = "Verre X", Category = ProductCategoryEnum.VERRE,
                 Supplier = supplier, PurchasePrice = 40m, SalePrice = 100m, StockQuantity = 7,
-                StockAlertThreshold = 3, IsActive = true, EntryDate = new DateTime(2024, 1, 1),
+                StockAlertThreshold = 3, IsActive = true, EntryDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 GlassDetail = new GlassDetail
                 {
                     Material = GlassMaterial.ORGANIQUE, GlassType = GlassType.SF, Diameter = "65",
@@ -147,9 +147,9 @@ public sealed class ListProductsUseCaseTests : IDisposable
             context.SaveChanges();
 
             var sale = new Sale { SaleNumber = "S-1", FinalAmount = 20m };
-            var older = new Order { OrderNumber = "CMD-OLD", OrderDate = new DateTime(2024, 1, 1), Status = OrderStatus.Delivered, Sale = sale };
+            var older = new Order { OrderNumber = "CMD-OLD", OrderDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), Status = OrderStatus.Delivered, Sale = sale };
             older.OrderItems.Add(new OrderItem { Product = product, Quantity = 1, UnitPrice = 20m, ItemType = OrderItemType.Frame });
-            var newer = new Order { OrderNumber = "CMD-NEW", OrderDate = new DateTime(2024, 6, 1), Status = OrderStatus.Ready, Sale = sale };
+            var newer = new Order { OrderNumber = "CMD-NEW", OrderDate = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc), Status = OrderStatus.Ready, Sale = sale };
             newer.OrderItems.Add(new OrderItem { Product = product, Quantity = 2, UnitPrice = 18m, ItemType = OrderItemType.Frame });
             context.Orders.AddRange(older, newer);
             context.SaveChanges();

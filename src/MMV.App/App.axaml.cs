@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -11,6 +11,7 @@ using MMV.App.ViewModels;
 using MMV.App.Views;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
+using MMV.Domain.Interfaces.Time;
 using MMV.Domain.Services;
 using MMV.Infrastructure.Configuration;
 using MMV.Infrastructure.Data;
@@ -151,6 +152,13 @@ public partial class App : Avalonia.Application
         // Numérotation fiable des documents (P2A-1E, R-03) : incrément atomique conditionnel d'un compteur
         // persistant ; partage le DbContext de la portée → participe à la transaction de la vente.
         services.AddScoped<INumberSequenceService, EfNumberSequenceService>();
+
+        // Horloge injectable (P4-5D, ADR-PROD-DB-004 T1). SINGLETON, et non Scoped : SystemClock est sans
+        // état, ne touche ni au DbContext ni à une transaction, et il ne doit exister qu'UNE horloge dans le
+        // processus. L'instance enregistrée est SystemClock.Instance elle-même, celle que lisent les rares
+        // chemins non injectés (code-behind Avalonia, défauts de constructeur de ViewModel) — il n'y a donc
+        // jamais deux sources de temps divergentes.
+        services.AddSingleton<IClock>(SystemClock.Instance);
 
         // Couche Application (P2B-2B) : squelette créé à vide. AddApplication n'enregistre aucun use case
         // métier réel pour l'instant (aucun changement de comportement). Les use cases (premier cible :

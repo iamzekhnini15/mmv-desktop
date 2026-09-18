@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Sales.GetSaleFormReferenceData;
@@ -66,8 +66,8 @@ public sealed class GetSaleFormReferenceDataUseCaseTests : IDisposable
             customerId = customer.CustomerId;
 
             // Deux ordonnances : la plus récente (2024-06) doit être retenue.
-            context.Prescriptions.Add(new Prescription { CustomerId = customerId, IssueDate = new DateTime(2024, 1, 1), DoctorName = "Dr Ancien", OdSphere = -1.0 });
-            context.Prescriptions.Add(new Prescription { CustomerId = customerId, IssueDate = new DateTime(2024, 6, 1), DoctorName = "Dr Recent", OdSphere = -2.5 });
+            context.Prescriptions.Add(new Prescription { CustomerId = customerId, IssueDate = new DateOnly(2024, 1, 1), DoctorName = "Dr Ancien", OdSphere = -1.0 });
+            context.Prescriptions.Add(new Prescription { CustomerId = customerId, IssueDate = new DateOnly(2024, 6, 1), DoctorName = "Dr Recent", OdSphere = -2.5 });
 
             context.Products.Add(new Product
             {
@@ -136,7 +136,7 @@ public sealed class GetSaleFormReferenceDataUseCaseTests : IDisposable
             context.Customers.Add(customer);
             context.SaveChanges();
             customerId = customer.CustomerId;
-            context.Prescriptions.Add(new Prescription { CustomerId = customerId, IssueDate = new DateTime(2024, 3, 1) });
+            context.Prescriptions.Add(new Prescription { CustomerId = customerId, IssueDate = new DateOnly(2024, 3, 1) });
             context.Products.Add(new Product
             {
                 Reference = "R", Name = "N", Category = ProductCategoryEnum.MONTURE,

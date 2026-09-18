@@ -1,4 +1,4 @@
-using MMV.Domain.Entities;
+﻿using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 
 namespace MMV.Domain.Interfaces.Repositories;
@@ -89,9 +89,27 @@ public interface IOrderRepository : IGenericRepository<Order, long>
     Task<IList<Order>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Récupère les commandes en retard (dépassé la date estimée de livraison).
+    /// Récupère les commandes en retard : livraison estimée dépassée à l'instant
+    /// <paramref name="asOfUtc"/>, et non encore livrées.
     /// </summary>
-    Task<IList<Order>> GetOverdueOrdersAsync(CancellationToken cancellationToken = default);
+    /// <param name="asOfUtc">
+    /// Instant de référence, <b>fourni par l'appelant</b> et portant <see cref="DateTimeKind.Utc"/>.
+    ///
+    /// <para>
+    /// P4-5D : cette méthode lisait <c>DateTime.Now</c> pour son propre compte. C'était le deuxième site
+    /// prioritaire d'ADR-PROD-DB-004 §5 (décision 3b), et le plus insidieux : la comparaison est
+    /// <b>traduite en SQL</b>, donc un instant <see cref="DateTimeKind.Local"/> s'y trouvait confronté à
+    /// une colonne <c>timestamptz</c> — décalé d'une à deux heures selon la saison, sans aucune erreur.
+    /// </para>
+    ///
+    /// <para>
+    /// Le repository ne reçoit pas <c>IClock</c> : il est instancié directement par <c>UnitOfWork</c> et
+    /// par plus de cinquante sites de test. Rendre l'instant <b>explicite dans la signature</b> est à la
+    /// fois le plus petit changement et le plus honnête — un repository ne décide pas de l'instant
+    /// courant, son appelant le lui dit, et le test peut dès lors le fixer.
+    /// </para>
+    /// </param>
+    Task<IList<Order>> GetOverdueOrdersAsync(DateTime asOfUtc, CancellationToken cancellationToken = default);
 
     // =============================================================================================================
     // Fiche atelier (P3-6B) — agrégat strictement possédé par la commande.

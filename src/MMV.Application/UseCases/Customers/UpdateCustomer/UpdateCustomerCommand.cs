@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace MMV.Application.UseCases.Customers.UpdateCustomer;
 
@@ -29,8 +29,12 @@ public sealed class UpdateCustomerCommand
     /// <summary>Numéro de téléphone (vidé vers <c>null</c> si blanc).</summary>
     public string? Phone { get; init; }
 
-    /// <summary>Date de naissance (telle que saisie/initialisée par la ViewModel).</summary>
-    public DateTime? BirthDate { get; init; }
+    /// <summary>Date de naissance — date civile, telle que saisie par la ViewModel.</summary>
+    /// <remarks>
+    /// P4-5D : <see cref="DateOnly"/> et non <c>DateTime</c> — une date civile n'est pas un instant, et
+    /// la convertir en UTC pouvait la décaler d'un jour (ADR-PROD-DB-004 §2.4, §5 décision 7).
+    /// </remarks>
+    public DateOnly? BirthDate { get; init; }
 
     /// <summary>Adresse postale (vidée vers <c>null</c> si blanche).</summary>
     public string? Address { get; init; }

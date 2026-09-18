@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -110,8 +110,8 @@ public sealed class P2D5CustomerReadViewModelTests
         listUseCase.Setup(u => u.ExecuteAsync(It.IsAny<ListPrescriptionsByCustomerQuery>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<PrescriptionListItemDto>
             {
-                new() { PrescriptionId = 1, CustomerId = 7, IssueDate = new DateTime(2026, 1, 1), DoctorName = "Dr A" },
-                new() { PrescriptionId = 2, CustomerId = 7, IssueDate = new DateTime(2026, 6, 1), DoctorName = "Dr B" },
+                new() { PrescriptionId = 1, CustomerId = 7, IssueDate = new DateOnly(2026, 1, 1), DoctorName = "Dr A" },
+                new() { PrescriptionId = 2, CustomerId = 7, IssueDate = new DateOnly(2026, 6, 1), DoctorName = "Dr B" },
             });
 
         var vm = new CustomerPrescriptionsViewModel(

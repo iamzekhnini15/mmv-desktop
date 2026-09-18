@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MMV.Domain.Constants;
@@ -6,6 +6,7 @@ using MMV.Domain.Entities;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
+using MMV.Domain.Interfaces.Time;
 
 namespace MMV.Application.UseCases.Orders.SettleOrderBalance;
 
@@ -57,11 +58,16 @@ public sealed class SettleOrderBalanceUseCase : ISettleOrderBalanceUseCase
     private readonly ITransactionRunner _transactionRunner;
     private readonly INotificationRepository? _notificationRepository;
 
+    // P4-5D : horloge injectée (ADR-PROD-DB-004 §5, décision 2). Déclarée AVANT le paramètre optionnel
+    // existant — seule position légale pour une dépendance obligatoire.
+    private readonly IClock _clock;
+
     public SettleOrderBalanceUseCase(
         IOrderRepository orderRepository,
         ISaleRepository saleRepository,
         IUnitOfWork unitOfWork,
         ITransactionRunner transactionRunner,
+        IClock clock,
         INotificationRepository? notificationRepository = null)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
@@ -70,6 +76,9 @@ public sealed class SettleOrderBalanceUseCase : ISettleOrderBalanceUseCase
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         // Frontière transactionnelle obligatoire (P2A-1C, R-23) : le flux d'origine fait deux SaveChanges.
         _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
+        // Horloge obligatoire (P4-5D) : un encaissement est un événement métier horodaté — sa date doit
+        // être comparable à celle produite par n'importe quel autre poste (§2.3).
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         // Notification optionnelle (comme le flux d'origine) : si null, aucune notification n'est créée.
         _notificationRepository = notificationRepository;
     }
@@ -138,7 +147,8 @@ public sealed class SettleOrderBalanceUseCase : ISettleOrderBalanceUseCase
                 EntityId = fresh.OrderId,
                 EntityType = NotificationEntityTypes.Order,
                 IsRead = false,
-                CreatedAt = DateTime.Now
+                // P4-5D : était DateTime.Now — un Local, refusé par Npgsql et incomparable entre postes.
+                CreatedAt = _clock.UtcNow
             };
             await _notificationRepository.CreateAsync(notification, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);

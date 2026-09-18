@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using FluentValidation;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
@@ -52,7 +52,7 @@ public sealed class PrescriptionValidatorTests
         var prescription = new Prescription
         {
             CustomerId = 1,
-            IssueDate = DateTime.UtcNow.Date
+            IssueDate = DateOnly.FromDateTime(DateTime.UtcNow)
         };
 
         if (eye == Od)
@@ -92,7 +92,7 @@ public sealed class PrescriptionValidatorTests
         var prescription = new Prescription
         {
             CustomerId = 1,
-            IssueDate = DateTime.UtcNow.Date,
+            IssueDate = DateOnly.FromDateTime(DateTime.UtcNow),
             OdSphere = 2.5,
             OdCylinder = -1.0,
             OdAxis = 90,
@@ -110,7 +110,7 @@ public sealed class PrescriptionValidatorTests
         var prescription = new Prescription
         {
             CustomerId = 1,
-            IssueDate = DateTime.UtcNow.AddDays(3),
+            IssueDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(3),
             OdSphere = 2.5,
             OdCylinder = -1.0,
             OdAxis = 90
@@ -127,7 +127,7 @@ public sealed class PrescriptionValidatorTests
         var prescription = new Prescription
         {
             CustomerId = 1,
-            IssueDate = DateTime.UtcNow.Date,
+            IssueDate = DateOnly.FromDateTime(DateTime.UtcNow),
             OdSphere = -20.0,
             OdCylinder = -6.0,
             OdAxis = 180,
@@ -353,7 +353,7 @@ public sealed class PrescriptionValidatorTests
     public void Validate_WithNoOpticalValueAtAll_ShouldPass()
     {
         // Iso-comportement assumé (P3-3A) : aucune règle « au moins une valeur optique » n'est ajoutée en P3-3B.
-        var empty = new Prescription { CustomerId = 1, IssueDate = DateTime.UtcNow.Date };
+        var empty = new Prescription { CustomerId = 1, IssueDate = DateOnly.FromDateTime(DateTime.UtcNow) };
 
         IsValid(empty).Should().BeTrue();
     }
@@ -368,7 +368,7 @@ public sealed class PrescriptionValidatorTests
         var prescription = new Prescription
         {
             CustomerId = 1,
-            IssueDate = DateTime.UtcNow.Date,
+            IssueDate = DateOnly.FromDateTime(DateTime.UtcNow),
             DoctorName = doctorName
         };
 

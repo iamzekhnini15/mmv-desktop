@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Customers.DeleteCustomer;
@@ -95,7 +95,7 @@ public sealed class DeletePrescriptionUseCaseTests : IDisposable
         var prescription = new Prescription
         {
             CustomerId = customer.CustomerId,
-            IssueDate = new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            IssueDate = new DateOnly(2025, 6, 1),
             DoctorName = "Dr House",
             OdSphere = -1.25,
             OdCylinder = -0.75,

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace MMV.Application.UseCases.Customers.ListCustomers;
 
@@ -19,8 +19,12 @@ public sealed class CustomerListItemDto
     /// <summary>Nom de famille du client.</summary>
     public string LastName { get; init; } = string.Empty;
 
-    /// <summary>Date de naissance.</summary>
-    public DateTime? BirthDate { get; init; }
+    /// <summary>Date de naissance — date civile.</summary>
+    /// <remarks>
+    /// P4-5D : <see cref="DateOnly"/> et non <c>DateTime</c> — une date civile n'est pas un instant, et
+    /// la convertir en UTC pouvait la décaler d'un jour (ADR-PROD-DB-004 §2.4, §5 décision 7).
+    /// </remarks>
+    public DateOnly? BirthDate { get; init; }
 
     /// <summary>Numéro de téléphone.</summary>
     public string? Phone { get; init; }

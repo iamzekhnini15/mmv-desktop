@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,6 +8,7 @@ using MMV.Domain.Enums;
 using MMV.Domain.Exceptions;
 using MMV.Domain.Interfaces.Persistence;
 using MMV.Domain.Interfaces.Repositories;
+using MMV.Domain.Interfaces.Time;
 using MMV.Domain.Services;
 using MMV.Application.UseCases.WorkshopSheets;
 
@@ -54,12 +55,17 @@ public sealed class AdvanceOrderStatusUseCase : IAdvanceOrderStatusUseCase
     private readonly IStockMutationService _stockMutationService;
     private readonly INotificationRepository? _notificationRepository;
 
+    // P4-5D : horloge injectée (ADR-PROD-DB-004 §5, décision 2). Déclarée AVANT le paramètre optionnel
+    // existant — seule position légale pour une dépendance obligatoire.
+    private readonly IClock _clock;
+
     public AdvanceOrderStatusUseCase(
         IOrderRepository orderRepository,
         IStockMovementRepository stockMovementRepository,
         IUnitOfWork unitOfWork,
         ITransactionRunner transactionRunner,
         IStockMutationService stockMutationService,
+        IClock clock,
         INotificationRepository? notificationRepository = null)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
@@ -69,6 +75,9 @@ public sealed class AdvanceOrderStatusUseCase : IAdvanceOrderStatusUseCase
         _transactionRunner = transactionRunner ?? throw new ArgumentNullException(nameof(transactionRunner));
         // Décrément de stock sûr obligatoire (P2A-1D, R-09) : la fabrication ne peut plus rendre le stock négatif.
         _stockMutationService = stockMutationService ?? throw new ArgumentNullException(nameof(stockMutationService));
+        // Horloge obligatoire (P4-5D) : la transition de statut d'une commande est un événement métier
+        // horodaté dans une base partagée — sa chronologie doit rester lisible entre postes (§2.3).
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         // Notification optionnelle (comme le flux d'origine) : si null, aucune notification n'est créée.
         _notificationRepository = notificationRepository;
     }
@@ -187,7 +196,8 @@ public sealed class AdvanceOrderStatusUseCase : IAdvanceOrderStatusUseCase
                     EntityId = fresh.OrderId,
                     EntityType = NotificationEntityTypes.Order,
                     IsRead = false,
-                    CreatedAt = DateTime.Now
+                    // P4-5D : était DateTime.Now — un Local, refusé par Npgsql et incomparable entre postes.
+                    CreatedAt = _clock.UtcNow
                 };
                 await _notificationRepository.CreateAsync(notification, token);
                 hasNotification = true;
@@ -318,7 +328,10 @@ public sealed class AdvanceOrderStatusUseCase : IAdvanceOrderStatusUseCase
                 MovementType = StockMovementType.Out,
                 Quantity = -item.Quantity, // sortie ⇒ delta négatif (convention P3-5).
                 Reason = $"Fabrication commande {order.OrderNumber}",
-                CreatedAt = DateTime.UtcNow,
+                // P4-5D : déjà UTC, désormais lu depuis l'horloge injectée — un seul temps pour tout le
+                // flux, donc le mouvement de stock et la notification d'une même transition partagent leur
+                // référence temporelle, et le scénario redevient déterministe en test.
+                CreatedAt = _clock.UtcNow,
             };
 
             await _stockMovementRepository.CreateAsync(movement, cancellationToken);

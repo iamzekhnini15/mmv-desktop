@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MMV.Domain.Entities;
 using MMV.Domain.Interfaces.Repositories;
 using MMV.Infrastructure.Data;
@@ -34,9 +34,10 @@ public class PrescriptionRepository : BaseRepository<Prescription, long>, IPresc
     }
 
     /// <summary>
-    /// Récupère les ordonnances créées entre deux dates.
+    /// Récupère les ordonnances émises entre deux dates civiles, bornes incluses.
     /// </summary>
-    public async Task<IList<Prescription>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+    /// <remarks>P4-5D : bornes en <see cref="DateOnly"/> — cf. <c>IPrescriptionRepository</c>.</remarks>
+    public async Task<IList<Prescription>> GetByDateRangeAsync(DateOnly startDate, DateOnly endDate, CancellationToken cancellationToken = default)
     {
         return await GetQueryable()
             .Where(p => p.IssueDate >= startDate && p.IssueDate <= endDate)

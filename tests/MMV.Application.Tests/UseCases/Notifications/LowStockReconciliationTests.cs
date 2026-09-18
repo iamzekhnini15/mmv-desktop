@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Notifications.CountUnreadNotifications;
@@ -11,6 +11,7 @@ using MMV.Domain.Enums;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 using Xunit;
 
 namespace MMV.Application.Tests.UseCases.Notifications;
@@ -94,7 +95,8 @@ public sealed class LowStockReconciliationTests : IDisposable
             new ProductRepository(context),
             new NotificationRepository(context),
             new UnitOfWork(context),
-            new EfTransactionRunner(context));
+            new EfTransactionRunner(context),
+            SystemClock.Instance);
         return await useCase.ExecuteAsync();
     }
 
@@ -290,7 +292,7 @@ public sealed class LowStockReconciliationTests : IDisposable
                 EntityId = 999_999,
                 EntityType = NotificationEntityTypes.Product,
                 IsRead = false,
-                CreatedAt = DateTime.Now,
+                CreatedAt = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
         }
@@ -451,7 +453,7 @@ public sealed class LowStockReconciliationTests : IDisposable
                 EntityId = 1,
                 EntityType = NotificationEntityTypes.Order,
                 IsRead = false,
-                CreatedAt = DateTime.Now,
+                CreatedAt = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
         }

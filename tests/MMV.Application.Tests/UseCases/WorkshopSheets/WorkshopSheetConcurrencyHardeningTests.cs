@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
 using MMV.Application.UseCases.WorkshopSheets.ValidateWorkshopSheetQc;
 using MMV.Domain.Entities;
@@ -9,6 +9,7 @@ using MMV.Domain.Services;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 using Xunit;
 
 namespace MMV.Application.Tests.UseCases.WorkshopSheets;
@@ -39,6 +40,7 @@ public sealed class WorkshopSheetConcurrencyHardeningTests : WorkshopSheetTestBa
             new UnitOfWork(context),
             new EfTransactionRunner(context),
             new EfStockMutationService(context),
+            SystemClock.Instance,
             new NotificationRepository(context));
 
     private static AdvanceOrderStatusCommand ReadyCommand(long orderId) => new()
@@ -479,8 +481,8 @@ public sealed class WorkshopSheetConcurrencyHardeningTests : WorkshopSheetTestBa
         public Task<IList<Order>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
             => _inner.GetByDateRangeAsync(startDate, endDate, cancellationToken);
 
-        public Task<IList<Order>> GetOverdueOrdersAsync(CancellationToken cancellationToken = default)
-            => _inner.GetOverdueOrdersAsync(cancellationToken);
+        public Task<IList<Order>> GetOverdueOrdersAsync(DateTime asOfUtc, CancellationToken cancellationToken = default)
+            => _inner.GetOverdueOrdersAsync(asOfUtc, cancellationToken);
 
         public Task<WorkshopSheet?> GetWorkshopSheetAsync(long workshopSheetId, CancellationToken cancellationToken = default)
             => _inner.GetWorkshopSheetAsync(workshopSheetId, cancellationToken);

@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using FluentValidation;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
@@ -56,8 +56,15 @@ public class PrescriptionValidator : AbstractValidator<Prescription>
     {
         // Borne évaluée à CHAQUE validation (lambda) et non figée à la construction : une instance partagée ou
         // enregistrée en singleton aurait sinon gelé la date limite au démarrage du processus.
+        //
+        // P4-5D : IssueDate est une DATE CIVILE (DateOnly), plus un instant. La borne se calcule donc en
+        // dates civiles, et la tolérance « +1 jour » garde exactement le sens qu'elle avait : absorber
+        // l'écart de fuseau entre le poste de saisie et la référence, sans autoriser une ordonnance
+        // franchement future. Le validateur ne reçoit pas IClock : FluentValidation construit ses règles
+        // sans conteneur, et cette borne n'est pas un horodatage métier persisté — c'est une garde de
+        // saisie (ADR-PROD-DB-004 §5, décisions 2 et 7).
         RuleFor(p => p.IssueDate)
-            .LessThanOrEqualTo(_ => DateTime.UtcNow.AddDays(1));
+            .LessThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1));
 
         AddEyeRules(
             p => p.OdSphere, p => p.OdCylinder, p => p.OdAxis,

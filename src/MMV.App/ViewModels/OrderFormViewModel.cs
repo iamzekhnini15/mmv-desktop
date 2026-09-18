@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -13,6 +13,8 @@ using MMV.Application.UseCases.Prescriptions.ListPrescriptionsByCustomer;
 using MMV.Application.UseCases.Products.ListProductsForOrderPicker;
 using MMV.Domain.Enums;
 using MMV.Domain.Interfaces.Persistence;
+using MMV.Domain.Interfaces.Time;
+using MMV.Infrastructure.Services;
 
 namespace MMV.App.ViewModels;
 
@@ -236,6 +238,14 @@ public class OrderFormViewModel : BaseViewModel
     private readonly ICreateOrderUseCase _createOrderUseCase;
     private readonly IUpdateOrderUseCase _updateOrderUseCase;
 
+    // P4-5D : horloge injectable (ADR-PROD-DB-004 T1). Paramètre OPTIONNEL, à l'image du paramètre optionnel
+    // déjà en usage dans les use cases : les ViewModels de ce dépôt sont construites à la main (navigation,
+    // code-behind), pas résolues par le conteneur, et rendre l'horloge obligatoire aurait imposé de toucher
+    // leurs sites de construction sans rien apporter au runtime. Le défaut est SystemClock.Instance —
+    // exactement l'instance que le composition root enregistre — de sorte qu'il n'existe jamais deux horloges
+    // dans le processus, tout en laissant un test fixer le temps.
+    private readonly IClock _clock;
+
     // Client
     private ObservableCollection<CustomerPickerItemDto> _allCustomers = new();
     private ObservableCollection<CustomerPickerItemDto> _filteredCustomers = new();
@@ -393,7 +403,8 @@ public class OrderFormViewModel : BaseViewModel
         INumberSequenceService numberSequenceService,
         ICreateOrderUseCase createOrderUseCase,
         IUpdateOrderUseCase updateOrderUseCase,
-        OrderDetailsDto? existingOrder = null)
+        OrderDetailsDto? existingOrder = null,
+        IClock? clock = null)
     {
         // P2D-6 : les lectures de référence (clients, produits, ordonnances) passent par des query use cases
         // Application renvoyant des DTO plats — plus aucun repository injecté dans ce formulaire.
@@ -408,6 +419,7 @@ public class OrderFormViewModel : BaseViewModel
         // Use case d'édition (P2B-2I) obligatoire : la persistance de la modification d'une commande existante est
         // déléguée à la couche Application ; la ViewModel ne met plus à jour/sauvegarde directement la commande.
         _updateOrderUseCase = updateOrderUseCase ?? throw new ArgumentNullException(nameof(updateOrderUseCase));
+        _clock = clock ?? SystemClock.Instance;
         _existingOrder = existingOrder;
         _isEditMode = existingOrder != null;
 
@@ -429,7 +441,10 @@ public class OrderFormViewModel : BaseViewModel
         };
 
         Title = _isEditMode ? "Modifier la Commande" : "Nouvelle Commande";
-        EstimatedDelivery = DateTime.Now.AddDays(14);
+        // P4-5D : était DateTime.Now.AddDays(14). Cette valeur n'est pas décorative — elle part dans
+        // CreateOrderCommand/UpdateOrderCommand puis dans la colonne Order.EstimatedDelivery. En Local, Npgsql
+        // l'aurait purement et simplement REFUSÉE à l'écriture (ADR-PROD-DB-004 §2.1).
+        EstimatedDelivery = _clock.UtcNow.AddDays(14);
     }
 
     /// <summary>

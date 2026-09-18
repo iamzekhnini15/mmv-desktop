@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Orders.UpdateOrder;
@@ -121,7 +121,7 @@ public sealed class UpdateOrderUseCaseTests : IDisposable
         var order = new Order
         {
             OrderNumber = "CMD-000100",
-            EstimatedDelivery = new DateTime(2026, 1, 1),
+            EstimatedDelivery = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             Notes = "Notes initiales",
             Status = status,
             SaleId = sale.SaleId,
@@ -151,7 +151,7 @@ public sealed class UpdateOrderUseCaseTests : IDisposable
             o.OrderItems.Add(new OrderItem { ProductId = oldFrameId, ItemType = OrderItemType.Accessory, Quantity = 2, UnitPrice = 5m });
         });
 
-        var newEstimated = new DateTime(2026, 3, 15);
+        var newEstimated = new DateTime(2026, 3, 15, 0, 0, 0, DateTimeKind.Utc);
         UpdateOrderResult result;
         using (var context = CreateContext(dbPath))
         {

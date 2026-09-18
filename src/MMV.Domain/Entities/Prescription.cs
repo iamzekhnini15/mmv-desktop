@@ -1,4 +1,4 @@
-using MMV.Domain.Enums;
+﻿using MMV.Domain.Enums;
 
 namespace MMV.Domain.Entities;
 
@@ -18,9 +18,21 @@ public class Prescription
     public long CustomerId { get; set; }
 
     /// <summary>
-    /// Date d'émission de l'ordonnance.
+    /// Date d'émission de l'ordonnance — <b>date civile</b>, pas un instant
+    /// (P4-5D / ADR-PROD-DB-004 §5, décision 7).
+    ///
+    /// <para>
+    /// Même raisonnement que <c>Customer.BirthDate</c> : la date portée par une ordonnance est celle du
+    /// calendrier du prescripteur. La traiter comme un instant UTC pouvait la décaler d'un jour, sur une
+    /// donnée de santé horodatée dont la traçabilité est exigée (ADR-PROD-DB-004 §2.3, §2.4).
+    /// </para>
+    ///
+    /// <para>
+    /// Non soumise au convertisseur d'instants : stockée <c>date</c> sur PostgreSQL,
+    /// <c>TEXT yyyy-MM-dd</c> sur SQLite.
+    /// </para>
     /// </summary>
-    public DateTime IssueDate { get; set; }
+    public DateOnly IssueDate { get; set; }
 
     /// <summary>
     /// Nom du médecin prescripteur.

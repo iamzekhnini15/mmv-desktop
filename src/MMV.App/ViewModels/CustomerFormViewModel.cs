@@ -1,5 +1,6 @@
-using System.Windows.Input;
+﻿using System.Windows.Input;
 using MMV.App.Commands;
+using MMV.App.Time;
 using MMV.Application.UseCases.Customers.CreateCustomer;
 using MMV.Application.UseCases.Customers.ListCustomers;
 using MMV.Application.UseCases.Customers.UpdateCustomer;
@@ -89,6 +90,10 @@ public class CustomerFormViewModel : BaseViewModel
         }
     }
 
+    // P4-5D : le type reste DateTimeOffset? — c'est ce que le DatePicker d'Avalonia sait lier, et lui seul.
+    // La frontière avec le Domain (DateOnly?) est franchie par DatePickerCivilDate, jamais par .UtcDateTime :
+    // cette dernière décalait la date d'un jour dès que l'heure locale était en avance sur UTC
+    // (ADR-PROD-DB-004 §2.4, obligation T6).
     private DateTimeOffset? _birthDate;
     public DateTimeOffset? BirthDate
     {
@@ -247,7 +252,7 @@ public class CustomerFormViewModel : BaseViewModel
         LastName = customer.LastName;
         Email = customer.Email ?? string.Empty;
         Phone = customer.Phone ?? string.Empty;
-        BirthDate = customer.BirthDate.HasValue ? new DateTimeOffset(customer.BirthDate.Value) : null;
+        BirthDate = DatePickerCivilDate.ToPickerValue(customer.BirthDate);
         Address = customer.Address ?? string.Empty;
         City = customer.City ?? string.Empty;
         PostalCode = customer.PostalCode ?? string.Empty;
@@ -376,7 +381,7 @@ public class CustomerFormViewModel : BaseViewModel
                     LastName = LastName,
                     Email = Email,
                     Phone = Phone,
-                    BirthDate = BirthDate?.UtcDateTime,
+                    BirthDate = DatePickerCivilDate.ToCivilDate(BirthDate),
                     Address = Address,
                     City = City,
                     PostalCode = PostalCode,
@@ -404,7 +409,7 @@ public class CustomerFormViewModel : BaseViewModel
                     LastName = LastName,
                     Email = Email,
                     Phone = Phone,
-                    BirthDate = BirthDate?.UtcDateTime,
+                    BirthDate = DatePickerCivilDate.ToCivilDate(BirthDate),
                     Address = Address,
                     City = City,
                     PostalCode = PostalCode,
@@ -440,7 +445,7 @@ public class CustomerFormViewModel : BaseViewModel
         LastName = LastName,
         Email = string.IsNullOrWhiteSpace(Email) ? null : Email,
         Phone = string.IsNullOrWhiteSpace(Phone) ? null : Phone,
-        BirthDate = BirthDate?.UtcDateTime,
+        BirthDate = DatePickerCivilDate.ToCivilDate(BirthDate),
         Address = string.IsNullOrWhiteSpace(Address) ? null : Address,
         City = string.IsNullOrWhiteSpace(City) ? null : City,
         PostalCode = string.IsNullOrWhiteSpace(PostalCode) ? null : PostalCode,

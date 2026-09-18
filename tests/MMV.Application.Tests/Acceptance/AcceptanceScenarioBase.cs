@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Customers.CreateCustomer;
@@ -18,6 +18,7 @@ using MMV.Infrastructure.Configuration;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 
 namespace MMV.Application.Tests.Acceptance;
 
@@ -178,7 +179,8 @@ public sealed class AcceptanceScope : IAsyncDisposable
             unitOfWork,
             transactionRunner,
             stockMutationService,
-            numberSequenceService);
+            numberSequenceService,
+            SystemClock.Instance);
 
         AdvanceOrderStatus = new AdvanceOrderStatusUseCase(
             orderRepository,
@@ -186,6 +188,7 @@ public sealed class AcceptanceScope : IAsyncDisposable
             unitOfWork,
             transactionRunner,
             stockMutationService,
+            SystemClock.Instance,
             notificationRepository);
 
         SettleOrderBalance = new SettleOrderBalanceUseCase(
@@ -193,6 +196,7 @@ public sealed class AcceptanceScope : IAsyncDisposable
             saleRepository,
             unitOfWork,
             transactionRunner,
+            SystemClock.Instance,
             notificationRepository);
 
         GetCurrentWorkshopSheet = new GetCurrentWorkshopSheetUseCase(orderRepository);
@@ -325,7 +329,7 @@ public static class AcceptanceActs
         return result.CustomerId;
     }
 
-    public static async Task<long> CreerOrdonnanceAsync(AcceptanceScope scope, long customerId, DateTime issueDate)
+    public static async Task<long> CreerOrdonnanceAsync(AcceptanceScope scope, long customerId, DateOnly issueDate)
     {
         var result = await scope.CreatePrescription.ExecuteAsync(new CreatePrescriptionCommand
         {

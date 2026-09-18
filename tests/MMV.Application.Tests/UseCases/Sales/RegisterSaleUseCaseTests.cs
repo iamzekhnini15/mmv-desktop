@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MMV.Application.UseCases.Orders.AdvanceOrderStatus;
@@ -10,6 +10,7 @@ using MMV.Domain.Interfaces.Persistence;
 using MMV.Infrastructure.Data;
 using MMV.Infrastructure.Persistence;
 using MMV.Infrastructure.Repositories;
+using MMV.Infrastructure.Services;
 using Xunit;
 
 namespace MMV.Application.Tests.UseCases.Sales;
@@ -84,7 +85,8 @@ public sealed class RegisterSaleUseCaseTests : IDisposable
             unitOfWork,
             new EfTransactionRunner(context),
             new EfStockMutationService(context),
-            new EfNumberSequenceService(context));
+            new EfNumberSequenceService(context),
+            SystemClock.Instance);
     }
 
     /// <summary>Crée la base (schéma + seed HasData des séquences SALE/ORDER).</summary>
@@ -320,7 +322,8 @@ public sealed class RegisterSaleUseCaseTests : IDisposable
             unitOfWork,
             null!, // ITransactionRunner absent : dépendance critique (P2A-1C, R-23)
             new EfStockMutationService(context),
-            new EfNumberSequenceService(context));
+            new EfNumberSequenceService(context),
+            SystemClock.Instance);
 
         act.Should().Throw<ArgumentNullException>();
     }
@@ -468,6 +471,7 @@ public sealed class RegisterSaleUseCaseTests : IDisposable
             new UnitOfWork(context),
             new EfTransactionRunner(context),
             new EfStockMutationService(context),
+            SystemClock.Instance,
             new NotificationRepository(context));
 
         await useCase.ExecuteAsync(new AdvanceOrderStatusCommand

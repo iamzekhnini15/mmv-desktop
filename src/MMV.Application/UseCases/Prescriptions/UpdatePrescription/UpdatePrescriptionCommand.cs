@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using MMV.Domain.Enums;
 
 namespace MMV.Application.UseCases.Prescriptions.UpdatePrescription;
@@ -17,8 +17,12 @@ public sealed class UpdatePrescriptionCommand
     /// <summary>Identifiant de l'ordonnance à modifier.</summary>
     public long PrescriptionId { get; init; }
 
-    /// <summary>Date d'émission (déjà convertie en UTC par la ViewModel).</summary>
-    public DateTime IssueDate { get; init; }
+    /// <summary>Date d'émission de l'ordonnance — date civile.</summary>
+    /// <remarks>
+    /// P4-5D : <see cref="DateOnly"/> et non <c>DateTime</c> — une date civile n'est pas un instant, et
+    /// la convertir en UTC pouvait la décaler d'un jour (ADR-PROD-DB-004 §2.4, §5 décision 7).
+    /// </remarks>
+    public DateOnly IssueDate { get; init; }
 
     /// <summary>Nom du médecin prescripteur.</summary>
     public string? DoctorName { get; init; }
