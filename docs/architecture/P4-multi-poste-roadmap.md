@@ -599,7 +599,7 @@ se termine par **commit + CI verte sur le SHA exact**.
 | **P4-5B** | **Décisions d'architecture** — 6 ADR créées et acceptées ([rapport](../implementation/P4-5B-postgresql-architecture-decisions-report.md)) | — | P4-5A | **COMPLETE — ADRs ACCEPTED** |
 | **P4-5C** | **Neutralisation du modèle** : `HasPrecision(12,2)` + point de sélection monétaire unique, filtre d'index sélectionné par provider, retrait des **18** littéraux `"REAL"` optiques | [003](adr-prod-db-003-money-persistence.md), [006](adr-prod-db-006-index-and-model-portability.md) | P4-5B | **NOT STARTED** |
 | **P4-5D** | **Stratégie temporelle** : `IClock`, UTC partout, convertisseur validant, test d'architecture, `DateOnly` + **migration de données écrite à la main** | [004](adr-prod-db-004-datetime-strategy.md) | P4-5B | **NOT STARTED** |
-| **P4-5D-R** | **Préparation de la reprise des données de dates civiles** — `Customer.BirthDate` et `Prescription.IssueDate`. Le passage à `DateOnly` change le **format** des valeurs `TEXT` SQLite (`yyyy-MM-dd HH:mm:ss[.fffffff]` → `yyyy-MM-dd`) **sans qu'EF ne détecte le moindre changement de schéma** : `has-pending-model-changes` reste vert et **aucune migration n'est générée automatiquement**. Toute base antérieure à P4-5D lève donc `FormatException` à la lecture d'un client ou d'une ordonnance. La reprise attendue est une **troncature**, jamais une conversion de fuseau, et elle est exprimable en SQL pur — sa spécification exécutable existe déjà dans `LegacyCivilDateFormatTests` (P4-5D). | [004](adr-prod-db-004-datetime-strategy.md) | P4-5D | **NOT STARTED — BLOQUE LE DÉPLOIEMENT SUR BASE EXISTANTE** |
+| **P4-5D-R** | **Préparation de la reprise des données de dates civiles** — `Customer.BirthDate` et `Prescription.IssueDate`. Le passage à `DateOnly` change le **format** des valeurs `TEXT` SQLite (`yyyy-MM-dd HH:mm:ss[.fffffff]` → `yyyy-MM-dd`) **sans qu'EF ne détecte le moindre changement de schéma** : `has-pending-model-changes` reste vert et **aucune migration n'est générée automatiquement**. Toute base antérieure à P4-5D lève donc `FormatException` à la lecture d'un client ou d'une ordonnance. La reprise attendue est une **troncature**, jamais une conversion de fuseau, et elle est exprimable en SQL pur — sa spécification exécutable existe déjà dans `LegacyCivilDateFormatTests` (P4-5D). | [004](adr-prod-db-004-datetime-strategy.md) | P4-5D | **COMPLETED** — `45f67a2` ([rapport](../implementation/P4-5D-R-final-implementation-report.md)) — reprise au démarrage ; **RR4 : `dryRun` sur une copie de base de production requis avant déploiement** |
 | **P4-5E** | **Chaîne de migrations PostgreSQL** + factory design-time sélective + **double contrôle de dérive en CI** | [005](adr-prod-db-005-migration-architecture.md), [007](adr-prod-db-007-schema-drift-prevention.md) | P4-5C, P4-5D | **NOT STARTED** |
 | **P4-5F** | **Tests d'intégration PostgreSQL** : projet dans `MMV.sln`, job CI avec serveur, corpus **N1 … N8** | [007](adr-prod-db-007-schema-drift-prevention.md), [008](adr-prod-db-008-postgresql-integration-testing.md) | P4-5E | **NOT STARTED** |
 | **P4-5G** | **Levée du garde-fou de démarrage** ([App.axaml.cs:198](../../src/MMV.App/App.axaml.cs#L198)) + chaîne de préparation serveur — **uniquement après P4-5F vert** | toutes | P4-5F | **NOT STARTED** |
@@ -815,7 +815,7 @@ P4-5B ADRs                  = ADR-PROD-DB-003 … 008
 P4-5 OBLIGATIONS O2, O3, O4 = DECIDED — NOT IMPLEMENTED
 P4-5 OBLIGATION O7          = DECIDED — NOT IMPLEMENTED
 P4-5C … P4-5G               = NOT STARTED
-P4-5D-R CIVIL DATE REPRISE  = NOT STARTED — BLOCKS DEPLOYMENT ON EXISTING DB
+P4-5D-R CIVIL DATE REPRISE  = COMPLETED — 45f67a2 — RR4 DRYRUN ON PROD COPY REQUIRED BEFORE DEPLOYMENT
 P4-5                        = IN PROGRESS — NOT CLOSE
 POSTGRESQL CLEAN START      = BLOCKED
 P4-6 … P4-12                = NOT STARTED
@@ -901,11 +901,14 @@ sortie du §4 restent à satisfaire.
 ## P4-5D-R Civil Date Migration Preparation
 
 Status:
-READY FOR ARCHITECT REVIEW
+COMPLETED
+
+Commit:
+45f67a270d926996f8cd5cd3f7b53baada030c39
 
 
 Objective:
-Prepare safe migration of existing SQLite civil date values before deployment.
+Preparation of safe migration of historical SQLite civil date values before PostgreSQL deployment.
 
 
 Scope:
@@ -913,5 +916,38 @@ Customer.BirthDate
 Prescription.IssueDate
 
 
+Completed:
+
+- Legacy civil date format classification
+- Safe repair strategy
+- Invalid value protection
+- Sensitive logging protection
+- Automated test validation
+
+
 No EF migration created.
 No schema change.
+
+
+Validation:
+
+Tests:
+1915 / 1915 PASS
+
+Build:
+0 error
+0 warning
+
+CI:
+not recorded — `45f67a2` is not pushed yet (`origin/p4-multi-poste` = `2976401`)
+
+
+Remaining limitation:
+
+RR4:
+A dryRun must be executed on a copy of a real production database before deployment.
+
+
+Reports:
+[final implementation report](../implementation/P4-5D-R-final-implementation-report.md) ·
+[closure report](../implementation/P4-5D-R-closure-report.md)
