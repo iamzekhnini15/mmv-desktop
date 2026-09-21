@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using MMV.Domain.Constants;
+using MMV.Infrastructure.Data.Time;
 
 namespace MMV.Infrastructure.Data;
 
@@ -37,6 +38,12 @@ public sealed class DatabasePreparationResult
     public string? BackupPath { get; init; }
     public IReadOnlyList<string> AppliedMigrations { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> BaselinedMigrations { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// P4-5D-R — reprise du <b>format des dates civiles</b> (<c>Customers.BirthDate</c>,
+    /// <c>Prescriptions.IssueDate</c>). Null si la préparation n'a pas atteint cette étape.
+    /// </summary>
+    public CivilDateRepairReport? CivilDateRepair { get; init; }
 }
 
 /// <summary>
@@ -94,12 +101,37 @@ public sealed class SqliteDatabaseManager
 
         try
         {
-            return state switch
+            var result = state switch
             {
                 DatabaseState.Empty => ApplyFreshInstall(context, backupPath),
                 DatabaseState.MigrationsManaged => ApplyPendingMigrations(context, backupPath),
                 DatabaseState.HistoricalWithoutMigrationsHistory => AdoptHistoricalDatabase(context, backupPath),
                 _ => throw new DatabaseMigrationException($"État de base inattendu : {state}.")
+            };
+
+            // --- P4-5D-R : reprise du FORMAT des dates civiles (ADR-PROD-DB-004 §7.2, obligation T5) ---
+            // Cette étape est délibérément HORS du switch, donc exécutée quel que soit l'état détecté. La
+            // raison est le cœur du problème : le passage de BirthDate/IssueDate à DateOnly n'a changé NI le
+            // type de colonne SQLite (TEXT), NI le schéma. EF ne voit donc aucune dérive de modèle, aucune
+            // migration n'existe — ni ne peut exister — et la voie « adoption de base historique », qui porte
+            // toutes les réparations précédentes (R-19, P2A-1E, P3-2B…), ne serait JAMAIS empruntée par une
+            // base déjà gérée par migrations. Or c'est précisément ce cas — une base installée après P2A-1A
+            // et avant P4-5D — qui est le plus répandu en exploitation. Rattacher la reprise au seul chemin
+            // d'adoption l'aurait rendue inopérante là où elle est le plus nécessaire.
+            //
+            // La sauvegarde de fichier a déjà été prise plus haut, avant toute mutation : la reprise est donc
+            // couverte par le même filet que les migrations de schéma.
+            var civilDateRepair = RepairCivilDateFormats(context);
+
+            return new DatabasePreparationResult
+            {
+                DetectedState = result.DetectedState,
+                WasFreshInstall = result.WasFreshInstall,
+                WasAdopted = result.WasAdopted,
+                BackupPath = result.BackupPath,
+                AppliedMigrations = result.AppliedMigrations,
+                BaselinedMigrations = result.BaselinedMigrations,
+                CivilDateRepair = civilDateRepair
             };
         }
         catch (DatabaseMigrationException)
@@ -215,6 +247,68 @@ public sealed class SqliteDatabaseManager
         }
 
         _journal.Write($"RESTORE from '{backupPath}' to '{databasePath}'");
+    }
+
+    /// <summary>
+    /// P4-5D-R — reprend le <b>format</b> des dates civiles, et <b>refuse</b> plutôt que de deviner.
+    ///
+    /// <para>
+    /// Le diagnostic précède toujours l'écriture. S'il révèle au moins une valeur qu'aucune règle sûre ne
+    /// sait reprendre, <b>rien n'est modifié</b> : la reprise est refusée en bloc, les valeurs fautives sont
+    /// désignées par table, colonne, clé primaire et empreinte — jamais en clair (D-B3) —, la base et sa
+    /// sauvegarde sont conservées. Une reprise partielle serait le pire des états —
+    /// une base à moitié convertie, sans trace de ce qui reste à faire. Ce refus suit la règle déjà tenue
+    /// par l'adoption de schéma : on échoue de façon explicite et localisée, jamais silencieusement.
+    /// </para>
+    /// </summary>
+    private CivilDateRepairReport RepairCivilDateFormats(OpticDbContext context)
+    {
+        var service = new SqliteCivilDateRepairService();
+        var diagnosis = service.Repair(context, dryRun: true);
+
+        if (diagnosis.AuditBefore.HasUnrepairableValues)
+        {
+            // D-B3 : CivilDateOffendingValue.ToString ne rend jamais la valeur brute. Le message d'exception suit
+            // la même règle, car il est lui-même recopié au journal (LegacyDatabaseRecoveryService) et à la sortie
+            // de débogage (App).
+            var offenders = string.Join(" | ", diagnosis.UnrepairableValues.Take(20));
+            _journal.Write(
+                $"CIVILDATE REFUSED: {diagnosis.AuditBefore.TotalUnrepairableCount} unrepairable value(s) " +
+                $"(raw values withheld): {offenders}");
+            throw new DatabaseMigrationException(
+                $"Reprise des dates civiles refusée : {diagnosis.AuditBefore.TotalUnrepairableCount} valeur(s) " +
+                "de date de naissance ou d'ordonnance ne correspondent à aucun format connu et ne peuvent être " +
+                "converties sans inventer une donnée. AUCUNE modification n'a été effectuée ; la base et sa " +
+                "sauvegarde sont conservées. Correction manuelle requise (intervention support). " +
+                "Valeurs concernées, désignées par leur clé et l'empreinte SHA-256 de la valeur stockée " +
+                "(valeur brute non reproduite, à consulter en base par la clé) : " + offenders + ".");
+        }
+
+        if (!diagnosis.AuditBefore.RequiresRepair)
+        {
+            _journal.Write("CIVILDATE ok: aucun format historique de date civile détecté (rien à reprendre).");
+            return diagnosis;
+        }
+
+        _journal.Write(
+            $"CIVILDATE detected: {diagnosis.AuditBefore.TotalRewriteCount} value(s) to rewrite " +
+            $"({diagnosis.AuditBefore.TotalUnreadableCount} unreadable by the current model) — repairing.");
+
+        var report = service.Repair(context);
+        _journal.Write($"CIVILDATE repaired: {report.Summary}");
+
+        // Contrôle d'après-coup : la reprise doit avoir rendu la base entièrement lisible. Si une valeur
+        // résiste encore, l'affirmer serait mensonger — on échoue, la sauvegarde reste disponible.
+        var after = new SqliteCivilDateFormatVerifier().Audit(context);
+        if (after.TotalUnreadableCount > 0)
+        {
+            _journal.Write($"CIVILDATE FAILURE: {after.TotalUnreadableCount} value(s) still unreadable after repair.");
+            throw new DatabaseMigrationException(
+                $"Incohérence après reprise des dates civiles : {after.TotalUnreadableCount} valeur(s) restent " +
+                "illisibles par le modèle courant. La base et sa sauvegarde sont conservées.");
+        }
+
+        return report;
     }
 
     private DatabasePreparationResult ApplyFreshInstall(OpticDbContext context, string? backupPath)

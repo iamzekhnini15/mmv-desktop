@@ -895,3 +895,23 @@ mapping monétaire `REAL` — O2), **la validation PostgreSQL au runtime — don
 reste due et demeure bloquée par la disponibilité du schéma serveur (P4-5)**, et **aucune compatibilité
 applicative complète n'est revendiquée**. La **V1 multi-poste n'est pas déclarée `GO`** : les 18 critères de
 sortie du §4 restent à satisfaire.
+
+---
+
+## P4-5D-R Civil Date Migration Preparation
+
+Status:
+READY FOR ARCHITECT REVIEW
+
+
+Objective:
+Prepare safe migration of existing SQLite civil date values before deployment.
+
+
+Scope:
+Customer.BirthDate
+Prescription.IssueDate
+
+
+No EF migration created.
+No schema change.
