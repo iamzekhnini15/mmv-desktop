@@ -181,10 +181,9 @@ MMV.Infrastructure/
 │   ├── StockMovementRepository.cs
 │   └── UnitOfWork.cs                 # Pattern UnitOfWork
 │
-├── Migrations/                       # Migrations EF Core
-│   ├── 20260127184542_InitialCreate.cs
-│   ├── 20260127184542_InitialCreate.Designer.cs
-│   └── OpticDbContextModelSnapshot.cs
+├── Migrations/                       # Migrations EF Core : chaîne SQLite uniquement
+│                                     # Chaîne PostgreSQL : src/MMV.Infrastructure.PostgreSQL.Migrations/
+│                                     # Voir « Migrations EF Core » ci-dessous et CONTRIBUTING.md
 │
 └── DependencyInjection.cs           # Configuration MS.DI (à créer Sprint 3)
 ```

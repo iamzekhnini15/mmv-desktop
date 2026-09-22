@@ -99,10 +99,9 @@ modelBuilder.Entity<User>()
 - Check constraints si supportés
 
 #### 2.4 Migrations
-```bash
-dotnet ef migrations add InitialCreate --project src/MMV.Infrastructure --startup-project src/MMV.App
-dotnet ef database update --project src/MMV.Infrastructure --startup-project src/MMV.App
-```
+> Les commandes EF Core d'origine de ce sprint ont été retirées en P4-5E-C9. Elles prenaient `src/MMV.App` comme
+> projet de démarrage et utilisaient `dotnet ef database update`, deux pratiques désormais interdites. La procédure
+> officielle, pour les chaînes SQLite et PostgreSQL, est dans [CONTRIBUTING.md](CONTRIBUTING.md).
 
 #### 2.5 Repositories Pattern
 Interfaces à créer :
