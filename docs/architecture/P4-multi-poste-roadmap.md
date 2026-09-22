@@ -570,7 +570,7 @@ P4-2 ADR   = BLOCKED                        [HISTORIQUE — remplacé depuis par
   API favorable **effectivement validées par test** et l'upsert SQLite (`TryCreateActiveLowStockAsync`) réécrit et
   prouvé — + erreurs traduites.
 
-### P4-5 — Schéma et migrations serveur — **`IN PROGRESS` (P4-5A et P4-5B livrés)**
+### P4-5 — Schéma et migrations serveur — **`IN PROGRESS` (P4-5A … P4-5E livrés)**
 
 - **Objectif** : produire une **chaîne de migrations serveur distincte** (baseline propre).
 - **Dépendances** : P4-3.
@@ -597,12 +597,15 @@ se termine par **commit + CI verte sur le SHA exact**.
 |---|---|---|---|---|
 | **P4-5A** | **Audit du schéma de production** — aucun code modifié, aucun test exécuté ([rapport](../implementation/P4-5A-postgresql-schema-audit-report.md)) | — | P4-4 partiel | **COMPLETE — DECISIONS REQUIRED** |
 | **P4-5B** | **Décisions d'architecture** — 6 ADR créées et acceptées ([rapport](../implementation/P4-5B-postgresql-architecture-decisions-report.md)) | — | P4-5A | **COMPLETE — ADRs ACCEPTED** |
-| **P4-5C** | **Neutralisation du modèle** : `HasPrecision(12,2)` + point de sélection monétaire unique, filtre d'index sélectionné par provider, retrait des **18** littéraux `"REAL"` optiques | [003](adr-prod-db-003-money-persistence.md), [006](adr-prod-db-006-index-and-model-portability.md) | P4-5B | **NOT STARTED** |
-| **P4-5D** | **Stratégie temporelle** : `IClock`, UTC partout, convertisseur validant, test d'architecture, `DateOnly` + **migration de données écrite à la main** | [004](adr-prod-db-004-datetime-strategy.md) | P4-5B | **NOT STARTED** |
+| **P4-5C** | **Neutralisation du modèle** : `HasPrecision(12,2)` + point de sélection monétaire unique, filtre d'index sélectionné par provider, retrait des **18** littéraux `"REAL"` optiques | [003](adr-prod-db-003-money-persistence.md), [006](adr-prod-db-006-index-and-model-portability.md) | P4-5B | **COMPLETED** — `b5c2073` ([rapport](../implementation/P4-5C-ef-model-portability-report.md)) |
+| **P4-5D** | **Stratégie temporelle** : `IClock`, UTC partout, convertisseur validant, test d'architecture, `DateOnly` + **migration de données écrite à la main** | [004](adr-prod-db-004-datetime-strategy.md) | P4-5B | **COMPLETED** — `023048f` |
 | **P4-5D-R** | **Préparation de la reprise des données de dates civiles** — `Customer.BirthDate` et `Prescription.IssueDate`. Le passage à `DateOnly` change le **format** des valeurs `TEXT` SQLite (`yyyy-MM-dd HH:mm:ss[.fffffff]` → `yyyy-MM-dd`) **sans qu'EF ne détecte le moindre changement de schéma** : `has-pending-model-changes` reste vert et **aucune migration n'est générée automatiquement**. Toute base antérieure à P4-5D lève donc `FormatException` à la lecture d'un client ou d'une ordonnance. La reprise attendue est une **troncature**, jamais une conversion de fuseau, et elle est exprimable en SQL pur — sa spécification exécutable existe déjà dans `LegacyCivilDateFormatTests` (P4-5D). | [004](adr-prod-db-004-datetime-strategy.md) | P4-5D | **COMPLETED** — `45f67a2` ([rapport](../implementation/P4-5D-R-final-implementation-report.md)) — reprise au démarrage ; **RR4 : `dryRun` sur une copie de base de production requis avant déploiement** |
-| **P4-5E** | **Chaîne de migrations PostgreSQL** + factory design-time sélective + **double contrôle de dérive en CI** | [005](adr-prod-db-005-migration-architecture.md), [007](adr-prod-db-007-schema-drift-prevention.md) | P4-5C, P4-5D | **NOT STARTED** |
-| **P4-5F** | **Tests d'intégration PostgreSQL** : projet dans `MMV.sln`, job CI avec serveur, corpus **N1 … N8** | [007](adr-prod-db-007-schema-drift-prevention.md), [008](adr-prod-db-008-postgresql-integration-testing.md) | P4-5E | **NOT STARTED** |
-| **P4-5G** | **Levée du garde-fou de démarrage** ([App.axaml.cs:198](../../src/MMV.App/App.axaml.cs#L198)) + chaîne de préparation serveur — **uniquement après P4-5F vert** | toutes | P4-5F | **NOT STARTED** |
+| **P4-5E** | **Chaîne de migrations PostgreSQL** + factory design-time sélective + **double contrôle de dérive en CI** | [005](adr-prod-db-005-migration-architecture.md), [007](adr-prod-db-007-schema-drift-prevention.md) | P4-5C, P4-5D | **COMPLETED** — `a06c19f` · `ccbeb32` (documentation C9) |
+| **P4-5F** | **Tests d'intégration PostgreSQL** : projet dans `MMV.sln`, job CI avec serveur, corpus **N1 … N8** | [007](adr-prod-db-007-schema-drift-prevention.md), [008](adr-prod-db-008-postgresql-integration-testing.md) | P4-5E | **NEXT** — non commencé |
+| **P4-5G** | **Levée du garde-fou de démarrage** ([App.axaml.cs:198](../../src/MMV.App/App.axaml.cs#L198)) + chaîne de préparation serveur — **uniquement après P4-5F vert** | toutes | P4-5F | **ABSORBÉ PAR P4-6C** — voir note ci-dessous |
+
+> **Note RECON-B-light (2026-09-22, HEAD `ccbeb32`).** P4-5E completed. P4-5F remains for PostgreSQL
+> integration validation. P4-5G absorbed by P4-6C.
 
 > **Deux points d'attention issus de P4-5B**, à ne pas perdre :
 > **(1)** le volet monétaire et le volet index **ne produisent aucune migration SQLite** — le modèle vu par
@@ -620,6 +623,65 @@ se termine par **commit + CI verte sur le SHA exact**.
 - **Autorisé** : verrou/poste désigné/phase de maintenance ; garde de version bloquant un client trop ancien.
 - **Interdit** : migration automatique concurrente par tous les postes.
 - **Tests attendus** : migration pendant qu'un poste est connecté ; client obsolète bloqué proprement.
+- **Absorbe P4-5G** (note RECON-B-light, §P4-5) : levée du garde-fou de démarrage et chaîne de préparation
+  serveur, dans le sous-lot **P4-6C**, toujours **après P4-5F vert**.
+
+#### Découpage de P4-6
+
+> **Enregistrement du découpage (consolidation du 22/09/2026, enregistré par la revue d'acceptation du même
+> jour).** Le découpage P4-6A / P4-6B / P4-6C venait du
+> [rapport de transition P4-6](../implementation/P4-6-transition-audit-report.md) et du
+> [rapport RECON-B-light](../implementation/P4-RECON-B-light-report.md), alors non suivis. Il est **inscrit ici**
+> et **enregistré par le commit documentaire** de la revue d'acceptation : le résidu **R-1** et le volet
+> « enregistrement » de la question **Q-18** d'ADR-PROD-DB-009 sont **clos**.
+
+| Sous-lot | Contenu | Dépend de | État |
+|---|---|---|---|
+| **P4-6A** | **Décisions d'architecture.** Deux ADR : [ADR-PROD-DB-009](ADR-PROD-DB-009.md) (autorité de migration, verrou, version de schéma, compatibilité des postes, rôles PostgreSQL, sauvegarde, maintenance, journal) et [ADR-APP-DISTRIBUTION-001](adr-app-distribution-001-installation-and-updates.md) (production, installation, mise à jour, signature, retour arrière, .NET 10, séparation installation/données). **Aucun code, aucun test, aucune migration, aucune CI.** ([consolidation](../implementation/P4-6-architecture-consolidation-report.md) · [acceptation](../implementation/P4-6A-adr-acceptance-report.md)) | P4-5E | **COMPLETE** — **ADR-PROD-DB-009 = ACCEPTED** (dix points de décision arrêtés). **ADR-APP-DISTRIBUTION-001 reste PROPOSED** : décisions validées, mais **quatre spikes non exécutés** (SD-1, SD-2, SD-3, SD-5) et **deux faits extérieurs** ouverts (QD-1, QD-10). **Ne bloque pas P4-6B** |
+| **P4-6B** | **Cycle de vie de la base en multi-poste.** Version applicative unique en SemVer (DP-7) · verrou de migration natif PostgreSQL (DP-2) · état de maintenance (DP-6) · **`MMV.DatabaseManager`**, outil de migration séparé (DP-1) · **garde de compatibilité à fenêtre N-1**, en lecture seule (DP-3, DP-4) · **métadonnée de compatibilité et journal de migration**, hors modèle EF (DP-3, DP-8) · règle **« étendre → migrer → contracter »** dans [CONTRIBUTING.md](../../CONTRIBUTING.md) (DP-3, H15) | **P4-5F vert** *(volet décisionnel : satisfait)* | **NEXT** — non commencé |
+| **P4-6C** | **Levée du garde-fou de démarrage** ([App.axaml.cs:200-214](../../src/MMV.App/App.axaml.cs#L200-L214)) et chaîne de préparation serveur — **contenu absorbé de P4-5G**. Écran de blocage à trois états minimum (E2, E3b, E5). **Uniquement après P4-6B validé** | P4-6B | **FUTURE** |
+
+> **Ce qui bloquait P4-6B est levé.** La **politique de compatibilité** est tranchée : **fenêtre limitée N-1**,
+> sous discipline « étendre → migrer → contracter » (ADR-PROD-DB-009 **DP-3**, question **Q-3**, condition
+> **AC-1**). Les deux autres questions le sont aussi : **Q-14** par le journal dédié (**DP-8**) et **Q-2** par le
+> **modèle opérateur mixte selon contrat** (**DP-9**). **La garde de version de P4-6B est désormais
+> spécifiable et écrivable.**
+
+> **Dépendance à ne pas contourner.** P4-6B a besoin d'un serveur PostgreSQL en CI pour prouver le verrou et la
+> garde (critères S-1 à S-4) : **P4-5F reste le préalable technique**, et l'acceptation des ADR **ne le remplace
+> pas**. C'est aujourd'hui le **seul** obstacle au démarrage de P4-6B.
+
+> **Recommandation de séquence — `P4-NET10` avant P4-6B.** Le [plan d'exécution .NET 10](net10-migration-execution-plan.md)
+> recommande d'exécuter la montée de version **avant** P4-5F et P4-6B, pour deux raisons : elle tranche **Q-6**
+> par disponibilité (EF Core ≥ 9 apporte un verrou de migration natif, ce que DP-2 autorise explicitement), et
+> elle évite de migrer ensuite les projets que P4-5F et P4-6B vont créer. **Cette séquence est une
+> recommandation, pas une dépendance** : P4-6B est spécifiable sur EF Core 8.
+
+### P4-NET10 — Montée vers .NET 10 (LTS) — **lot transverse**
+
+- **Nature** : lot **technique et transverse**, hors de la trajectoire fonctionnelle P4-0 … P4-12. Il ne porte
+  aucune fonctionnalité multi-poste. Son numéro est **volontairement non ordinal** : sa position dans la séquence
+  est un arbitrage, non une dépendance.
+- **Objectif** : porter le dépôt de `net8.0` à `net10.0`, avec les paquets couplés au runtime (EF Core, Npgsql,
+  outil `dotnet-ef`, SDK de test), **sans changement fonctionnel ni changement de modèle EF**.
+- **Origine** : [ADR-APP-DISTRIBUTION-001](adr-app-distribution-001-installation-and-updates.md) **DI-8** —
+  .NET 10 avant la Release V1, aucune Release V1 sur .NET 8 — et son obligation **OI-10**. **.NET 8 sort de
+  support le 10 novembre 2026** ; en publication autonome (DI-1), le runtime est **embarqué** dans le paquet
+  livré au client.
+- **Plan d'exécution** : [net10-migration-execution-plan.md](net10-migration-execution-plan.md) — ordre exact des
+  modifications, fichiers concernés, dépendances, risques, stratégie de retour arrière, critères GO / NO-GO.
+- **Dépendances** : **aucune** dans P4. Le lot est exécutable dès maintenant.
+- **Autorisé** : `TargetFramework`, [global.json](../../global.json), versions de paquets,
+  [`.config/dotnet-tools.json`](../../.config/dotnet-tools.json), source NuGet, CI.
+- **Interdit** : tout changement de modèle EF, toute migration nouvelle, toute fonctionnalité, tout changement de
+  comportement. **La montée de version n'est pas une occasion de refactoriser.**
+- **Tests attendus** : la baseline **1569** reste verte, **à l'identique** — aucun test ajouté, aucun retiré,
+  aucun ignoré ; les deux contrôles de dérive EF (SQLite et PostgreSQL) restent verts.
+- **Effet sur P4** : tranche **Q-6** d'[ADR-PROD-DB-009](ADR-PROD-DB-009.md) — EF Core ≥ 9 apporte un verrou de
+  migration natif, que **DP-2 autorise explicitement** en retenant une *famille* de mécanismes plutôt qu'un appel
+  précis. Exécuté **avant** P4-5F et P4-6B, il évite aussi de migrer ensuite les projets que ces deux lots créent.
+- **État** : **READY — NOT STARTED**. Le **SDK .NET 10 est déjà installé** sur le poste de développement
+  (10.0.103, runtime 10.0.3) ; l'obstacle est la **source NuGet**, non le SDK (voir le plan, §GO / NO-GO).
 
 ### P4-7 — Procédure/outil de migration SQLite → serveur
 
@@ -767,8 +829,10 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 | **P4-2** — ADR de choix du provider | **`ACCEPTED — CLOSE`** — [ADR-PROD-DB-002](adr-prod-db-002-server-database-provider-selection.md) **acceptée**, **PostgreSQL officiellement retenu**, **SQL Server Express non éliminé** |
 | **P4-3** — fondation Infrastructure multi-provider | **CLOSE** — commit **`b312a6c`**, CI **`30823399148`** verte sur le SHA exact, **1529** tests (Domain 673 · Application 617 · App 239). Provider sélectionnable par configuration (défaut **SQLite**), 3 sites centralisés, `Npgsql` en Infrastructure seule ; **démarrage PostgreSQL volontairement bloqué** jusqu'à P4-5/P4-6. ([rapport](../implementation/P4-3-multi-provider-foundation-report.md)) |
 | **P4-4** — traduction des erreurs et portage des primitives | **`IN PROGRESS — NOT CLOSE`** — dépendance P4-3 **satisfaite** ; **étape officielle en cours**. **Livré** : `P4-4A0` (`b84c7e3`, CI `33411724068`), `P4-4A1` (`dc4c492`, CI `33436908075`), `P4-4B0` (`d5a3656`, CI **non enregistrée**), `P4-4B1` (`2976401`, CI **non enregistrée**) — **1569** tests. **Restant** : O2 mapping monétaire, O3 index filtrés PostgreSQL, O4 stratégie `DateTime`, **validation PostgreSQL au runtime** (dont re-preuve des 14 primitives) **après disponibilité du schéma serveur (P4-5)**. ([réconciliation P4-4C](../implementation/P4-4C-state-reconciliation-report.md)) |
-| **P4-5** — schéma et migrations serveur | **`IN PROGRESS — NOT CLOSE`** — **P4-5A** (audit, [rapport](../implementation/P4-5A-postgresql-schema-audit-report.md)) et **P4-5B** (décisions, [rapport](../implementation/P4-5B-postgresql-architecture-decisions-report.md)) livrés, **tous deux strictement documentaires** : aucun code, aucun test exécuté, aucune migration. **Six ADR acceptées** — [003 monétaire](adr-prod-db-003-money-persistence.md), [004 `DateTime`](adr-prod-db-004-datetime-strategy.md), [005 migrations](adr-prod-db-005-migration-architecture.md), [006 index](adr-prod-db-006-index-and-model-portability.md), [007 dérive](adr-prod-db-007-schema-drift-prevention.md), [008 tests d'intégration](adr-prod-db-008-postgresql-integration-testing.md). **Restant** : P4-5C … P4-5G, **aucune ligne implémentée**. `POSTGRESQL CLEAN START = BLOCKED` |
-| **P4-6 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** |
+| **P4-5** — schéma et migrations serveur | **`IN PROGRESS — NOT CLOSE`** — **P4-5A** (audit, [rapport](../implementation/P4-5A-postgresql-schema-audit-report.md)) et **P4-5B** (décisions, [rapport](../implementation/P4-5B-postgresql-architecture-decisions-report.md)) livrés, **tous deux strictement documentaires** : aucun code, aucun test exécuté, aucune migration. **Six ADR acceptées** — [003 monétaire](adr-prod-db-003-money-persistence.md), [004 `DateTime`](adr-prod-db-004-datetime-strategy.md), [005 migrations](adr-prod-db-005-migration-architecture.md), [006 index](adr-prod-db-006-index-and-model-portability.md), [007 dérive](adr-prod-db-007-schema-drift-prevention.md), [008 tests d'intégration](adr-prod-db-008-postgresql-integration-testing.md). **Livrés depuis** : P4-5C (`b5c2073`), P4-5D (`023048f`), P4-5D-R (`45f67a2`), P4-5E (`a06c19f`, `ccbeb32`). **Restant** : P4-5F (**NEXT**) ; P4-5G **absorbé par P4-6C**. `POSTGRESQL CLEAN START = BLOCKED` |
+| **P4-6** — application des migrations en multi-poste | **`IN PROGRESS — NOT CLOSE`** — **P4-6A COMPLETE** : [**ADR-PROD-DB-009 = ACCEPTED**](ADR-PROD-DB-009.md) le 22/09/2026 (dix points de décision arrêtés, dix-sept obligations H1 … H17, vingt alternatives rejetées) ; [ADR-APP-DISTRIBUTION-001](adr-app-distribution-001-installation-and-updates.md) **reste PROPOSED** — décisions validées, mais SD-1/2/3/5 non exécutés et QD-1/QD-10 ouverts. **Strictement documentaire** : aucun code, aucun test, aucune migration, aucune CI ([consolidation](../implementation/P4-6-architecture-consolidation-report.md) · [acceptation](../implementation/P4-6A-adr-acceptance-report.md)). **P4-6B** `NEXT` — **plus aucune question d'architecture ouverte** ; seul préalable : **P4-5F vert**. **P4-6C** `FUTURE` |
+| **P4-NET10** — montée vers .NET 10 (LTS) | **`READY — NOT STARTED`** — lot **transverse**, sans dépendance dans P4. Mise en œuvre de **DI-8 / OI-10** ; **.NET 8 hors support le 10/11/2026**. SDK 10.0.103 déjà installé localement ; obstacle = **source NuGet**. ([plan d'exécution](net10-migration-execution-plan.md)) |
+| **P4-7 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** |
 
 **État courant en vigueur** *(les blocs d'état antérieurs marqués `[HISTORIQUE]` plus haut sont remplacés par
 celui-ci)* :
@@ -814,11 +878,27 @@ P4-5B ARCHITECTURE DECISIONS= COMPLETE — 6 ADR ACCEPTED, AUCUN CODE
 P4-5B ADRs                  = ADR-PROD-DB-003 … 008
 P4-5 OBLIGATIONS O2, O3, O4 = DECIDED — NOT IMPLEMENTED
 P4-5 OBLIGATION O7          = DECIDED — NOT IMPLEMENTED
-P4-5C … P4-5G               = NOT STARTED
+P4-5C MODEL PORTABILITY     = COMPLETED — b5c2073
+P4-5D TEMPORAL STRATEGY     = COMPLETED — 023048f
 P4-5D-R CIVIL DATE REPRISE  = COMPLETED — 45f67a2 — RR4 DRYRUN ON PROD COPY REQUIRED BEFORE DEPLOYMENT
+P4-5E POSTGRESQL MIGRATIONS = COMPLETED — a06c19f + ccbeb32 — PUSHED
+P4-5F INTEGRATION TESTS     = NEXT — NOT STARTED
+P4-5G STARTUP GUARD LIFT    = ABSORBED BY P4-6C
 P4-5                        = IN PROGRESS — NOT CLOSE
 POSTGRESQL CLEAN START      = BLOCKED
-P4-6 … P4-12                = NOT STARTED
+P4-6A ARCHITECTURE DECISIONS= COMPLETE — AUCUN CODE
+P4-6A ADR-PROD-DB-009       = ACCEPTED — 2026-09-22 — 10 DECISION POINTS CLOSED
+P4-6A ADR-APP-DISTRIBUTION-001 = PROPOSED — DECISIONS VALIDATED — SD-1/2/3/5 NOT RUN, QD-1 + QD-10 OPEN
+P4-6A Q-3 COMPATIBILITY     = ANSWERED — N-1 WINDOW + EXPAND/MIGRATE/CONTRACT
+P4-6A Q-14 MIGRATION JOURNAL= ANSWERED — DEDICATED TABLE + LOCAL TRACE
+P4-6A Q-2 OPERATOR MODEL    = ANSWERED — MIXED, PER CONTRACT — MIGRATOR ROLE MANDATORY
+P4-6A BLOCKING QUESTIONS    = NONE
+P4-6B DATABASE LIFECYCLE    = NEXT — NOT STARTED — REQUIRES P4-5F GREEN
+P4-6C STARTUP GUARD LIFT    = FUTURE — REQUIRES P4-6B VALIDATED
+P4-NET10 RUNTIME UPGRADE    = READY — NOT STARTED — NO P4 DEPENDENCY
+P4-NET10 SDK LOCAL          = 10.0.103 INSTALLED — RUNTIME 10.0.3
+P4-NET10 BLOCKER            = NUGET SOURCE — OFFLINE FOLDER ONLY, NUGET.ORG NOT REGISTERED
+P4-7 … P4-12                = NOT STARTED
 V1 MULTI-POSTE              = NOT GO
 ```
 
