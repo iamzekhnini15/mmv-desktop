@@ -45,6 +45,10 @@
     <!-- Composition root : MMV.App référence la couche Application (P2B-2B). -->
     <ProjectReference Include="..\MMV.Application\MMV.Application.csproj" />
     <ProjectReference Include="..\MMV.Infrastructure\MMV.Infrastructure.csproj" />
+    <!-- P4-5E (D-01, R-3) : EF charge l'assembly de migrations PostgreSQL PAR SON NOM à l'exécution ;
+         cette référence place la DLL à côté de l'exécutable. Inerte tant que le garde-fou de démarrage
+         serveur (App.axaml.cs) bloque PostgreSQL. -->
+    <ProjectReference Include="..\MMV.Infrastructure.PostgreSQL.Migrations\MMV.Infrastructure.PostgreSQL.Migrations.csproj" />
   </ItemGroup>
 
 </Project>

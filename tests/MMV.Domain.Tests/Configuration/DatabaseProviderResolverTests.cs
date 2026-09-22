@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using MMV.Infrastructure.Configuration;
 using MMV.Infrastructure.Data;
 using Xunit;
@@ -252,6 +253,63 @@ public sealed class DatabaseProviderResolverTests
         context.Database.ProviderName.Should().Be(SqliteProviderName);
         context.Database.GetConnectionString().Should().Be(connection.ConnectionString);
         context.Database.GetConnectionString().Should().NotContain(SqliteDatabasePathResolver.DefaultFileName);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // 7. P4-5E — assembly de migrations sélectionnée au même endroit que le fournisseur (D-01, D-06).
+    // ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Configure_Sqlite_DeclaresNoExplicitMigrationsAssembly()
+    {
+        // D-06.1 : la branche SQLite garde l'assembly implicite du contexte. Un MigrationsAssembly explicite
+        // ne changerait rien au runtime, mais serait une différence de plus à justifier sur la chaîne SQLite.
+        var builder = new DbContextOptionsBuilder<OpticDbContext>();
+
+        DatabaseProviderResolver.Configure(builder, DatabaseProviderOptions.Sqlite, InMemorySqlitePath());
+
+        RelationalOptionsExtension.Extract(builder.Options).MigrationsAssembly.Should().BeNull();
+    }
+
+    [Fact]
+    public void Configure_PostgreSql_DeclaresTheDedicatedMigrationsAssembly()
+    {
+        var builder = new DbContextOptionsBuilder<OpticDbContext>();
+        var options = new DatabaseProviderOptions
+        {
+            Provider = DatabaseProvider.PostgreSql,
+            ConnectionString = FakeServerConnectionString
+        };
+
+        DatabaseProviderResolver.Configure(builder, options);
+
+        RelationalOptionsExtension.Extract(builder.Options).MigrationsAssembly
+            .Should().Be(DatabaseProviderResolver.PostgreSqlMigrationsAssemblyName);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // 8. P4-5E — étanchéité runtime : la variable design-time n'influence jamais le runtime (D-05.2).
+    // ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Resolve_IgnoresTheDesignTimeProviderVariable()
+    {
+        var options = DatabaseProviderResolver.Resolve(Env(
+            (OpticDbContextFactory.DesignTimeProviderVariableName, "postgresql")));
+
+        options.Provider.Should().Be(DatabaseProvider.Sqlite,
+            "MMV_DESIGNTIME_DATABASE_PROVIDER ne sert qu'à dotnet ef : un poste ne bascule jamais sur un " +
+            "serveur parce qu'un développeur a laissé cette variable dans son shell");
+    }
+
+    [Fact]
+    public void Resolve_WithInvalidDesignTimeVariable_DoesNotThrow()
+    {
+        // Une valeur design-time invalide bloque dotnet ef (OpticDbContextFactory), jamais le démarrage.
+        var act = () => DatabaseProviderResolver.Resolve(Env(
+            (OpticDbContextFactory.DesignTimeProviderVariableName, "postgrse")));
+
+        act.Should().NotThrow();
     }
 
     /// <summary>

@@ -24,6 +24,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MMV.Domain\MMV.Domain.csproj" />
     <ProjectReference Include="..\..\src\MMV.Infrastructure\MMV.Infrastructure.csproj" />
+    <!-- P4-5E : chaîne de migrations PostgreSQL, vérifiée sans serveur (GetMigrations, dérive, D-01.6). -->
+    <ProjectReference Include="..\..\src\MMV.Infrastructure.PostgreSQL.Migrations\MMV.Infrastructure.PostgreSQL.Migrations.csproj" />
   </ItemGroup>
 
 </Project>

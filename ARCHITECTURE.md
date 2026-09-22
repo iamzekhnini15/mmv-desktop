@@ -342,29 +342,46 @@ CREATE INDEX idx_prescriptions_issue_date ON prescriptions(issue_date DESC);
 
 ### Migrations EF Core
 
+> **Section mise à jour en P4-5E-C8 (22 septembre 2026).** La procédure complète, les interdits et la revue
+> avant commit sont dans [CONTRIBUTING.md](CONTRIBUTING.md#règle-de-double-migration), qui fait référence.
+
+Le modèle EF est unique. Les migrations forment **deux chaînes**, une par moteur, qui ne se mélangent jamais :
+
+| Chaîne | Dossier des migrations | `--project` et `--startup-project` | Variable design-time |
+|---|---|---|---|
+| SQLite | `src/MMV.Infrastructure/Migrations/` | `src/MMV.Infrastructure` | aucune |
+| PostgreSQL | `src/MMV.Infrastructure.PostgreSQL.Migrations/Migrations/` | `src/MMV.Infrastructure.PostgreSQL.Migrations` | `MMV_DESIGNTIME_DATABASE_PROVIDER=postgresql` |
+
+`src/MMV.App` n'est **jamais** le projet de démarrage de `dotnet ef` : EF exécuterait l'application, ce qui
+ouvre la fenêtre et prépare réellement la base locale.
+
 #### Commandes Principales
 
+Depuis la racine du dépôt, après `dotnet tool restore` (dotnet-ef 8.0.27) et `dotnet build MMV.sln -c Debug` :
+
 ```bash
-# Ajouter une nouvelle migration
+# Chaîne SQLite : sans variable
 dotnet ef migrations add NomMigration \
-  --project src/MMV.Infrastructure \
-  --startup-project src/MMV.App
+  --project src/MMV.Infrastructure --startup-project src/MMV.Infrastructure
+dotnet ef migrations has-pending-model-changes \
+  --project src/MMV.Infrastructure --startup-project src/MMV.Infrastructure --no-build
 
-# Appliquer les migrations
-dotnet ef database update \
-  --project src/MMV.Infrastructure \
-  --startup-project src/MMV.App
-
-# Annuler la dernière migration
-dotnet ef migrations remove \
-  --project src/MMV.Infrastructure \
-  --startup-project src/MMV.App
-
-# Générer un script SQL
-dotnet ef migrations script \
-  --project src/MMV.Infrastructure \
-  --output migration.sql
+# Chaîne PostgreSQL : variable limitée à la commande (forme PowerShell dans CONTRIBUTING.md)
+MMV_DESIGNTIME_DATABASE_PROVIDER=postgresql dotnet ef migrations add NomMigration \
+  --project src/MMV.Infrastructure.PostgreSQL.Migrations \
+  --startup-project src/MMV.Infrastructure.PostgreSQL.Migrations
+MMV_DESIGNTIME_DATABASE_PROVIDER=postgresql dotnet ef migrations list --no-connect \
+  --project src/MMV.Infrastructure.PostgreSQL.Migrations \
+  --startup-project src/MMV.Infrastructure.PostgreSQL.Migrations --no-build
+MMV_DESIGNTIME_DATABASE_PROVIDER=postgresql dotnet ef migrations has-pending-model-changes \
+  --project src/MMV.Infrastructure.PostgreSQL.Migrations \
+  --startup-project src/MMV.Infrastructure.PostgreSQL.Migrations --no-build
 ```
+
+Aucune de ces commandes ne se connecte à une base. `dotnet ef database update` n'est pas utilisé. La base
+SQLite locale est préparée par l'application au démarrage (`SqliteDatabaseManager`). L'application des
+migrations PostgreSQL n'est pas encore décidée (P4-6). Toute évolution du modèle exige une migration sur
+**chaque** chaîne, dans le même commit.
 
 #### Migration Initiale (Sprint 2)
 ```csharp

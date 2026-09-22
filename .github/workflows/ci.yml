@@ -116,3 +116,58 @@ jobs:
       # par une migration. `--no-build` réutilise le binaire Debug déjà produit ci-dessus.
       - name: Check EF Core pending model changes
         run: dotnet ef migrations has-pending-model-changes --project src/MMV.Infrastructure --no-build
+
+      # Même contrôle sur la chaîne de migrations PostgreSQL (P4-5E-C, C7). Aucun serveur contacté :
+      # la factory design-time utilise une chaîne factice constante et `migrations list` tourne en
+      # `--no-connect`. La variable design-time est posée sur CE SEUL step, jamais au niveau du job
+      # (D-05.6) : le step SQLite ci-dessus s'exécute sans elle, donc à l'identique.
+      #   1) Garde contre le faux vert (Q2) : sans la variable (clé absente ou mal orthographiée), la
+      #      factory retombe sur SQLite et `has-pending-model-changes` contrôlerait la chaîne SQLite en
+      #      répondant vert. On exige donc d'abord, sous le même `env:`, que la chaîne listée contienne
+      #      la baseline PostgreSQL et PAS `InitialCreate` (SQLite). Contrôle MACHINE sur le JSON officiel.
+      #   2) Dérive du modèle : attrape des écarts que le step SQLite ne voit pas (ex. HasMaxLength,
+      #      TEXT des deux côtés sur SQLite, varchar(n) sur PostgreSQL).
+      - name: Check EF Core pending model changes (PostgreSQL chain)
+        shell: pwsh
+        env:
+          MMV_DESIGNTIME_DATABASE_PROVIDER: postgresql
+        run: |
+          $project = 'src/MMV.Infrastructure.PostgreSQL.Migrations'
+
+          # (1) Chaîne réellement contrôlée. Avec --prefix-output, seules les lignes 'data:' portent le JSON ;
+          #     les autres (info:, warn:, error:) sont renvoyées au journal pour que la cause d'un échec reste visible.
+          $lines = @(dotnet ef migrations list --no-connect --json --prefix-output --project $project --startup-project $project --no-build)
+          $lines | Where-Object { $_ -notlike 'data:*' } | ForEach-Object { Write-Host $_ }
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Echec de 'dotnet ef migrations list' (code $LASTEXITCODE) : chaine PostgreSQL NON verifiee."
+            exit 1
+          }
+          $json = ($lines | Where-Object { $_ -like 'data:*' } | ForEach-Object { $_.Substring(5) }) -join "`n"
+          if ([string]::IsNullOrWhiteSpace($json)) {
+            Write-Error "Sortie JSON vide : chaine PostgreSQL NON verifiee."
+            exit 1
+          }
+          try {
+            $migrations = $json | ConvertFrom-Json
+          } catch {
+            Write-Error "JSON de 'migrations list' invalide : $($_.Exception.Message)"
+            exit 1
+          }
+          $names = @(foreach ($m in $migrations) { $m.name })
+          Write-Host ("Chaine controlee : {0} migration(s)." -f $names.Count)
+          foreach ($m in $migrations) { Write-Host "  - $($m.id)" }
+          if ($names -notcontains 'InitialPostgreSqlBaseline') {
+            Write-Error "Baseline 'InitialPostgreSqlBaseline' absente : la chaine controlee n'est PAS la chaine PostgreSQL."
+            exit 1
+          }
+          if ($names -contains 'InitialCreate') {
+            Write-Error "Migration SQLite 'InitialCreate' presente : la chaine controlee n'est PAS la chaine PostgreSQL."
+            exit 1
+          }
+
+          # (2) Dérive du modèle sur la chaîne PostgreSQL.
+          dotnet ef migrations has-pending-model-changes --project $project --startup-project $project --no-build
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Controle de derive PostgreSQL en echec (code $LASTEXITCODE) : changement de modele sans migration PostgreSQL, ou commande en echec."
+            exit 1
+          }

@@ -21,6 +21,11 @@ namespace MMV.Infrastructure.Configuration;
 /// mapping <c>DateTime</c>, aucun mapping monétaire, aucune migration serveur — ces sujets appartiennent
 /// à P4-4/P4-5 et restent ouverts (cf. ADR-PROD-DB-002).
 /// </para>
+///
+/// <para>
+/// P4-5E (ADR-PROD-DB-005 §5.3) : la sélection de l'<b>assembly de migrations</b> se fait ici, au même
+/// endroit que celle du fournisseur. Aucune migration n'est exécutée par cette classe.
+/// </para>
 /// </summary>
 public static class DatabaseProviderResolver
 {
@@ -32,6 +37,14 @@ public static class DatabaseProviderResolver
     /// Obligatoire pour <see cref="DatabaseProvider.PostgreSql"/>, ignorée pour SQLite.
     /// </summary>
     public const string ConnectionStringVariableName = "MMV_DATABASE_CONNECTION_STRING";
+
+    /// <summary>
+    /// Nom de l'assembly portant la chaîne de migrations PostgreSQL (P4-5E, ADR-PROD-DB-005, D-01).
+    /// Passé à <c>MigrationsAssembly</c> sur la seule branche PostgreSQL de <see cref="Configure"/> ; la
+    /// branche SQLite garde l'assembly implicite du contexte (<c>MMV.Infrastructure</c>). Point unique : un
+    /// test le compare au nom réel de l'assembly, pour qu'une faute de frappe ne passe pas inaperçue.
+    /// </summary>
+    public const string PostgreSqlMigrationsAssemblyName = "MMV.Infrastructure.PostgreSQL.Migrations";
 
     /// <summary>
     /// Résout les <see cref="DatabaseProviderOptions"/> depuis l'environnement.
@@ -49,7 +62,7 @@ public static class DatabaseProviderResolver
             ? (environment.TryGetValue(key, out var value) ? value : null)
             : Environment.GetEnvironmentVariable(key);
 
-        var provider = ParseProvider(Get(ProviderVariableName));
+        var provider = ParseProvider(Get(ProviderVariableName), ProviderVariableName);
 
         if (provider == DatabaseProvider.Sqlite)
         {
@@ -78,8 +91,9 @@ public static class DatabaseProviderResolver
 
     /// <summary>
     /// Configure le <paramref name="optionsBuilder"/> EF pour le fournisseur résolu.
-    /// <b>Sélection du fournisseur uniquement</b> : aucune option de résilience, de mapping ou de
-    /// migration n'est appliquée ici (hors périmètre P4-3).
+    /// <b>Sélection du fournisseur et de sa chaîne de migrations uniquement</b> : aucune option de
+    /// résilience ni de mapping n'est appliquée ici. Depuis P4-5E, la branche PostgreSQL désigne l'assembly
+    /// <see cref="PostgreSqlMigrationsAssemblyName"/> ; la branche SQLite est inchangée.
     /// </summary>
     /// <param name="optionsBuilder">Builder EF à configurer.</param>
     /// <param name="providerOptions">Fournisseur et chaîne de connexion résolus.</param>
@@ -114,7 +128,11 @@ public static class DatabaseProviderResolver
                         $"(variable {ConnectionStringVariableName}), absente des options fournies.");
                 }
 
-                optionsBuilder.UseNpgsql(providerOptions.ConnectionString);
+                // P4-5E (D-01) : chaîne de migrations PostgreSQL dans son assembly dédiée. EF ne découvre
+                // ainsi qu'UNE chaîne par provider : jamais les 14 migrations SQLite contre un serveur.
+                optionsBuilder.UseNpgsql(
+                    providerOptions.ConnectionString,
+                    npgsql => npgsql.MigrationsAssembly(PostgreSqlMigrationsAssemblyName));
                 break;
 
             default:
@@ -127,8 +145,14 @@ public static class DatabaseProviderResolver
     /// Convertit une valeur d'environnement en <see cref="DatabaseProvider"/>. Tolérante à la casse,
     /// aux espaces et aux alias usuels. Valeur absente ou vide ⇒ <see cref="DatabaseProvider.Sqlite"/> ;
     /// toute autre valeur non reconnue ⇒ <see cref="DatabaseConfigurationException"/>.
+    /// <para>
+    /// Partagée avec le design-time (<see cref="Data.OpticDbContextFactory"/>, P4-5E D-05.3) : même
+    /// sémantique pour les deux variables, seul le nom cité dans le message change.
+    /// </para>
     /// </summary>
-    private static DatabaseProvider ParseProvider(string? value)
+    /// <param name="value">Valeur lue dans l'environnement.</param>
+    /// <param name="variableName">Variable d'origine, citée dans le message d'erreur.</param>
+    internal static DatabaseProvider ParseProvider(string? value, string variableName)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -143,7 +167,7 @@ public static class DatabaseProviderResolver
             // La valeur reçue n'est jamais restituée : la variable peut avoir été renseignée par erreur
             // avec une chaîne de connexion ou un identifiant, et le message peut finir dans un journal.
             _ => throw new DatabaseConfigurationException(
-                $"Valeur invalide dans {ProviderVariableName}. " +
+                $"Valeur invalide dans {variableName}. " +
                 "Valeurs acceptées : 'sqlite' (défaut), 'postgresql' " +
                 "(alias 'postgres', 'npgsql').")
         };

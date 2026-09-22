@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    P4-5E (ADR-PROD-DB-005, décisions D-01 / D-04) : assembly de migrations PostgreSQL.
+
+    Ce projet ne contient QUE les migrations PostgreSQL générées par `dotnet ef` et leur instantané.
+    Aucune configuration d'entité, aucun repository, aucun service : le modèle, le DbContext et l'unique
+    factory design-time restent dans MMV.Infrastructure.
+
+    Seule exception (P4-5E-C, Q1 option A) : OpticDbContextDesignTimeFactory, qui DÉLÈGUE à
+    OpticDbContextFactory. Elle permet à `dotnet ef` de découvrir OpticDbContext quand ce projet est son
+    propre projet de démarrage. Un test verrouille cette exception et son contenu.
+
+    Il sert aussi de projet cible ET de projet de démarrage pour toute commande `dotnet ef` visant la
+    chaîne PostgreSQL, avec MMV_DESIGNTIME_DATABASE_PROVIDER=postgresql. Commandes exactes : CONTRIBUTING.md,
+    section « Règle de double migration ».
+
+    Le nom d'assembly est porté par DatabaseProviderResolver.PostgreSqlMigrationsAssemblyName : ne pas
+    le renommer sans mettre à jour cette constante (un test compare les deux).
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Exigé par `dotnet ef` dans le projet de démarrage. Même paquet et même version que le reste du
+         dépôt ; PrivateAssets=all : il ne se propage pas aux projets qui référencent celui-ci. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.27">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- OpticDbContext, configurations d'entités, OpticDbContextFactory ; Npgsql arrive par transitivité.
+         Sens unique : MMV.Infrastructure ne référence jamais ce projet. -->
+    <ProjectReference Include="..\MMV.Infrastructure\MMV.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
