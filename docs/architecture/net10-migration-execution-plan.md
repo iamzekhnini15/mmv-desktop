@@ -4,12 +4,27 @@
 > **AUCUN CODE MODIFIÉ par ce document.** Aucun `.csproj`, aucun `global.json`, aucun paquet, aucune CI, aucune
 > migration. Il décrit ce qu'un lot futur fera, dans quel ordre, et à quelles conditions il doit s'arrêter.
 >
-> Date : 22 septembre 2026. Branche : `p4-multi-poste`. HEAD de référence :
-> `ccbeb3259444d26264e20323058764dd59318e1c` (= `origin/p4-multi-poste`).
+> Date : 22 septembre 2026. Branche de rédaction : `p4-multi-poste`. HEAD de référence :
+> `6998bb0303e1d628adc972ae304c22c97c194901` — *réinventorié à ce HEAD le 22/09/2026 ; l'inventaire des §2 et §3
+> reste exact, le commit intercalaire `6998bb0` étant purement documentaire.*
 > Origine : [ADR-APP-DISTRIBUTION-001](adr-app-distribution-001-installation-and-updates.md) **DI-8** et son
 > obligation **OI-10** — .NET 10 (LTS) avant la Release V1, aucune Release V1 sur .NET 8.
 > Lot inscrit dans la [roadmap P4](P4-multi-poste-roadmap.md), §P4-NET10.
 > **Le dépôt réel prime toujours sur ce document.**
+
+> ## Statut : **READY FOR IMPLEMENTATION**
+>
+> **Les deux décisions d'architecte qui bloquaient le lot sont prises (22/09/2026).**
+>
+> | Porte | Décision arrêtée | Conséquence dans ce plan |
+> |---|---|---|
+> | **G-1** — source NuGet | **OUVERTE**, sous la forme d'un **`NuGet.config` versionné à la racine du dépôt**. La forme « configuration utilisateur » est **écartée** | **E-0** devient exécutable, et devient le **premier commit du lot**. Le garde implicite qu'elle levait est remplacé par la revue explicite de `PackageReference` (**R-6**) |
+> | **G-7** — séquence | **AVANT P4-5F et P4-6B**, conformément à la recommandation du plan et de la [roadmap P4](P4-multi-poste-roadmap.md) | **Q-6** d'[ADR-PROD-DB-009](ADR-PROD-DB-009.md) se tranchera **sur pièces** (§1.4) ; le corpus N1 … N8 de P4-5F s'écrira directement sur Npgsql 10, ce qui **retire à R-9 son caractère différé** |
+>
+> Restent **G-2, G-3, G-5, G-6** : ce sont des conditions **d'exécutant**, vérifiables par commande, non des
+> arbitrages. Elles sont détaillées au §9.1 et leur preuve est produite par **E-1**.
+>
+> **G-4 demeure la condition d'arrêt de E-6** et n'est levée par aucune de ces deux décisions.
 
 **Légende des preuves**
 
@@ -70,6 +85,25 @@ et l'outil implémente `pg_advisory_lock`. **Aujourd'hui, l'implémentation Npgs
 | **La seule source NuGet enregistrée est un dossier hors ligne** : `Microsoft Visual Studio Offline Packages` | `LOCAL` `dotnet nuget list source` |
 | **`nuget.org` est joignable** : `HTTP 200` en 0,38 s | `LOCAL` `curl api.nuget.org/v3/index.json` |
 | Le cache local `~/.nuget/packages` ne contient **que du 8.x** pour EF Core, Npgsql et leurs satellites ; Avalonia y est en 11.1.0 et 11.2.8 | `LOCAL` |
+| **Le `NuGet.Config` utilisateur (`%APPDATA%\NuGet\NuGet.Config`) est un `<configuration />` vide** : `nuget.org` n'y est pas absent par défaut, il en a été **retiré**. La seule source restante vient de la configuration **machine** (dossier hors ligne de Visual Studio) | `LOCAL` (22/09/2026) |
+| **`dotnet` sur le `PATH` résout vers `C:\Program Files (x86)\dotnet\dotnet.exe`**, installation **x86 qui ne contient aucun SDK** — uniquement des runtimes. Les SDK 10.0.103 et 8.0.425 sont dans l'installation **x64** `C:\Program Files\dotnet` | `LOCAL` (22/09/2026) |
+
+> ### Écart relevé le 22/09/2026 — à lever avant E-1
+>
+> Dans le shell utilisé pour cette revue, `dotnet --list-sdks` répond **« No .NET SDKs were found »** et
+> `dotnet --version` **échoue** : le `PATH` place `C:\Program Files (x86)\dotnet\` **avant**
+> `C:\Program Files\dotnet\`, et l'installation x86 ne porte **aucun SDK**. Invoqué explicitement,
+> `"C:\Program Files\dotnet\dotnet.exe" --list-sdks` liste bien **8.0.425 et 10.0.103**.
+>
+> **Le SDK n'est donc pas en cause — la résolution du `PATH` l'est.** Une revue antérieure a observé
+> `dotnet --version` → `8.0.425`, ce qui indique que l'ordre du `PATH` **dépend du shell employé** : le constat
+> n'est pas reproductible d'un terminal à l'autre. C'est exactement le genre d'écart qui rend un échec de E-1 ou
+> de E-2 inexplicable.
+>
+> **Conduite à tenir :** traité en **G-0** (§9.1), à lever **avant** toute commande du lot — soit en corrigeant
+> l'ordre du `PATH`, soit en désinstallant le `dotnet` x86 s'il n'a pas d'usage. **Ne pas contourner l'écart en
+> invoquant le chemin complet dans les scripts du lot** : cela masquerait le problème et le déplacerait sur le
+> poste suivant.
 
 > **Conclusion la plus importante de ce paragraphe.** La contrainte d'
 > [ADR-PROD-DB-008 §2.4](adr-prod-db-008-postgresql-integration-testing.md) — « la seule source NuGet est un cache
@@ -196,25 +230,51 @@ nouvelle. Monter vers C# 14 se décidera séparément, quand un besoin le justif
 > bougent ensemble et que la CI rougit, **rien ne dit lequel des quatre est responsable**. L'ordre ci-dessous
 > garantit qu'un échec désigne sa cause.
 
-### E-0 — Ouvrir la source NuGet *(décision, pas manipulation)*
+### E-0 — Ouvrir la source NuGet *(décision prise — G-1)*
 
 | | |
 |---|---|
-| **Fichiers** | `NuGet.config` **créé à la racine** (ou configuration utilisateur, voir ci-dessous) |
-| **Action** | enregistrer `nuget.org` comme source de restauration |
-| **Sortie** | `dotnet restore MMV.sln` réussit **à l'identique** en `net8.0`, sans aucune autre modification |
-| **Arrêt** | si la décision **G-1** n'est pas prise, **le lot ne commence pas** |
+| **Fichiers** | `NuGet.config` **créé à la racine du dépôt** — fichier **nouveau**, versionné |
+| **Action** | enregistrer `nuget.org` comme source de restauration, **après `<clear />`** |
+| **Sortie** | `dotnet restore MMV.sln` réussit **à l'identique** en `net8.0`, sans aucune autre modification ; `dotnet nuget list source` montre `nuget.org` **activée** |
+| **Arrêt** | **G-1 est prise** (en-tête). Reste bloquant : **G-0** — tant que `dotnet` résout vers l'installation x86 sans SDK, aucune commande du lot n'est exécutable |
 
-**Deux formes possibles, et elles ne se valent pas :**
+**Forme retenue par G-1 : `NuGet.config` versionné.** La configuration utilisateur du poste est **écartée** —
+invisible du dépôt, non reproductible, divergente d'un poste à l'autre. Le fichier versionné rend explicite ce
+qui est aujourd'hui implicite : **la CI restaure déjà depuis `nuget.org`** par la configuration par défaut du
+runner, alors que le poste de développement ne le peut pas. **Cette asymétrie n'est écrite nulle part** ; E-0 la
+supprime.
 
-| Forme | Effet | Avis |
-|---|---|---|
-| `NuGet.config` **dans le dépôt** | la source devient une **décision de projet**, revue, versionnée, identique pour tous les postes et pour la CI | **recommandée.** Elle rend explicite ce qui est aujourd'hui implicite : la CI restaure déjà depuis `nuget.org` par la configuration par défaut du runner, alors que le poste de développement ne le peut pas. **Cette asymétrie est aujourd'hui non écrite** |
-| configuration **utilisateur** du poste | invisible du dépôt, non reproductible, divergente d'un poste à l'autre | à éviter : reconduit le problème sous une autre forme |
+**`<clear />` n'est pas une précaution de style.** La configuration **machine** du poste déclare le dossier hors
+ligne de Visual Studio (§2.1), que le runner GitHub **n'a pas**. Sans `<clear />`, le jeu de sources effectif
+diffère entre le poste et la CI : deux restaurations, deux graphes possibles, et un « ça marche chez moi »
+structurel. Avec `<clear />`, **le dépôt impose son jeu de sources** et les deux environnements restaurent à
+l'identique.
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <!-- P4-NET10 / E-0 (décision G-1) : le dépôt impose son jeu de sources.
+         <clear /> neutralise les sources héritées des configurations machine et utilisateur
+         (dont le dossier hors ligne de Visual Studio), afin que le poste de développement et le
+         runner de CI restaurent depuis EXACTEMENT la même source. -->
+    <clear />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
+  </packageSources>
+</configuration>
+```
+
+> **Vérifier que E-0 n'a rien changé d'autre.** Le critère de sortie exige un `restore` **à l'identique en
+> `net8.0`** : E-0 change *d'où* viennent les paquets, **jamais lesquels**. Si le graphe restauré bouge à cette
+> étape, c'est que le dossier hors ligne servait des versions différentes de `nuget.org` — fait à établir **ici**,
+> pendant qu'il est encore isolé, et non trois étapes plus loin.
 
 **Effet de bord à accepter.** Ouvrir `nuget.org` lève la contrainte d'ADR-PROD-DB-008 §2.4, qui servait de garde
 implicite contre l'ajout de dépendances. Ce garde **doit être remplacé par une revue explicite** des
 `PackageReference` — l'audit NuGet bloquant est déjà en place, il traite la vulnérabilité, pas l'opportunité.
+**C'est la contrepartie assumée de G-1, et elle est désormais à la charge du relecteur** (§6.4, point de
+validation **V-1**).
 
 ### E-1 — Figer l'état de référence
 
@@ -344,7 +404,194 @@ et devient une décision appuyée sur une vérification.
 
 ---
 
-## 5. Risques techniques
+## 5. Vérifications obligatoires
+
+**Une seule batterie, définie une fois, rejouée à l'identique.** Une vérification « avant » et une vérification
+« après » qui ne sont pas la **même commande** ne se comparent pas. Le §5.1 définit la batterie ; les §5.2 à §5.5
+disent **quand** on la rejoue et **ce qu'on en attend**.
+
+### 5.1 La batterie — sept contrôles, toujours dans cet ordre
+
+Toutes les commandes se lancent **depuis la racine du dépôt**. Aucune ne se connecte à une base
+([CONTRIBUTING.md](../../CONTRIBUTING.md), *Commandes EF de référence*).
+
+| # | Contrôle | Commande | Résultat attendu |
+|---|---|---|---|
+| **VP-1** | Résolution de l'outillage | `dotnet --list-sdks` puis `dotnet --version` | le SDK attendu répond — **G-0** (§2.1) doit être levé, sinon tout le reste est ininterprétable |
+| **VP-2** | Restauration | `dotnet restore MMV.sln` | succès, **sans avertissement de rétrogradation NU1605** |
+| **VP-3** | Construction | `dotnet build MMV.sln --no-restore -c Debug` | succès. **Les avertissements sont relevés et comparés**, jamais corrigés (§1.2, R-8) |
+| **VP-4** | Tests | `dotnet test MMV.sln --no-build -c Debug` | **1569 réussis, 0 échoué, 0 ignoré** — le **compte exact** est la donnée, pas le « vert » |
+| **VP-5** | Dérive EF — chaîne **SQLite** | `dotnet ef migrations has-pending-model-changes --project src/MMV.Infrastructure --startup-project src/MMV.Infrastructure --no-build` | code de sortie **0** |
+| **VP-6** | Dérive EF — chaîne **PostgreSQL** | avec `MMV_DESIGNTIME_DATABASE_PROVIDER=postgresql` : `migrations list --no-connect` **puis** `has-pending-model-changes`, `--project` **et** `--startup-project` sur `src/MMV.Infrastructure.PostgreSQL.Migrations` | code **0**, et la liste contient **`InitialPostgreSqlBaseline`** sans **`InitialCreate`** — c'est la **garde anti-faux-vert** |
+| **VP-7** | Vulnérabilités | `dotnet list MMV.sln package --vulnerable --include-transitive` | **aucune** High/Critical |
+
+> **VP-6 sans sa garde ne vaut rien.** Si la variable d'environnement est absente ou mal orthographiée, la factory
+> design-time **retombe sur SQLite** et `has-pending-model-changes` répond **vert en contrôlant la mauvaise
+> chaîne**. C'est pourquoi `migrations list` précède toujours le contrôle de dérive, et pourquoi la présence de
+> `InitialPostgreSqlBaseline` **et** l'absence d'`InitialCreate` se lisent toutes les deux. La CI applique
+> exactement cette garde ([ci.yml](../../.github/workflows/ci.yml)).
+
+> **`--no-build` suppose un build à jour.** Après toute modification de `.csproj`, **relancer VP-3 avant VP-5 et
+> VP-6**, sinon les contrôles de dérive portent sur les binaires de l'étape précédente — un vert qui ne prouve
+> rien.
+
+### 5.2 Avant migration — la baseline (étape **E-1**)
+
+**Objet : rendre interprétable tout échec ultérieur.** Sur `net8.0` strictement inchangé, à HEAD, batterie
+**VP-1 … VP-7 complète**, puis **archivage écrit** dans le rapport de lot :
+
+1. le **compte exact** de tests (attendu : **1569**) ;
+2. la **liste intégrale des migrations des deux chaînes** — **14** en SQLite, **1** en PostgreSQL — obtenue par
+   `migrations list`, collée telle quelle ;
+3. la liste des **avertissements de build**, pour pouvoir distinguer plus tard *nouveau* de *préexistant* ;
+4. les **versions résolues** des paquets sensibles : `System.Text.Json`, `SQLitePCLRaw.lib.e_sqlite3`, `Npgsql`.
+
+> **Condition de GO — G-2.** Si la baseline n'est pas verte **avant** la montée, elle ne sera pas imputable à la
+> montée. On corrige d'abord, ou on renonce. **Une baseline rouge archivée n'est pas une baseline : c'est une
+> excuse préparée.**
+
+### 5.3 Après chaque étape — le sous-ensemble minimal
+
+Aucune étape ne se clôt sans vérification. Le sous-ensemble dépend de ce que l'étape a touché :
+
+| Étape | Batterie exigée | Ajout propre à l'étape |
+|---|---|---|
+| **E-0** source NuGet | VP-2 | graphe restauré **identique** à E-1 (§4, E-0) |
+| **E-1** baseline | **VP-1 … VP-7** | archivage (§5.2) |
+| **E-2** SDK | **VP-1 … VP-6** | `dotnet --version` en **10.0.1xx**, toujours en `net8.0` |
+| **E-3** pile de test | VP-2 … VP-4 | compte de tests **identique** ; aucun test ignoré |
+| **E-4** TFM | **VP-1 … VP-7** | l'application **démarre** et ouvre l'écran de connexion |
+| **E-5** épingles | VP-2, VP-3, **VP-7** | `System.Text.Json` résolu **≥ 10.x** ; SQLite natif **≥ 3.50.2**, *établi et écrit* |
+| **E-6** EF / Npgsql | **VP-1 … VP-7** | **`migrations list` identique à E-1, migration par migration** |
+| **E-7** CI | batterie **sur le runner** | §5.5 |
+| **E-8** spikes | build explicite du projet de spike | hors solution : `dotnet build spikes/...` nommément |
+
+> **E-6 mérite plus qu'un code de sortie.** Un `has-pending-model-changes` vert dit « pas de dérive » ; il ne dit
+> **pas** que la chaîne est la même. Le contrôle qui compte est la **comparaison littérale** de `migrations list`
+> avec l'archive de E-1 : **mêmes identifiants, même ordre, même nombre**. Toute différence est **G-4**.
+
+### 5.4 Après migration — la vérification finale
+
+Sur le dernier commit du lot, `net10.0` partout, **batterie VP-1 … VP-7 complète**, en **Debug**, plus :
+
+| Contrôle final | Exigence |
+|---|---|
+| Comparaison avec la baseline | compte de tests **identique**, migrations **identiques** sur les deux chaînes, aucune vulnérabilité nouvelle |
+| Diff du lot | `git diff --stat <base>..HEAD` ne montre **aucun `.cs`**, **aucun fichier sous `Migrations/`** |
+| Démarrage applicatif | l'application se lance et ouvre l'écran de connexion — **vérification manuelle, la CI ne la fait pas** |
+| Versions retenues | EF Core, Npgsql, `dotnet-ef`, SDK : **numéros exacts écrits** dans le rapport de lot |
+
+### 5.5 CI — ce qu'elle vérifie, et sur quoi
+
+La CI se déclenche seule sur une branche `p4*` ([ci.yml](../../.github/workflows/ci.yml), `on.push.branches`) :
+**`p4-net10` est couverte sans modifier le workflow** (§6.1).
+
+Elle rejoue, sur `windows-latest`, `restore` → `build -c Debug` → `test` → audit JSON des vulnérabilités →
+`tool restore` → **les deux** contrôles de dérive avec la garde anti-faux-vert. Elle installe le SDK via
+**`global-json-file: global.json`** : elle suivra donc E-2 **sans modification du workflow**.
+
+**Exigence : CI verte sur le SHA exact du dernier commit du lot**, tous les steps, journal **lu intégralement** —
+un step vert dont le journal contient une erreur avalée n'est pas une preuve.
+
+> **Ce que la CI ne prouve pas — à ne pas confondre avec une garantie.**
+>
+> - Elle construit en **Debug** et **ne publie rien** : elle ne dit **rien** d'une publication autonome `win-x64`
+>   sur .NET 10. Cette preuve appartient à **P8** (DI-1).
+> - Elle **ne démarre pas l'application** : la vérification de démarrage reste manuelle (§5.4).
+> - Elle **ne touche aucun serveur PostgreSQL** : le comportement d'exécution de Npgsql 10 reste **non mesuré**
+>   (**R-9**), et le restera jusqu'à **P4-5F**. G-7 ayant placé le lot **avant** P4-5F, ce corpus s'écrira
+>   directement sur Npgsql 10 — c'est le bénéfice attendu de l'arbitrage, **pas** une preuve déjà acquise.
+> - Elle **ne compile pas les spikes**, hors solution : **R-5** n'a aucune détection automatique. E-8 est la seule
+>   barrière.
+
+---
+
+## 6. Stratégie Git
+
+### 6.1 Branche
+
+| | |
+|---|---|
+| **Nom** | **`p4-net10`** — aligné sur la convention du dépôt (`p3-business-rules`, `p4-multi-poste`) |
+| **Base** | **`p4-multi-poste`**, à son HEAD `6998bb0` — **et non `main`** |
+| **Déclenchement CI** | automatique : `p4-net10` correspond au motif **`p4*`** déjà présent dans le workflow. **Aucune modification de [ci.yml](../../.github/workflows/ci.yml) n'est nécessaire pour cela** |
+
+> **Pourquoi `p4-multi-poste` et pas `main` — ce point n'est pas négociable.** `main` **ne contient pas** le projet
+> `MMV.Infrastructure.PostgreSQL.Migrations` (`CODE`, `git ls-tree main` : chemin absent ; la branche est en avance
+> de **24 commits**). Une branche partant de `main` rendrait **VP-6 impossible à exécuter** : la chaîne PostgreSQL
+> n'y existe pas. Or **VP-6 est le contrôle qui porte G-4**, le point d'arrêt le plus important du plan. Partir de
+> `main` reviendrait à supprimer la vérification centrale du lot **en croyant simplifier**.
+
+**Préalable au branchement.** À la rédaction, `p4-multi-poste` local (`6998bb0`) est **en avance d'un commit** sur
+`origin/p4-multi-poste` (`ccbeb32`), et `docs/implementation/P4-5-final-verification-report.md` est **non suivi**.
+**Pousser la base et statuer sur ce fichier avant de brancher** : une baseline E-1 mesurée sur un état non publié
+n'est comparable par personne d'autre.
+
+### 6.2 Commits — un par étape, dans l'ordre du §4
+
+**Un commit par étape, jamais deux étapes dans un commit.** C'est ce qui rend **N-1** (§8) vrai : révoquer une
+étape sans toucher aux autres. Convention du dépôt : `type(LOT): résumé impératif en anglais`.
+
+| # | Étape | Message | Fichiers attendus |
+|---|---|---|---|
+| **C-0** | E-0 | `chore(P4-NET10): register nuget.org as the repository package source` | `NuGet.config` *(nouveau)* |
+| **C-1** | E-1 | *(aucun commit de code)* — la baseline est **archivée dans le rapport de lot**, commitée en fin de lot avec C-8 | — |
+| **C-2** | E-2 | `chore(P4-NET10): pin the .NET 10 SDK in global.json` | `global.json` |
+| **C-3** | E-3 | `chore(P4-NET10): align the test platform for .NET 10` | 3 × `tests/**/*.csproj` — **commit absent si l'étape est vide** |
+| **C-4** | E-4 | `chore(P4-NET10): retarget all projects to net10.0` | 8 × `.csproj` de [MMV.sln](../../MMV.sln) |
+| **C-5** | E-5 | `chore(P4-NET10): revise security pins for the net10.0 shared framework` | `MMV.App.csproj`, `MMV.Infrastructure.csproj` |
+| **C-6** | E-6 | `chore(P4-NET10): upgrade EF Core, Npgsql and the dotnet-ef tool to 10.0.x` | 5 × `.csproj` + `.config/dotnet-tools.json` |
+| **C-7** | E-8 | `chore(P4-NET10): retarget the P4 provider comparison spike` | 1 à 2 × `.csproj` sous `spikes/` |
+| **C-8** | E-9 | `docs(P4-NET10): close the .NET 10 runtime upgrade` | roadmap P4, ADR-PROD-DB-009 **Q-6**, ce plan, rapport de lot |
+
+> **E-7 n'a pas de commit.** C'est une **vérification**, pas une modification : la CI suit `global.json` sans que
+> le workflow change. Si elle en exigeait un — repli de **R-7** —, il s'intercale en **C-6bis** avec son propre
+> message, et **jamais** fondu dans C-6.
+
+**Le message de commit porte la preuve.** Chaque message inclut, dans son corps, le **critère de sortie vérifié**
+de son étape : compte de tests, codes de sortie des deux contrôles de dérive, versions résolues. Un commit de ce
+lot qui ne dit pas ce qu'il a vérifié **n'est pas revoyable** — et c'est déjà la règle du dépôt
+([CONTRIBUTING.md](../../CONTRIBUTING.md), *Procédure de revue avant commit*, point 12).
+
+### 6.3 Ce qui n'entre jamais dans un commit de ce lot
+
+| Interdit | Détection |
+|---|---|
+| tout fichier **`.cs`** | `git diff --stat` : aucun `.cs` sur tout le lot (§5.4) |
+| tout fichier sous **`Migrations/`**, instantanés compris | **G-4**. C'est le **seul geste du lot qui ne se défait pas** (§8) |
+| une **correction d'avertissement** préexistant, un renommage, une refactorisation | revue de diff — **R-10** |
+| **Avalonia 12.x**, **C# 14**, `<Version>` SemVer | §1.2 et §10 : ils appartiennent à d'autres lots |
+| deux étapes dans un même commit | **détruit N-1** et rend le lot non révocable par morceaux |
+
+### 6.4 Points de validation architecte
+
+Quatre points d'arrêt où l'exécutant **rend la main**. Entre deux points, il avance seul sur ses critères de sortie.
+
+| # | Quand | Ce qui est soumis | Décision attendue |
+|---|---|---|---|
+| **V-1** | après **C-0** | le `NuGet.config` versionné, et la **revue explicite des `PackageReference`** qui remplace le garde levé par G-1 (**R-6**) | la contrepartie de G-1 est-elle tenue ? |
+| **V-2** | après **E-1**, avant **C-2** | la **baseline archivée** : compte de tests, migrations des deux chaînes, avertissements, versions résolues | **G-2 est-elle satisfaite ?** C'est le dernier moment où renoncer ne coûte rien |
+| **V-3** | après **C-6** — *point le plus important* | résultat de **VP-6** et **comparaison littérale** de `migrations list` avec l'archive de E-1 ; versions EF Core / Npgsql / `dotnet-ef` retenues | **G-4** : dérive de modèle ? Si oui → **arrêt, retour à EF 8, escalade**. Ne générer **aucune** migration |
+| **V-4** | avant **C-8** | les **dix critères de sortie** (§9.4), **CI verte sur le SHA exact**, et la **réponse à Q-6** d'[ADR-PROD-DB-009](ADR-PROD-DB-009.md) au vu du verrou natif d'EF 10 | le lot est-il clos ? |
+
+> **V-3 est le point dont dépend la nature du lot.** Tant qu'il n'est pas franchi, `P4-NET10` reste une montée de
+> runtime, révocable et sans trace. Au-delà de G-4 mal traité, il devient un **changement de schéma de
+> production** — et relève alors d'[ADR-PROD-DB-005](adr-prod-db-005-migration-architecture.md) et
+> d'[ADR-PROD-DB-007](adr-prod-db-007-schema-drift-prevention.md), **pas de ce plan**.
+
+### 6.5 Fusion
+
+**Vers `p4-multi-poste`**, dont la branche est issue — et **non** vers `main`. Conditions : les **dix critères de
+sortie** (§9.4), **V-4 prononcé**, **CI verte sur le SHA fusionné**.
+
+**Historique conservé, commits non écrasés.** Le découpage E-0 … E-9 **est** la stratégie de retour arrière
+(§8, N-1) : un `squash` la détruirait et ramènerait le lot à un bloc tout-ou-rien. Si la branche doit être
+rafraîchie sur sa base, **`merge`** — un `rebase` réécrit les SHA déjà cités dans le rapport de lot et dans les
+journaux de CI, c'est-à-dire **les preuves elles-mêmes**.
+
+---
+
+## 7. Risques techniques
 
 | # | Risque | Probabilité | Impact | Détection | Atténuation |
 |---|---|---|---|---|---|
@@ -368,7 +615,7 @@ et devient une décision appuyée sur une vérification.
 
 ---
 
-## 6. Stratégie de retour arrière
+## 8. Stratégie de retour arrière
 
 **Le lot ne touche que des fichiers de construction et de dépendances.** Aucun `.cs`, aucune migration, aucune
 donnée. Le retour arrière est donc **complet et sans reste** — c'est la propriété la plus précieuse du plan.
@@ -395,33 +642,43 @@ donnée. Le retour arrière est donc **complet et sans reste** — c'est la prop
 
 ---
 
-## 7. Critères GO / NO-GO
+## 9. Critères GO / NO-GO
 
-### 7.1 Avant de commencer — conditions de GO
+### 9.1 Avant de commencer — conditions de GO
 
 | # | Condition | État au 22/09/2026 | Qui |
 |---|---|---|---|
-| **G-1** | **La source NuGet est ouverte**, par un `NuGet.config` versionné, et cette ouverture est **assumée comme une décision** (§E-0, R-6) | **NON SATISFAITE** — seule source : dossier hors ligne. **C'est le seul obstacle matériel** | **architecte** |
-| **G-2** | **Baseline verte et écrite** : build, tests (**1569** attendus), les deux contrôles de dérive, les listes de migrations des deux chaînes archivées | à produire par **E-1** | exécutant |
-| **G-3** | **SDK 10 disponible** localement **et** sur le runner, en version publiée | **SATISFAITE localement** — 10.0.103 (`LOCAL`). Runner : `À VÉRIFIER` | exécutant |
-| **G-5** | **Versions cibles revérifiées le jour même** sur `api.nuget.org`, contrainte `Npgsql EF → EF Core [10.0.4, 11.0.0)` incluse | relevé du 22/09/2026 à rafraîchir | exécutant |
-| **G-6** | **Branche de lot dédiée** créée ; SDK .NET 8 conservé | à faire | exécutant |
-| **G-7** | **Séquence arbitrée** : avant P4-5F et P4-6B *(recommandé)*, ou après | **NON ARBITRÉE** | **architecte** |
+| **G-1** | **La source NuGet est ouverte**, par un `NuGet.config` versionné, et cette ouverture est **assumée comme une décision** (§E-0, R-6) | **TRANCHÉE — ouverture retenue**, forme « `NuGet.config` versionné ». **Mise en œuvre par E-0 / C-0** ; contrepartie R-6 contrôlée en **V-1** | **architecte ✔** |
+| **G-7** | **Séquence arbitrée** : avant P4-5F et P4-6B, ou après | **TRANCHÉE — AVANT P4-5F et P4-6B.** Q-6 se tranchera sur pièces ; le corpus N1 … N8 s'écrira sur Npgsql 10 | **architecte ✔** |
+| **G-0** | **`dotnet` résout vers une installation portant un SDK.** Aujourd'hui le `PATH` désigne l'installation **x86, sans SDK** (§2.1) | **NON SATISFAITE** — **seul obstacle matériel restant.** À lever avant toute commande du lot | exécutant |
+| **G-2** | **Baseline verte et écrite** : VP-1 … VP-7, tests (**1569** attendus), listes de migrations des deux chaînes archivées (§5.2) | à produire par **E-1** ; contrôlée en **V-2** | exécutant |
+| **G-3** | **SDK 10 disponible** localement **et** sur le runner, en version publiée | **SATISFAITE localement** — 10.0.103 présent dans `C:\Program Files\dotnet` (`LOCAL`), **sous réserve de G-0**. Runner : `À VÉRIFIER` | exécutant |
+| **G-5** | **Versions cibles revérifiées le jour même** sur `api.nuget.org`, contrainte `Npgsql EF → EF Core [10.0.4, 11.0.0)` incluse | relevé du 22/09/2026 **à rafraîchir** | exécutant |
+| **G-6** | **Branche `p4-net10`** créée depuis **`p4-multi-poste`** (§6.1), base **poussée** au préalable ; SDK .NET 8 conservé | à faire | exécutant |
 
 > **G-4 n'est pas une condition de départ : c'est la condition d'arrêt de E-6**, énoncée au §4. Elle est numérotée
-> dans la même série parce qu'elle a le même poids qu'un NO-GO.
+> dans la même série parce qu'elle a le même poids qu'un NO-GO. **Les décisions G-1 et G-7 ne la lèvent pas** et
+> n'en changent pas la conduite : elle se prononce en **V-3**.
 
-### 7.2 NO-GO — ne pas commencer si
+> **G-0 est nouvelle, et elle est prioritaire.** Elle n'apparaissait pas dans la version précédente de ce plan
+> parce que l'écart n'avait pas été observé. Elle passe avant tout le reste : **VP-1 est le premier contrôle de la
+> batterie** précisément parce qu'un outillage mal résolu rend les six autres ininterprétables.
 
-- **G-1 n'est pas tranchée.** Sans source NuGet, aucun paquet 10.x ne se restaure : le lot s'arrêterait à E-2.
+### 9.2 NO-GO — ne pas commencer si
+
+- **G-0 n'est pas levée.** Tant que `dotnet` résout vers l'installation x86 sans SDK, **aucune commande du lot
+  n'est exécutable** et aucun constat n'est reproductible. C'est le NO-GO immédiat.
+- **La base n'est pas poussée** ou la branche part de `main` : **VP-6 serait inexécutable** — la chaîne PostgreSQL
+  n'existe pas sur `main` (§6.1).
 - **La baseline n'est pas verte** avant la montée (G-2) : un échec ultérieur ne serait pas imputable.
 - **Une release est en préparation**, ou une tournée de mise à jour de postes est en cours : ce lot change le
   runtime **embarqué**, ce qui interdit de le glisser entre deux postes d'une même tournée
   (ADR-APP-DISTRIBUTION-001 **OI-13**).
-- **P4-6B est déjà commencée** : la montée y ajouterait un second changement de fond simultané, et Q-6 aurait été
-  tranchée par défaut au lieu d'être tranchée sur pièces.
+- **P4-5F ou P4-6B ont commencé** malgré G-7 : la montée y ajouterait un second changement de fond simultané, et
+  **Q-6 aurait été tranchée par défaut** au lieu de l'être sur pièces. G-7 a précisément arbitré l'inverse — si
+  l'un de ces deux lots démarre, **l'arbitrage est à reprendre**, il n'est pas caduc en silence.
 
-### 7.3 Arrêt en cours de route
+### 9.3 Arrêt en cours de route
 
 | Déclencheur | Conduite |
 |---|---|
@@ -431,7 +688,7 @@ donnée. Le retour arrière est donc **complet et sans reste** — c'est la prop
 | Une **vulnérabilité High/Critical** apparaît à l'audit | arrêt : c'est le motif même des épingles de sécurité |
 | Le périmètre **s'élargit** (Avalonia 12, C# 14, correction d'avertissements) | arrêt et retour au §1.2 |
 
-### 7.4 Critères de sortie — le lot est terminé quand
+### 9.4 Critères de sortie — le lot est terminé quand
 
 1. les **8 projets** de la solution sont en `net10.0`, `LangVersion 12.0` conservée ;
 2. EF Core, Npgsql et `dotnet-ef` sont en **10.0.x**, versions exactes **écrites** dans le rapport de lot ;
@@ -446,7 +703,7 @@ donnée. Le retour arrière est donc **complet et sans reste** — c'est la prop
 
 ---
 
-## 8. Ce que le lot laisse à d'autres
+## 10. Ce que le lot laisse à d'autres
 
 | Sujet | Lot |
 |---|---|
@@ -460,7 +717,7 @@ donnée. Le retour arrière est donc **complet et sans reste** — c'est la prop
 
 ---
 
-## 9. Références
+## 11. Références
 
 - [ADR-APP-DISTRIBUTION-001](adr-app-distribution-001-installation-and-updates.md) — **DI-1** publication
   autonome · **DI-8** .NET 10 avant la Release V1 · **OI-10** · **OI-13** une release porteuse de schéma par
@@ -481,7 +738,27 @@ donnée. Le retour arrière est donc **complet et sans reste** — c'est la prop
 
 ---
 
-**Plan prêt à exécuter, sous réserve de G-1 et G-7 — deux décisions de l'architecte.** Le SDK .NET 10 est déjà
-en place ; Avalonia et le modèle EF ne bougent pas ; le retour arrière est complet à toutes les étapes. **Le seul
-risque non maîtrisé est R-1 / G-4**, une dérive de traduction du modèle par EF Core 10 : il est détecté
-automatiquement par les deux contrôles déjà en CI, et sa conduite à tenir est écrite.
+## **READY FOR IMPLEMENTATION — .NET 10**
+
+**G-1 et G-7 sont tranchées** : la source NuGet s'ouvre par un `NuGet.config` versionné, et le lot s'exécute
+**avant P4-5F et P4-6B**. Le plan est complet — inventaire (§2, §3), ordre d'exécution E-0 … E-9 (§4),
+vérifications obligatoires VP-1 … VP-7 (§5), stratégie Git et points de validation V-1 … V-4 (§6), risques (§7),
+retour arrière (§8), GO / NO-GO (§9).
+
+**Ce qui rend ce lot sûr :** le SDK .NET 10 est déjà installé ; **Avalonia ne bouge pas** ; **aucun `.cs`, aucune
+migration** ne sont touchés ; le retour arrière est **complet et sans reste** à chaque étape, parce que chaque
+étape est un commit.
+
+**Deux réserves, et elles ne sont pas de même nature.**
+
+1. **G-0 — à lever avant la première commande.** `dotnet` résout vers une installation **x86 sans SDK** (§2.1).
+   Obstacle matériel, immédiat, sans difficulté technique — mais tant qu'il tient, **rien n'est mesurable**.
+2. **R-1 / G-4 — le seul risque non maîtrisé.** Une dérive de traduction du modèle par EF Core 10, **deux majeures
+   après** l'instantané `ProductVersion 8.0.27`. Il est **détecté automatiquement** par les deux contrôles déjà en
+   CI, sa conduite à tenir est écrite, et il se prononce en **V-3**. **Il ne se contourne jamais par une
+   migration.**
+
+**Reste hors de portée du lot et le demeure : R-9.** Le comportement d'exécution de Npgsql 10 contre un vrai
+serveur **ne sera pas prouvé ici** — aucun code ne s'exécute aujourd'hui contre PostgreSQL. G-7 en fait un
+bénéfice différé plutôt qu'une dette : **P4-5F écrira son corpus directement sur Npgsql 10**. Le dire vaut mieux
+que l'espérer.
