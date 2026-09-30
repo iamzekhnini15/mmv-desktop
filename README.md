@@ -1,13 +1,13 @@
 # ManageMyVision (MMV) - Desktop Application
 
-Application de gestion pour opticiens développée avec .NET 8 et Avalonia UI.
+Application de gestion pour opticiens développée avec .NET 10 et Avalonia UI.
 
 ## Stack Technique
 
-- **Framework**: .NET 8.0 LTS
+- **Framework**: .NET 10.0 LTS
 - **Langage**: C# 12
 - **UI**: Avalonia UI 11.1+ (FluentAvalonia)
-- **Base de données**: SQLite + EF Core 8
+- **Base de données**: SQLite + EF Core 10
 - **Architecture**: Clean Architecture + MVVM
 
 ## Structure du Projet
@@ -25,7 +25,7 @@ mmv-desktop/
 
 ## Prérequis
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Visual Studio Code avec extensions :
   - C# Dev Kit
   - Avalonia for VSCode

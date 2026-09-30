@@ -356,7 +356,7 @@ ouvre la fenêtre et prépare réellement la base locale.
 
 #### Commandes Principales
 
-Depuis la racine du dépôt, après `dotnet tool restore` (dotnet-ef 8.0.27) et `dotnet build MMV.sln -c Debug` :
+Depuis la racine du dépôt, après `dotnet tool restore` (dotnet-ef 10.0.12) et `dotnet build MMV.sln -c Debug` :
 
 ```bash
 # Chaîne SQLite : sans variable
@@ -802,7 +802,7 @@ dotnet run
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/MMV.App/bin/Debug/net8.0/MMV.App.dll",
+            "program": "${workspaceFolder}/src/MMV.App/bin/Debug/net10.0/MMV.App.dll",
             "args": [],
             "cwd": "${workspaceFolder}/src/MMV.App",
             "stopAtEntry": false,
@@ -974,7 +974,7 @@ dotnet build -c Release
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 
 # Output :
-# src/MMV.App/bin/Release/net8.0/win-x64/publish/MMV.App.exe
+# src/MMV.App/bin/Release/net10.0/win-x64/publish/MMV.App.exe
 ```
 
 ### Créer un Installateur (Optionnel)
@@ -990,7 +990,7 @@ OutputDir=Output
 OutputBaseFilename=MMV-Setup
 
 [Files]
-Source: "src\MMV.App\bin\Release\net8.0\win-x64\publish\*"; DestDir: "{app}"; Flags: recursesubdirs
+Source: "src\MMV.App\bin\Release\net10.0\win-x64\publish\*"; DestDir: "{app}"; Flags: recursesubdirs
 
 [Icons]
 Name: "{commondesktop}\ManageMyVision"; Filename: "{app}\MMV.App.exe"

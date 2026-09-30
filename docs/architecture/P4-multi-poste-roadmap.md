@@ -675,13 +675,20 @@ se termine par **commit + CI verte sur le SHA exact**.
   [`.config/dotnet-tools.json`](../../.config/dotnet-tools.json), source NuGet, CI.
 - **Interdit** : tout changement de modèle EF, toute migration nouvelle, toute fonctionnalité, tout changement de
   comportement. **La montée de version n'est pas une occasion de refactoriser.**
-- **Tests attendus** : la baseline **1569** reste verte, **à l'identique** — aucun test ajouté, aucun retiré,
-  aucun ignoré ; les deux contrôles de dérive EF (SQLite et PostgreSQL) restent verts.
+- **Tests attendus** : la baseline reste verte **à l'identique** — aucun test ajouté, aucun retiré, aucun
+  ignoré ; les deux contrôles de dérive EF (SQLite et PostgreSQL) restent verts. **Le compte de référence est
+  1953**, mesuré par [E-1](../implementation/P4-NET10-E1-baseline-report.md) §6 : le **1569** qu'annonçait le
+  plan d'exécution était une donnée P4-4C non rafraîchie contre les livraisons P4-5D et P4-5E (+384 tests).
+  **Constaté à la clôture : 1953 / 1953.**
 - **Effet sur P4** : tranche **Q-6** d'[ADR-PROD-DB-009](ADR-PROD-DB-009.md) — EF Core ≥ 9 apporte un verrou de
   migration natif, que **DP-2 autorise explicitement** en retenant une *famille* de mécanismes plutôt qu'un appel
   précis. Exécuté **avant** P4-5F et P4-6B, il évite aussi de migrer ensuite les projets que ces deux lots créent.
-- **État** : **READY — NOT STARTED**. Le **SDK .NET 10 est déjà installé** sur le poste de développement
-  (10.0.103, runtime 10.0.3) ; l'obstacle est la **source NuGet**, non le SDK (voir le plan, §GO / NO-GO).
+- **État** : **COMPLETED** — 30 septembre 2026, branche `p4-net10`. SDK **10.0.401** (`rollForward: disable`,
+  donc poste et runner compilent avec le **même SDK exact**), `net10.0` sur les 8 projets de la solution,
+  **EF Core 10.0.12**, **Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3**, `dotnet-ef` **10.0.12**.
+  **1953 / 1953 tests verts**, **0 avertissement de build**, **0 vulnérabilité**. **Migrations inchangées** :
+  14 en SQLite et 1 en PostgreSQL, identifiants et ordre identiques à la baseline, instantanés EF
+  **bit à bit identiques**. ([rapport de clôture](../implementation/P4-NET10-final-report.md))
 
 ### P4-7 — Procédure/outil de migration SQLite → serveur
 
@@ -831,7 +838,7 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 | **P4-4** — traduction des erreurs et portage des primitives | **`IN PROGRESS — NOT CLOSE`** — dépendance P4-3 **satisfaite** ; **étape officielle en cours**. **Livré** : `P4-4A0` (`b84c7e3`, CI `33411724068`), `P4-4A1` (`dc4c492`, CI `33436908075`), `P4-4B0` (`d5a3656`, CI **non enregistrée**), `P4-4B1` (`2976401`, CI **non enregistrée**) — **1569** tests. **Restant** : O2 mapping monétaire, O3 index filtrés PostgreSQL, O4 stratégie `DateTime`, **validation PostgreSQL au runtime** (dont re-preuve des 14 primitives) **après disponibilité du schéma serveur (P4-5)**. ([réconciliation P4-4C](../implementation/P4-4C-state-reconciliation-report.md)) |
 | **P4-5** — schéma et migrations serveur | **`IN PROGRESS — NOT CLOSE`** — **P4-5A** (audit, [rapport](../implementation/P4-5A-postgresql-schema-audit-report.md)) et **P4-5B** (décisions, [rapport](../implementation/P4-5B-postgresql-architecture-decisions-report.md)) livrés, **tous deux strictement documentaires** : aucun code, aucun test exécuté, aucune migration. **Six ADR acceptées** — [003 monétaire](adr-prod-db-003-money-persistence.md), [004 `DateTime`](adr-prod-db-004-datetime-strategy.md), [005 migrations](adr-prod-db-005-migration-architecture.md), [006 index](adr-prod-db-006-index-and-model-portability.md), [007 dérive](adr-prod-db-007-schema-drift-prevention.md), [008 tests d'intégration](adr-prod-db-008-postgresql-integration-testing.md). **Livrés depuis** : P4-5C (`b5c2073`), P4-5D (`023048f`), P4-5D-R (`45f67a2`), P4-5E (`a06c19f`, `ccbeb32`). **Restant** : P4-5F (**NEXT**) ; P4-5G **absorbé par P4-6C**. `POSTGRESQL CLEAN START = BLOCKED` |
 | **P4-6** — application des migrations en multi-poste | **`IN PROGRESS — NOT CLOSE`** — **P4-6A COMPLETE** : [**ADR-PROD-DB-009 = ACCEPTED**](ADR-PROD-DB-009.md) le 22/09/2026 (dix points de décision arrêtés, dix-sept obligations H1 … H17, vingt alternatives rejetées) ; [ADR-APP-DISTRIBUTION-001](adr-app-distribution-001-installation-and-updates.md) **reste PROPOSED** — décisions validées, mais SD-1/2/3/5 non exécutés et QD-1/QD-10 ouverts. **Strictement documentaire** : aucun code, aucun test, aucune migration, aucune CI ([consolidation](../implementation/P4-6-architecture-consolidation-report.md) · [acceptation](../implementation/P4-6A-adr-acceptance-report.md)). **P4-6B** `NEXT` — **plus aucune question d'architecture ouverte** ; seul préalable : **P4-5F vert**. **P4-6C** `FUTURE` |
-| **P4-NET10** — montée vers .NET 10 (LTS) | **`READY — NOT STARTED`** — lot **transverse**, sans dépendance dans P4. Mise en œuvre de **DI-8 / OI-10** ; **.NET 8 hors support le 10/11/2026**. SDK 10.0.103 déjà installé localement ; obstacle = **source NuGet**. ([plan d'exécution](net10-migration-execution-plan.md)) |
+| **P4-NET10** — montée vers .NET 10 (LTS) | **`COMPLETED`** — lot **transverse**, sans dépendance dans P4. **DI-8 / OI-10 satisfaites** : plus aucun projet de la solution sur .NET 8, qui sort de support le **10/11/2026**. SDK **10.0.401**, EF Core **10.0.12**, Npgsql **10.0.3**, `dotnet-ef` **10.0.12**. **1953** tests verts, **0** avertissement, **0** vulnérabilité, **migrations inchangées** (14 SQLite + 1 PostgreSQL). ([plan d'exécution](net10-migration-execution-plan.md) · [baseline E-1](../implementation/P4-NET10-E1-baseline-report.md) · [rapport de clôture](../implementation/P4-NET10-final-report.md)) |
 | **P4-7 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** |
 
 **État courant en vigueur** *(les blocs d'état antérieurs marqués `[HISTORIQUE]` plus haut sont remplacés par
@@ -895,9 +902,16 @@ P4-6A Q-2 OPERATOR MODEL    = ANSWERED — MIXED, PER CONTRACT — MIGRATOR ROLE
 P4-6A BLOCKING QUESTIONS    = NONE
 P4-6B DATABASE LIFECYCLE    = NEXT — NOT STARTED — REQUIRES P4-5F GREEN
 P4-6C STARTUP GUARD LIFT    = FUTURE — REQUIRES P4-6B VALIDATED
-P4-NET10 RUNTIME UPGRADE    = READY — NOT STARTED — NO P4 DEPENDENCY
-P4-NET10 SDK LOCAL          = 10.0.103 INSTALLED — RUNTIME 10.0.3
-P4-NET10 BLOCKER            = NUGET SOURCE — OFFLINE FOLDER ONLY, NUGET.ORG NOT REGISTERED
+P4-NET10 RUNTIME UPGRADE    = COMPLETED — 2026-09-30 — NO P4 DEPENDENCY
+P4-NET10 SDK                = 10.0.401 — rollForward disable — SAME SDK ON WORKSTATION AND RUNNER
+P4-NET10 TARGET FRAMEWORK   = net10.0 ON ALL 8 SOLUTION PROJECTS
+P4-NET10 EF CORE / NPGSQL   = 10.0.12 / 10.0.3 — dotnet-ef 10.0.12
+P4-NET10 TESTS              = 1953 / 1953 — 0 FAILED — 0 SKIPPED — 0 BUILD WARNING
+P4-NET10 MIGRATIONS         = UNCHANGED — 14 SQLITE + 1 POSTGRESQL — SNAPSHOTS BIT-IDENTICAL
+P4-NET10 BLOCKER            = NONE — NUGET.ORG REGISTERED BY VERSIONED NuGet.config
+Q-6 (ADR-PROD-DB-009)       = DECIDABLE — LK-5 AVAILABLE — NPGSQL IMPLEMENTS IT AS
+                              'LOCK TABLE ... IN ACCESS EXCLUSIVE MODE', NOT pg_advisory_lock
+                              — ARCHITECT RULING REQUIRED, ADR NOT MODIFIED BY THIS LOT
 P4-7 … P4-12                = NOT STARTED
 V1 MULTI-POSTE              = NOT GO
 ```

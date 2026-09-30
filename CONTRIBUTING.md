@@ -15,8 +15,8 @@ veut les raisons détaillées.
 
 | Outil | Version | Obtention et vérification |
 |---|---|---|
-| SDK .NET | 8.0, fixé par [`global.json`](global.json) (`8.0.417`, `rollForward: latestFeature`) | `dotnet --version` doit afficher `8.0.4xx` |
-| `dotnet-ef` | **8.0.27**, verrouillé par [`.config/dotnet-tools.json`](.config/dotnet-tools.json) | `dotnet tool restore`, puis `dotnet ef --version` doit afficher `8.0.27` |
+| SDK .NET | 10.0, fixé par [`global.json`](global.json) (`10.0.401`, `rollForward: disable`) | `dotnet --version` doit afficher **exactement** `10.0.401` — `rollForward: disable` garantit que le poste et la CI compilent avec le même SDK |
+| `dotnet-ef` | **10.0.12**, verrouillé par [`.config/dotnet-tools.json`](.config/dotnet-tools.json) (`rollForward: false`) | `dotnet tool restore`, puis `dotnet ef --version` doit afficher `10.0.12` |
 
 Les commandes marquées `--no-build` réutilisent les binaires Debug. Il faut donc compiler avant, et recompiler
 après chaque modification, sinon EF lit l'ancien modèle :
