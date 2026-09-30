@@ -14,7 +14,7 @@ Start-Sleep -Seconds 1
 Write-Host "[2/4] Suppression des anciennes bases de données..." -ForegroundColor Yellow
 
 # Base de données dans le répertoire de l'app
-$appDbPath = ".\src\MMV.App\bin\Debug\net8.0\mmv-optic.db"
+$appDbPath = ".\src\MMV.App\bin\Debug\net10.0\mmv-optic.db"
 if (Test-Path $appDbPath) {
     Remove-Item $appDbPath -Force
     Write-Host "  ✓ Supprimé: $appDbPath" -ForegroundColor Green
@@ -29,8 +29,8 @@ if (Test-Path $localAppDataPath) {
 
 # Supprimer aussi les fichiers -shm et -wal s'ils existent
 $dbFiles = @(
-    ".\src\MMV.App\bin\Debug\net8.0\mmv-optic.db-shm",
-    ".\src\MMV.App\bin\Debug\net8.0\mmv-optic.db-wal",
+    ".\src\MMV.App\bin\Debug\net10.0\mmv-optic.db-shm",
+    ".\src\MMV.App\bin\Debug\net10.0\mmv-optic.db-wal",
     "$env:LOCALAPPDATA\ManageMyVision\mmv.db-shm",
     "$env:LOCALAPPDATA\ManageMyVision\mmv.db-wal"
 )

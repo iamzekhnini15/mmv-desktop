@@ -32,11 +32,16 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
     <PackageReference Include="Projektanker.Icons.Avalonia" Version="9.6.2" />
-    <!-- Pins de sécurité (Étape 0), transitifs High remontés au-delà des avis :
-         - System.Text.Json (EF Core / Hosting) : GHSA-hh2w-p6rv-4g7w, GHSA-8g4q-xg66-9fp4 (corrigé 8.0.5).
-         - Tmds.DBus.Protocol (Avalonia.Desktop -> X11 -> FreeDesktop, code Linux/D-Bus uniquement,
-           jamais exécuté sur la cible Windows) : GHSA-xrw6-gwf8-vvr9 (corrigé 0.21.2). -->
-    <PackageReference Include="System.Text.Json" Version="8.0.6" />
+    <!-- Épingle de sécurité (Étape 0), RÉEXAMINÉE en P4-NET10 / E-5 et CONSERVÉE.
+         Tmds.DBus.Protocol est un transitif d'Avalonia.Desktop -> X11 -> FreeDesktop (code Linux/D-Bus,
+         jamais exécuté sur la cible Windows) : GHSA-xrw6-gwf8-vvr9, corrigé en 0.21.2.
+         L'épingle est PORTANTE : Avalonia.FreeDesktop 11.2.8 exige encore 0.20.0, SOUS le correctif
+         (relevé sur le .nuspec le 30/09/2026). La retirer réintroduirait l'avis High. Avalonia ne bouge
+         pas dans ce lot (plan §3.3) : son transitif ne bouge pas non plus.
+         L'épingle System.Text.Json 8.0.6 qui figurait ici a été RETIRÉE : sur net10.0 le framework
+         partagé fournit la 10.x, et la conserver rétrogradait l'assembly de deux majeures (NU1510).
+         Les avis d'origine (GHSA-hh2w-p6rv-4g7w, GHSA-8g4q-xg66-9fp4) sont corrigés depuis 8.0.5 :
+         l'épingle n'avait plus d'objet. -->
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
   </ItemGroup>
 
