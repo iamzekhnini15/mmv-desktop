@@ -107,8 +107,20 @@ public sealed class SupplierDeletionSqlAndTrackerTests : IDisposable
         sql.Should().Contain("Products", "la condition porte sur la table Products, pas sur une navigation chargée");
 
         // Requête paramétrée : l'identifiant est lié via un paramètre nommé, jamais concaténé en littéral dans le
-        // texte de commande (le texte de commande EF référence "@__supplierId_0", pas une valeur littérale).
-        sql.Should().Contain("@__supplierId_0", "l'identifiant doit être un paramètre nommé, jamais concaténé en clair");
+        // texte de commande. La preuve est tirée de la COLLECTION DbParameter réellement transmise au pilote, et
+        // non d'un nom de paramètre écrit en dur : EF Core a changé sa convention de nommage entre la 8 et la 10
+        // ("@__supplierId_0" devient "@supplierId"), alors que la propriété vérifiée ici — un paramètre lié,
+        // portant la valeur attendue et référencé comme tel dans le texte de commande — est, elle, invariante.
+        var parameters = interceptor.Parameters[0];
+        parameters.Should().ContainSingle("l'identifiant est le seul élément variable de la commande");
+
+        var (parameterName, parameterValue) = parameters[0];
+        parameterName.Should().NotBeNullOrWhiteSpace("le paramètre doit être NOMMÉ, jamais positionnel");
+        parameterValue.Should().NotBeNull("le paramètre doit porter une valeur liée");
+        Convert.ToInt64(parameterValue).Should().Be(id, "le paramètre lié doit porter l'identifiant réel du fournisseur");
+
+        var placeholder = "@" + parameterName.TrimStart('@');
+        sql.Should().Contain(placeholder, "l'identifiant doit être un paramètre nommé, jamais concaténé en clair");
         sql.Should().NotMatchRegex(@"SupplierId""\s*=\s*\d", "aucune valeur littérale ne doit apparaître à la place du paramètre");
     }
 
@@ -250,17 +262,37 @@ public sealed class SupplierDeletionSqlAndTrackerTests : IDisposable
         result.SupplierFound.Should().BeFalse();
     }
 
-    /// <summary>Intercepteur EF enregistrant le texte de chaque commande réellement exécutée (calque P3-8).</summary>
+    /// <summary>
+    /// Intercepteur EF enregistrant le texte de chaque commande réellement exécutée (calque P3-8) ET un instantané
+    /// de ses paramètres liés — nom et valeur — pris AU MOMENT de l'exécution : la collection portée par le
+    /// <see cref="DbCommand"/> est réutilisable par le pilote et ne peut pas être relue fiablement après coup.
+    /// </summary>
     private sealed class CommandRecordingInterceptor : DbCommandInterceptor
     {
         private readonly List<string> _commands = new();
+        private readonly List<IReadOnlyList<(string Name, object? Value)>> _parameters = new();
 
         public IReadOnlyList<string> Commands => _commands;
+
+        /// <summary>
+        /// Paramètres liés de chaque commande, aux mêmes index que <see cref="Commands"/>. Permet de prouver le
+        /// paramétrage sans dépendre de la convention de nommage interne d'EF Core, qui n'est pas contractuelle.
+        /// </summary>
+        public IReadOnlyList<IReadOnlyList<(string Name, object? Value)>> Parameters => _parameters;
+
+        private void Record(DbCommand command)
+        {
+            _commands.Add(command.CommandText);
+            _parameters.Add(command.Parameters
+                .Cast<DbParameter>()
+                .Select(p => (Name: p.ParameterName, Value: p.Value))
+                .ToList());
+        }
 
         public override InterceptionResult<DbDataReader> ReaderExecuting(
             DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
         {
-            _commands.Add(command.CommandText);
+            Record(command);
             return result;
         }
 
@@ -268,14 +300,14 @@ public sealed class SupplierDeletionSqlAndTrackerTests : IDisposable
             DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
             CancellationToken cancellationToken = default)
         {
-            _commands.Add(command.CommandText);
+            Record(command);
             return ValueTask.FromResult(result);
         }
 
         public override InterceptionResult<int> NonQueryExecuting(
             DbCommand command, CommandEventData eventData, InterceptionResult<int> result)
         {
-            _commands.Add(command.CommandText);
+            Record(command);
             return result;
         }
 
@@ -283,14 +315,14 @@ public sealed class SupplierDeletionSqlAndTrackerTests : IDisposable
             DbCommand command, CommandEventData eventData, InterceptionResult<int> result,
             CancellationToken cancellationToken = default)
         {
-            _commands.Add(command.CommandText);
+            Record(command);
             return ValueTask.FromResult(result);
         }
 
         public override InterceptionResult<object> ScalarExecuting(
             DbCommand command, CommandEventData eventData, InterceptionResult<object> result)
         {
-            _commands.Add(command.CommandText);
+            Record(command);
             return result;
         }
 
@@ -298,7 +330,7 @@ public sealed class SupplierDeletionSqlAndTrackerTests : IDisposable
             DbCommand command, CommandEventData eventData, InterceptionResult<object> result,
             CancellationToken cancellationToken = default)
         {
-            _commands.Add(command.CommandText);
+            Record(command);
             return ValueTask.FromResult(result);
         }
     }

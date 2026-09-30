@@ -10,8 +10,8 @@
   <ItemGroup>
     <!-- Abstractions DI uniquement (neutres : ni EF, ni Avalonia, ni MVVM) : nécessaires pour
          exposer l'extension AddApplication(this IServiceCollection). Version alignée sur celle
-         déjà tirée par MMV.App (Microsoft.Extensions.DependencyInjection 8.0.1). -->
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.1" />
+         déjà tirée par MMV.App (Microsoft.Extensions.DependencyInjection 10.0.12). -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup>

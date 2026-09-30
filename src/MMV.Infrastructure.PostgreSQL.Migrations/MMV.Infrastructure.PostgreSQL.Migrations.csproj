@@ -29,7 +29,7 @@
   <ItemGroup>
     <!-- Exigé par `dotnet ef` dans le projet de démarrage. Même paquet et même version que le reste du
          dépôt ; PrivateAssets=all : il ne se propage pas aux projets qui référencent celui-ci. -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.27">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

@@ -25,12 +25,12 @@
     <PackageReference Include="Avalonia.Diagnostics" Version="11.2.8" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="FluentAvaloniaUI" Version="2.1.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.27">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
     <PackageReference Include="Projektanker.Icons.Avalonia" Version="9.6.2" />
     <!-- Pins de sécurité (Étape 0), transitifs High remontés au-delà des avis :
          - System.Text.Json (EF Core / Hosting) : GHSA-hh2w-p6rv-4g7w, GHSA-8g4q-xg66-9fp4 (corrigé 8.0.5).
