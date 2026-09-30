@@ -9,6 +9,11 @@
     rend un code de sortie et une ligne de résultat sur stdout.
 
     Hors de MMV.sln. Aucun secret : la chaîne vient de l'environnement.
+
+    P4-NET10 / E-8 : RESTE DÉLIBÉRÉMENT EN net8.0. Contrairement à MMV.P4.ProviderComparison, ce
+    projet n'a AUCUNE ProjectReference vers src/** : rien ne le contraint à suivre le TFM de la
+    solution, et il compile tel quel (vérifié le 30/09/2026 — succès, seul CA1416 préexistant,
+    lié à une API Windows dans un exécutable Windows). Le porter serait un changement sans motif.
   -->
 
   <PropertyGroup>

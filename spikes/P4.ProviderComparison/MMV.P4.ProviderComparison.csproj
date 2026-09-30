@@ -8,13 +8,20 @@
     SEULE afin d'exercer le VRAI OpticDbContext (stratégie A du brief §12) plutôt qu'un
     modèle réduit. Aucun fichier de src/** n'est modifié.
 
+    Conséquence de cette référence, et raison pour laquelle ce projet NE PEUT PAS rester en
+    arrière : son TargetFramework doit suivre celui de src/**. Laissé en net8.0 après le passage
+    de la solution à net10.0, il échouait en NU1201 (« MMV.Domain n'est pas compatible avec
+    net8.0 »). Porté en net10.0 par P4-NET10 / E-8. Étant hors solution, AUCUNE CI ne détecte
+    cette rupture : elle ne se serait vue qu'au moment de rejouer le spike, c'est-à-dire au pire
+    moment possible (obligation O12 — re-prouver les 14 primitives).
+
     Aucun secret n'est stocké ici : les chaînes de connexion proviennent exclusivement
     des variables d'environnement MMV_P4_POSTGRES_CONNECTION et MMV_P4_SQLSERVER_CONNECTION.
     En leur absence, les tests concernés sont SKIPPED (jamais verts artificiellement).
   -->
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>12.0</LangVersion>
@@ -32,10 +39,12 @@
     <!-- Permet un SKIPPED explicite quand un provider n'est pas configuré. -->
     <PackageReference Include="Xunit.SkippableFact" Version="1.4.13" />
 
-    <!-- Providers du spike UNIQUEMENT. Jamais ajoutés à un projet de production. -->
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.27" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.27" />
+    <!-- Providers du spike UNIQUEMENT. Jamais ajoutés à un projet de production.
+         P4-NET10 / E-8 : alignés sur les versions retenues par la solution (EF Core 10.0.12,
+         Npgsql 10.0.3). Microsoft.EntityFrameworkCore.SqlServer n'existe QUE dans ce spike. -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup>
