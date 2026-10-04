@@ -81,6 +81,24 @@ sur **M3** (146 / 147) — le même échec intermittent qu'au §3, pas une régr
 Corrigé comme `LifecycleDatabase` (pool propre seulement) ; 5 exécutions locales consécutives à 147 / 147. Aucune
 assertion modifiée. Correctif `d5e6245`, run **`37237725744`** — **success** sur le SHA exact : unitaires 2289 / 2289, intégration **147 / 147**, 0 ignoré.
 
+## 6 bis. Audit indépendant et conditions (05/10/2026)
+
+Audit read-only : **`P4-8 AUDIT = PASS WITH CONDITIONS`** — le verdict « CLOSED » ci-dessus est **suspendu**.
+
+| Condition | Avant | Après (`f6ac102`, CI **`37241752620`** verte) |
+|---|---|---|
+| **M1** appartenances inverses | seul « rôle MMV membre d'un rôle » était refusé ; un rôle *membre* du migrateur (propriétaire de la base) passait | préflight sur `pg_auth_members` : tout membre du migrateur, de l'applicatif, de la sauvegarde **ou de l'administrateur** est refusé, options `INHERIT`/`SET`/`ADMIN` citées ; aucune appartenance retirée |
+| **M3** refus sans écriture | refus D-08 après `ALTER ROLE`/`REVOKE`/`GRANT` ; échec de preuve finale en code 16 après toutes les écritures | **A** préflight lecture seule (dont D-08, rôle expiré/fermé, base fermée, admission `pg_hba` par échec SCRAM délibéré : `28P01` admis / `28000` rejeté) ; **B** transaction des rôles, `CREATE DATABASE`, transaction dans la base (historique EF par `SET LOCAL ROLE`) ; **C** preuve réelle, échec = code 18 |
+| **M2** roadmap | `P4-7 … P4-12 = NOT STARTED` contre « P4-8 CLOSED » ; P4-8 absent de l'état courant | lignes P4-8 explicites, P4-8 **non clos** jusqu'au ré-audit |
+
+Frontière réelle : `CREATE DATABASE` n'entre dans aucune transaction ; une erreur **imprévisible** pendant B ou C
+peut laisser une ou deux unités sur trois (code 18, relance idempotente). **Un refus (code 16) n'écrit rien.**
+
+Tests : +10 cas PostgreSQL réels (7 appartenances × options, rôle préexistant avec membre, rejet `pg_hba`, rôle
+expiré / base fermée) et test D-08 renforcé ; chacun compare un **instantané exact** de l'état serveur (attributs,
+vérificateurs SCRAM, appartenances, réglages, ACL, privilèges par défaut, propriétaires) avant et après le refus.
+Les 11 tests **échouent** sur le provisioner précédent. CI : unitaires 2289/2289, intégration **157/157**, 0 ignoré.
+
 ## 7. Questions ouvertes
 
 **Q-P4-8-1** remplacement forcé du secret initial (changement de modèle EF requis) · **Q-P4-8-2** chiffrement du
