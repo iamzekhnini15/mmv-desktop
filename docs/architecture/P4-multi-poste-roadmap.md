@@ -715,13 +715,13 @@ se termine par **commit + CI verte sur le SHA exact**.
   D-12 premier administrateur par l'outil, D-13 fichier de poste DPAPI CurrentUser, D-14 TLS VerifyFull +
   SCRAM-SHA-256 sans repli, D-15 arrêt explicite sans nouvelle tentative (résilience : P4-10).
   *Le « retry de connexion » autorisé ci-dessus est reporté à P4-10 par D-15.*
-- **État** : **IMPLEMENTED — NOT CLOSED, RE-AUDIT PENDING** (05/10/2026). L'audit indépendant read-only du
-  05/10/2026 a rendu **`P4-8 AUDIT = PASS WITH CONDITIONS`** (M1 appartenances inverses non refusées ; M2 roadmap
-  incohérente ; M3 refus de provisioning après écritures) : la clôture du 04/10/2026 ci-dessous est **suspendue**.
-  Correctif M1 + M3 `f6ac102`, CI **`37241752620`** verte sur le SHA exact (unitaires 2289/2289, intégration
-  PostgreSQL **157/157**, 0 ignoré, dérive EF verte ×2, 0 vulnérabilité) ; M2 = ce bloc et l'état courant. La
-  clôture sera prononcée par le **nouvel audit read-only**, pas par ce lot.
-  *Historique — clôture initiale, suspendue* : `3dea70c`, CI **`37236625898`** verte sur le SHA exact (04/10/2026 : job Windows unitaires 2289/2289, job Linux PostgreSQL 17.10 + serveurs TLS 147/147, 0 ignoré, dérive EF verte sur les deux chaînes, aucune vulnérabilité High/Critical) ; correctif d'isolation des tests `d5e6245` (échec intermittent M3, run `37237153521`), CI **`37237725744`** verte (branche `p4-8`) — [rapport](../implementation/P4-8-provisioning-and-connection-security-report.md),
+- **État** : **COMPLETE — CLOSED** (05/10/2026, audit final d'architecture read-only : **`READY TO CLOSE`**).
+  L'audit indépendant du 05/10/2026 avait rendu **`P4-8 AUDIT = PASS WITH CONDITIONS`** (M1 appartenances inverses
+  non refusées ; M2 roadmap incohérente ; M3 refus de provisioning après écritures) et suspendu la clôture du
+  04/10/2026. Correctif M1 + M3 `f6ac102`, CI **`37241752620`** verte sur le SHA exact (unitaires 2289/2289,
+  intégration PostgreSQL **157/157**, 0 ignoré, dérive EF verte ×2, 0 vulnérabilité) ; M2 `aa2dfea`, CI
+  **`37242171263`** et **`37242549564`** vertes ; audit final : M1, M2, M3 = **PASS**, aucun bloqueur.
+  *Historique — clôture initiale du 04/10/2026, suspendue puis remplacée par la clôture ci-dessus* : `3dea70c`, CI **`37236625898`** verte sur le SHA exact (04/10/2026 : job Windows unitaires 2289/2289, job Linux PostgreSQL 17.10 + serveurs TLS 147/147, 0 ignoré, dérive EF verte sur les deux chaînes, aucune vulnérabilité High/Critical) ; correctif d'isolation des tests `d5e6245` (échec intermittent M3, run `37237153521`), CI **`37237725744`** verte (branche `p4-8`) — [rapport](../implementation/P4-8-provisioning-and-connection-security-report.md),
   [procédure opérateur](../operations/P4-8-provisioning-procedure.md). Unitaires **2289**, intégration PostgreSQL
   **147** (dont TLS réel), aucune migration. Ouvert : **Q-P4-8-1** (remplacement forcé du secret initial, exige un
   changement de modèle EF), **Q-P4-8-2** (chiffrement du stockage serveur), **Q-P4-8-3** (preuve Windows native).
@@ -856,7 +856,7 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 | **P4-5** — schéma et migrations serveur | **`IN PROGRESS — NOT CLOSE`** — **P4-5A** (audit, [rapport](../implementation/P4-5A-postgresql-schema-audit-report.md)) et **P4-5B** (décisions, [rapport](../implementation/P4-5B-postgresql-architecture-decisions-report.md)) livrés, **tous deux strictement documentaires** : aucun code, aucun test exécuté, aucune migration. **Six ADR acceptées** — [003 monétaire](adr-prod-db-003-money-persistence.md), [004 `DateTime`](adr-prod-db-004-datetime-strategy.md), [005 migrations](adr-prod-db-005-migration-architecture.md), [006 index](adr-prod-db-006-index-and-model-portability.md), [007 dérive](adr-prod-db-007-schema-drift-prevention.md), [008 tests d'intégration](adr-prod-db-008-postgresql-integration-testing.md). **Livrés depuis** : P4-5C (`b5c2073`), P4-5D (`023048f`), P4-5D-R (`45f67a2`), P4-5E (`a06c19f`, `ccbeb32`). P4-5F (`692b6da`, CI `37202557042`). **Restant** : aucun sous-lot ; P4-5G **absorbé par P4-6C** ; clôture de P4-5 non prononcée. `POSTGRESQL CLEAN START = BLOCKED` |
 | **P4-6** — application des migrations en multi-poste | **`IN PROGRESS — NOT CLOSE`** — **P4-6A COMPLETE** : [**ADR-PROD-DB-009 = ACCEPTED**](ADR-PROD-DB-009.md) le 22/09/2026 (dix points de décision arrêtés, dix-sept obligations H1 … H17, vingt alternatives rejetées) ; [ADR-APP-DISTRIBUTION-001](adr-app-distribution-001-installation-and-updates.md) **reste PROPOSED** — décisions validées, mais SD-1/2/3/5 non exécutés et QD-1/QD-10 ouverts. **Strictement documentaire** : aucun code, aucun test, aucune migration, aucune CI ([consolidation](../implementation/P4-6-architecture-consolidation-report.md) · [acceptation](../implementation/P4-6A-adr-acceptance-report.md)). **P4-6B** **`COMPLETE — CLOSED`** — `3d00af8`, CI `37226388128` ([rapport](../implementation/P4-6B-database-lifecycle-report.md)). **P4-6C** `FUTURE` — dépend de **P4-9** (Q-24), elle-même dépendante de **P4-8** |
 | **P4-NET10** — montée vers .NET 10 (LTS) | **`COMPLETED`** — lot **transverse**, sans dépendance dans P4. **DI-8 / OI-10 satisfaites** : plus aucun projet de la solution sur .NET 8, qui sort de support le **10/11/2026**. SDK **10.0.401**, EF Core **10.0.12**, Npgsql **10.0.3**, `dotnet-ef` **10.0.12**. **1953** tests verts, **0** avertissement, **0** vulnérabilité, **migrations inchangées** (14 SQLite + 1 PostgreSQL). ([plan d'exécution](net10-migration-execution-plan.md) · [baseline E-1](../implementation/P4-NET10-E1-baseline-report.md) · [rapport de clôture](../implementation/P4-NET10-final-report.md)) |
-| **P4-8** — configuration, secrets et déploiement de la base centrale | **`IMPLEMENTED — NOT CLOSED`** — `3dea70c` (CI `37236625898`) ; audit indépendant `PASS WITH CONDITIONS` (05/10/2026) ; conditions M1 + M3 corrigées `f6ac102` (CI `37241752620`), M2 corrigée ici ; **nouvel audit read-only en attente** ([ADR-PROD-DB-010](adr-prod-db-010-provisioning-and-connection-security.md) · [rapport](../implementation/P4-8-provisioning-and-connection-security-report.md)) |
+| **P4-8** — configuration, secrets et déploiement de la base centrale | **`COMPLETE — CLOSED`** — `3dea70c` (CI `37236625898`) ; audit indépendant `PASS WITH CONDITIONS` (05/10/2026) ; conditions M1 + M3 corrigées `f6ac102` (CI `37241752620`), M2 `aa2dfea` (CI `37242171263`, `37242549564`) ; **audit final read-only `READY TO CLOSE`** (05/10/2026) ([ADR-PROD-DB-010](adr-prod-db-010-provisioning-and-connection-security.md) · [rapport](../implementation/P4-8-provisioning-and-connection-security-report.md)) |
 | **P4-7, P4-9 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** |
 
 **État courant en vigueur** *(les blocs d'état antérieurs marqués `[HISTORIQUE]` plus haut sont remplacés par
@@ -950,10 +950,11 @@ P4-8 IMPLEMENTATION         = 3dea70c — CI 37236625898 SUCCESS — UNIT 2289 �
 P4-8 INDEPENDENT AUDIT      = PASS WITH CONDITIONS — 2026-10-05 — M1, M2, M3
 P4-8 M1 REVERSE MEMBERSHIP  = FIXED — f6ac102 — CI 37241752620 SUCCESS — REFUSED AT PREFLIGHT, NEVER REVOKED
 P4-8 M3 NO WRITE ON REFUSAL = FIXED — f6ac102 — CI 37241752620 SUCCESS — PREFLIGHT / 3 ATOMIC WRITE UNITS / PROOF
-P4-8 M2 ROADMAP             = FIXED — THIS BLOCK
+P4-8 M2 ROADMAP             = FIXED — aa2dfea — CI 37242171263 + 37242549564 SUCCESS
 P4-8 TESTS                  = UNIT 2289 / 2289 — PG IT 157 / 157 (0 SKIPPED) — NO MIGRATION / SNAPSHOT CHANGE
-P4-8 OPEN QUESTIONS         = Q-P4-8-1, Q-P4-8-2, Q-P4-8-3
-P4-8                        = NOT CLOSED — READ-ONLY RE-AUDIT PENDING
+P4-8 FINAL ARCHITECT AUDIT  = READ-ONLY — READY TO CLOSE — 2026-10-05 — M1, M2, M3 PASS — NO BLOCKER
+P4-8 OPEN QUESTIONS         = Q-P4-8-1, Q-P4-8-2, Q-P4-8-3 — NON-BLOCKING, OUTSIDE P4-8 CLOSURE
+P4-8                        = COMPLETE — CLOSED
 P4-9 … P4-12                = NOT STARTED
 V1 MULTI-POSTE              = NOT GO
 ```

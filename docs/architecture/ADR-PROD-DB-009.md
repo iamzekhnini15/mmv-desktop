@@ -834,13 +834,17 @@ ADR-APP-DISTRIBUTION-001 DI-7 en dépend.
 
 #### DP-5 — Rôles PostgreSQL (D-10, partagé avec P4-8) — **ARRÊTÉE : RL-3**
 
-Trois rôles distincts :
+Trois rôles distincts *(décision du 22/09/2026, inchangée)*. *Terminologie depuis
+[ADR-PROD-DB-010](adr-prod-db-010-provisioning-and-connection-security.md) (04/10/2026) : **quatre identités** —
+l'**administrateur** d'installation et **trois rôles MMV**, migrateur, applicatif et **sauvegarde** ; ce dernier,
+ajouté par P4-8, est la ligne marquée ci-dessous.* :
 
 | Rôle | Ce qu'il fait | Qui le détient |
 |---|---|---|
-| **Administrateur d'installation** | crée la base et les rôles, accorde les droits, sauvegarde et restaure | installateur. **Jamais** l'application, **jamais** l'outil de migration en fonctionnement nominal |
+| **Administrateur d'installation** | crée la base et les rôles, accorde les droits, sauvegarde et restaure *(la lecture de sauvegarde planifiée revient au rôle de sauvegarde ; la restauration reste ici — ADR-PROD-DB-010)* | installateur. **Jamais** l'application, **jamais** l'outil de migration en fonctionnement nominal |
 | **Migrateur** | propriétaire des objets du schéma ; applique les migrations ; **seul** à écrire la métadonnée de compatibilité (DP-3) et le journal (DP-8) | l'opérateur, **au moment de la migration seulement** (DP-9). N'est stocké sur **aucun** poste client |
 | **Applicatif** | `CONNECT`, `USAGE`, `SELECT`/`INSERT`/`UPDATE`/`DELETE`, **lecture de `__EFMigrationsHistory`** (garde de version, DP-3) et **lecture seule de la métadonnée de compatibilité** (DP-3). **Aucun accès au journal** (DP-8) | chaque poste. **Aucun droit DDL** |
+| **Sauvegarde** *(ajouté par ADR-PROD-DB-010)* | lecture seule de toutes les tables, séquences et schémas du migrateur (`pg_dump`, P4-9) ; **n'écrit rien** | la tâche de sauvegarde côté serveur (P4-9). **Jamais** un poste client |
 
 **RL-1 est écarté** : il donnerait le DDL à chaque poste, en tension frontale avec O10, et le retour vers RL-2
 ou RL-3 coûterait un transfert de propriété de tous les objets sur chaque base installée (§4.5.4).
@@ -917,7 +921,7 @@ principe.
 | **DP-4** | démarrage des postes | **ARRÊTÉE** | **SB-3** — blocage sans écriture ; **E3a servi** | trois messages ; revérification (Q-11) |
 | **DP-10** | sauvegarde | **ARRÊTÉE** | obligatoire et vérifiée | forme de la vérification (P4-9) |
 | **DP-6** | postes connectés | **PRINCIPE** | état de maintenance imposé | stratégie CX-n |
-| **DP-5** | rôles PostgreSQL | **ARRÊTÉE** | **RL-3** — trois rôles | noms (P4-8) |
+| **DP-5** | rôles PostgreSQL | **ARRÊTÉE** | **RL-3** — administrateur, migrateur, applicatif ; + **sauvegarde** (ADR-PROD-DB-010) | noms (P4-8) : paramètres du provisioning (ADR-PROD-DB-010) |
 | **DP-7** | numérotation MMV | **ARRÊTÉE** | SemVer, source unique | emplacement, incrément |
 | **DP-8** | journal serveur | **ARRÊTÉE** | **journal dédié** : table en base + trace locale ; six champs minimaux | forme exacte (noms, types) |
 
@@ -1083,7 +1087,7 @@ rapport de transition, est depuis le 22/09/2026 **inscrit dans [la roadmap P4](P
 | ~~Modèle EF + deux chaînes~~ | **aucun changement de modèle, décision confirmée** : ni table de verrou (DP-2), ni registre des postes, ni table de version (DP-3, RB-17). La métadonnée de compatibilité vit **hors modèle** | P4-6B | DP-2, DP-3 |
 | [Directory.Build.props](../../Directory.Build.props), [SettingsView.axaml:43](../../src/MMV.App/Views/SettingsView.axaml#L43) | version de MMV en SemVer, source unique | P4-6B | **DP-7 — arrêtée** |
 | Écran de blocage minimal | trois états au minimum | P4-6C | **DP-4 — arrêtée** |
-| Provisioning : trois rôles | administrateur, migrateur, applicatif ; privilèges par défaut | P4-8 | **DP-5 — arrêtée** (noms ouverts) |
+| Provisioning : administrateur + trois rôles MMV | migrateur, applicatif, sauvegarde (ADR-PROD-DB-010) ; privilèges par défaut | P4-8 | **DP-5 — arrêtée**, complétée par ADR-PROD-DB-010 (noms = paramètres) |
 | Outillage de sauvegarde et de sa vérification | condition d'exécution de la migration | P4-9 | **DP-10 — arrêtée** |
 | `.github/workflows/ci.yml` | job PostgreSQL | **P4-5F** | ADR-008 |
 | [CONTRIBUTING.md](../../CONTRIBUTING.md) | **règle « étendre → migrer → contracter »**, interdiction de contracter dans la même release que l'expand, règle de transaction | P4-6B | **DP-3 — arrêtée** ; Q-15 |

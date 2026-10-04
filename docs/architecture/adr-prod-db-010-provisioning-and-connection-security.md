@@ -32,7 +32,8 @@ points que le dépôt ne permettait pas de trancher sont listés au §6 comme **
    par un administrateur** : verbe `MMV.DatabaseManager provision`, avec l'identifiant **superutilisateur** de
    l'installation.
 2. `MMV.App` ne crée **jamais** la base ; `MMV.DatabaseManager migrate` ne la crée **jamais** implicitement.
-3. Le provisioning établit la base (propriété du migrateur), les trois rôles, les droits et privilèges par défaut,
+3. Le provisioning établit la base (propriété du migrateur), les trois rôles MMV (migrateur, applicatif,
+   sauvegarde — l'administrateur, quatrième identité, n'est pas créé par l'outil), les droits et privilèges par défaut,
    et l'historique EF **vide** ; il **n'applique aucune migration** (la baseline reste à `migrate`, DP-1).
 4. Il est **idempotent** (relance = convergence, rien n'est détruit) et **refuse avant toute écriture** un
    serveur ou un état non conformes.
@@ -65,7 +66,7 @@ points que le dépôt ne permettait pas de trancher sont listés au §6 comme **
    L'administrateur d'installation reste seul détenteur de la **restauration** et du provisioning. Le rôle de
    sauvegarde lit toutes les tables, séquences et schémas du migrateur, et n'écrit rien. Motif : moindre privilège
    pour `pg_dump` (P4-9), sans exposer le superutilisateur à une tâche planifiée.
-3. Attributs imposés aux trois rôles : `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION
+3. Attributs imposés aux trois rôles MMV : `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION
    NOBYPASSRLS`, membres d'**aucun** rôle, et **sans aucun membre** — de même pour l'administrateur (M1). Un rôle
    existant privilégié, membre ou ayant des membres est **refusé**, jamais « corrigé ».
 4. Droits : applicatif = `CONNECT`, `USAGE` sur `public`, DML sur les tables de `public` par privilèges par défaut,

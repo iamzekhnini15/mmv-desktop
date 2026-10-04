@@ -73,7 +73,8 @@ Commit `3dea70c54682d9ec36f4266d8b3e8789bd992008`, run **`37236625898`** — **s
 | Restore / Build / Test / Scan (Windows) | unitaires **2289 / 2289** (Domain 1190 · Application 628 · App 267 · DatabaseManager 204) ; aucune vulnérabilité High/Critical ; dérive EF SQLite et PostgreSQL : aucun changement |
 | PostgreSQL integration (Linux) | serveurs TLS démarrés par `start-tls-servers.sh` ; **147 / 147**, 0 ignoré (garde anti-faux-vert) |
 
-Verdict : **P4-8 = COMPLETE — CLOSED**.
+Verdict initial du 04/10/2026 : clôture **suspendue** par l'audit indépendant du 05/10/2026 (§6 bis) ; verdict
+final au §6 ter.
 
 **Incident CI du commit documentaire `b8f9f42`** (run **`37237153521`**, échec) : le job d'intégration a échoué
 sur **M3** (146 / 147) — le même échec intermittent qu'au §3, pas une régression P4-8. Cause résiduelle :
@@ -83,7 +84,8 @@ assertion modifiée. Correctif `d5e6245`, run **`37237725744`** — **success** 
 
 ## 6 bis. Audit indépendant et conditions (05/10/2026)
 
-Audit read-only : **`P4-8 AUDIT = PASS WITH CONDITIONS`** — le verdict « CLOSED » ci-dessus est **suspendu**.
+Audit read-only : **`P4-8 AUDIT = PASS WITH CONDITIONS`** — la clôture du 04/10/2026 a été **suspendue**
+jusqu'à l'audit final (§6 ter).
 
 | Condition | Avant | Après (`f6ac102`, CI **`37241752620`** verte) |
 |---|---|---|
@@ -98,6 +100,23 @@ Tests : +10 cas PostgreSQL réels (7 appartenances × options, rôle préexistan
 expiré / base fermée) et test D-08 renforcé ; chacun compare un **instantané exact** de l'état serveur (attributs,
 vérificateurs SCRAM, appartenances, réglages, ACL, privilèges par défaut, propriétaires) avant et après le refus.
 Les 11 tests **échouent** sur le provisioner précédent. CI : unitaires 2289/2289, intégration **157/157**, 0 ignoré.
+
+## 6 ter. Audit final d'architecture et clôture (05/10/2026)
+
+Audit final **read-only** de la version candidate `aa2dfea` : **`P4-8 = READY TO CLOSE`**. M1, M2 et M3 = **PASS** ;
+CI verte sur les SHA exacts — `f6ac102` run **`37241752620`**, `aa2dfea` runs **`37242171263`** (`p4-8`) et
+**`37242549564`** (`p4-multi-poste`) : unitaires 2289/2289, intégration PostgreSQL 157/157, 0 ignoré, dérive EF
+verte ×2, 0 vulnérabilité ; 14 migrations SQLite + 1 PostgreSQL, inchangées. Ce commit de clôture est
+**documentaire** (rapport, roadmap, terminologie des rôles dans ADR-009 et ADR-010) : aucun code, test, migration
+ni CI modifiés.
+
+Verdict : **P4-8 = COMPLETE — CLOSED**.
+
+Limites **non bloquantes**, hors clôture : Q-P4-8-1 (lot futur), Q-P4-8-2 (dépendance d'infrastructure),
+Q-P4-8-3 (lot futur) ; aucun test d'échec de la preuve finale (phase C) ; PostgreSQL ≥ 16 exigé par M1 ; erreur
+serveur au préflight signalée en code 18 sans écriture ; points d'audit M4 (`pg_hba` par liste d'interdits), M5
+(périmètre de la rotation), M7 (exception de dernier recours des verbes d'administration). M6 (terminologie
+« trois rôles ») est clarifié par ce commit.
 
 ## 7. Questions ouvertes
 
