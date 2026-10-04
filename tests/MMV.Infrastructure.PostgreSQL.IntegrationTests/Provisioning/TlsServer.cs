@@ -21,6 +21,7 @@ public sealed class TlsServer
     public const string MigratorSecret = "it-migrator-Secret-0123456789";
     public const string AppSecret = "it-application-Secret-0123456789";
     public const string BackupSecret = "it-backup-Secret-0123456789abc";
+    public const string AdministratorSecret = "it-administrator-Secret-012345";
 
     public TlsServer()
     {
@@ -37,7 +38,11 @@ public sealed class TlsServer
 
     public static string Suffix() => Guid.NewGuid().ToString("N")[..10];
 
-    public ProvisioningRequest Request(string suffix, Action<RequestNames>? names = null)
+    /// <param name="administrator">
+    /// Superutilisateur de provisioning propre au test ; <c>null</c> ⇒ celui du conteneur, partagé par les tests
+    /// parallèles (aucun test ne doit alors lui ajouter de membre).
+    /// </param>
+    public ProvisioningRequest Request(string suffix, Action<RequestNames>? names = null, string? administrator = null)
     {
         var n = new RequestNames($"mmv_it_db_{suffix}", $"mmv_it_mig_{suffix}", $"mmv_it_app_{suffix}", $"mmv_it_bkp_{suffix}");
         names?.Invoke(n);
@@ -46,8 +51,8 @@ public sealed class TlsServer
             Host = Host,
             Port = Port,
             RootCertificatePath = RootCertificate,
-            AdminUser = Admin.Username!,
-            AdminPassword = Admin.Password!,
+            AdminUser = administrator ?? Admin.Username!,
+            AdminPassword = administrator is null ? Admin.Password! : AdministratorSecret,
             AdminDatabase = "postgres",
             Database = n.Database,
             MigratorRole = n.Migrator,

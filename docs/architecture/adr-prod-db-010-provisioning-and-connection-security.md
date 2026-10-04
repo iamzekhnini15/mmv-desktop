@@ -36,6 +36,25 @@ points que le dépôt ne permettait pas de trancher sont listés au §6 comme **
    et l'historique EF **vide** ; il **n'applique aucune migration** (la baseline reste à `migrate`, DP-1).
 4. Il est **idempotent** (relance = convergence, rien n'est détruit) et **refuse avant toute écriture** un
    serveur ou un état non conformes.
+5. *Précision du 05/10/2026 (audit P4-8, conditions M1 et M3)* — frontière réelle, en trois phases :
+   - **A — préflight, lecture seule.** Tout refus prévisible (code 16) y est prononcé : audit serveur ;
+     rôle existant privilégié, membre d'un rôle, expiré (`VALID UNTIL` passé) ou fermé (`CONNECTION LIMIT 0`) ;
+     **tout rôle membre** du migrateur, de l'applicatif, de la sauvegarde ou de l'administrateur, quelles que
+     soient ses options `INHERIT`/`SET`/`ADMIN` (M1 — l'appartenance n'est **jamais** retirée par l'outil) ; base
+     d'un autre propriétaire ou fermée aux connexions ; schéma au nom d'un rôle MMV (D-08) ; rôle que `pg_hba`
+     n'admettrait pas. L'admission `pg_hba` est prouvée sans écriture : PostgreSQL choisit la règle avant
+     d'authentifier et avant de vérifier la base, donc un secret délibérément faux reçoit `28P01` (admis — y
+     compris pour un rôle encore inexistant, dont l'échange SCRAM est simulé) ou `28000` (rejeté). Seule trace :
+     une tentative d'authentification échouée par rôle dans le journal du serveur.
+   - **B — écritures, trois unités atomiques** : transaction des rôles ; `CREATE DATABASE`, que PostgreSQL
+     n'admet dans aucune transaction ; transaction, dans la base, des droits, privilèges par défaut et de
+     l'historique EF (créé au nom du migrateur par `SET LOCAL ROLE`). Une erreur serveur dans B (réseau, arrêt,
+     ressource) peut laisser une ou deux unités appliquées sur trois : code 18, relance idempotente.
+   - **C — preuve** : chaque rôle ouvre une vraie session. Un échec ici (cause transitoire, ou `pg_hba` modifié
+     entre A et C) n'est **pas** un refus : les écritures sont faites, code 18, relance idempotente.
+
+   Garantie : **un refus (code 16) n'écrit rien** ; seul un incident non prévisible pendant B ou C laisse un état
+   partiel, qui converge à la relance.
 
 ### Rôles PostgreSQL — noms paramètres (DP-5, complété)
 
@@ -47,7 +66,8 @@ points que le dépôt ne permettait pas de trancher sont listés au §6 comme **
    sauvegarde lit toutes les tables, séquences et schémas du migrateur, et n'écrit rien. Motif : moindre privilège
    pour `pg_dump` (P4-9), sans exposer le superutilisateur à une tâche planifiée.
 3. Attributs imposés aux trois rôles : `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION
-   NOBYPASSRLS`, membres d'**aucun** rôle. Un rôle existant privilégié ou membre est **refusé**, jamais « corrigé ».
+   NOBYPASSRLS`, membres d'**aucun** rôle, et **sans aucun membre** — de même pour l'administrateur (M1). Un rôle
+   existant privilégié, membre ou ayant des membres est **refusé**, jamais « corrigé ».
 4. Droits : applicatif = `CONNECT`, `USAGE` sur `public`, DML sur les tables de `public` par privilèges par défaut,
    **lecture seule** de `__EFMigrationsHistory`, aucun DDL, aucun accès au journal (DP-8). `PUBLIC` perd tout droit
    sur la base et sur `public`. `search_path = public` pour l'applicatif et le migrateur (P4-5E-B D-08) ; un schéma

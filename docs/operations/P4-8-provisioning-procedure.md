@@ -23,7 +23,11 @@ MMV.DatabaseManager provision --host <srv.dns> [--port 5432] [--root-certificate
 ```
 Secrets demandés : administrateur, migrateur, applicatif, sauvegarde (24–128 caractères ASCII imprimables, sans
 espace, tous différents). Les noms sont **choisis par l'opérateur**. Code 0 = succès ; 16 = serveur/état non
-conforme (rien n'est écrit) ; 18 = interruption (relance idempotente) ; 20 = serveur injoignable.
+conforme, constaté au préflight (**rien n'est écrit**) ; 18 = interruption pendant les écritures ou preuve de
+connexion finale en échec (écritures possibles, relance idempotente) ; 20 = serveur injoignable.
+Aucun rôle ne doit avoir de membre (pas même l'administrateur) : une appartenance existante est signalée avec ses
+options `INHERIT`/`SET`/`ADMIN` et doit être retirée par l'administrateur — l'outil n'en retire aucune. Le
+préflight laisse dans le journal du serveur une authentification échouée par rôle (preuve d'admission `pg_hba`).
 
 ## 2. Schéma (opérateur, rôle migrateur)
 

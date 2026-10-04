@@ -274,11 +274,115 @@ public sealed class ProvisioningTests : IAsyncLifetime
         var request = Track(_server.Request(TlsServer.Suffix()));
         (await ProvisionAsync(request)).ExitCode.Should().Be(MigrationExitCode.Success);
         await _server.ExecuteAsync(request.Database, $"CREATE SCHEMA {TlsServer.Quote(request.AppRole)}");
+        var before = await ServerStateAsync(request);
 
         var result = await ProvisionAsync(request);
 
         result.ExitCode.Should().Be(MigrationExitCode.SecurityRefused);
-        result.Message.Should().Contain("D-08");
+        result.Message.Should().Contain("D-08").And.Contain("aucune écriture");
+        (await ServerStateAsync(request)).Should().Be(before,
+            "M3 : refusé au préflight — aucun secret reposé, aucun droit rejoué (vérificateurs SCRAM inclus)");
+    }
+
+    /// <summary>
+    /// M1 : un rôle <b>membre</b> d'un rôle MMV ou de l'administrateur hériterait de ses droits (INHERIT), pourrait
+    /// l'endosser (SET) ou en transmettre l'appartenance (ADMIN). Refus au préflight, quelle que soit l'option ;
+    /// l'appartenance n'est jamais retirée par l'outil, et rien d'autre n'est écrit (M3).
+    /// </summary>
+    [PostgreSqlTlsTheory]
+    [InlineData("migrator", "INHERIT TRUE, SET FALSE, ADMIN FALSE", "INHERIT")]
+    [InlineData("migrator", "INHERIT FALSE, SET TRUE, ADMIN FALSE", "SET")]
+    [InlineData("migrator", "INHERIT FALSE, SET FALSE, ADMIN TRUE", "ADMIN")]
+    [InlineData("migrator", "INHERIT FALSE, SET FALSE, ADMIN FALSE", "aucune option")]
+    [InlineData("app", "INHERIT TRUE, SET TRUE, ADMIN FALSE", "INHERIT, SET")]
+    [InlineData("backup", "INHERIT TRUE, SET TRUE, ADMIN TRUE", "INHERIT, SET, ADMIN")]
+    [InlineData("admin", "INHERIT TRUE, SET TRUE, ADMIN FALSE", "INHERIT, SET")]
+    public async Task Provision_refuses_any_member_of_a_MMV_role_or_of_the_administrator_and_writes_nothing(
+        string target, string options, string reported)
+    {
+        var suffix = TlsServer.Suffix();
+        var administrator = "mmv_it_su_" + suffix;
+        var evil = "mmv_it_evil_" + suffix;
+        await _server.ExecuteAsync("postgres",
+            $"CREATE ROLE {TlsServer.Quote(administrator)} LOGIN SUPERUSER PASSWORD {TlsServer.Literal(TlsServer.AdministratorSecret)}",
+            $"CREATE ROLE {TlsServer.Quote(evil)} NOLOGIN");
+        var request = Track(_server.Request(suffix, administrator: administrator), evil, administrator);
+        (await ProvisionAsync(request)).ExitCode.Should().Be(MigrationExitCode.Success);
+        var granted = target switch
+        {
+            "migrator" => request.MigratorRole,
+            "app" => request.AppRole,
+            "backup" => request.BackupRole,
+            _ => administrator
+        };
+        await _server.ExecuteAsync("postgres", $"GRANT {TlsServer.Quote(granted)} TO {TlsServer.Quote(evil)} WITH {options}");
+        var before = await ServerStateAsync(request, evil);
+
+        var result = await ProvisionAsync(request);
+
+        result.ExitCode.Should().Be(MigrationExitCode.SecurityRefused);
+        result.Message.Should().Contain("aucune écriture").And.Contain($"'{evil}' est membre de '{granted}' ({reported})");
+        (await ServerStateAsync(request, evil)).Should().Be(before, "refus au préflight : l'état du serveur est inchangé");
+        (await _server.ScalarAsync<long>("postgres",
+            "SELECT count(*) FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid JOIN pg_roles u ON u.oid = m.member " +
+            $"WHERE g.rolname = {TlsServer.Literal(granted)} AND u.rolname = {TlsServer.Literal(evil)}"))
+            .Should().Be(1, "l'outil ne retire aucune appartenance sans décision explicite");
+    }
+
+    [PostgreSqlTlsFact]
+    public async Task Provision_refuses_a_pre_existing_role_that_has_members_before_any_write()
+    {
+        var suffix = TlsServer.Suffix();
+        var evil = "mmv_it_evil_" + suffix;
+        var request = Track(_server.Request(suffix), evil);
+        await _server.ExecuteAsync("postgres",
+            $"CREATE ROLE {TlsServer.Quote(request.MigratorRole)} LOGIN",
+            $"CREATE ROLE {TlsServer.Quote(evil)} NOLOGIN",
+            $"GRANT {TlsServer.Quote(request.MigratorRole)} TO {TlsServer.Quote(evil)}");
+        var before = await ServerStateAsync(request, evil);
+
+        var result = await ProvisionAsync(request);
+
+        result.ExitCode.Should().Be(MigrationExitCode.SecurityRefused);
+        result.Message.Should().Contain($"'{evil}' est membre de '{request.MigratorRole}'");
+        (await ServerStateAsync(request, evil)).Should().Be(before);
+        (await _server.ScalarAsync<long>("postgres",
+            $"SELECT count(*) FROM pg_database WHERE datname = {TlsServer.Literal(request.Database)}")).Should().Be(0);
+    }
+
+    [PostgreSqlTlsFact]
+    public async Task Provision_refuses_a_role_that_pg_hba_does_not_admit_before_any_write()
+    {
+        // pg_hba du serveur de test : « hostssl all mmv_tls_rejected all reject ». L'admission est prouvée au préflight
+        // par un secret délibérément faux (28P01 = admis), jamais découverte après les écritures (M3).
+        var request = Track(_server.Request(TlsServer.Suffix(), n => n.Backup = "mmv_tls_rejected"));
+
+        var result = await ProvisionAsync(request);
+
+        result.ExitCode.Should().Be(MigrationExitCode.SecurityRefused);
+        result.Message.Should().Contain("pg_hba n'admet pas le rôle 'mmv_tls_rejected'").And.Contain("aucune écriture");
+        await NothingWrittenAsync(request);
+    }
+
+    [PostgreSqlTlsFact]
+    public async Task Provision_refuses_an_expired_role_or_a_closed_database_before_any_write()
+    {
+        var request = Track(_server.Request(TlsServer.Suffix()));
+        (await ProvisionAsync(request)).ExitCode.Should().Be(MigrationExitCode.Success);
+
+        await _server.ExecuteAsync("postgres", $"ALTER ROLE {TlsServer.Quote(request.AppRole)} VALID UNTIL '2000-01-01'");
+        var expired = await ServerStateAsync(request);
+        (await ProvisionAsync(request)).ExitCode.Should().Be(MigrationExitCode.SecurityRefused);
+        (await ServerStateAsync(request)).Should().Be(expired);
+
+        await _server.ExecuteAsync("postgres",
+            $"ALTER ROLE {TlsServer.Quote(request.AppRole)} VALID UNTIL 'infinity'",
+            $"ALTER DATABASE {TlsServer.Quote(request.Database)} WITH ALLOW_CONNECTIONS false");
+        var closed = await ServerStateAsync(request);
+        var result = await ProvisionAsync(request);
+        result.ExitCode.Should().Be(MigrationExitCode.SecurityRefused);
+        result.Message.Should().Contain("refuse les connexions");
+        (await ServerStateAsync(request)).Should().Be(closed);
     }
 
     [PostgreSqlTlsFact]
@@ -420,6 +524,44 @@ public sealed class ProvisioningTests : IAsyncLifetime
             .Select(TlsServer.Literal);
         (await _server.ScalarAsync<long>("postgres",
             $"SELECT count(*) FROM pg_roles WHERE rolname IN ({string.Join(", ", roles)})")).Should().Be(0);
+    }
+
+    /// <summary>
+    /// État serveur exact d'une demande (M3) : attributs, vérificateurs SCRAM, appartenances et réglages des rôles
+    /// (MMV, administrateur, <paramref name="extraRoles"/>) ; base (propriétaire, ACL, ouverture) ; dans la base,
+    /// ACL, privilèges par défaut, propriétaires et historique EF. Un secret reposé change le vérificateur (sel neuf).
+    /// </summary>
+    private async Task<string> ServerStateAsync(ProvisioningRequest request, params string[] extraRoles)
+    {
+        var names = string.Join(", ", new[] { request.MigratorRole, request.AppRole, request.BackupRole, request.AdminUser }
+            .Concat(extraRoles).Select(TlsServer.Literal));
+        var db = TlsServer.Literal(request.Database);
+        var server = await _server.ScalarAsync<string>("postgres",
+            "SELECT concat_ws(E'\\n', " +
+            "(SELECT string_agg(concat_ws(' ', a.rolname, a.rolsuper, a.rolinherit, a.rolcreaterole, a.rolcreatedb, a.rolcanlogin, " +
+            "  a.rolreplication, a.rolbypassrls, a.rolconnlimit, a.rolvaliduntil, a.rolpassword), E'\\n' ORDER BY a.rolname) " +
+            $" FROM pg_authid a WHERE a.rolname IN ({names})), " +
+            "(SELECT string_agg(concat_ws(' ', g.rolname, u.rolname, m.inherit_option, m.set_option, m.admin_option), E'\\n' " +
+            "  ORDER BY g.rolname, u.rolname) FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid " +
+            $" JOIN pg_roles u ON u.oid = m.member WHERE g.rolname IN ({names}) OR u.rolname IN ({names})), " +
+            "(SELECT concat_ws(' ', datname, pg_get_userbyid(datdba), datallowconn, datconnlimit, datacl) FROM pg_database " +
+            $" WHERE datname = {db}), " +
+            "(SELECT string_agg(concat_ws(' ', r.rolname, d.datname, array_to_string(s.setconfig, ',')), E'\\n' ORDER BY r.rolname, d.datname) " +
+            "  FROM pg_db_role_setting s JOIN pg_roles r ON r.oid = s.setrole LEFT JOIN pg_database d ON d.oid = s.setdatabase " +
+            $" WHERE r.rolname IN ({names})))");
+
+        if (!await _server.ScalarAsync<bool>("postgres", $"SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = {db} AND datallowconn)"))
+        {
+            return server!;
+        }
+
+        var owners = await _server.ScalarAsync<string>(request.Database,
+            "SELECT string_agg(n.nspname || '.' || c.relname || '=' || pg_get_userbyid(c.relowner), ',' ORDER BY n.nspname, c.relname) " +
+            "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace " +
+            "WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')");
+        var history = await _server.ScalarAsync<long>(request.Database,
+            $"SELECT count(*) FROM pg_class WHERE relname = {TlsServer.Literal(HistoryRepository.DefaultTableName)}");
+        return string.Join("\n", server, await AclSnapshotAsync(request), owners, history);
     }
 
     private Task<string?> AclSnapshotAsync(ProvisioningRequest request) => _server.ScalarAsync<string>(request.Database,

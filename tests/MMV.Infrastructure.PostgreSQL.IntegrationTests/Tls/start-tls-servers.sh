@@ -54,12 +54,13 @@ openssl ca -batch -config ca.cnf -cert ca.crt -keyfile ca.key -in expired.csr -o
   -startdate 20200101000000Z -enddate 20200102000000Z -notext -extfile san.ext 2>/dev/null
 
 # pg_hba : réseau en TLS uniquement, SCRAM partout, sauf des rôles-sondes NOMMÉS qui prouvent les refus
-# (md5 côté client, audit de provisioning). Aucune règle « all » non TLS.
+# (md5 côté client, audit de provisioning, préflight d'admission). Aucune règle « all » non TLS.
 cat > pg_hba.conf <<'EOF'
 local   all all                          trust
 hostssl all mmv_tls_md5_probe     all    md5
 hostssl all mmv_tls_insecure_md5  all    md5
 host    all mmv_tls_insecure_nossl all   scram-sha-256
+hostssl all mmv_tls_rejected      all    reject
 hostssl all all                   all    scram-sha-256
 EOF
 

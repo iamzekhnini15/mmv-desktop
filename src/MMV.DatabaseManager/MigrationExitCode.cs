@@ -28,15 +28,19 @@ public enum MigrationExitCode
     MetadataInconsistent = 15,
 
     /// <summary>
-    /// P4-8 : refus de sécurité ou d'état — serveur non conforme (TLS, SCRAM, pg_hba), rôle existant privilégié,
-    /// base existante d'un autre propriétaire, identité privilégiée configurée sur un poste.
+    /// P4-8 : refus de sécurité ou d'état — serveur non conforme (TLS, SCRAM, pg_hba), rôle existant privilégié ou
+    /// ayant des membres, base existante d'un autre propriétaire, identité privilégiée configurée sur un poste. Au
+    /// provisioning, toujours prononcé au préflight, <b>avant toute écriture</b>.
     /// </summary>
     SecurityRefused = 16,
 
     /// <summary>P4-8 : premier administrateur déjà créé, ou schéma non initialisé (bootstrap one-shot, D-12).</summary>
     BootstrapRefused = 17,
 
-    /// <summary>P4-8 : provisioning ou rotation interrompus par une erreur serveur ; relance idempotente.</summary>
+    /// <summary>
+    /// P4-8 : provisioning ou rotation interrompus par une erreur serveur, ou preuve d'authentification du
+    /// provisioning en échec après écriture ; relance idempotente.
+    /// </summary>
     ProvisioningFailed = 18,
 
     /// <summary>Serveur injoignable ou authentification refusée.</summary>
