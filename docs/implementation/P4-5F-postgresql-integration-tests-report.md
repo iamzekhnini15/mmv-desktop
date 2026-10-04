@@ -1,6 +1,7 @@
 # P4-5F — Tests d'intégration PostgreSQL — rapport d'implémentation
 
-> **Statut : IMPLÉMENTÉ ET VÉRIFIÉ LOCALEMENT — NON COMMITÉ — CI NON EXÉCUTÉE.**
+> **Statut : COMPLETE — CLOSED** — commit `692b6da`, CI `37202557042` verte sur le SHA exact (§10).
+> *(Statut initial, historique : implémenté et vérifié localement — non commité — CI non exécutée.)*
 > Branche `p4-5f-integration-tests`, créée depuis `68a3b819b99e79c7bde7998292868df25f7af6f5` (HEAD de
 > `p4-net10`, identique à `origin/p4-net10`). Date : 4 octobre 2026.
 > Spécification : [ADR-PROD-DB-008](../architecture/adr-prod-db-008-postgresql-integration-testing.md)
@@ -24,10 +25,10 @@
 | Paquet NuGet nouveau | ✅ **aucun** — les 4 références du projet existent déjà, aux mêmes versions, dans les projets de test |
 | `database update` sur une base réelle | ✅ **jamais** — seules des bases `mmv_it_<guid>` jetables, supprimées (0 résiduelle vérifiée) |
 | Défaut de production révélé | ⚠️ **1**, corrigé sur autorisation explicite (§6) |
-| **Job CI PostgreSQL** | ⏳ **écrit, JAMAIS EXÉCUTÉ** — exige un push (non autorisé à ce stade) |
+| **Job CI PostgreSQL** | ✅ exécuté — CI `37202557042`, SHA `692b6da`, job `PostgreSQL integration (P4-5F)` vert (74/74) |
 
-**P4-5F n'est pas `CLOSE`** : le critère « CI verte sur le SHA exact » n'est pas atteint tant que le job n'a
-pas tourné sur GitHub Actions.
+**P4-5F est `CLOSE`** : CI `37202557042` (push, branche `p4-5f-integration-tests`, SHA `692b6da`) verte —
+jobs `Restore / Build / Test / Scan` et `PostgreSQL integration (P4-5F)` en succès.
 
 ---
 
@@ -198,15 +199,15 @@ reconnexion (**P4-10**). La course N7 de `DeleteSupplier` est multi-connexion, *
 | Migrations bit à bit inchangées | ✅ |
 | Aucun `database update` sur une base réelle | ✅ |
 | Contrôles de dérive verts | ✅ |
-| **CI PostgreSQL réellement exécutée, verte sur le SHA exact** | ⏳ **NON** — commit + push requis |
+| **CI PostgreSQL réellement exécutée, verte sur le SHA exact** | ✅ CI `37202557042`, SHA `692b6da` |
 | Rapport produit | ✅ (ce document) |
 
 ```
 P4-5F IMPLEMENTATION          = DONE — LOCAL VERIFICATION PASS (74/74 + 1953/1953)
-P4-5F CI                      = NOT RUN — REQUIRES COMMIT + PUSH AUTHORIZATION
-P4-5F                         = NOT CLOSE
+P4-5F CI                      = 37202557042 — SUCCESS ON EXACT SHA 692b6da
+P4-5F                         = COMPLETE — CLOSED
 PRODUCTION FIX                = ProductRepository.cs, 1 LINE — AUTHORIZED
-O12                           = LINUX PROOF LOCAL (CI PENDING) — WINDOWS NATIVE PROOF SEPARATE, NOT DONE
+O12                           = LINUX CI PROOF DONE — WINDOWS NATIVE PROOF SEPARATE, NOT DONE
 Q8 (CI VERSION = TARGET)      = OPEN — P4-8
-P4-6B                         = NOT STARTED — REQUIRES P4-5F GREEN IN CI
+P4-6B                         = NOT STARTED — P4-5F GREEN IN CI: SATISFIED
 ```
