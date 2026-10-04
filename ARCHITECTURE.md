@@ -34,6 +34,33 @@ MMV suit une **Clean Architecture** avec séparation stricte des responsabilité
 - **Infrastructure** : Référence Domain uniquement
 - **App** : Référence Domain + Infrastructure
 
+### Outil de migration serveur : `MMV.DatabaseManager` (P4-6B)
+
+Exécutable console séparé (`src/MMV.DatabaseManager`), **seul** composant autorisé à migrer la base
+PostgreSQL ([ADR-PROD-DB-009](docs/architecture/ADR-PROD-DB-009.md) DP-1). `MMV.App` ne migre jamais le
+serveur et ne référence pas l'outil (H11, prouvé par `NoServerDdlInApplicationTests`).
+
+```
+MMV.DatabaseManager ──► MMV.Infrastructure ──► MMV.Domain
+        └────────────► MMV.Infrastructure.PostgreSQL.Migrations   (chargée par nom, copiée en sortie)
+        rien ne référence MMV.DatabaseManager
+```
+
+| Élément | Rôle |
+|---|---|
+| `CommandLine/MigrationToolOptions` | verbes `status` / `migrate` / `adopt-compatibility` ; `--operator`, `--app-role` obligatoires pour écrire ; connexion du rôle **migrateur** par `MMV_MIGRATOR_CONNECTION_STRING`, jamais en argument |
+| `Locking/PostgreSqlAdvisoryMigrationLock` | verrou consultatif de **session** (clé constante), seule autorité de sérialisation |
+| `PostgreSqlMigrationSession`, `Locking/SingleSessionGuard` | **une seule** session PostgreSQL porte le verrou **et** `Migrate()` ; EF ne peut jamais la rouvrir (ADR-009 §11.1) |
+| `Journal/ServerMigrationJournal` | journal autoritatif `mmv_meta.migration_run`, hors modèle EF, horodaté par le serveur |
+| `Journal/CompatibilityMetadataWriter` | `mmv_meta.schema_compatibility` : version du schéma et minimum supporté **calculés** depuis le journal — ancre = état physique vérifié, version = release qui l'a produit (ADR-009 §11.2) ; marqueur de maintenance |
+| `Permissions/ApplicationRoleGrants` | `GRANT` idempotents au rôle `--app-role` (lecture de la métadonnée, jamais du journal) |
+| `Backup/RefusingBackupVerification` | seule vérification de sauvegarde de production : **refuse toujours** jusqu'à P4-9 |
+| `MigrationRunner` | séquence normative : sauvegarde → verrou → contrôles → DDL/GRANT → marqueur → journal → `Migrate()` → vérification → métadonnée → clôture → levée de la maintenance → libération |
+
+Côté Infrastructure, la **garde de compatibilité** (`Data/ServerSchemaCompatibilityGuard`, lecture seule) et
+la **version applicative** (`Configuration/ApplicationVersion`, source unique `Directory.Build.props`) sont
+partagées par l'application et l'outil. La garde n'est **pas** branchée au démarrage des postes avant P4-6C.
+
 ---
 
 ## 🗄️ Couche 1 : MMV.Domain (Cœur Métier)
@@ -180,6 +207,14 @@ MMV.Infrastructure/
 │   ├── SaleRepository.cs
 │   ├── StockMovementRepository.cs
 │   └── UnitOfWork.cs                 # Pattern UnitOfWork
+│
+├── Configuration/
+│   └── ApplicationVersion.cs         # Version applicative SemVer, lue à l'exécution (P4-6B)
+│
+├── Data/ (serveur, lecture seule — P4-6B)
+│   ├── ServerSchemaCompatibilityGuard.cs    # Garde de compatibilité d'un poste (E1…E7, C-1…C-5)
+│   ├── ServerCompatibilityMetadataReader.cs # Lecture de mmv_meta.schema_compatibility (SQL brut)
+│   └── ServerCompatibilityMetadataNames.cs  # Noms des objets serveur hors modèle EF (point unique)
 │
 ├── Migrations/                       # Migrations EF Core : chaîne SQLite uniquement
 │                                     # Chaîne PostgreSQL : src/MMV.Infrastructure.PostgreSQL.Migrations/
@@ -378,9 +413,10 @@ MMV_DESIGNTIME_DATABASE_PROVIDER=postgresql dotnet ef migrations has-pending-mod
 ```
 
 Aucune de ces commandes ne se connecte à une base. `dotnet ef database update` n'est pas utilisé. La base
-SQLite locale est préparée par l'application au démarrage (`SqliteDatabaseManager`). L'application des
-migrations PostgreSQL n'est pas encore décidée (P4-6). Toute évolution du modèle exige une migration sur
-**chaque** chaîne, dans le même commit.
+SQLite locale est préparée par l'application au démarrage (`SqliteDatabaseManager`). Les migrations
+PostgreSQL sont appliquées **uniquement** par `MMV.DatabaseManager` (P4-6B, voir plus haut). Toute évolution
+du modèle exige une migration sur **chaque** chaîne, dans le même commit, et respecte la discipline
+« étendre → migrer → contracter » ([CONTRIBUTING.md](CONTRIBUTING.md#étendre--migrer--contracter)).
 
 #### Migration Initiale (Sprint 2)
 ```csharp

@@ -18,6 +18,19 @@
     mais les avis sont visibles. Le durcissement bloquant est réservé à la CI.
   -->
 
+  <!--
+    Version applicative unique (P4-6B, ADR-PROD-DB-009 DP-7, H7) : SOURCE UNIQUE du SemVer de MMV.
+
+    Posée à la racine pour être la seule source (DP-7.1) : MMV.App et MMV.DatabaseManager portent donc la
+    même version (DI-5.2), lue à l'exécution par MMV.Infrastructure.Configuration.ApplicationVersion.
+    Effet de bord assumé : les projets de spikes/** héritent aussi de cette version (inerte pour eux).
+    Format exigé : Major.Minor.Patch, sans étiquette de pré-version (refusée par la garde et par l'outil).
+    Règle d'incrément : voir CONTRIBUTING.md, « Étendre → migrer → contracter ».
+  -->
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
   <PropertyGroup>
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>

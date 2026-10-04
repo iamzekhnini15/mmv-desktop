@@ -48,6 +48,9 @@ public class SettingsViewModel : BaseViewModel
 
     public string ThemeLabel => IsDarkMode ? "Mode sombre activé" : "Mode clair activé";
 
+    /// <summary>Version applicative affichée — source unique (P4-6B, DP-7.3).</summary>
+    public string Version => MMV.Infrastructure.Configuration.ApplicationVersion.Current;
+
     public SettingsViewModel(Services.IThemeService themeService)
     {
         _themeService = themeService;

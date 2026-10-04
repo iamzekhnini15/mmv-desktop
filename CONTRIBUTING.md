@@ -200,6 +200,53 @@ est concernée, et pourquoi.
 
 ---
 
+## Étendre → migrer → contracter
+
+En multi-poste, les postes ne sont pas tous mis à jour en même temps. Un poste **N-1** doit continuer de
+travailler sur un schéma **N** ([ADR-PROD-DB-009](docs/architecture/ADR-PROD-DB-009.md) DP-3 §5.2.3.4) : la
+garde de compatibilité lui accorde la **fenêtre N-1** tant que sa version est au moins le *minimum supporté*,
+que `MMV.DatabaseManager` **calcule** à partir de son journal (jamais saisi). Un changement de schéma se fait
+donc en **trois temps, sur au moins deux releases** :
+
+1. **Étendre** — la release N ajoute sans rien retirer : nouvelle table, nouvelle colonne **nullable** ou avec
+   valeur par défaut, nouvel index. Un poste N-1 l'ignore sans erreur.
+2. **Migrer** — le code de la release N écrit dans la nouvelle forme ; une migration de données recopie
+   l'existant si besoin.
+3. **Contracter** — une release **ultérieure** (N+1 au plus tôt) retire l'ancienne forme : `DropColumn`,
+   `DropTable`, `RenameColumn`, `RenameTable`, resserrement de nullabilité. À ce moment, plus aucun poste ne
+   l'utilise.
+
+Règles qui en découlent, toutes bloquantes :
+
+- **Jamais de contraction dans la release qui étend.** Le poste N-1 lirait ou écrirait une colonne disparue.
+- **Toute contraction est déclarée.** [`ExpandMigrateContractTests`](tests/MMV.Domain.Tests/Data/Migrations/ExpandMigrateContractTests.cs)
+  énumère les opérations de contraction des deux chaînes et les compare à une liste d'autorisation explicite :
+  une contraction nouvelle casse le test jusqu'à ce que l'auteur l'y inscrive. L'inscription est un acte de
+  revue, qui vérifie la règle précédente.
+- **Une seule release porteuse de schéma par tournée de postes.** La fenêtre vaut **un** cran : si deux
+  releases qui modifient le schéma sont déployées pendant qu'un même poste attend sa mise à jour, ce poste
+  devient N-2 et se bloque. Une tournée de mise à jour des postes est donc **bornée dans le temps** : elle se
+  termine avant la publication de la release porteuse de schéma suivante. Une release **sans** migration ne
+  consomme aucun cran.
+- **Une migration s'exécute en transaction.** Pas de `CREATE INDEX CONCURRENTLY`, pas de migration marquée non
+  transactionnelle, pas de DDL hors transaction dans un `Up()`. La reprise après échec (la base reste à la
+  dernière migration réussie) et la fenêtre N-1 reposent sur l'atomicité par migration (Q-15). Une exception
+  est une décision d'architecture.
+
+### Version applicative (SemVer)
+
+- **Source unique** : la propriété `<Version>` de [Directory.Build.props](Directory.Build.props). Elle est lue
+  à l'exécution par `ApplicationVersion` (assembly `MMV.Infrastructure`) : `MMV.App` et `MMV.DatabaseManager`
+  annoncent donc la même version. Aucun littéral de version ailleurs (un test l'interdit dans l'interface).
+- **Format** : `Major.Minor.Patch` uniquement. Les étiquettes de pré-version (`-rc.1`) sont **refusées** par la
+  garde et par l'outil : leur ordre ne se compare pas comme un triplet.
+- **Incrément** : `Major` pour une rupture assumée ; `Minor` pour une release qui **modifie le schéma** (ou
+  ajoute une fonctionnalité) ; `Patch` pour une correction sans migration. Toute release porteuse de schéma
+  porte une version **strictement supérieure** à la précédente : c'est elle que le journal de l'outil retient
+  comme version du schéma.
+
+---
+
 ## Commandes EF de référence
 
 **Passez toujours `--project` et `--startup-project`.** Sans `--startup-project`, `dotnet ef` prend comme projet
@@ -306,7 +353,7 @@ commitée sur une branche non fusionnée. Trois précautions :
 | # | Interdit | Pourquoi |
 |---|---|---|
 | 1 | **`--startup-project src/MMV.App`**, ou `dotnet ef` lancé depuis `src/MMV.App` sans `--startup-project` | EF **exécute le point d'entrée de l'application** pour y chercher un hôte. La fenêtre Avalonia s'ouvre, et la base SQLite locale est réellement préparée : installation, migrations, journal dans `%LOCALAPPDATA%\ManageMyVision\`. L'incident a été constaté. Et la chaîne PostgreSQL ne peut pas être générée ainsi |
-| 2 | **`dotnet ef database update`** et **`database drop`**, sur toute chaîne | SQLite : l'application prépare la base locale au démarrage (`SqliteDatabaseManager` : sauvegarde, adoption des bases historiques, journal) ; `database update` contournerait tout cela. PostgreSQL : la façon d'appliquer les migrations n'est pas encore décidée (lot P4-6). La commande échoue faute de serveur, et c'est voulu |
+| 2 | **`dotnet ef database update`** et **`database drop`**, sur toute chaîne | SQLite : l'application prépare la base locale au démarrage (`SqliteDatabaseManager` : sauvegarde, adoption des bases historiques, journal) ; `database update` contournerait tout cela. PostgreSQL : seul l'outil `MMV.DatabaseManager` applique les migrations, sous verrou, avec journal et sauvegarde vérifiée (P4-6B) ; `MMV.App` ne migre jamais le serveur. La commande échoue faute de serveur, et c'est voulu |
 | 3 | Modifier, renommer, déplacer ou supprimer une migration existante ; retoucher une migration générée | un instantané et sa migration ne sont cohérents que par construction. Voir *Règle de double migration* |
 | 4 | `migrations remove` après fusion | une migration fusionnée peut déjà être appliquée ailleurs |
 | 5 | Migration PostgreSQL dans `MMV.Infrastructure`, ou référence de `MMV.Infrastructure` vers le projet PostgreSQL | les deux chaînes se mélangeraient ; la référence serait circulaire |
@@ -314,6 +361,8 @@ commitée sur une branche non fusionnée. Trois précautions :
 | 7 | Une chaîne de connexion réelle ou un secret dans le dépôt, dans la CI ou dans une variable design-time | la seule chaîne autorisée est la constante factice de la factory |
 | 8 | `MMV_DESIGNTIME_DATABASE_PROVIDER` posée durablement (variables utilisateur ou système, profil, `.env`) ou au niveau d'un job CI | la variable ne doit exister que pour une commande, ou pour un seul step CI. Posée au niveau du job, elle ferait échouer le step SQLite |
 | 9 | Un test du provider dans une configuration d'entité | le choix se fait en **un seul point**, `ModelPortability` |
+| 10 | Une **migration non transactionnelle** : `CREATE INDEX CONCURRENTLY`, migration marquée hors transaction, DDL hors transaction dans un `Up()` | un échec laisserait un état partiel : la base ne serait plus « à la dernière migration réussie », et la fenêtre N-1 perdrait son fondement (Q-15). Voir *Étendre → migrer → contracter* |
+| 11 | Une **contraction dans la même release que l'expand** (`DropColumn`, `DropTable`, `RenameColumn`, `RenameTable`, nullabilité resserrée) | le poste N-1, encore en service pendant la tournée, utiliserait une forme disparue. La contraction attend une release ultérieure et se déclare dans `ExpandMigrateContractTests` |
 
 ---
 
@@ -340,6 +389,8 @@ dotnet build MMV.sln -c Debug      # 0 erreur
 | 10 | **Secrets** : aucune chaîne de connexion ni aucun mot de passe ajouté | relecture de `git diff --cached` |
 | 11 | **Un seul commit** : modèle, deux migrations et tests ensemble | `git show --stat` |
 | 12 | **Après le push** : les deux contrôles de dérive de la CI sont verts sur ce commit | onglet *Actions* |
+| 13 | **Contractions** : toute opération de contraction de la nouvelle migration est déclarée dans la liste d'autorisation de `ExpandMigrateContractTests`, et n'appartient pas à la release qui étend | relecture du diff de la liste ; le test est vert |
+| 14 | **Tournée de postes** : la tournée de mise à jour en cours est connue et close avant de publier une release porteuse de schéma (fenêtre d'**un** cran) | relecture ; signalé en revue |
 
 ---
 

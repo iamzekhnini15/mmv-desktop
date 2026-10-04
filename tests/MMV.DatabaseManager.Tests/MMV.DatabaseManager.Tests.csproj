@@ -1,12 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    P4-5F (ADR-PROD-DB-008) : tests d'intégration contre un VRAI serveur PostgreSQL.
-
-    Séparé de la suite unitaire (§5.1, §5.9) : sans serveur, ces tests s'ignorent explicitement en local et
-    ÉCHOUENT en CI (§5.4). Leur nombre n'est jamais additionné à la baseline unitaire (§5.7, Q7).
-    Aucun paquet nouveau : mêmes paquets et mêmes versions que les projets de test existants ; Npgsql arrive
-    par transitivité de MMV.Infrastructure.
+    P4-6B (C13) : tests unitaires de MMV.DatabaseManager, SANS serveur (doubles, connexion scriptée).
+    Les preuves AVEC serveur vivent dans MMV.Infrastructure.PostgreSQL.IntegrationTests (Lifecycle/).
+    Aucun paquet nouveau : mêmes paquets, mêmes versions que MMV.Domain.Tests.
   -->
 
   <PropertyGroup>
@@ -30,13 +27,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\MMV.Domain\MMV.Domain.csproj" />
-    <ProjectReference Include="..\..\src\MMV.Application\MMV.Application.csproj" />
-    <ProjectReference Include="..\..\src\MMV.Infrastructure\MMV.Infrastructure.csproj" />
-    <!-- Chaîne de migrations PostgreSQL : chargée par nom (MigrationsAssembly), elle doit être copiée en sortie. -->
-    <ProjectReference Include="..\..\src\MMV.Infrastructure.PostgreSQL.Migrations\MMV.Infrastructure.PostgreSQL.Migrations.csproj" />
-    <!-- P4-6B (C16) : preuves serveur du cycle de vie (Lifecycle/, I-1 … I-14) contre l'outil réel. -->
     <ProjectReference Include="..\..\src\MMV.DatabaseManager\MMV.DatabaseManager.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Connexion ADO.NET scriptée, partagée avec MMV.Domain.Tests (U-B6) plutôt que dupliquée. -->
+    <Compile Include="..\MMV.Domain.Tests\TestDoubles\ScriptedDbConnection.cs" Link="TestDoubles\ScriptedDbConnection.cs" />
   </ItemGroup>
 
   <ItemGroup>

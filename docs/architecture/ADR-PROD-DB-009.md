@@ -61,7 +61,7 @@
 
 ## 1. Status
 
-**ACCEPTED — 22 septembre 2026, revue d'acceptation P4-6A.**
+**ACCEPTED — 22 septembre 2026, revue d'acceptation P4-6A.** — **Addendum P4-6B du 4 octobre 2026** (§11) : forme du verrou (session unique), calcul de la métadonnée (ancre = état physique vérifié), Q-6 … Q-24 fermées. Aucune décision du §5.2 rouverte.
 
 Le §5 *Decision* contient deux choses :
 
@@ -1178,6 +1178,64 @@ propriétaire est un lot, pas la présente décision.
 - [CONTRIBUTING.md — règle de double migration](../../CONTRIBUTING.md)
 - [Rapport de transition P4-6](../implementation/P4-6-transition-audit-report.md)
 - [Rapport RECON-B-light](../implementation/P4-RECON-B-light-report.md)
+
+---
+
+## 11. Addendum P4-6B — 4 octobre 2026
+
+> **Addendum autorisé par décision d'architecte du 4 octobre 2026.** Il ferme les questions de mise en œuvre
+> dont P4-6B est propriétaire et fixe la **forme** de DP-2 (DP-2.4) et le **calcul** de DP-3.5.3. **Aucune
+> décision du §5.2 n'est rouverte.** Preuves : [rapport P4-6B](../implementation/P4-6B-database-lifecycle-report.md)
+> — locales sur PostgreSQL 17.10 tant que la CI n'a pas tourné sur le SHA exact.
+
+### 11.1 Forme du verrou (DP-2.4) — plan P4-6B §3.3 amendé
+
+1. **LK-1** : verrou consultatif de **session**, clé constante unique (`0x4D4D564D49475231`, « MMVMIGR1 »),
+   déclarée en un seul point ; acquisition par `pg_try_advisory_lock` dans une attente **bornée** ; libération
+   explicite par `pg_advisory_unlock` (un verrou de session **survit** au retour de la connexion dans le pool
+   Npgsql — mesure M-3).
+2. **Session unique** : le verrou est détenu par **la même session PostgreSQL** que celle qui exécute
+   `Migrate()`. Une seule connexion, ouverte par l'acquisition du verrou et tenue ouverte jusqu'à sa libération,
+   porte toute la séquence : verrou → métadonnée → GRANT → maintenance → journal OPEN → `Migrate()` →
+   vérification → métadonnée → journal CLOSE → maintenance `NULL` → libération. Si cette session meurt, la
+   migration meurt avec elle ; EF ne peut pas la rouvrir (intercepteur de connexion), l'outil non plus.
+   **Il n'existe jamais une session de verrou distincte d'une session de migration.**
+3. Le verrou natif d'EF (chez Npgsql : `LOCK TABLE … ACCESS EXCLUSIVE`, `LockReleaseBehavior = Transaction`,
+   mesure M-1) reste actif dessous, sans être désactivé ni pris pour référence.
+4. `lock_timeout` est posé sur cette session (CX-1).
+
+### 11.2 Calcul de la métadonnée (DP-3.5.3) — plan P4-6B §4.3 amendé
+
+Une **ancre** est un **état physique du schéma vérifié** — pas nécessairement une exécution qui a elle-même
+appliqué une migration.
+
+1. Seul un état **vérifié** (exécution réussie : migration, vérification et droits assurés) peut être une ancre.
+2. L'état vérifié (Appliquées après) est comparé à celui de la **dernière ancre** : identiques ⇒ aucune
+   évolution de compatibilité (une release sans migration ne consomme aucun cran) ; différents ⇒ nouvelle ancre.
+3. Chaque migration de l'état est attribuée à la release qui l'a **physiquement** appliquée, d'après le journal
+   (y compris une exécution ensuite en échec ou interrompue). `schema_version` = la release qui a produit le
+   schéma présent ; `minimum_supported_version` = la release qui a produit le schéma **immédiatement
+   précédent**. La version de l'outil qui relance n'est **jamais** prise par défaut.
+4. `adopt-compatibility` est une ancre explicite et un point de départ ; aucun littéral de version, aucune
+   saisie manuelle du minimum.
+
+### 11.3 Questions fermées
+
+| # | Réponse |
+|---|---|
+| **Q-6** | **LK-1** retenu, en session unique (§11.1) ; le verrou natif EF reste dessous |
+| **Q-7** | **Non en V1** : l'outil appelle `Migrate()` ; K-7 et l'interdit n° 2 de CONTRIBUTING.md restent la règle |
+| **Q-9** | **CX-3 minimal + CX-5 + CX-1** : `maintenance_started_at` (signal d'admission à sens unique, jamais un verrou, nettoyé seulement sous verrou), procédure « postes fermés », `lock_timeout` ; CX-2 et CX-4 écartés pour la V1 |
+| **Q-11** | **Non en V1** : pas de revérification en cours de session (P4-6C) |
+| **Q-12** | **Blocage** du poste en E7 ; l'adoption appartient à l'outil |
+| **Q-13** | S-1 prouvé en P4-6B (un processus, deux exécutions concurrentes) ; multi-processus : **P4-10** |
+| **Q-15** | **Migrations non transactionnelles interdites en V1** (CONTRIBUTING.md, Interdit n° 10) |
+| **Q-21** | **Test d'énumération des contractions + liste d'autorisation** (`ExpandMigrateContractTests`) |
+| **Q-22** | `migrate` refuse (code 15) une base migrée sans métadonnée ; `adopt-compatibility` pose `schema_version = minimum = version courante`, journalisé `adopt` ; côté poste, métadonnée absente ⇒ égalité stricte, ligne en initialisation ⇒ bloqué |
+| **Q-23** | **CLOSED (04/10/2026)** — P4-8 possède les rôles et leurs noms ; `--app-role` obligatoire pour `migrate` et `adopt-compatibility` ; `GRANT USAGE ON SCHEMA mmv_meta` + `GRANT SELECT ON mmv_meta.schema_compatibility`, idempotents, cités par le serveur ; aucun droit sur `migration_run` ; jamais de succès sans droits assurés |
+| **Q-24** | **CLOSED (04/10/2026)** — `RefusingBackupVerification` seule en production ; ordre **P4-6B → P4-9 → P4-6C** |
+
+**Q-20** (renommage du fichier) reste ouverte et ne bloque rien.
 
 ---
 

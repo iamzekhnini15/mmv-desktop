@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    P4-6B (ADR-PROD-DB-009 DP-1, DP-2, DP-8, DP-9, DP-10) : outil de migration de la base SERVEUR.
+    Seul composant autorisé à migrer PostgreSQL ; MMV.App ne le référence jamais (H11).
+    Aucun paquet NuGet : Npgsql arrive par transitivité de MMV.Infrastructure, et tout le SQL passe par
+    DbConnection / DbCommand (précédent P4-1 Lot D).
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MMV.Infrastructure\MMV.Infrastructure.csproj" />
+    <!-- Chaîne de migrations PostgreSQL : chargée par nom (MigrationsAssembly), elle doit être copiée en sortie.
+         Même motif que MMV.App.csproj. -->
+    <ProjectReference Include="..\MMV.Infrastructure.PostgreSQL.Migrations\MMV.Infrastructure.PostgreSQL.Migrations.csproj" />
+  </ItemGroup>
+
+</Project>
