@@ -147,7 +147,7 @@ public class ProductRepository : BaseRepository<Product, long>, IProductReposito
     {
         return _dbSet
             .AsNoTracking()
-            .Include(p => p.Category)
+            .Include(p => p.ProductCategory)
             .Include(p => p.Supplier)
             .Include(p => p.GlassDetail)
             .Include(p => p.LensDetail)

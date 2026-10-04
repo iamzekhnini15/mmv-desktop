@@ -45,8 +45,10 @@ jobs:
       - name: Build
         run: dotnet build MMV.sln --no-restore -c Debug
 
+      # Suite UNITAIRE uniquement (P4-5F, ADR-PROD-DB-008 §5.7 / Q7) : les tests d'intégration PostgreSQL
+      # tournent dans le job dédié ci-dessous et ne sont jamais comptés dans cette baseline.
       - name: Test
-        run: dotnet test MMV.sln --no-build -c Debug --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test MMV.sln --no-build -c Debug --filter "FullyQualifiedName!~MMV.Infrastructure.PostgreSQL.IntegrationTests" --logger "trx;LogFileName=test-results.trx"
 
       # Audit des dépendances vulnérables (P2A-0B). Défense en profondeur :
       #   1) La restauration a déjà appliqué l'audit NuGet (Directory.Build.props, NuGetAuditMode=all).
@@ -171,3 +173,74 @@ jobs:
             Write-Error "Controle de derive PostgreSQL en echec (code $LASTEXITCODE) : changement de modele sans migration PostgreSQL, ou commande en echec."
             exit 1
           }
+
+  # P4-5F (ADR-PROD-DB-008) : tests d'intégration contre un VRAI serveur PostgreSQL, dans un job distinct.
+  # Runner Linux : les services conteneurisés n'existent pas sur windows-latest. Ce job prouve donc le
+  # comportement sur PostgreSQL Linux en conteneur — JAMAIS celui d'une installation Windows native.
+  # Image exactement versionnée : 17.10, la version relevée par le spike P4-1. La version d'exploitation
+  # cible reste ouverte (Q8, P4-8) : ce choix ne la tranche pas.
+  postgresql-integration:
+    name: PostgreSQL integration (P4-5F)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17.10
+        # Identifiants de TEST éphémères, non secrets (§5.3) : le serveur ne vit que le temps du job.
+        env:
+          POSTGRES_USER: mmv_it
+          POSTGRES_PASSWORD: mmv_it_ephemeral
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mmv_it -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      MMV_TEST_POSTGRESQL_CONNECTION_STRING: Host=localhost;Port=5432;Username=mmv_it;Password=mmv_it_ephemeral;Database=postgres
+      # Un serveur absent devient un ÉCHEC, jamais un skip (§5.4, Q4).
+      MMV_INTEGRATION_REQUIRED: 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET (SDK verrouillé par global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Version du serveur PostgreSQL
+        env:
+          PGPASSWORD: mmv_it_ephemeral
+        run: psql -h localhost -U mmv_it -d postgres -Atc "SELECT version();"
+
+      - name: Restore
+        run: dotnet restore tests/MMV.Infrastructure.PostgreSQL.IntegrationTests
+
+      - name: Build
+        run: dotnet build tests/MMV.Infrastructure.PostgreSQL.IntegrationTests --no-restore -c Debug
+
+      - name: Test
+        run: >-
+          dotnet test tests/MMV.Infrastructure.PostgreSQL.IntegrationTests --no-build -c Debug
+          --logger "trx;LogFileName=integration-results.trx" --results-directory integration-results
+
+      # Garde anti-faux-vert (Q4) : contrôle MACHINE du TRX. Échec si aucun résultat, si un test n'est pas
+      # « Passed » (ignoré compris), ou si le fichier est absent. Le compte est publié SÉPARÉMENT (Q7).
+      - name: Garde anti-faux-vert (aucun test ignoré, au moins un exécuté)
+        if: always()
+        shell: pwsh
+        run: |
+          $trx = Get-ChildItem integration-results -Filter *.trx -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $trx) { Write-Error "Aucun fichier TRX : tests d'integration NON executes."; exit 1 }
+          [xml]$doc = Get-Content $trx.FullName
+          $results = @($doc.TestRun.Results.UnitTestResult)
+          $notPassed = @($results | Where-Object { $_.outcome -ne 'Passed' })
+          Write-Host ("Tests d'integration PostgreSQL : {0} resultat(s), {1} non 'Passed'." -f $results.Count, $notPassed.Count)
+          $notPassed | ForEach-Object { Write-Host ("  - [{0}] {1}" -f $_.outcome, $_.testName) }
+          if ($results.Count -eq 0) { Write-Error "Zero test d'integration execute : faux vert refuse."; exit 1 }
+          if ($notPassed.Count -gt 0) { Write-Error "Test(s) d'integration ignore(s) ou en echec : un skip en CI est un echec."; exit 1 }
