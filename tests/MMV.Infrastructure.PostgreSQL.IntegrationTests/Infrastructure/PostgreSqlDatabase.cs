@@ -69,7 +69,9 @@ public sealed class PostgreSqlDatabase : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        NpgsqlConnection.ClearAllPools();
+        // Son propre pool seulement : ClearAllPools fermait aussi les sessions inactives des tests exécutés en
+        // parallèle — dont celle où M3 garde volontairement un verrou consultatif (échec intermittent de M3).
+        NpgsqlConnection.ClearPool(new NpgsqlConnection(ConnectionString));
         await ExecuteAdminAsync($"DROP DATABASE IF EXISTS \"{Name}\" WITH (FORCE)");
     }
 

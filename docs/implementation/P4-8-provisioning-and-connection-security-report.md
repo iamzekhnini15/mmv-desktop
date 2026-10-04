@@ -45,7 +45,7 @@ sensible à la casse ; une session déjà ouverte n'est pas réauthentifiée apr
 - **Ajustements de tests existants (assertions inchangées)** :
   1. `Status_through_the_real_entry_point…` (P4-6B) s'exécute sur le serveur **TLS** : le point d'entrée impose
      désormais VerifyFull ; un test jumeau prouve le **refus** (code 20) sur le serveur sans TLS.
-  2. `LifecycleDatabase.DisposeAsync` vide **ses** pools au lieu de `ClearAllPools()`, qui fermait la session où
+  2. `LifecycleDatabase.DisposeAsync` et `PostgreSqlDatabase.DisposeAsync` vident **leurs** pools au lieu de `ClearAllPools()`, qui fermait la session où
      **M3** garde volontairement un verrou consultatif : échec intermittent de M3 reproduit localement, corrigé.
 - Aucun test supprimé, ignoré ni affaibli.
 
@@ -74,6 +74,12 @@ Commit `3dea70c54682d9ec36f4266d8b3e8789bd992008`, run **`37236625898`** — **s
 | PostgreSQL integration (Linux) | serveurs TLS démarrés par `start-tls-servers.sh` ; **147 / 147**, 0 ignoré (garde anti-faux-vert) |
 
 Verdict : **P4-8 = COMPLETE — CLOSED**.
+
+**Incident CI du commit documentaire `b8f9f42`** (run **`37237153521`**, échec) : le job d'intégration a échoué
+sur **M3** (146 / 147) — le même échec intermittent qu'au §3, pas une régression P4-8. Cause résiduelle :
+`PostgreSqlDatabase.DisposeAsync` (fixture P4-5F, ~70 tests) appelait encore `NpgsqlConnection.ClearAllPools()`.
+Corrigé comme `LifecycleDatabase` (pool propre seulement) ; 5 exécutions locales consécutives à 147 / 147. Aucune
+assertion modifiée. Le run de ce correctif est enregistré ci-dessous.
 
 ## 7. Questions ouvertes
 
