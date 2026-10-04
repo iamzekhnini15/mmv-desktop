@@ -64,7 +64,18 @@ conséquence : une base provisionnée non migrée est vue **E2** par la garde P4
 - Identifiants : cités par le serveur (`format('%I')`), paramètres liés, test de noms hostiles réels.
 - `BackupSeamTests` (P4-6B) inchangés et verts : toujours une seule variable lue, une seule vérification de sauvegarde.
 
-## 6. Questions ouvertes
+## 6. CI
+
+Commit `3dea70c54682d9ec36f4266d8b3e8789bd992008`, run **`37236625898`** — **success** sur le SHA exact :
+
+| Job | Résultat |
+|---|---|
+| Restore / Build / Test / Scan (Windows) | unitaires **2289 / 2289** (Domain 1190 · Application 628 · App 267 · DatabaseManager 204) ; aucune vulnérabilité High/Critical ; dérive EF SQLite et PostgreSQL : aucun changement |
+| PostgreSQL integration (Linux) | serveurs TLS démarrés par `start-tls-servers.sh` ; **147 / 147**, 0 ignoré (garde anti-faux-vert) |
+
+Verdict : **P4-8 = COMPLETE — CLOSED**.
+
+## 7. Questions ouvertes
 
 **Q-P4-8-1** remplacement forcé du secret initial (changement de modèle EF requis) · **Q-P4-8-2** chiffrement du
 stockage serveur (infrastructure) · **Q-P4-8-3** preuve Windows native (O12). Détail : ADR-PROD-DB-010 §6.
