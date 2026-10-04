@@ -715,7 +715,7 @@ se termine par **commit + CI verte sur le SHA exact**.
   D-12 premier administrateur par l'outil, D-13 fichier de poste DPAPI CurrentUser, D-14 TLS VerifyFull +
   SCRAM-SHA-256 sans repli, D-15 arrêt explicite sans nouvelle tentative (résilience : P4-10).
   *Le « retry de connexion » autorisé ci-dessus est reporté à P4-10 par D-15.*
-- **État** : **COMPLETE — CLOSED** — `3dea70c`, CI **`37236625898`** verte sur le SHA exact (04/10/2026 : job Windows unitaires 2289/2289, job Linux PostgreSQL 17.10 + serveurs TLS 147/147, 0 ignoré, dérive EF verte sur les deux chaînes, aucune vulnérabilité High/Critical) (branche `p4-8`) — [rapport](../implementation/P4-8-provisioning-and-connection-security-report.md),
+- **État** : **COMPLETE — CLOSED** — `3dea70c`, CI **`37236625898`** verte sur le SHA exact (04/10/2026 : job Windows unitaires 2289/2289, job Linux PostgreSQL 17.10 + serveurs TLS 147/147, 0 ignoré, dérive EF verte sur les deux chaînes, aucune vulnérabilité High/Critical) ; correctif d'isolation des tests `d5e6245` (échec intermittent M3, run `37237153521`), CI **`37237725744`** verte (branche `p4-8`) — [rapport](../implementation/P4-8-provisioning-and-connection-security-report.md),
   [procédure opérateur](../operations/P4-8-provisioning-procedure.md). Unitaires **2289**, intégration PostgreSQL
   **147** (dont TLS réel), aucune migration. Ouvert : **Q-P4-8-1** (remplacement forcé du secret initial, exige un
   changement de modèle EF), **Q-P4-8-2** (chiffrement du stockage serveur), **Q-P4-8-3** (preuve Windows native).

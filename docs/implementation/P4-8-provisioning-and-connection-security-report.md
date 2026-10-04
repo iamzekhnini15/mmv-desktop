@@ -79,7 +79,7 @@ Verdict : **P4-8 = COMPLETE — CLOSED**.
 sur **M3** (146 / 147) — le même échec intermittent qu'au §3, pas une régression P4-8. Cause résiduelle :
 `PostgreSqlDatabase.DisposeAsync` (fixture P4-5F, ~70 tests) appelait encore `NpgsqlConnection.ClearAllPools()`.
 Corrigé comme `LifecycleDatabase` (pool propre seulement) ; 5 exécutions locales consécutives à 147 / 147. Aucune
-assertion modifiée. Le run de ce correctif est enregistré ci-dessous.
+assertion modifiée. Correctif `d5e6245`, run **`37237725744`** — **success** sur le SHA exact : unitaires 2289 / 2289, intégration **147 / 147**, 0 ignoré.
 
 ## 7. Questions ouvertes
 
