@@ -43,6 +43,43 @@ public static class PostgreSqlTestEnvironment
         return value.Trim();
     }
 
+    /// <summary>
+    /// P4-8 (D-14) : serveur <b>TLS</b> de test (chaîne administrateur en <c>SSL Mode=VerifyFull</c> avec son autorité
+    /// racine). Fourni en CI par <c>Tls/start-tls-servers.sh</c> ; même règle : absent + exigé ⇒ échec, jamais skip.
+    /// </summary>
+    public const string TlsConnectionStringVariableName = "MMV_TEST_POSTGRESQL_TLS_CONNECTION_STRING";
+
+    /// <summary>Autorité racine ÉTRANGÈRE au certificat du serveur TLS (preuve de refus de chaîne).</summary>
+    public const string TlsWrongCaVariableName = "MMV_TEST_POSTGRESQL_TLS_WRONG_CA";
+
+    /// <summary>Port d'un serveur TLS dont le certificat, signé par la bonne autorité, est expiré.</summary>
+    public const string TlsExpiredPortVariableName = "MMV_TEST_POSTGRESQL_TLS_EXPIRED_PORT";
+
+    /// <summary>Raison d'ignorer un test TLS, ou <c>null</c> s'il doit s'exécuter.</summary>
+    public static string? TlsSkipReason(IReadOnlyDictionary<string, string?>? environment = null)
+    {
+        if (!string.IsNullOrWhiteSpace(Get(TlsConnectionStringVariableName, environment)) || IsRequired(environment))
+        {
+            return null;
+        }
+
+        return "Comportement PostgreSQL TLS NON PROUVÉ : aucun serveur TLS fourni. Lancez " +
+               "Tls/start-tls-servers.sh puis chargez les variables de tls.env.";
+    }
+
+    /// <summary>Variable de test TLS obligatoire ; lève un message explicite si elle manque.</summary>
+    public static string GetRequired(string variableName, IReadOnlyDictionary<string, string?>? environment = null)
+    {
+        var value = Get(variableName, environment);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException(
+                $"{variableName} est absente ou vide alors que les tests d'intégration PostgreSQL TLS sont exigés.");
+        }
+
+        return value.Trim();
+    }
+
     private static bool HasConnectionString(IReadOnlyDictionary<string, string?>? environment) =>
         !string.IsNullOrWhiteSpace(Get(ConnectionStringVariableName, environment));
 
@@ -77,6 +114,32 @@ public sealed class PostgreSqlTheoryAttribute : TheoryAttribute
     public PostgreSqlTheoryAttribute()
     {
         var reason = PostgreSqlTestEnvironment.SkipReason();
+        if (reason is not null)
+        {
+            Skip = reason;
+        }
+    }
+}
+
+/// <summary>P4-8 : test exigeant le serveur TLS de test (<see cref="PostgreSqlTestEnvironment.TlsConnectionStringVariableName"/>).</summary>
+public sealed class PostgreSqlTlsFactAttribute : FactAttribute
+{
+    public PostgreSqlTlsFactAttribute()
+    {
+        var reason = PostgreSqlTestEnvironment.TlsSkipReason();
+        if (reason is not null)
+        {
+            Skip = reason;
+        }
+    }
+}
+
+/// <summary>Équivalent de <see cref="PostgreSqlTlsFactAttribute"/> pour les tests paramétrés.</summary>
+public sealed class PostgreSqlTlsTheoryAttribute : TheoryAttribute
+{
+    public PostgreSqlTlsTheoryAttribute()
+    {
+        var reason = PostgreSqlTestEnvironment.TlsSkipReason();
         if (reason is not null)
         {
             Skip = reason;

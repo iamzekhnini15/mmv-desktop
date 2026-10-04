@@ -847,7 +847,10 @@ ou RL-3 coûterait un transfert de propriété de tous les objets sur chaque bas
 **RL-2 est écarté** : il confond l'installation et la migration dans un même rôle propriétaire, alors que P4-8
 doit pouvoir provisionner sans détenir le migrateur.
 
-**Les noms définitifs des rôles restent ouverts** et appartiennent à P4-8 (D-09, D-13). `mmv_app` et
+**Les noms définitifs des rôles restent ouverts** et appartiennent à P4-8 (D-09, D-13). *Tranché le 04/10/2026
+par [ADR-PROD-DB-010](adr-prod-db-010-provisioning-and-connection-security.md) : les noms sont des **paramètres**
+du provisioning, et RL-3 reçoit un **rôle de sauvegarde** en lecture seule (la restauration reste à
+l'administrateur).* `mmv_app` et
 `mmv_spike` sont des rôles de laboratoire, explicitement « jetables » (RA-8) : ils ne préjugent de rien.
 
 *Conséquences à porter* : privilèges par défaut (`ALTER DEFAULT PRIVILEGES`) à poser au provisioning, sans quoi

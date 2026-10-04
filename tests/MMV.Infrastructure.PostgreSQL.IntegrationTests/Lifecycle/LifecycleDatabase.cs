@@ -42,10 +42,15 @@ public sealed class LifecycleDatabase : IAsyncDisposable
     public string AppConnectionString { get; }
 
     /// <summary>Base vide, propriété du migrateur ; rôle applicatif avec les seuls droits par défaut de PUBLIC.</summary>
-    public static async Task<LifecycleDatabase> CreateAsync()
+    /// <param name="adminServerConnectionString">
+    /// Serveur d'accueil ; <c>null</c> ⇒ serveur de test principal. P4-8 : le serveur TLS pour tout test qui passe
+    /// par le point d'entrée réel de l'outil, qui impose TLS VerifyFull (D-14).
+    /// </param>
+    public static async Task<LifecycleDatabase> CreateAsync(string? adminServerConnectionString = null)
     {
         var database = new LifecycleDatabase(
-            PostgreSqlTestEnvironment.GetRequiredConnectionString(), Guid.NewGuid().ToString("N")[..12]);
+            adminServerConnectionString ?? PostgreSqlTestEnvironment.GetRequiredConnectionString(),
+            Guid.NewGuid().ToString("N")[..12]);
         await database.ExecuteOnServerAsync(
             $"CREATE ROLE \"{database.MigratorRole}\" LOGIN PASSWORD '{Password}'",
             $"CREATE ROLE \"{database.AppRole}\" LOGIN PASSWORD '{Password}'",
@@ -180,7 +185,13 @@ public sealed class LifecycleDatabase : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        NpgsqlConnection.ClearAllPools();
+        // Ses propres pools seulement (P4-8) : ClearAllPools fermait aussi les sessions inactives des tests exécutés
+        // en parallèle — dont celle où M3 garde volontairement un verrou consultatif (échec intermittent de M3).
+        foreach (var connectionString in new[] { AdminConnectionString, MigratorConnectionString, AppConnectionString })
+        {
+            NpgsqlConnection.ClearPool(new NpgsqlConnection(connectionString));
+        }
+
         await ExecuteOnServerAsync(
             $"DROP DATABASE IF EXISTS \"{Name}\" WITH (FORCE)",
             $"DROP ROLE IF EXISTS \"{AppRole}\"",

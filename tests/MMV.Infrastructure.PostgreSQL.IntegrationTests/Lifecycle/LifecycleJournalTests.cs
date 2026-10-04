@@ -140,9 +140,15 @@ public sealed class LifecycleJournalTests : LifecycleTestBase
             .Should().Be(1, "la ligne 'open' de l'exécution tuée reste la preuve de son échec");
     }
 
-    [PostgreSqlFact]
+    /// <summary>
+    /// P4-8 : le point d'entrée réel impose TLS VerifyFull et SCRAM-SHA-256 à la chaîne du migrateur (D-14) ; ce test
+    /// s'exécute donc sur le serveur TLS de test. Assertions inchangées depuis P4-6B.
+    /// </summary>
+    [PostgreSqlTlsFact]
     public async Task Status_through_the_real_entry_point_reads_only_and_reports_the_server_age_of_the_marker()
     {
+        await using var Db = await LifecycleDatabase.CreateAsync(
+            PostgreSqlTestEnvironment.GetRequired(PostgreSqlTestEnvironment.TlsConnectionStringVariableName));
         (await Db.RunAsync<ChainS1>("1.0.0")).ExitCode.Should().Be(MigrationExitCode.Success);
         await LifecycleDatabase.ExecuteAsync(Db.AdminConnectionString,
             "UPDATE mmv_meta.schema_compatibility SET maintenance_started_at = now() - interval '3 days'");
@@ -166,6 +172,24 @@ public sealed class LifecycleJournalTests : LifecycleTestBase
         output.ToString().Should().Contain("âge serveur 3.00:00:00").And.Contain("E5").And.Contain("InitialPostgreSqlBaseline");
         (await Db.AdminScalarAsync<long>("SELECT count(*) FROM mmv_meta.migration_run")).Should().Be(journalBefore);
         (await Db.CompatibilityRowAsync()).Maintenance.Should().NotBeNull("status ne lève jamais la maintenance");
+    }
+
+    /// <summary>
+    /// P4-8 (D-14) : sur le serveur de test SANS TLS, le même point d'entrée échoue (code 20) au lieu de se
+    /// rabattre sur une connexion non chiffrée — l'absence de repli est prouvée par le point d'entrée réel.
+    /// </summary>
+    [PostgreSqlFact]
+    public async Task Status_through_the_real_entry_point_never_falls_back_to_an_unencrypted_connection()
+    {
+        (await Db.RunAsync<ChainS1>("1.0.0")).ExitCode.Should().Be(MigrationExitCode.Success);
+        var error = new StringWriter();
+
+        var code = await Program.RunAsync(["status"],
+            new Dictionary<string, string?> { ["MMV_MIGRATOR_CONNECTION_STRING"] = Db.MigratorConnectionString },
+            new StringWriter(), error, Path.Combine(Path.GetTempPath(), $"mmv-it-{Guid.NewGuid():N}.log"));
+
+        code.Should().Be(20);
+        error.ToString().Should().NotContain("mmv_it_ephemeral");
     }
 
     [PostgreSqlFact]

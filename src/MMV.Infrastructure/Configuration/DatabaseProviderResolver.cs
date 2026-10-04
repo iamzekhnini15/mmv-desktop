@@ -47,7 +47,76 @@ public static class DatabaseProviderResolver
     public const string PostgreSqlMigrationsAssemblyName = "MMV.Infrastructure.PostgreSQL.Migrations";
 
     /// <summary>
-    /// Résout les <see cref="DatabaseProviderOptions"/> depuis l'environnement.
+    /// Résolution de <b>production</b> d'un poste (P4-8, ADR-PROD-DB-010) : environnement réel <b>et</b>
+    /// configuration protégée du poste (<see cref="WorkstationDatabaseSettingsFile.CreateDefault"/>), politique
+    /// de connexion <see cref="PostgreSqlConnectionSecurity"/> appliquée. Voir <see cref="ResolveWorkstation"/>.
+    /// </summary>
+    public static DatabaseProviderOptions Resolve() =>
+        ResolveWorkstation(null, WorkstationDatabaseSettingsFile.CreateDefault());
+
+    /// <summary>
+    /// Règles de résolution d'un poste (P4-8, D-13, D-14) :
+    /// <list type="number">
+    ///   <item>fournisseur explicite dans l'environnement <b>et</b> fichier de poste présent ⇒ <b>refus</b> :
+    ///   deux sources concurrentes ne sont jamais arbitrées en silence ;</item>
+    ///   <item>fichier de poste présent ⇒ PostgreSQL, chaîne construite par
+    ///   <see cref="PostgreSqlConnectionSecurity.BuildConnectionString"/> (stockage de production) ;</item>
+    ///   <item>PostgreSQL par l'environnement (développement, CI, tests contrôlés) ⇒ chaîne
+    ///   <see cref="PostgreSqlConnectionSecurity.Harden">durcie</see>, réglage affaibli refusé ;</item>
+    ///   <item>sinon, SQLite — comportement historique.</item>
+    /// </list>
+    /// </summary>
+    /// <param name="environment">Variables injectables ; <c>null</c> ⇒ environnement réel.</param>
+    /// <param name="workstationSettings">Configuration de poste ; <c>null</c> ⇒ aucune.</param>
+    /// <exception cref="DatabaseConfigurationException">Configuration ambiguë, illisible ou non conforme.</exception>
+    public static DatabaseProviderOptions ResolveWorkstation(
+        IReadOnlyDictionary<string, string?>? environment,
+        IWorkstationDatabaseSettingsSource? workstationSettings)
+    {
+        string? Get(string key) => environment is not null
+            ? (environment.TryGetValue(key, out var value) ? value : null)
+            : Environment.GetEnvironmentVariable(key);
+
+        var hasWorkstationFile = workstationSettings is { Exists: true };
+        if (hasWorkstationFile && !string.IsNullOrWhiteSpace(Get(ProviderVariableName)))
+        {
+            throw new DatabaseConfigurationException(
+                $"Deux configurations de base concurrentes : la variable {ProviderVariableName} et le fichier de " +
+                "configuration du poste. Retirez l'une des deux : aucune n'est choisie implicitement.");
+        }
+
+        if (hasWorkstationFile)
+        {
+            return new DatabaseProviderOptions
+            {
+                Provider = DatabaseProvider.PostgreSql,
+                ConnectionString = PostgreSqlConnectionSecurity.BuildConnectionString(workstationSettings!.Load())
+            };
+        }
+
+        var options = Resolve(environment);
+        if (options.Provider != DatabaseProvider.PostgreSql)
+        {
+            return options;
+        }
+
+        try
+        {
+            return new DatabaseProviderOptions
+            {
+                Provider = DatabaseProvider.PostgreSql,
+                ConnectionString = PostgreSqlConnectionSecurity.Harden(options.ConnectionString!)
+            };
+        }
+        catch (ArgumentException)
+        {
+            throw new DatabaseConfigurationException($"La variable {ConnectionStringVariableName} est mal formée.");
+        }
+    }
+
+    /// <summary>
+    /// Résout les <see cref="DatabaseProviderOptions"/> depuis l'environnement <b>seul</b>, sans configuration de
+    /// poste ni politique de connexion : brique de <see cref="ResolveWorkstation"/>.
     /// </summary>
     /// <param name="environment">
     /// Source de variables injectable pour les tests. Si <c>null</c>, l'environnement réel
@@ -56,7 +125,7 @@ public static class DatabaseProviderResolver
     /// <exception cref="DatabaseConfigurationException">
     /// Si le fournisseur demandé est inconnu, ou si PostgreSQL est demandé sans chaîne de connexion.
     /// </exception>
-    public static DatabaseProviderOptions Resolve(IReadOnlyDictionary<string, string?>? environment = null)
+    public static DatabaseProviderOptions Resolve(IReadOnlyDictionary<string, string?>? environment)
     {
         string? Get(string key) => environment is not null
             ? (environment.TryGetValue(key, out var value) ? value : null)

@@ -117,6 +117,8 @@ public partial class App : Avalonia.Application
         // Fournisseur de base sélectionné par configuration (P4-3, ADR-PROD-DB-002) : variable
         // d'environnement MMV_DATABASE_PROVIDER, défaut SQLite (comportement historique inchangé).
         // Résolu UNE SEULE FOIS pour toute la composition. Un nom de fournisseur invalide bloque ici.
+        // P4-8 (D-13, D-14) : la configuration protégée du poste (DPAPI) est la source de production ;
+        // toute connexion PostgreSQL est en TLS VerifyFull et SCRAM-SHA-256, sans repli.
         var databaseProviderOptions = DatabaseProviderResolver.Resolve();
         var usesSqlite = databaseProviderOptions.Provider == DatabaseProvider.Sqlite;
 
@@ -196,6 +198,15 @@ public partial class App : Avalonia.Application
         // seeding explicitement invalide (ex. mot de passe bootstrap trop faible) lève ici et bloque le
         // démarrage. Une configuration absente/ambiguë retombe sur le défaut sûr (Production, sans seed).
         var seedOptions = SeedOptionsResolver.Resolve();
+
+        // Base centrale injoignable (P4-8, D-15) : ARRÊT EXPLICITE avant toute opération — une seule tentative,
+        // bornée, sans nouvel essai (la résilience appartient à P4-10). Hors de tout try : aucun catch ne peut
+        // l'avaler (K-13). Refuse aussi une identité PostgreSQL privilégiée sur un poste (DP-5). Le garde-fou
+        // P4-3 ci-dessous reste en place : sa levée appartient à P4-6C.
+        if (databaseProviderOptions.Provider == DatabaseProvider.PostgreSql)
+        {
+            PostgreSqlConnectivityProbe.EnsureAvailable(databaseProviderOptions.ConnectionString!);
+        }
 
         // Garde-fou de démarrage serveur (P4-3), VOLONTAIRE et placé AVANT le bloc try afin qu'aucun
         // catch générique ne puisse le masquer par un repli silencieux sur SQLite. Le fournisseur est

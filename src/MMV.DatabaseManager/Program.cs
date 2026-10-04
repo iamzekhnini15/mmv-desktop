@@ -14,20 +14,34 @@ namespace MMV.DatabaseManager;
 /// </summary>
 public static class Program
 {
-    public static Task<int> Main(string[] args) => RunAsync(args, null, Console.Out, Console.Error);
+    public static Task<int> Main(string[] args) =>
+        RunAsync(args, null, Console.Out, Console.Error, null, Console.In, !Console.IsInputRedirected);
 
     /// <param name="args">Arguments de ligne de commande.</param>
     /// <param name="environment">Variables injectables pour les tests ; <c>null</c> ⇒ environnement réel.</param>
     /// <param name="output">Sortie standard.</param>
     /// <param name="error">Sortie d'erreur.</param>
     /// <param name="traceFilePath">Trace locale ; <c>null</c> ⇒ dossier de données de l'utilisateur (DI-9).</param>
+    /// <param name="input">Entrée des secrets des verbes P4-8 ; <c>null</c> ⇒ aucune (secret manquant ⇒ code 10).</param>
+    /// <param name="interactiveInput">Saisie masquée en console (verbes P4-8).</param>
     public static async Task<int> RunAsync(
         IReadOnlyList<string> args,
         IReadOnlyDictionary<string, string?>? environment,
         TextWriter output,
         TextWriter error,
-        string? traceFilePath = null)
+        string? traceFilePath = null,
+        TextReader? input = null,
+        bool interactiveInput = false)
     {
+        // P4-8 (ADR-PROD-DB-010) : verbes d'administration — provisioning, rotation, premier administrateur,
+        // configuration de poste. Ils ne touchent ni à la vérification de sauvegarde ni aux migrations.
+        if (AdministrationOptions.IsAdministrationVerb(args))
+        {
+            return await AdministrationCommands.RunAsync(args, MigratorConnectionString(environment), output, error,
+                new MigrationJournal(traceFilePath ?? DefaultTraceFilePath()),
+                new SecretInput(input ?? TextReader.Null, output, interactiveInput));
+        }
+
         var parsed = MigrationToolOptions.Parse(args);
         if (!parsed.IsValid)
         {
@@ -37,9 +51,7 @@ public static class Program
         }
 
         var options = parsed.Options!;
-        var connectionString = environment is not null
-            ? environment.GetValueOrDefault(MigrationToolOptions.ConnectionStringVariableName)
-            : Environment.GetEnvironmentVariable(MigrationToolOptions.ConnectionStringVariableName);
+        var connectionString = MigratorConnectionString(environment);
         if (string.IsNullOrWhiteSpace(connectionString))
         {
             error.WriteLine($"{MigrationToolOptions.ConnectionStringVariableName} est absente ou vide : " +
@@ -49,12 +61,19 @@ public static class Program
 
         try
         {
-            return await ExecuteAsync(options, connectionString.Trim(), output, error, traceFilePath);
+            // P4-8 (D-14) : TLS VerifyFull et SCRAM-SHA-256 imposés, réglage affaibli refusé — sans contact serveur.
+            var hardened = PostgreSqlConnectionSecurity.Harden(connectionString.Trim());
+            return await ExecuteAsync(options, hardened, output, error, traceFilePath);
         }
         catch (ArgumentException)
         {
             // Chaîne de connexion mal formée : jamais restituée (elle porte un secret).
             error.WriteLine($"{MigrationToolOptions.ConnectionStringVariableName} est mal formée.");
+            return (int)MigrationExitCode.InvalidArguments;
+        }
+        catch (DatabaseConfigurationException exception)
+        {
+            error.WriteLine(exception.Message);
             return (int)MigrationExitCode.InvalidArguments;
         }
         catch (Exception exception) when (ServerCommand.IsServerUnreachable(exception))
@@ -109,6 +128,12 @@ public static class Program
             .WriteLine($"[run {result.RunId}] code {(int)result.ExitCode} — {result.Message}");
         return (int)result.ExitCode;
     }
+
+    /// <summary>Seule variable lue par l'outil : la chaîne du rôle migrateur (jamais celle d'un poste).</summary>
+    private static string? MigratorConnectionString(IReadOnlyDictionary<string, string?>? environment) =>
+        environment is not null
+            ? environment.GetValueOrDefault(MigrationToolOptions.ConnectionStringVariableName)
+            : Environment.GetEnvironmentVariable(MigrationToolOptions.ConnectionStringVariableName);
 
     /// <summary>
     /// Trace locale dans le dossier de données de l'utilisateur, jamais sous le dossier d'installation que la

@@ -40,6 +40,21 @@ internal static class ServerCommand
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Instruction dont des <b>identifiants</b> ou littéraux viennent de l'exploitant (P4-8 ; motif de
+    /// <c>ApplicationRoleGrants</c>, Q-23) : le texte est produit par le serveur, <c>format('… %I … %L', @x)</c>,
+    /// valeurs en paramètres liés — <b>jamais concaténées</b> côté client — puis exécuté tel quel.
+    /// </summary>
+    public static async Task ExecuteServerFormattedAsync(
+        DbConnection connection, string formatSql, CancellationToken cancellationToken,
+        params (string Name, object? Value)[] parameters)
+    {
+        var statement = await ScalarAsync(connection, formatSql, cancellationToken, parameters) as string
+                        ?? throw new InvalidOperationException("Le serveur n'a pas produit l'instruction attendue.");
+
+        await NonQueryAsync(connection, statement, cancellationToken);
+    }
+
     public static DbCommand Create(DbConnection connection, string sql, params (string Name, object? Value)[] parameters)
     {
         var command = RequireOpen(connection).CreateCommand();

@@ -35,6 +35,10 @@
          l'épingle reste PORTANTE et n'est pas retirée sur une supposition (plan §4, E-5).
          Correction dépendances uniquement : aucun changement de modèle EF, aucune migration. -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.0" />
+    <!-- P4-8 (ADR-PROD-DB-010, D-13) : DPAPI CurrentUser pour la configuration de connexion par poste.
+         Paquet Microsoft, même version que le runtime EF Core 10.0.12 ; utilisé sous garde
+         OperatingSystem.IsWindows() uniquement (PlatformNotSupportedException ailleurs). -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup>

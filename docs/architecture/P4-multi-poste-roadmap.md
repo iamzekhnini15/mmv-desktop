@@ -710,6 +710,15 @@ se termine par **commit + CI verte sur le SHA exact**.
 - **Autorisé** : configuration par poste, secret hors dépôt, procédure d'installation, health check, retry de connexion.
 - **Interdit** : **committer un secret ou une chaîne de connexion complète**.
 - **Tests attendus** : démarrage sans configuration = échec clair ; indisponibilité serveur gérée.
+- **Décisions** : [ADR-PROD-DB-010](adr-prod-db-010-provisioning-and-connection-security.md) — **ACCEPTÉ**
+  (04/10/2026) : D-09 provisioning explicite, noms de rôles paramètres + rôle de sauvegarde (amendement DP-5),
+  D-12 premier administrateur par l'outil, D-13 fichier de poste DPAPI CurrentUser, D-14 TLS VerifyFull +
+  SCRAM-SHA-256 sans repli, D-15 arrêt explicite sans nouvelle tentative (résilience : P4-10).
+  *Le « retry de connexion » autorisé ci-dessus est reporté à P4-10 par D-15.*
+- **État** : **IMPLÉMENTÉ — CI en attente** (branche `p4-8`) — [rapport](../implementation/P4-8-provisioning-and-connection-security-report.md),
+  [procédure opérateur](../operations/P4-8-provisioning-procedure.md). Unitaires **2289**, intégration PostgreSQL
+  **147** (dont TLS réel), aucune migration. Ouvert : **Q-P4-8-1** (remplacement forcé du secret initial, exige un
+  changement de modèle EF), **Q-P4-8-2** (chiffrement du stockage serveur), **Q-P4-8-3** (preuve Windows native).
 
 ### P4-9 — Sauvegarde et restauration centrales
 

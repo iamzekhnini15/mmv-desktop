@@ -218,6 +218,14 @@ jobs:
           PGPASSWORD: mmv_it_ephemeral
         run: psql -h localhost -U mmv_it -d postgres -Atc "SELECT version();"
 
+      # P4-8 (ADR-PROD-DB-010, D-14) : serveurs PostgreSQL 17.10 TLS JETABLES (certificat valide pour localhost,
+      # certificat expiré, autorité étrangère), SCRAM-SHA-256, pg_hba « hostssl ». Clés et mot de passe générés à
+      # chaque exécution, jamais committés ; variables MMV_TEST_POSTGRESQL_TLS_* exportées pour le step de test.
+      - name: Serveurs PostgreSQL TLS (P4-8)
+        run: |
+          bash tests/MMV.Infrastructure.PostgreSQL.IntegrationTests/Tls/start-tls-servers.sh "$RUNNER_TEMP/mmv-tls"
+          cat "$RUNNER_TEMP/mmv-tls/tls.env" >> "$GITHUB_ENV"
+
       - name: Restore
         run: dotnet restore tests/MMV.Infrastructure.PostgreSQL.IntegrationTests
 

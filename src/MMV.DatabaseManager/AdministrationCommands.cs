@@ -1,0 +1,165 @@
+using MMV.DatabaseManager.CommandLine;
+using MMV.DatabaseManager.Provisioning;
+using MMV.Infrastructure.Configuration;
+using MMV.Infrastructure.Data;
+
+namespace MMV.DatabaseManager;
+
+/// <summary>
+/// Verbes d'administration P4-8 (ADR-PROD-DB-010) : arguments → secrets (entrée standard) → composant → code de
+/// sortie. Aucune logique ici. Ces verbes ne construisent <b>aucune</b> vérification de sauvegarde et n'appliquent
+/// <b>aucune</b> migration : <c>migrate</c> reste le seul chemin de DDL de schéma (DP-1).
+/// </summary>
+internal static class AdministrationCommands
+{
+    public static async Task<int> RunAsync(
+        IReadOnlyList<string> args,
+        string? migratorConnectionString,
+        TextWriter output,
+        TextWriter error,
+        IMigrationJournal trace,
+        SecretInput secrets)
+    {
+        var parsed = AdministrationOptions.Parse(args);
+        if (!parsed.IsValid)
+        {
+            error.WriteLine(parsed.Error);
+            error.WriteLine(AdministrationOptions.Usage);
+            return (int)MigrationExitCode.InvalidArguments;
+        }
+
+        var options = parsed.Options!;
+        AdministrationResult result;
+        switch (options.Verb)
+        {
+            case AdministrationVerb.Provision:
+            {
+                if (!TryRead(secrets, error, out var values, "Secret de l'administrateur PostgreSQL",
+                        "Secret du rôle migrateur", "Secret du rôle applicatif", "Secret du rôle de sauvegarde"))
+                {
+                    return (int)MigrationExitCode.InvalidArguments;
+                }
+
+                result = await new PostgreSqlProvisioner(trace).RunAsync(new ProvisioningRequest
+                {
+                    Host = options.Require("--host"),
+                    Port = options.Port,
+                    RootCertificatePath = options.Get("--root-certificate"),
+                    AdminUser = options.Require("--admin-user"),
+                    AdminPassword = values[0],
+                    AdminDatabase = options.AdminDatabase,
+                    Database = options.Require("--database"),
+                    MigratorRole = options.Require("--migrator-role"),
+                    MigratorPassword = values[1],
+                    AppRole = options.Require("--app-role"),
+                    AppPassword = values[2],
+                    BackupRole = options.Require("--backup-role"),
+                    BackupPassword = values[3],
+                    Operator = options.Require("--operator")
+                });
+                break;
+            }
+
+            case AdministrationVerb.RotateRolePassword:
+            {
+                if (!TryRead(secrets, error, out var values, "Secret de l'administrateur PostgreSQL", "Nouveau secret du rôle"))
+                {
+                    return (int)MigrationExitCode.InvalidArguments;
+                }
+
+                result = await new RolePasswordRotation(trace).RunAsync(new RoleRotationRequest
+                {
+                    Host = options.Require("--host"),
+                    Port = options.Port,
+                    RootCertificatePath = options.Get("--root-certificate"),
+                    AdminUser = options.Require("--admin-user"),
+                    AdminPassword = values[0],
+                    AdminDatabase = options.AdminDatabase,
+                    Database = options.Require("--database"),
+                    Role = options.Require("--role"),
+                    NewPassword = values[1],
+                    Operator = options.Require("--operator")
+                });
+                break;
+            }
+
+            case AdministrationVerb.BootstrapAdmin:
+            {
+                if (string.IsNullOrWhiteSpace(migratorConnectionString))
+                {
+                    error.WriteLine($"{MigrationToolOptions.ConnectionStringVariableName} est absente ou vide : " +
+                                    "chaîne de connexion du rôle migrateur requise (jamais celle d'un poste).");
+                    return (int)MigrationExitCode.InvalidArguments;
+                }
+
+                string hardened;
+                try
+                {
+                    hardened = PostgreSqlConnectionSecurity.Harden(migratorConnectionString.Trim());
+                }
+                catch (ArgumentException)
+                {
+                    error.WriteLine($"{MigrationToolOptions.ConnectionStringVariableName} est mal formée.");
+                    return (int)MigrationExitCode.InvalidArguments;
+                }
+                catch (DatabaseConfigurationException exception)
+                {
+                    error.WriteLine(exception.Message);
+                    return (int)MigrationExitCode.InvalidArguments;
+                }
+
+                if (!TryRead(secrets, error, out var values, "Mot de passe initial de l'administrateur", "Confirmation"))
+                {
+                    return (int)MigrationExitCode.InvalidArguments;
+                }
+
+                result = await new BootstrapAdministrator(trace).RunAsync(
+                    hardened, options.Require("--username"), values[0], values[1], options.Require("--operator"));
+                break;
+            }
+
+            case AdministrationVerb.ConfigureWorkstation:
+            {
+                if (!OperatingSystem.IsWindows())
+                {
+                    error.WriteLine("configure-workstation s'exécute sur le poste Windows, sous l'utilisateur qui lancera MMV (DPAPI).");
+                    return (int)MigrationExitCode.InvalidArguments;
+                }
+
+                if (!TryRead(secrets, error, out var values, "Secret du rôle applicatif"))
+                {
+                    return (int)MigrationExitCode.InvalidArguments;
+                }
+
+                result = await new WorkstationConfigurator(WorkstationDatabaseSettingsFile.CreateDefault(), trace).RunAsync(
+                    new PostgreSqlConnectionSettings(options.Require("--host"), options.Port, options.Require("--database"),
+                        options.Require("--username"), values[0], options.Get("--root-certificate")));
+                break;
+            }
+
+            default:
+                throw new InvalidOperationException("Verbe d'administration non câblé.");
+        }
+
+        (result.Succeeded ? output : error).WriteLine($"code {(int)result.ExitCode} — {result.Message}");
+        return (int)result.ExitCode;
+    }
+
+    private static bool TryRead(SecretInput secrets, TextWriter error, out string[] values, params string[] labels)
+    {
+        values = new string[labels.Length];
+        for (var i = 0; i < labels.Length; i++)
+        {
+            var value = secrets.Read(labels[i]);
+            if (value is null)
+            {
+                error.WriteLine($"Secret manquant sur l'entrée standard : {labels[i]}.");
+                return false;
+            }
+
+            values[i] = value;
+        }
+
+        return true;
+    }
+}

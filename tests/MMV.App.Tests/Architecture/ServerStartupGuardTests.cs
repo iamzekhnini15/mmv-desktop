@@ -61,6 +61,26 @@ public sealed class ServerStartupGuardTests
         }
     }
 
+    /// <summary>
+    /// P4-8 (D-15) : base centrale injoignable ⇒ arrêt explicite AVANT le garde-fou et AVANT tout bloc try — aucune
+    /// opération, aucune nouvelle tentative, aucun catch qui l'avalerait.
+    /// </summary>
+    [Fact]
+    public void ServerAvailability_IsChecked_BeforeTheGuard_AndOutsideAnyTry()
+    {
+        var source = AppCompositionSource();
+
+        var probe = source.IndexOf("PostgreSqlConnectivityProbe.EnsureAvailable(", StringComparison.Ordinal);
+        Assert.True(probe >= 0, "La vérification de disponibilité serveur (D-15) a disparu de App.axaml.cs.");
+        Assert.True(probe < source.IndexOf(Guard, StringComparison.Ordinal),
+            "La vérification de disponibilité doit précéder le garde-fou serveur.");
+
+        var firstTry = Regex.Match(source, @"^\s*try\s*$", RegexOptions.Multiline);
+        Assert.True(firstTry.Success && firstTry.Index > probe,
+            "La vérification de disponibilité ne doit être enveloppée dans aucun try.");
+        Assert.DoesNotContain("EnsureAvailableAsync", source);
+    }
+
     private static string AppCompositionSource()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
