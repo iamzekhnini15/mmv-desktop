@@ -1,6 +1,7 @@
 # P4-6B — Rapport de lot : cycle de vie de la base en multi-poste
 
-> **Statut : IMPLÉMENTÉ — PREUVE LOCALE — NON COMMITÉ — CI NON EXÉCUTÉE. P4-6B N'EST PAS CLOS.**
+> **Statut : COMPLETE — CLOSED** — commit `3d00af8`, CI [`37226388128`](https://github.com/iamzekhnini15/mmv-desktop/actions/runs/37226388128) verte sur le SHA exact (§5).
+> *(Statut initial, historique : implémenté — preuve locale — non commité — CI non exécutée.)*
 > Plan de référence : [P4-6B-implementation-plan.md](P4-6B-implementation-plan.md) (révision du 04/10/2026).
 > Base : branche `p4-5f-integration-tests`, HEAD `692b6da`. Date : 4 octobre 2026.
 > ADR-PROD-DB-009 reste **ACCEPTED** ; aucune décision rouverte. **Aucune migration EF, aucun changement de modèle.**
@@ -74,7 +75,11 @@ image que le job CI, **pas** une preuve Windows native (O12 reste séparée).
 - job Windows : `dotnet build MMV.sln` compile l'outil et ses tests ; `dotnet test MMV.sln --filter "FullyQualifiedName!~MMV.Infrastructure.PostgreSQL.IntegrationTests"` exécute `MMV.DatabaseManager.Tests` (le nom ne correspond pas au filtre) ; l'audit de vulnérabilités couvre les nouveaux projets ; les **deux** contrôles de dérive existants restent les seuls (aucun troisième) ;
 - job `postgresql-integration` : le projet d'intégration référence l'outil (C16) et exécute I-1 … I-14 sous la garde TRX existante (0 résultat ou 1 non-`Passed` ⇒ échec). Les rôles de test sont créés par les tests avec l'utilisateur éphémère `mmv_it` (superutilisateur de l'image).
 
-**Non prouvé tant qu'aucun commit n'est poussé** : critère 14 (CI verte sur le SHA exact).
+**CI exécutée** : run `37226388128` (push, branche `p4-5f-integration-tests`, SHA `3d00af80c3a4…`) — jobs
+`Restore / Build / Test / Scan` et `PostgreSQL integration (P4-5F)` en **succès**. Windows : 0 warning,
+0 erreur ; unitaires **2148** (Domain 1124 · Application 628 · App 266 · DatabaseManager 130), 0 échec, 0 ignoré ;
+les **deux** contrôles de dérive « No changes » ; aucun paquet vulnérable. Linux : PostgreSQL 17.10, **104 / 104**,
+garde TRX « 104 résultat(s), 0 non 'Passed' ». `ci.yml` non modifié.
 
 ## 6. Écarts et décisions d'exécution
 
@@ -137,39 +142,38 @@ refus d'arguments de `Program` n'écrivent pas la trace locale ; I-14 évalue la
 
 **Autres points ouverts :**
 - M-2 : SUPERSEDED / NON BLOCKING ; M-4 : OPERATIONAL / NON BLOCKING (§4).
-- Critère 14 : commit + CI verte sur le SHA exact — non exécuté (phase sans commit).
 - O12 (PostgreSQL natif Windows) : hors P4-6B, inchangé.
 
 ## 8. Critères de sortie (§10 du plan)
 
 | # | Critère | État |
 |---|---|---|
-| 1 | Version unique SemVer, affichée, journalisée (H7) | **prouvé localement** (U-A1 … U-A3 ; `app_version` journalisée, I-8) |
-| 2 | Garde en lecture seule, 5 cas, 8 états | **prouvé localement** (U-B1 … U-B7) |
-| 3 | Aucun chemin de DDL PostgreSQL dans `MMV.App` (H11) | **prouvé localement** (U-D1, U-D2) |
-| 4 | Aucun changement de modèle, aucune migration, deux dérives vertes (H16) | **prouvé localement** ; CI en attente |
-| 5 | SQLite sans régression, 14 migrations, 1953 tests | **prouvé localement** ; CI en attente |
-| 6 | « Étendre → migrer → contracter » inscrit et outillé | **prouvé localement** (D1, U-E1) |
-| 7 | Journal DP-8 | **prouvé sur serveur local** (U-C5, I-8) ; CI en attente |
-| 8 | Minimum calculé (H17) | **prouvé sur serveur local** (U-C3, U-C4, I-9, I-10, I-14) ; CI en attente |
-| 9 | Action explicite, opérateur exigé et journalisé (H13) | **prouvé sur serveur local** (U-C1, I-8) ; CI en attente |
+| 1 | Version unique SemVer, affichée, journalisée (H7) | **prouvé** (U-A1 … U-A3 ; `app_version` journalisée, I-8) |
+| 2 | Garde en lecture seule, 5 cas, 8 états | **prouvé** (U-B1 … U-B7) |
+| 3 | Aucun chemin de DDL PostgreSQL dans `MMV.App` (H11) | **prouvé** (U-D1, U-D2) |
+| 4 | Aucun changement de modèle, aucune migration, deux dérives vertes (H16) | **prouvé**  ; CI `37226388128` verte |
+| 5 | SQLite sans régression, 14 migrations, 1953 tests | **prouvé**  ; CI `37226388128` verte |
+| 6 | « Étendre → migrer → contracter » inscrit et outillé | **prouvé** (D1, U-E1) |
+| 7 | Journal DP-8 | **prouvé sur serveur (local + CI)** (U-C5, I-8)  ; CI `37226388128` verte |
+| 8 | Minimum calculé (H17) | **prouvé sur serveur (local + CI)** (U-C3, U-C4, I-9, I-10, I-14)  ; CI `37226388128` verte |
+| 9 | Action explicite, opérateur exigé et journalisé (H13) | **prouvé sur serveur (local + CI)** (U-C1, I-8)  ; CI `37226388128` verte |
 | 10 | Aucune migration sans sauvegarde vérifiée (H12) | **prouvé** (U-C2, U-C9, entry point ⇒ 11) |
-| 11 | Sérialisation (H2) | **prouvé sur serveur local** (I-1 … I-4) ; CI en attente |
-| 12 | Rôles DP-5, Q-23 | **prouvé sur serveur local** (I-5, I-6, I-12, U-C7) ; CI en attente |
-| 13 | Fenêtre N-1 (H14) | **prouvé sur serveur local** (U-B2, I-7) ; CI en attente |
-| 14 | Commit + CI verte sur le SHA exact | **NON PROUVÉ** — aucun commit dans cette phase |
+| 11 | Sérialisation (H2) | **prouvé sur serveur (local + CI)** (I-1 … I-4)  ; CI `37226388128` verte |
+| 12 | Rôles DP-5, Q-23 | **prouvé sur serveur (local + CI)** (I-5, I-6, I-12, U-C7)  ; CI `37226388128` verte |
+| 13 | Fenêtre N-1 (H14) | **prouvé sur serveur (local + CI)** (U-B2, I-7)  ; CI `37226388128` verte |
+| 14 | Commit + CI verte sur le SHA exact | **PROUVÉ** — `3d00af8`, CI `37226388128` |
 
 ```
-P4-6B APPLICATION VERSION     = IMPLEMENTED — LOCAL PROOF — CI PENDING
-P4-6B COMPATIBILITY GUARD     = IMPLEMENTED — READ-ONLY, NOT WIRED — LOCAL PROOF — CI PENDING
-P4-6B DATABASE MANAGER        = IMPLEMENTED — LOCAL PROOF — CI PENDING
-P4-6B MIGRATION LOCK          = IMPLEMENTED — LK-1, SINGLE SESSION (LOCK = MIGRATE) — LOCAL SERVER PROOF — CI PENDING
-P4-6B SERVER JOURNAL          = IMPLEMENTED — LOCAL SERVER PROOF — CI PENDING
-P4-6B APP ROLE GRANT          = IMPLEMENTED — LOCAL SERVER PROOF — CI PENDING
-P4-6B EXPAND MIGRATE CONTRACT = DOCUMENTED + TOOLED — CI PENDING
-P4-6B SERVER PROOFS           = LOCAL PG 17.10 104/104 (0 SKIPPED) — CI PENDING
+P4-6B APPLICATION VERSION     = IMPLEMENTED — LOCAL PROOF — CI 37226388128 GREEN
+P4-6B COMPATIBILITY GUARD     = IMPLEMENTED — READ-ONLY, NOT WIRED — LOCAL PROOF — CI 37226388128 GREEN
+P4-6B DATABASE MANAGER        = IMPLEMENTED — LOCAL PROOF — CI 37226388128 GREEN
+P4-6B MIGRATION LOCK          = IMPLEMENTED — LK-1, SINGLE SESSION (LOCK = MIGRATE) — LOCAL SERVER PROOF — CI 37226388128 GREEN
+P4-6B SERVER JOURNAL          = IMPLEMENTED — LOCAL SERVER PROOF — CI 37226388128 GREEN
+P4-6B APP ROLE GRANT          = IMPLEMENTED — LOCAL SERVER PROOF — CI 37226388128 GREEN
+P4-6B EXPAND MIGRATE CONTRACT = DOCUMENTED + TOOLED — CI 37226388128 GREEN
+P4-6B SERVER PROOFS           = LOCAL PG 17.10 104/104 (0 SKIPPED) — CI 37226388128 GREEN
 P4-6B ADR ADDENDUM            = WRITTEN — ADR-009 §11 — AUTHORIZED 2026-10-04
-P4-6B DATABASE LIFECYCLE      = IMPLEMENTED — NOT COMMITTED — NOT CLOSE
+P4-6B DATABASE LIFECYCLE      = COMPLETE — CLOSED — 3d00af8 — CI 37226388128 SUCCESS
 V1 MULTI-POSTE                = NOT GO
 ```
 
