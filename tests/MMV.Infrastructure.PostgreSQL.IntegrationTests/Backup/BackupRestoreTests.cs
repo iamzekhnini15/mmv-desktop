@@ -18,8 +18,10 @@ namespace MMV.Infrastructure.PostgreSQL.IntegrationTests.Backup;
 /// <c>pg_dump</c> / <c>pg_restore</c> réels), sur une base provisionnée par l'outil réel (quatre identités :
 /// administrateur, migrateur, applicatif, sauvegarde). Chaque exécution de l'outil passe par
 /// <see cref="Program.RunAsync"/> et vérifie qu'aucun secret n'apparaît dans sa sortie ni dans sa trace.
-/// Toutes les méthodes de cette classe s'exécutent en série (verrou de vérification partagé par le serveur).
+/// Toutes les méthodes de cette classe s'exécutent en série (verrou de vérification partagé par le serveur), et en
+/// série avec les autres classes de la même collection (P4-7).
 /// </summary>
+[Collection(MMV.Infrastructure.PostgreSQL.IntegrationTests.Import.BackupVerificationCollection.Name)]
 public sealed class BackupRestoreTests : IAsyncLifetime
 {
     private readonly TlsServer _server = new();

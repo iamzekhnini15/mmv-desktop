@@ -1,5 +1,6 @@
 using MMV.DatabaseManager.Backup;
 using MMV.DatabaseManager.CommandLine;
+using MMV.DatabaseManager.Import;
 using MMV.DatabaseManager.Journal;
 using MMV.Infrastructure.Configuration;
 using MMV.Infrastructure.Data;
@@ -42,15 +43,34 @@ public static class Program
                 new SecretInput(input ?? TextReader.Null, output, interactiveInput));
         }
 
-        var parsed = MigrationToolOptions.Parse(args);
-        if (!parsed.IsValid)
+        // P4-7 : import SQLite → PostgreSQL, sous le rôle migrateur, gardé par la sauvegarde vérifiée et le verrou.
+        ImportOptions? import = null;
+        MigrationToolOptions? options = null;
+        if (ImportOptions.IsImportVerb(args))
         {
-            error.WriteLine(parsed.Error);
-            error.WriteLine(MigrationToolOptions.Usage);
-            return (int)MigrationExitCode.InvalidArguments;
+            var parsedImport = ImportOptions.Parse(args);
+            if (!parsedImport.IsValid)
+            {
+                error.WriteLine(parsedImport.Error);
+                error.WriteLine(ImportOptions.Usage);
+                return (int)MigrationExitCode.InvalidArguments;
+            }
+
+            import = parsedImport.Options!;
+        }
+        else
+        {
+            var parsed = MigrationToolOptions.Parse(args);
+            if (!parsed.IsValid)
+            {
+                error.WriteLine(parsed.Error);
+                error.WriteLine(MigrationToolOptions.Usage);
+                return (int)MigrationExitCode.InvalidArguments;
+            }
+
+            options = parsed.Options!;
         }
 
-        var options = parsed.Options!;
         var connectionString = MigratorConnectionString(environment);
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -63,7 +83,9 @@ public static class Program
         {
             // P4-8 (D-14) : TLS VerifyFull et SCRAM-SHA-256 imposés, réglage affaibli refusé — sans contact serveur.
             var hardened = PostgreSqlConnectionSecurity.Harden(connectionString.Trim());
-            return await ExecuteAsync(options, hardened, output, error, traceFilePath);
+            return import is not null
+                ? await ImportAsync(import, hardened, output, error, traceFilePath)
+                : await ExecuteAsync(options!, hardened, output, error, traceFilePath);
         }
         catch (ArgumentException)
         {
@@ -99,7 +121,7 @@ public static class Program
                 ConnectionString = connectionString
             }),
             MigrationRunner.DefaultLockTimeout);
-        var runner = new MigrationRunner(session.Ports, new ProofBackupVerification(BackupPolicy.MaximumAgeBeforeMigration), localTrace);
+        var runner = new MigrationRunner(session.Ports, BackupVerification(), localTrace);
 
         if (options.Verb == MigrationVerb.Status)
         {
@@ -128,6 +150,45 @@ public static class Program
             .WriteLine($"[run {result.RunId}] code {(int)result.ExitCode} — {result.Message}");
         return (int)result.ExitCode;
     }
+
+    private static async Task<int> ImportAsync(
+        ImportOptions options, string connectionString, TextWriter output, TextWriter error, string? traceFilePath)
+    {
+        await using var session = PostgreSqlMigrationSession.Create(
+            builder => DatabaseProviderResolver.Configure(builder, new DatabaseProviderOptions
+            {
+                Provider = DatabaseProvider.PostgreSql,
+                ConnectionString = connectionString
+            }),
+            MigrationRunner.DefaultLockTimeout);
+        var runner = new SqliteImportRunner(
+            session.Ports,
+            session.Connection,
+            ImportPlan.From(session.DesignTimeModel),
+            BackupVerification(),
+            new MigrationJournal(traceFilePath ?? DefaultTraceFilePath()),
+            async cancellationToken =>
+            {
+                var fresh = PostgreSqlConnectionSecurity.CreateConnection(connectionString);
+                await fresh.OpenAsync(cancellationToken);
+                return fresh;
+            });
+
+        var result = await runner.RunAsync(new SqliteImportRequest(
+            options.Source, options.SourceTimeZone, options.Operator, options.BackupReference, options.Report,
+            options.DryRun, options.Wait, ApplicationVersion.Current));
+
+        (result.ExitCode == MigrationExitCode.Success ? output : error)
+            .WriteLine($"[import {result.RunId}] code {(int)result.ExitCode} — {result.Message}");
+        output.WriteLine($"Rapport : {Path.GetFullPath(options.Report)}");
+        return (int)result.ExitCode;
+    }
+
+    /// <summary>
+    /// <b>Seul</b> point de construction de la vérification de sauvegarde, commun à <c>migrate</c> et à
+    /// <c>import-sqlite</c> (DP-10, P4-9) : aucune option ni configuration ne la remplace ni ne relâche son âge.
+    /// </summary>
+    private static IBackupVerification BackupVerification() => new ProofBackupVerification(BackupPolicy.MaximumAgeBeforeMigration);
 
     /// <summary>Seule variable lue par l'outil : la chaîne du rôle migrateur (jamais celle d'un poste).</summary>
     private static string? MigratorConnectionString(IReadOnlyDictionary<string, string?>? environment) =>

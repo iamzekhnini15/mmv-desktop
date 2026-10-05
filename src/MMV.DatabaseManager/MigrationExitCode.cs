@@ -56,5 +56,23 @@ public enum MigrationExitCode
     RestoreVerificationFailed = 22,
 
     /// <summary>P4-9 : application de la rétention interrompue (droits ou erreur du système de fichiers).</summary>
-    RetentionFailed = 23
+    RetentionFailed = 23,
+
+    /// <summary>
+    /// P4-7 : source SQLite refusée — fichier absent ou non fermé, intégrité ou clés étrangères en échec, historique
+    /// différent, table ou colonne inconnue porteuse de données, valeur non importable ; <b>aucune écriture</b>.
+    /// </summary>
+    ImportSourceRejected = 24,
+
+    /// <summary>
+    /// P4-7 : base cible refusée — schéma non à jour, métadonnée absente, ou données déjà présentes (import déjà
+    /// effectué, premier administrateur créé) ; <b>aucune écriture</b>.
+    /// </summary>
+    ImportTargetRefused = 25,
+
+    /// <summary>
+    /// P4-7 : import interrompu, refusé par le serveur ou vérification avant validation en échec ; la transaction est
+    /// annulée et l'état de la cible relu.
+    /// </summary>
+    ImportFailed = 26
 }

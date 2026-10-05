@@ -1,6 +1,8 @@
 using System.Data;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using MMV.DatabaseManager.Backup;
 using MMV.DatabaseManager.Journal;
 using MMV.DatabaseManager.Locking;
@@ -40,6 +42,12 @@ public sealed class PostgreSqlMigrationSession : IAsyncDisposable
     }
 
     public MigrationPorts Ports { get; }
+
+    /// <summary>Connexion de contrôle de la session — celle qui tient le verrou (P4-7 : transaction d'import).</summary>
+    public DbConnection Connection => _connection;
+
+    /// <summary>Modèle de conception PostgreSQL (tables, types physiques, données <c>HasData</c>) — plan d'import P4-7.</summary>
+    public IModel DesignTimeModel => _context.GetService<IDesignTimeModel>().Model;
 
     /// <param name="configure">Configuration PostgreSQL du contexte (chaîne du rôle migrateur).</param>
     /// <param name="lockTimeout"><c>lock_timeout</c> de la session (CX-1).</param>

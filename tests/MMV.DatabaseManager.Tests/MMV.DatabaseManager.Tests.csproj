@@ -33,6 +33,8 @@
   <ItemGroup>
     <!-- Connexion ADO.NET scriptée, partagée avec MMV.Domain.Tests (U-B6) plutôt que dupliquée. -->
     <Compile Include="..\MMV.Domain.Tests\TestDoubles\ScriptedDbConnection.cs" Link="TestDoubles\ScriptedDbConnection.cs" />
+    <!-- P4-7 : base SQLite source générée par le modèle, partagée avec les tests d'intégration PostgreSQL. -->
+    <Compile Include="..\MMV.Infrastructure.PostgreSQL.IntegrationTests\Import\SqliteSourceBuilder.cs" Link="TestDoubles\SqliteSourceBuilder.cs" />
   </ItemGroup>
 
   <ItemGroup>
