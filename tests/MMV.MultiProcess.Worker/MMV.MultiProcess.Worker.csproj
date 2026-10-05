@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    P4-10 (O13, ADR-PROD-DB-008 §5.11) : processus « poste » des tests multi-processus. Chaque instance est un
+    processus OS distinct qui exécute UNE opération par les implémentations de PRODUCTION (MMV.Infrastructure)
+    contre un vrai PostgreSQL, puis écrit une ligne de résultat. Lancé uniquement par les tests d'intégration ;
+    aucun paquet nouveau.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12.0</LangVersion>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MMV.Infrastructure\MMV.Infrastructure.csproj" />
+    <!-- Chaîne de migrations PostgreSQL chargée par nom : copiée en sortie comme pour l'application. -->
+    <ProjectReference Include="..\..\src\MMV.Infrastructure.PostgreSQL.Migrations\MMV.Infrastructure.PostgreSQL.Migrations.csproj" />
+  </ItemGroup>
+
+</Project>

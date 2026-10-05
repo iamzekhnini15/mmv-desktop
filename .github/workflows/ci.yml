@@ -226,6 +226,13 @@ jobs:
           bash tests/MMV.Infrastructure.PostgreSQL.IntegrationTests/Tls/start-tls-servers.sh "$RUNNER_TEMP/mmv-tls"
           cat "$RUNNER_TEMP/mmv-tls/tls.env" >> "$GITHUB_ENV"
 
+      # P4-10 (critère de sortie 10) : serveur PostgreSQL 17.10 JETABLE et DÉDIÉ, que les tests arrêtent et
+      # redémarrent réellement (aucun autre test ne l'utilise). Mot de passe généré, jamais committé.
+      - name: Serveur PostgreSQL de redémarrage (P4-10)
+        run: |
+          bash tests/MMV.Infrastructure.PostgreSQL.IntegrationTests/Resilience/start-restart-server.sh "$RUNNER_TEMP/mmv-restart"
+          cat "$RUNNER_TEMP/mmv-restart/restart.env" >> "$GITHUB_ENV"
+
       # P4-9 : pg_dump / pg_restore de la MÊME version majeure que le serveur (17) — le client 16 du runner refuse
       # de sauvegarder un serveur 17. Dépôt officiel PGDG ; dossier exporté pour les tests (MMV_TEST_PG_BIN).
       - name: Outils clients PostgreSQL 17 (P4-9)

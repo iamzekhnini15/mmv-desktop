@@ -61,6 +61,26 @@ public static class PostgreSqlTestEnvironment
     /// </summary>
     public const string PgBinVariableName = "MMV_TEST_PG_BIN";
 
+    /// <summary>
+    /// P4-10 : serveur PostgreSQL <b>dédié</b> que les tests arrêtent et redémarrent réellement, et son conteneur.
+    /// Fournis en CI par <c>Resilience/start-restart-server.sh</c> ; absents + exigés ⇒ échec, jamais un skip.
+    /// </summary>
+    public const string RestartConnectionStringVariableName = "MMV_TEST_POSTGRESQL_RESTART_CONNECTION_STRING";
+
+    public const string RestartContainerVariableName = "MMV_TEST_POSTGRESQL_RESTART_CONTAINER";
+
+    /// <summary>Raison d'ignorer un test de redémarrage, ou <c>null</c> s'il doit s'exécuter.</summary>
+    public static string? RestartSkipReason(IReadOnlyDictionary<string, string?>? environment = null)
+    {
+        if (!string.IsNullOrWhiteSpace(Get(RestartConnectionStringVariableName, environment)) || IsRequired(environment))
+        {
+            return null;
+        }
+
+        return "Redémarrage serveur NON PROUVÉ : aucun serveur dédié fourni. Lancez Resilience/start-restart-server.sh " +
+               "puis chargez les variables de restart.env.";
+    }
+
     /// <summary>Raison d'ignorer un test TLS, ou <c>null</c> s'il doit s'exécuter.</summary>
     public static string? TlsSkipReason(IReadOnlyDictionary<string, string?>? environment = null)
     {
@@ -120,6 +140,19 @@ public sealed class PostgreSqlTheoryAttribute : TheoryAttribute
     public PostgreSqlTheoryAttribute()
     {
         var reason = PostgreSqlTestEnvironment.SkipReason();
+        if (reason is not null)
+        {
+            Skip = reason;
+        }
+    }
+}
+
+/// <summary>P4-10 : test exigeant le serveur dédié au redémarrage (<see cref="PostgreSqlTestEnvironment.RestartConnectionStringVariableName"/>).</summary>
+public sealed class PostgreSqlRestartFactAttribute : FactAttribute
+{
+    public PostgreSqlRestartFactAttribute()
+    {
+        var reason = PostgreSqlTestEnvironment.RestartSkipReason();
         if (reason is not null)
         {
             Skip = reason;

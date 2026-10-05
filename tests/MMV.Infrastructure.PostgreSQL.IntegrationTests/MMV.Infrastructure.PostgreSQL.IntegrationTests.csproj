@@ -37,6 +37,8 @@
     <ProjectReference Include="..\..\src\MMV.Infrastructure.PostgreSQL.Migrations\MMV.Infrastructure.PostgreSQL.Migrations.csproj" />
     <!-- P4-6B (C16) : preuves serveur du cycle de vie (Lifecycle/, I-1 … I-14) contre l'outil réel. -->
     <ProjectReference Include="..\..\src\MMV.DatabaseManager\MMV.DatabaseManager.csproj" />
+    <!-- P4-10 : processus « poste » des tests multi-processus, lancé par chemin (construit, jamais référencé). -->
+    <ProjectReference Include="..\MMV.MultiProcess.Worker\MMV.MultiProcess.Worker.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

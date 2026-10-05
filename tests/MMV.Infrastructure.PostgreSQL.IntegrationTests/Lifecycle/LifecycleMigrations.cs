@@ -146,6 +146,18 @@ public sealed class ItAlterCustomers : Migration
         migrationBuilder.Sql("ALTER TABLE \"Customers\" ADD COLUMN it_lock_probe integer NULL");
 }
 
+/// <summary>P4-10 : S1 puis un <c>ALTER TABLE "Products"</c> additif, appliqué pendant que des postes vendent.</summary>
+public sealed class ChainS1ThenAlterProducts : ILifecycleChain { public Type[] Extra => [typeof(ItAlterProducts)]; }
+
+[Migration(Id)]
+public sealed class ItAlterProducts : Migration
+{
+    public const string Id = "29990101000095_ItLifecycleAlterProducts";
+
+    protected override void Up(MigrationBuilder migrationBuilder) =>
+        migrationBuilder.Sql("ALTER TABLE \"Products\" ADD COLUMN it_expand_probe integer NULL");
+}
+
 [Migration(Id)]
 public sealed class ItRevokeAppRole : Migration
 {
