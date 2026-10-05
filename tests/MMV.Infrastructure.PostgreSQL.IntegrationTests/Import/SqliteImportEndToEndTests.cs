@@ -82,17 +82,21 @@ public sealed class SqliteImportEndToEndTests : IAsyncLifetime
         return manifest;
     }
 
-    private async Task<(int Code, string Text, string Report)> ImportAsync(string source, string manifest)
+    private async Task<(int Code, string Text, string Report)> ImportAsync(string source, string manifest, bool dryRun = false)
     {
         var report = Path.Combine(_directory, $"import-{Guid.NewGuid():N}.json");
+        string[] args =
+        [
+            "import-sqlite", "--source", source, "--source-time-zone", "Africa/Casablanca", "--operator", "OP-IT",
+            "--backup-ref", manifest, "--report", report
+        ];
         var (code, text) = await ToolAsync(string.Empty,
             new Dictionary<string, string?>
             {
                 [MigrationToolOptions.ConnectionStringVariableName] =
                     _server.ConnectionString(_request.Database, _request.MigratorRole, _request.MigratorPassword)
             },
-            "import-sqlite", "--source", source, "--source-time-zone", "Africa/Casablanca", "--operator", "OP-IT",
-            "--backup-ref", manifest, "--report", report);
+            dryRun ? [.. args, "--dry-run"] : args);
         var reportText = await File.ReadAllTextAsync(report);
         foreach (var secret in Secrets)
         {
@@ -112,9 +116,14 @@ public sealed class SqliteImportEndToEndTests : IAsyncLifetime
         source.Populate(5);
         var manifest = await VerifiedBackupAsync();
 
+        var dry = await ImportAsync(source.Path, manifest, dryRun: true);
+        dry.Code.Should().Be(0, dry.Text);
+        JsonDocument.Parse(dry.Report).RootElement.GetProperty("Outcome").GetString().Should().Be("dry-run-rolled-back");
+        (await SuppliersAsync(_request.Database)).Should().Be(0);
+
         var (code, text, report) = await ImportAsync(source.Path, manifest);
 
-        code.Should().Be(0, text);
+        code.Should().Be(0, text + "\n(l'essai à blanc ne consomme pas la sauvegarde : même manifeste)");
         var json = JsonDocument.Parse(report).RootElement;
         json.GetProperty("Outcome").GetString().Should().Be("imported");
         json.GetProperty("BackupId").GetString().Should().NotBeNullOrEmpty("le rapport cite la sauvegarde vérifiée, point de retour");
