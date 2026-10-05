@@ -61,7 +61,7 @@
 
 ## 1. Status
 
-**ACCEPTED — 22 septembre 2026, revue d'acceptation P4-6A.** — **Addendum P4-6B du 4 octobre 2026** (§11) : forme du verrou (session unique), calcul de la métadonnée (ancre = état physique vérifié), Q-6 … Q-24 fermées. Aucune décision du §5.2 rouverte.
+**ACCEPTED — 22 septembre 2026, revue d'acceptation P4-6A.** — **Addendum P4-6B du 4 octobre 2026** (§11) : forme du verrou (session unique), calcul de la métadonnée (ancre = état physique vérifié), Q-6 … Q-24 fermées. Aucune décision du §5.2 rouverte. — **Addendum P4-9 du 5 octobre 2026** (§12) : forme de la vérification de sauvegarde (DP-10.2) fixée par ADR-PROD-DB-011.
 
 Le §5 *Decision* contient deux choses :
 
@@ -1243,6 +1243,25 @@ appliqué une migration.
 | **Q-24** | **CLOSED (04/10/2026)** — `RefusingBackupVerification` seule en production ; ordre **P4-6B → P4-9 → P4-6C** |
 
 **Q-20** (renommage du fichier) reste ouverte et ne bloque rien.
+
+---
+
+## 12. Addendum P4-9 — 5 octobre 2026
+
+> Aucune décision du §5.2 n'est rouverte. La **forme** de la vérification que DP-10 laissait à P4-9 est fixée par
+> [ADR-PROD-DB-011](adr-prod-db-011-backup-and-restore.md) (ACCEPTÉ).
+
+1. **DP-10.2 — vérification suffisante** : contrôle structurel (manifeste, SHA-256, `pg_restore --list`) **+
+   restauration réelle** dans une base isolée **+** contenu restauré identique au manifeste (historique EF, tables,
+   lignes) **+** preuve liée aux octets du manifeste et du fichier.
+2. **H12 / Q-24 réalisés** : `RefusingBackupVerification` est remplacée dans `Program.cs` par
+   `ProofBackupVerification` (commit revu, aucune configuration). Avant le verrou : preuve ; **sous** le verrou,
+   premier contrôle en lecture seule : même installation, même base, même historique, mêmes lignes, âge ≤ 2 h.
+3. **DP-5 inchangé** : la restauration reste à l'administrateur ; le migrateur vérifie la preuve sans `CREATEDB` ;
+   l'applicatif ne sauvegarde ni ne restaure.
+4. **DP-8** : le champ « référence de sauvegarde » du journal porte l'identifiant de la sauvegarde vérifiée.
+5. §4.6.2 étape 2 et §4.6.3 étape 5 (« par restauration ») sont **outillés** : `backup`, `verify-backup`,
+   `restore-backup` (base neuve, jamais d'écrasement).
 
 ---
 

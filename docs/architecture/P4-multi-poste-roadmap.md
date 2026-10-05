@@ -638,8 +638,8 @@ se termine par **commit + CI verte sur le SHA exact**.
 | Sous-lot | Contenu | Dépend de | État |
 |---|---|---|---|
 | **P4-6A** | **Décisions d'architecture.** Deux ADR : [ADR-PROD-DB-009](ADR-PROD-DB-009.md) (autorité de migration, verrou, version de schéma, compatibilité des postes, rôles PostgreSQL, sauvegarde, maintenance, journal) et [ADR-APP-DISTRIBUTION-001](adr-app-distribution-001-installation-and-updates.md) (production, installation, mise à jour, signature, retour arrière, .NET 10, séparation installation/données). **Aucun code, aucun test, aucune migration, aucune CI.** ([consolidation](../implementation/P4-6-architecture-consolidation-report.md) · [acceptation](../implementation/P4-6A-adr-acceptance-report.md)) | P4-5E | **COMPLETE** — **ADR-PROD-DB-009 = ACCEPTED** (dix points de décision arrêtés). **ADR-APP-DISTRIBUTION-001 reste PROPOSED** : décisions validées, mais **quatre spikes non exécutés** (SD-1, SD-2, SD-3, SD-5) et **deux faits extérieurs** ouverts (QD-1, QD-10). **Ne bloque pas P4-6B** |
-| **P4-6B** | **Cycle de vie de la base en multi-poste.** Version applicative unique en SemVer (DP-7) · verrou de migration natif PostgreSQL (DP-2) · état de maintenance (DP-6) · **`MMV.DatabaseManager`**, outil de migration séparé (DP-1) · **garde de compatibilité à fenêtre N-1**, en lecture seule (DP-3, DP-4) · **métadonnée de compatibilité et journal de migration**, hors modèle EF (DP-3, DP-8) · règle **« étendre → migrer → contracter »** dans [CONTRIBUTING.md](../../CONTRIBUTING.md) (DP-3, H15) | **P4-5F vert** *(volet décisionnel : satisfait ; volet technique : satisfait — `692b6da`, CI `37202557042`)* | **COMPLETE — CLOSED** — `3d00af8`, CI `37226388128` verte sur le SHA exact (04/10/2026, tranches A–E — [rapport](../implementation/P4-6B-database-lifecycle-report.md)) ; `migrate` refuse sur toute base réelle tant que P4-9 n'a pas livré la vérification de sauvegarde (Q-24) |
-| **P4-6C** | **Levée du garde-fou de démarrage** ([App.axaml.cs:200-214](../../src/MMV.App/App.axaml.cs#L200-L214)) et chaîne de préparation serveur — **contenu absorbé de P4-5G**. Écran de blocage à trois états minimum (E2, E3b, E5). **Uniquement après P4-6B validé** | P4-6B + **P4-9** (décision Q-24 : la vérification de sauvegarde réelle précède la levée du garde-fou) | **FUTURE** |
+| **P4-6B** | **Cycle de vie de la base en multi-poste.** Version applicative unique en SemVer (DP-7) · verrou de migration natif PostgreSQL (DP-2) · état de maintenance (DP-6) · **`MMV.DatabaseManager`**, outil de migration séparé (DP-1) · **garde de compatibilité à fenêtre N-1**, en lecture seule (DP-3, DP-4) · **métadonnée de compatibilité et journal de migration**, hors modèle EF (DP-3, DP-8) · règle **« étendre → migrer → contracter »** dans [CONTRIBUTING.md](../../CONTRIBUTING.md) (DP-3, H15) | **P4-5F vert** *(volet décisionnel : satisfait ; volet technique : satisfait — `692b6da`, CI `37202557042`)* | **COMPLETE — CLOSED** — `3d00af8`, CI `37226388128` verte sur le SHA exact (04/10/2026, tranches A–E — [rapport](../implementation/P4-6B-database-lifecycle-report.md)) ; `migrate` refusait toute base réelle tant que P4-9 n'avait pas livré la vérification de sauvegarde (Q-24) — **levé par P4-9** (05/10/2026) |
+| **P4-6C** | **Levée du garde-fou de démarrage** ([App.axaml.cs:200-214](../../src/MMV.App/App.axaml.cs#L200-L214)) et chaîne de préparation serveur — **contenu absorbé de P4-5G**. Écran de blocage à trois états minimum (E2, E3b, E5). **Uniquement après P4-6B validé** | P4-6B + **P4-9** (décision Q-24 : la vérification de sauvegarde réelle précède la levée du garde-fou) | **DÉBLOQUÉ** — P4-6B et P4-9 `COMPLETE — CLOSED` ; non démarré |
 
 > **Ce qui bloquait P4-6B est levé.** La **politique de compatibilité** est tranchée : **fenêtre limitée N-1**,
 > sous discipline « étendre → migrer → contracter » (ADR-PROD-DB-009 **DP-3**, question **Q-3**, condition
@@ -733,6 +733,18 @@ se termine par **commit + CI verte sur le SHA exact**.
 - **Justification (audit §21)** : la sauvegarde actuelle est une **copie de fichier SQLite** ; pas de rétention,
   pas d'automatisation, pas de documentation opérateur.
 - **Tests attendus** : exercice complet sauvegarde → restauration → vérification d'intégrité.
+- **Décisions** : [ADR-PROD-DB-011](adr-prod-db-011-backup-and-restore.md) — **ACCEPTÉ** (05/10/2026) : sauvegarde
+  vérifiée = contrôle structurel + **restauration réelle** + contenu comparé + preuve ; restauration à
+  l'administrateur, vérification de la preuve au migrateur (jamais `CREATEDB`) ; rapprochement sous verrou (même
+  installation, même base, même historique, mêmes lignes, âge ≤ 2 h) ; politique R-1 … R-10 (quotidienne,
+  rétention 14 j / 12 mois / vérifiées 12 mois, volume dédié BitLocker, copie hors ligne hebdomadaire, aucun cloud,
+  suppression par `prune-backups` seul, reprise dans une base neuve).
+- **État** : **COMPLETE — CLOSED** (05/10/2026). `20cb116` (CI **`37247312258`**) + `1562713` (CI
+  **`37248458196`**), verts sur les SHA exacts : unitaires **2373/2373**, intégration PostgreSQL **185/185** dont
+  **28** P4-9 avec `pg_dump`/`pg_restore` 17 réels, 0 ignoré, dérive EF verte ×2, aucune vulnérabilité, aucune
+  migration — [rapport](../implementation/P4-9-backup-and-restore-report.md),
+  [procédure opérateur](../operations/P4-9-backup-restore-procedure.md). Ouvert : **Q-P4-9-1** (preuve Windows
+  native), **Q-P4-9-2** (alerte d'échec de sauvegarde planifiée). **P4-6C est débloqué.**
 
 ### P4-10 — Tests multi-processus et résilience
 
@@ -932,9 +944,9 @@ P4-6B SERVER JOURNAL          = IMPLEMENTED — SERVER PROOF I-8 — CI 37226388
 P4-6B APP ROLE GRANT          = IMPLEMENTED — SERVER PROOF I-5, I-6, I-12 — CI 37226388128 GREEN (Q-23, H5)
 P4-6B EXPAND MIGRATE CONTRACT = DOCUMENTED + TOOLED (U-E1) — CI 37226388128 GREEN (DP-3, H15)
 P4-6B SERVER PROOFS           = PG 17.10 104 / 104 (0 SKIPPED) — CI 37226388128 GREEN (104/104, 0 SKIPPED)
-P4-6B BACKUP VERIFICATION     = RefusingBackupVerification ONLY — migrate REFUSES ON REAL BASES UNTIL P4-9
+P4-6B BACKUP VERIFICATION     = RefusingBackupVerification ONLY UNTIL P4-9 — REPLACED BY ProofBackupVerification (P4-9, 1562713)
 P4-6B DATABASE LIFECYCLE      = COMPLETE — CLOSED — 3d00af8 — CI 37226388128 SUCCESS
-P4-6C STARTUP GUARD LIFT    = FUTURE — REQUIRES P4-6B VALIDATED AND P4-9 (Q-24)
+P4-6C STARTUP GUARD LIFT    = UNBLOCKED — P4-6B CLOSED + P4-9 CLOSED (Q-24 SATISFIED) — NOT STARTED
 P4-NET10 RUNTIME UPGRADE    = COMPLETED — 2026-09-30 — NO P4 DEPENDENCY
 P4-NET10 SDK                = 10.0.401 — rollForward disable — SAME SDK ON WORKSTATION AND RUNNER
 P4-NET10 TARGET FRAMEWORK   = net10.0 ON ALL 8 SOLUTION PROJECTS
@@ -955,7 +967,15 @@ P4-8 TESTS                  = UNIT 2289 / 2289 — PG IT 157 / 157 (0 SKIPPED) �
 P4-8 FINAL ARCHITECT AUDIT  = READ-ONLY — READY TO CLOSE — 2026-10-05 — M1, M2, M3 PASS — NO BLOCKER
 P4-8 OPEN QUESTIONS         = Q-P4-8-1, Q-P4-8-2, Q-P4-8-3 — NON-BLOCKING, OUTSIDE P4-8 CLOSURE
 P4-8                        = COMPLETE — CLOSED
-P4-9 … P4-12                = NOT STARTED
+P4-9 DECISIONS              = ADR-PROD-DB-011 ACCEPTED — 2026-10-05 — B-1…B-6 DERIVED, R-1…R-10 ACCEPTED AS RECOMMENDED
+P4-9 VERIFIED BACKUP        = STRUCTURAL CHECK + REAL RESTORE + CONTENT COMPARED + PROOF — MIGRATOR VERIFIES, NEVER CREATEDB
+P4-9 MIGRATE GATE           = PROOF BEFORE LOCK + SAME INSTALLATION / DATABASE / HISTORY / ROW COUNTS / AGE <= 2 H UNDER LOCK
+P4-9 IMPLEMENTATION         = 20cb116 (CI 37247312258 SUCCESS) + 1562713 (CI 37248458196 SUCCESS)
+P4-9 TESTS                  = UNIT 2373 / 2373 — PG IT 185 / 185 (P4-9: 28, REAL pg_dump / pg_restore 17) — 0 SKIPPED
+P4-9 SCHEMA                 = NO EF MODEL CHANGE — NO MIGRATION / SNAPSHOT CHANGE — EF DRIFT GREEN (SQLITE + POSTGRESQL)
+P4-9 OPEN QUESTIONS         = Q-P4-9-1 WINDOWS NATIVE PROOF, Q-P4-9-2 FAILED-BACKUP ALERTING — NON-BLOCKING
+P4-9                        = COMPLETE — CLOSED
+P4-10 … P4-12               = NOT STARTED
 V1 MULTI-POSTE              = NOT GO
 ```
 

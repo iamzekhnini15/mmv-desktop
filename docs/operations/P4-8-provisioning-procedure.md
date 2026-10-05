@@ -33,7 +33,9 @@ préflight laisse dans le journal du serveur une authentification échouée par 
 
 `MMV_MIGRATOR_CONNECTION_STRING` = chaîne du **migrateur** (`SSL Mode` absent ou `VerifyFull`,
 `Root Certificate=…`), puis `MMV.DatabaseManager migrate --operator … --app-role <r2> --backup-ref …`.
-*Jusqu'à P4-9, `migrate` refuse toute base réelle (sauvegarde vérifiée exigée, Q-24).*
+*Depuis P4-9, `--backup-ref` est le chemin du manifeste d'une sauvegarde **vérifiée** : `backup` puis
+`verify-backup` d'abord, y compris sur la base vide provisionnée —
+[procédure de sauvegarde](P4-9-backup-restore-procedure.md) §2.*
 
 ## 3. Premier administrateur (une seule fois)
 

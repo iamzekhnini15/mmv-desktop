@@ -34,7 +34,7 @@ MMV suit une **Clean Architecture** avec séparation stricte des responsabilité
 - **Infrastructure** : Référence Domain uniquement
 - **App** : Référence Domain + Infrastructure
 
-### Outil de migration serveur : `MMV.DatabaseManager` (P4-6B)
+### Outil de migration serveur : `MMV.DatabaseManager` (P4-6B, P4-8, P4-9)
 
 Exécutable console séparé (`src/MMV.DatabaseManager`), **seul** composant autorisé à migrer la base
 PostgreSQL ([ADR-PROD-DB-009](docs/architecture/ADR-PROD-DB-009.md) DP-1). `MMV.App` ne migre jamais le
@@ -54,8 +54,9 @@ MMV.DatabaseManager ──► MMV.Infrastructure ──► MMV.Domain
 | `Journal/ServerMigrationJournal` | journal autoritatif `mmv_meta.migration_run`, hors modèle EF, horodaté par le serveur |
 | `Journal/CompatibilityMetadataWriter` | `mmv_meta.schema_compatibility` : version du schéma et minimum supporté **calculés** depuis le journal — ancre = état physique vérifié, version = release qui l'a produit (ADR-009 §11.2) ; marqueur de maintenance |
 | `Permissions/ApplicationRoleGrants` | `GRANT` idempotents au rôle `--app-role` (lecture de la métadonnée, jamais du journal) |
-| `Backup/RefusingBackupVerification` | seule vérification de sauvegarde de production : **refuse toujours** jusqu'à P4-9 |
-| `MigrationRunner` | séquence normative : sauvegarde → verrou → contrôles → DDL/GRANT → marqueur → journal → `Migrate()` → vérification → métadonnée → clôture → levée de la maintenance → libération |
+| `Backup/ProofBackupVerification` | P4-9 — seule vérification de sauvegarde de production : manifeste, SHA-256 du fichier et **preuve de restauration réelle** avant le verrou ; sous le verrou, même installation, même base, même historique EF, mêmes nombres de lignes, âge ≤ `BackupPolicy` ([ADR-PROD-DB-011](docs/architecture/adr-prod-db-011-backup-and-restore.md)) |
+| `Backup/BackupCreator`, `Backup/RestoreVerifier`, `Backup/BackupPruner` | P4-9 — verbes `backup` (rôle de sauvegarde, `pg_dump` dans un instantané exporté + manifeste), `verify-backup` / `restore-backup` (administrateur, restauration réelle), `prune-backups` (rétention), `configure-backup` (connexion DPAPI de la tâche planifiée) |
+| `MigrationRunner` | séquence normative : sauvegarde → verrou → rapprochement sauvegarde ⇔ base → contrôles → DDL/GRANT → marqueur → journal → `Migrate()` → vérification → métadonnée → clôture → levée de la maintenance → libération |
 
 Côté Infrastructure, la **garde de compatibilité** (`Data/ServerSchemaCompatibilityGuard`, lecture seule) et
 la **version applicative** (`Configuration/ApplicationVersion`, source unique `Directory.Build.props`) sont
