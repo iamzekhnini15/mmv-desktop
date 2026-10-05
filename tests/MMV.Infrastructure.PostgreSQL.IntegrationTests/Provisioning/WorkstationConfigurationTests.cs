@@ -83,7 +83,7 @@ public sealed class WorkstationConfigurationTests : IAsyncLifetime
     }
 
     /// <summary>Double de test : transformation réversible et authentifiée par un préfixe. Jamais en production.</summary>
-    private sealed class ReversibleTestProtector : IWorkstationSecretProtector
+    internal sealed class ReversibleTestProtector : IWorkstationSecretProtector
     {
         public string Scheme => "it-reversible";
 

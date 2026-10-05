@@ -22,7 +22,16 @@ public enum AdministrationVerb
     Backup,
 
     /// <summary>P4-9 : restauration réelle dans une base de vérification, puis preuve. Identifiant administrateur.</summary>
-    VerifyBackup
+    VerifyBackup,
+
+    /// <summary>P4-9 : enregistre (DPAPI) la connexion du rôle de sauvegarde pour la tâche planifiée.</summary>
+    ConfigureBackup,
+
+    /// <summary>P4-9 : applique la rétention ; seul chemin de suppression des sauvegardes. Aucun serveur.</summary>
+    PruneBackups,
+
+    /// <summary>P4-9 : reprise après sinistre — sauvegarde vérifiée restaurée dans une base NEUVE. Administrateur.</summary>
+    RestoreBackup
 }
 
 /// <summary>
@@ -51,12 +60,19 @@ public sealed record AdministrationOptions(
         "  configure-workstation --host <h> [--port <p>] [--root-certificate <ca.crt>] --database <db> --username <r>\n" +
         "      secret : secret du rôle applicatif\n" +
         "Sauvegarde (P4-9) — chemins absolus :\n" +
-        "  backup --host <h> [--port <p>] [--root-certificate <ca.crt>] --database <db> --username <rôle de sauvegarde>\n" +
+        "  backup [--host <h> [--port <p>] [--root-certificate <ca.crt>] --database <db> --username <rôle de sauvegarde>]\n" +
         "            --output-directory <dossier> --operator <ref> [--pg-bin <dossier>]\n" +
-        "      secret : secret du rôle de sauvegarde\n" +
+        "      secret : rôle de sauvegarde ; sans --host/--database/--username : connexion enregistrée par configure-backup\n" +
+        "  configure-backup --host <h> [--port <p>] [--root-certificate <ca.crt>] --database <db> --username <rôle de sauvegarde>\n" +
+        "      secret : rôle de sauvegarde (lancé sous le compte Windows de la tâche planifiée)\n" +
         "  verify-backup --host <h> [--port <p>] [--root-certificate <ca.crt>] --admin-user <u> [--admin-database <db>]\n" +
         "            --manifest <fichier .manifest.json> --operator <ref> [--pg-bin <dossier>] [--scratch-database <db>]\n" +
-        "      secret : administrateur";
+        "      secret : administrateur\n" +
+        "  restore-backup --host <h> [--port <p>] [--root-certificate <ca.crt>] --admin-user <u> [--admin-database <db>]\n" +
+        "            --manifest <fichier .manifest.json> --target-database <base neuve> --migrator-role <r> --operator <ref>\n" +
+        "            [--pg-bin <dossier>]\n" +
+        "      secret : administrateur\n" +
+        "  prune-backups --directory <dossier> --operator <ref>";
 
     private static readonly IReadOnlyDictionary<AdministrationVerb, (string[] Required, string[] Optional)> Shapes =
         new Dictionary<AdministrationVerb, (string[], string[])>
@@ -72,11 +88,18 @@ public sealed record AdministrationOptions(
                 ["--host", "--database", "--username"],
                 ["--port", "--root-certificate"]),
             [AdministrationVerb.Backup] = (
-                ["--host", "--database", "--username", "--output-directory", "--operator"],
-                ["--port", "--root-certificate", "--pg-bin"]),
+                ["--output-directory", "--operator"],
+                ["--host", "--port", "--root-certificate", "--database", "--username", "--pg-bin"]),
             [AdministrationVerb.VerifyBackup] = (
                 ["--host", "--admin-user", "--manifest", "--operator"],
-                ["--port", "--root-certificate", "--admin-database", "--pg-bin", "--scratch-database"])
+                ["--port", "--root-certificate", "--admin-database", "--pg-bin", "--scratch-database"]),
+            [AdministrationVerb.ConfigureBackup] = (
+                ["--host", "--database", "--username"],
+                ["--port", "--root-certificate"]),
+            [AdministrationVerb.PruneBackups] = (["--directory", "--operator"], []),
+            [AdministrationVerb.RestoreBackup] = (
+                ["--host", "--admin-user", "--manifest", "--target-database", "--migrator-role", "--operator"],
+                ["--port", "--root-certificate", "--admin-database", "--pg-bin"])
         };
 
     /// <summary>Le premier argument désigne-t-il un verbe P4-8 ?</summary>
@@ -142,7 +165,7 @@ public sealed record AdministrationOptions(
             return AdministrationParseResult.Invalid("--port attend un entier entre 1 et 65535.");
         }
 
-        foreach (var pathOption in new[] { "--root-certificate", "--output-directory", "--manifest", "--pg-bin" })
+        foreach (var pathOption in new[] { "--root-certificate", "--output-directory", "--manifest", "--pg-bin", "--directory" })
         {
             if (values.TryGetValue(pathOption, out var path) && !Path.IsPathFullyQualified(path))
             {
@@ -150,7 +173,7 @@ public sealed record AdministrationOptions(
             }
         }
 
-        foreach (var identifier in new[] { "--database", "--admin-database", "--migrator-role", "--app-role", "--backup-role", "--role", "--admin-user", "--username", "--scratch-database" })
+        foreach (var identifier in new[] { "--database", "--admin-database", "--migrator-role", "--app-role", "--backup-role", "--role", "--admin-user", "--username", "--scratch-database", "--target-database" })
         {
             if (values.TryGetValue(identifier, out var name) && !PostgreSqlConnectionSettings.IsUsableIdentifier(name))
             {
@@ -172,6 +195,9 @@ public sealed record AdministrationOptions(
             case "configure-workstation": verb = AdministrationVerb.ConfigureWorkstation; return true;
             case "backup": verb = AdministrationVerb.Backup; return true;
             case "verify-backup": verb = AdministrationVerb.VerifyBackup; return true;
+            case "configure-backup": verb = AdministrationVerb.ConfigureBackup; return true;
+            case "prune-backups": verb = AdministrationVerb.PruneBackups; return true;
+            case "restore-backup": verb = AdministrationVerb.RestoreBackup; return true;
             default: verb = default; return false;
         }
     }

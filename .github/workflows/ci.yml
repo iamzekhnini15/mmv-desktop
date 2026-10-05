@@ -267,4 +267,4 @@ jobs:
           # P4-9 : la preuve sauvegarde -> restauration reelle -> verification doit avoir REELLEMENT tourne.
           $backup = @($results | Where-Object { $_.testName -like '*Backup.BackupRestoreTests*' -and $_.outcome -eq 'Passed' })
           Write-Host ("Tests sauvegarde/restauration P4-9 : {0} reussi(s)." -f $backup.Count)
-          if ($backup.Count -lt 23) { Write-Error "Preuve P4-9 absente ou incomplete : $($backup.Count) test(s) BackupRestoreTests (23 attendus)."; exit 1 }
+          if ($backup.Count -lt 28) { Write-Error "Preuve P4-9 absente ou incomplete : $($backup.Count) test(s) BackupRestoreTests (28 attendus)."; exit 1 }

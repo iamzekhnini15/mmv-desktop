@@ -53,5 +53,8 @@ public enum MigrationExitCode
     /// P4-9 : vérification de sauvegarde en échec — fichier altéré, contrôle structurel, restauration réelle ou
     /// contenu restauré non conforme, privilège insuffisant ; aucune preuve n'est écrite.
     /// </summary>
-    RestoreVerificationFailed = 22
+    RestoreVerificationFailed = 22,
+
+    /// <summary>P4-9 : application de la rétention interrompue (droits ou erreur du système de fichiers).</summary>
+    RetentionFailed = 23
 }

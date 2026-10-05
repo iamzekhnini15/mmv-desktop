@@ -147,6 +147,53 @@ public sealed class BackupCommandTests
         all.Should().Contain(because);
     }
 
+    [Theory]
+    [InlineData("--host", "h")]
+    [InlineData("--database", "d")]
+    [InlineData("--port", "5432")]
+    public async Task Backup_with_a_partial_explicit_connection_is_refused(string option, string value)
+    {
+        var (code, all) = await Run(Secret, "backup", "--output-directory", Path.GetTempPath(), "--operator", "OP", option, value);
+
+        code.Should().Be(10);
+        all.Should().Contain("vont ensemble");
+    }
+
+    [Fact]
+    public async Task Restore_of_a_backup_without_proof_exits_22_before_any_server_contact_and_creates_nothing()
+    {
+        using var backup = await TemporaryBackup.CreateAsync(withProof: false);
+
+        var (code, all) = await Run(Secret,
+            "restore-backup", "--host", "mmv-server.invalid", "--admin-user", "postgres", "--manifest", backup.ManifestPath,
+            "--target-database", "mmv_restored", "--migrator-role", "mmv_migrator", "--operator", "OP");
+
+        code.Should().Be(22);
+        all.Should().Contain("seule une sauvegarde vérifiée est restaurée").And.NotContain(Secret);
+    }
+
+    [Theory]
+    [InlineData("postgres")]
+    [InlineData("template0")]
+    [InlineData("Mmv")]
+    public async Task Restore_target_must_be_a_new_ordinary_database_name(string target)
+    {
+        using var backup = await TemporaryBackup.CreateAsync();
+
+        var (code, _) = await Run(Secret,
+            "restore-backup", "--host", "mmv-server.invalid", "--admin-user", "postgres", "--manifest", backup.ManifestPath,
+            "--target-database", target, "--migrator-role", "mmv_migrator", "--operator", "OP");
+
+        code.Should().Be(10);
+    }
+
+    [Fact]
+    public void Restore_requires_a_target_and_the_migrator_owner()
+    {
+        AdministrationOptions.Parse(["restore-backup", "--host", "h", "--admin-user", "u", "--manifest", "C:\\m.manifest.json", "--operator", "o"])
+            .Error.Should().Contain("--target-database").And.Contain("--migrator-role");
+    }
+
     [Fact]
     public void Parsing_requires_every_backup_option()
     {

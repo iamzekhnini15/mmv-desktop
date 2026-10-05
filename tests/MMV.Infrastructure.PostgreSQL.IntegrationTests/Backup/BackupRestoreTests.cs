@@ -25,6 +25,7 @@ public sealed class BackupRestoreTests : IAsyncLifetime
     private readonly TlsServer _server = new();
     private readonly ProvisioningRequest _request;
     private readonly List<ProvisioningRequest> _extraDatabases = new();
+    private readonly List<string> _restoredDatabases = new();
     private readonly string _directory = Directory.CreateTempSubdirectory("mmv-it-backup-").FullName;
 
     public BackupRestoreTests() => _request = _server.Request(TlsServer.Suffix());
@@ -38,6 +39,11 @@ public sealed class BackupRestoreTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
+        foreach (var database in _restoredDatabases)
+        {
+            await _server.ExecuteAsync("postgres", $"DROP DATABASE IF EXISTS {TlsServer.Quote(database)} WITH (FORCE)");
+        }
+
         foreach (var request in _extraDatabases.Append(_request))
         {
             await _server.DropAsync(request);
@@ -566,6 +572,114 @@ public sealed class BackupRestoreTests : IAsyncLifetime
 
         (await VerifyAsync(manifestPath)).Code.Should().Be(22);
         File.Exists(BackupFiles.ProofPathFor(manifestPath)).Should().BeFalse("une vérification en échec sous verrou retire la preuve");
+    }
+
+    // ---- reprise après sinistre, tâche planifiée, rétention (ADR-PROD-DB-011) -------------------------------
+
+    private Task<(int Code, string Text)> RestoreAsync(string manifest, string target, string? owner = null) =>
+        ToolAsync(_server.Admin.Password!, null,
+            "restore-backup", "--host", _server.Host, "--port", _server.Port.ToString(), "--root-certificate", _server.RootCertificate,
+            "--admin-user", _server.Admin.Username!, "--admin-database", "postgres", "--manifest", manifest,
+            "--target-database", target, "--migrator-role", owner ?? _request.MigratorRole, "--operator", "OP-IT", "--pg-bin", PgBin);
+
+    [PostgreSqlTlsFact]
+    public async Task Disaster_recovery_restores_a_verified_backup_into_a_new_database_that_provisioning_reopens()
+    {
+        await MigratedAsync();
+        await SeedSuppliersAsync(4);
+        var manifestPath = await VerifiedBackupAsync();
+        var target = _request.Database + "_r";
+        _restoredDatabases.Add(target);
+
+        var (code, text) = await RestoreAsync(manifestPath, target);
+
+        code.Should().Be(0, text);
+        text.Should().Contain("provision --database " + target);
+        (await _server.ScalarAsync<string>("postgres",
+                $"SELECT pg_get_userbyid(datdba)::text FROM pg_database WHERE datname = {TlsServer.Literal(target)}"))
+            .Should().Be(_request.MigratorRole, "la base restaurée appartient au migrateur (DP-5)");
+        (await _server.ScalarAsync<long>(target, "SELECT count(*) FROM \"Suppliers\"")).Should().Be(4);
+        (await TlsServer.SqlStateAsync(_server.ConnectionString(target, _request.AppRole, TlsServer.AppSecret), "SELECT 1"))
+            .Should().Be("42501", "fermée aux postes jusqu'à la décision explicite de l'administrateur");
+
+        var reopened = await new PostgreSqlProvisioner(new MigrationJournal()).RunAsync(_server.Request("unused", n =>
+        {
+            n.Database = target;
+            n.Migrator = _request.MigratorRole;
+            n.App = _request.AppRole;
+            n.Backup = _request.BackupRole;
+        }));
+        reopened.ExitCode.Should().Be(MigrationExitCode.Success, reopened.Message);
+        (await LifecycleDatabase.ScalarAsync<long>(_server.ConnectionString(target, _request.AppRole, TlsServer.AppSecret),
+            "SELECT count(*) FROM \"Suppliers\"")).Should().Be(4, "le poste lit les données restaurées après provisioning");
+        (await _server.ScalarAsync<long>(_request.Database, "SELECT count(*) FROM \"Suppliers\"")).Should().Be(4, "la base d'origine est intacte");
+    }
+
+    [PostgreSqlTlsFact]
+    public async Task Restore_never_overwrites_an_existing_database()
+    {
+        await MigratedAsync();
+        await SeedSuppliersAsync(2);
+        var manifestPath = await VerifiedBackupAsync();
+        await SeedSuppliersAsync(1);
+
+        var (code, text) = await RestoreAsync(manifestPath, _request.Database);
+
+        code.Should().Be(10, text);
+        text.Should().Contain("existe déjà");
+        (await SuppliersAsync()).Should().Be(3, "la base existante n'est jamais écrasée");
+    }
+
+    [PostgreSqlTlsFact]
+    public async Task Restore_of_an_unverified_backup_or_to_a_privileged_owner_is_refused_and_creates_nothing()
+    {
+        var manifestPath = await BackedUpAsync();
+        var target = _request.Database + "_u";
+        _restoredDatabases.Add(target);
+
+        var unverified = await RestoreAsync(manifestPath, target);
+        unverified.Code.Should().Be(22, unverified.Text);
+        (await VerifyAsync(manifestPath)).Code.Should().Be(0);
+        var privileged = await RestoreAsync(manifestPath, target, owner: _server.Admin.Username);
+
+        privileged.Code.Should().Be(16, privileged.Text);
+        (await DatabaseExistsAsync(target)).Should().BeFalse();
+    }
+
+    [PostgreSqlTlsFact]
+    public async Task Stored_backup_connection_accepts_only_a_non_privileged_role_and_drives_the_backup()
+    {
+        var directory = Path.Combine(_directory, "stored");
+        var file = new WorkstationDatabaseSettingsFile(Path.Combine(directory, BackupConnectionFile.FileName),
+            new WorkstationConfigurationTests.ReversibleTestProtector());
+        var backupRole = new PostgreSqlConnectionSettings(_server.Host, _server.Port, _request.Database, _request.BackupRole,
+            TlsServer.BackupSecret, _server.RootCertificate);
+
+        var refused = await new WorkstationConfigurator(file, new MigrationJournal(), "configure-backup")
+            .RunAsync(backupRole with { Username = _server.Admin.Username!, Password = _server.Admin.Password! });
+        refused.ExitCode.Should().Be(MigrationExitCode.SecurityRefused, "le superutilisateur n'est jamais enregistré pour une tâche planifiée");
+        file.Exists.Should().BeFalse();
+
+        var saved = await new WorkstationConfigurator(file, new MigrationJournal(), "configure-backup").RunAsync(backupRole);
+        saved.ExitCode.Should().Be(MigrationExitCode.Success, saved.Message);
+        (await File.ReadAllTextAsync(file.Path)).Should().NotContain(TlsServer.BackupSecret).And.NotContain(_request.Database);
+
+        var result = await new BackupCreator(new MigrationJournal()).RunAsync(new BackupRequest(file.Load(), _directory, "TASK-IT", PgBin));
+        result.ExitCode.Should().Be(MigrationExitCode.Success, result.Message);
+    }
+
+    [PostgreSqlTlsFact]
+    public async Task Pruning_real_recent_backups_deletes_nothing_and_they_stay_verifiable()
+    {
+        var first = await VerifiedBackupAsync();
+        var second = await BackedUpAsync();
+
+        var (code, text) = await ToolAsync(string.Empty, null, "prune-backups", "--directory", _directory, "--operator", "TASK-IT");
+
+        code.Should().Be(0, text);
+        text.Should().Contain("2 sauvegarde(s) conservée(s), 0 supprimée(s)");
+        File.Exists(first).Should().BeTrue();
+        (await VerifyAsync(second)).Code.Should().Be(0);
     }
 
     [PostgreSqlTlsFact]

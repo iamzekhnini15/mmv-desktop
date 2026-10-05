@@ -141,17 +141,58 @@ internal static class AdministrationCommands
 
             case AdministrationVerb.Backup:
             {
-                if (!TryRead(secrets, error, out var values, "Secret du rôle de sauvegarde"))
+                var connection = BackupConnection(options, secrets, error);
+                if (connection is null)
                 {
                     return (int)MigrationExitCode.InvalidArguments;
                 }
 
                 result = await new BackupCreator(trace).RunAsync(new BackupRequest(
-                    new PostgreSqlConnectionSettings(options.Require("--host"), options.Port, options.Require("--database"),
-                        options.Require("--username"), values[0], options.Get("--root-certificate")),
+                    connection,
                     options.Require("--output-directory"),
                     options.Require("--operator"),
                     options.Get("--pg-bin")));
+                break;
+            }
+
+            case AdministrationVerb.ConfigureBackup:
+            {
+                if (!OperatingSystem.IsWindows())
+                {
+                    error.WriteLine("configure-backup s'exécute sur le serveur Windows, sous le compte de la tâche planifiée (DPAPI).");
+                    return (int)MigrationExitCode.InvalidArguments;
+                }
+
+                if (!TryRead(secrets, error, out var values, "Secret du rôle de sauvegarde"))
+                {
+                    return (int)MigrationExitCode.InvalidArguments;
+                }
+
+                result = await new WorkstationConfigurator(BackupConnectionFile.CreateDefault(), trace, "configure-backup").RunAsync(
+                    new PostgreSqlConnectionSettings(options.Require("--host"), options.Port, options.Require("--database"),
+                        options.Require("--username"), values[0], options.Get("--root-certificate")));
+                break;
+            }
+
+            case AdministrationVerb.PruneBackups:
+                result = await new BackupPruner(trace).RunAsync(options.Require("--directory"), options.Require("--operator"));
+                break;
+
+            case AdministrationVerb.RestoreBackup:
+            {
+                if (!TryRead(secrets, error, out var values, "Secret de l'administrateur PostgreSQL"))
+                {
+                    return (int)MigrationExitCode.InvalidArguments;
+                }
+
+                result = await new RestoreVerifier(trace).RestoreAsync(new BackupRestoreRequest(
+                    new PostgreSqlConnectionSettings(options.Require("--host"), options.Port, options.AdminDatabase,
+                        options.Require("--admin-user"), values[0], options.Get("--root-certificate")),
+                    options.Require("--manifest"),
+                    options.Require("--operator"),
+                    options.Get("--pg-bin"),
+                    options.Require("--target-database"),
+                    options.Require("--migrator-role")));
                 break;
             }
 
@@ -178,6 +219,52 @@ internal static class AdministrationCommands
 
         (result.Succeeded ? output : error).WriteLine($"code {(int)result.ExitCode} — {result.Message}");
         return (int)result.ExitCode;
+    }
+
+    /// <summary>
+    /// Connexion du verbe <c>backup</c> : explicite (<c>--host</c>, <c>--database</c>, <c>--username</c> ensemble, secret
+    /// sur l'entrée standard) ou, sans aucune de ces options, celle qu'a enregistrée <c>configure-backup</c> (tâche
+    /// planifiée, DPAPI). Jamais un mélange des deux.
+    /// </summary>
+    private static PostgreSqlConnectionSettings? BackupConnection(AdministrationOptions options, SecretInput secrets, TextWriter error)
+    {
+        var explicitOptions = new[] { "--host", "--database", "--username" }.Count(o => options.Get(o) is not null);
+        if (explicitOptions == 3)
+        {
+            return TryRead(secrets, error, out var values, "Secret du rôle de sauvegarde")
+                ? new PostgreSqlConnectionSettings(options.Require("--host"), options.Port, options.Require("--database"),
+                    options.Require("--username"), values[0], options.Get("--root-certificate"))
+                : null;
+        }
+
+        if (explicitOptions > 0 || options.Get("--port") is not null || options.Get("--root-certificate") is not null)
+        {
+            error.WriteLine("--host, --database et --username vont ensemble ; sans eux, la connexion enregistrée par configure-backup est utilisée.");
+            return null;
+        }
+
+        if (!OperatingSystem.IsWindows())
+        {
+            error.WriteLine("La connexion enregistrée (DPAPI) n'existe que sous Windows : fournir --host, --database et --username.");
+            return null;
+        }
+
+        var file = BackupConnectionFile.CreateDefault();
+        if (!file.Exists)
+        {
+            error.WriteLine($"Aucune connexion de sauvegarde enregistrée ({file.Path}) : lancer configure-backup sous ce compte Windows.");
+            return null;
+        }
+
+        try
+        {
+            return file.Load();
+        }
+        catch (DatabaseConfigurationException)
+        {
+            error.WriteLine($"Connexion de sauvegarde enregistrée inutilisable ({file.Path}) : relancer configure-backup sous ce compte Windows.");
+            return null;
+        }
     }
 
     private static bool TryRead(SecretInput secrets, TextWriter error, out string[] values, params string[] labels)

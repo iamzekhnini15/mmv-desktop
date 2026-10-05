@@ -14,11 +14,16 @@ public sealed class WorkstationConfigurator
 {
     private readonly WorkstationDatabaseSettingsFile _file;
     private readonly IMigrationJournal _trace;
+    private readonly string _verb;
 
-    public WorkstationConfigurator(WorkstationDatabaseSettingsFile file, IMigrationJournal trace)
+    /// <param name="file">Fichier protégé à écrire.</param>
+    /// <param name="trace">Trace locale.</param>
+    /// <param name="verb">Verbe tracé : <c>configure-workstation</c>, ou <c>configure-backup</c> (P4-9, même contrôle).</param>
+    public WorkstationConfigurator(WorkstationDatabaseSettingsFile file, IMigrationJournal trace, string verb = "configure-workstation")
     {
         _file = file ?? throw new ArgumentNullException(nameof(file));
         _trace = trace ?? throw new ArgumentNullException(nameof(trace));
+        _verb = verb;
     }
 
     public async Task<AdministrationResult> RunAsync(PostgreSqlConnectionSettings settings, CancellationToken cancellationToken = default)
@@ -47,12 +52,12 @@ public sealed class WorkstationConfigurator
         }
 
         _file.Save(settings);
-        return Finish(MigrationExitCode.Success, $"Poste configuré : {settings} — fichier protégé {_file.Path}.");
+        return Finish(MigrationExitCode.Success, $"Connexion enregistrée : {settings} — fichier protégé {_file.Path}.");
     }
 
     private AdministrationResult Finish(MigrationExitCode code, string message)
     {
-        _trace.Write($"configure-workstation : {(code == MigrationExitCode.Success ? "succès" : $"échec code {(int)code}")} — {message}");
+        _trace.Write($"{_verb} : {(code == MigrationExitCode.Success ? "succès" : $"échec code {(int)code}")} — {message}");
         return new AdministrationResult(code, message);
     }
 }

@@ -135,5 +135,6 @@ public sealed class ProgramTests
         ((int)MigrationExitCode.ServerUnreachable).Should().Be(20);
         ((int)MigrationExitCode.BackupFailed).Should().Be(21);
         ((int)MigrationExitCode.RestoreVerificationFailed).Should().Be(22);
+        ((int)MigrationExitCode.RetentionFailed).Should().Be(23);
     }
 }

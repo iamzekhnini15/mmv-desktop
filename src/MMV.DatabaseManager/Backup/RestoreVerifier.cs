@@ -1,4 +1,5 @@
 using System.Data;
+using System.Data.Common;
 using System.Text.RegularExpressions;
 using MMV.DatabaseManager.Provisioning;
 using MMV.Infrastructure.Configuration;
@@ -19,10 +20,25 @@ public sealed record RestoreVerificationRequest(
     string? PgBinDirectory,
     string? ScratchDatabase);
 
+/// <summary>Demande du verbe <c>restore-backup</c> (reprise après sinistre, §4.6.3 d'ADR-PROD-DB-009).</summary>
+/// <param name="Admin">Administrateur d'installation, connecté à sa base d'administration.</param>
+/// <param name="ManifestPath">Chemin absolu du manifeste d'une sauvegarde <b>vérifiée</b>.</param>
+/// <param name="Operator">Référence d'opérateur, tracée.</param>
+/// <param name="PgBinDirectory">Dossier de <c>pg_restore</c> ; <c>null</c> ⇒ <c>PATH</c>.</param>
+/// <param name="TargetDatabase">Base <b>neuve</b> à créer ; jamais une base existante.</param>
+/// <param name="MigratorRole">Rôle migrateur, propriétaire de la base restaurée (DP-5).</param>
+public sealed record BackupRestoreRequest(
+    PostgreSqlConnectionSettings Admin,
+    string ManifestPath,
+    string Operator,
+    string? PgBinDirectory,
+    string TargetDatabase,
+    string MigratorRole);
+
 /// <summary>
-/// Verbe <c>verify-backup</c> (P4-9) — <b>contrôle structurel + restauration réelle = sauvegarde vérifiée</b>.
-/// Exécuté par l'<b>administrateur</b>, seul détenteur de la restauration (DP-5, ADR-PROD-DB-010) : le migrateur ne
-/// reçoit jamais <c>CREATEDB</c> pour cela.
+/// Restauration réelle d'une sauvegarde (P4-9), par l'<b>administrateur</b> seul (DP-5, ADR-PROD-DB-010) : le
+/// migrateur ne reçoit jamais <c>CREATEDB</c>, l'applicatif ne restaure jamais.
+/// <para><b><c>verify-backup</c> — contrôle structurel + restauration réelle = sauvegarde vérifiée.</b></para>
 /// <list type="number">
 ///   <item>contrôle structurel, sans serveur : manifeste conforme, taille et SHA-256 du fichier, <c>pg_restore --list</c> ;</item>
 ///   <item>sérialisation par verrou consultatif ; nettoyage des bases de vérification qu'une exécution interrompue
@@ -32,12 +48,16 @@ public sealed record RestoreVerificationRequest(
 ///   <item>comparaison du contenu restauré au manifeste : historique EF, tables, nombres de lignes ;</item>
 ///   <item>preuve écrite <b>seulement</b> si tout réussit ; base de vérification <b>toujours</b> supprimée.</item>
 /// </list>
-/// Sous le verrou, toute exécution commence par retirer la preuve existante : une vérification en échec invalide la
-/// précédente ; une exécution refusée faute de verrou n'y touche pas.
+/// Sous le verrou, toute vérification commence par retirer la preuve existante : une vérification en échec invalide
+/// la précédente ; une exécution refusée faute de verrou n'y touche pas.
+/// <para><b><c>restore-backup</c></b> — même chaîne, pour une sauvegarde <b>déjà vérifiée</b>, dans une base
+/// <b>neuve</b> propriété du migrateur, fermée à <c>PUBLIC</c> jusqu'à ce que <c>provision</c> rétablisse les droits
+/// de connexion. Jamais d'écrasement : une base existante est refusée. Conservée en cas de succès, supprimée si la
+/// restauration ou la comparaison échoue.</para>
 /// </summary>
 public sealed partial class RestoreVerifier
 {
-    /// <summary>Verrou consultatif des vérifications (« MMVRSTR1 »), distinct de celui des migrations.</summary>
+    /// <summary>Verrou consultatif des restaurations (« MMVRSTR1 »), distinct de celui des migrations.</summary>
     public const long LockKey = 0x4D4D565253545231;
 
     /// <summary>Préfixe du commentaire qui marque une base de vérification créée par l'outil.</summary>
@@ -52,21 +72,39 @@ public sealed partial class RestoreVerifier
     /// <summary>Point d'observation des tests : appelé avec la chaîne administrateur de la base restaurée, avant comparaison.</summary>
     public Func<string, Task>? AfterRestore { get; init; }
 
-    public async Task<AdministrationResult> RunAsync(RestoreVerificationRequest request, CancellationToken cancellationToken = default)
+    public Task<AdministrationResult> RunAsync(RestoreVerificationRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        return TracedAsync("verify-backup", request.Operator, request.ManifestPath, request.Admin,
+            runId => ExecuteAsync(runId, request.Admin, request.ManifestPath, request.Operator, request.PgBinDirectory,
+                verification: true, request.ScratchDatabase, owner: null, cancellationToken));
+    }
 
+    public Task<AdministrationResult> RestoreAsync(BackupRestoreRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return TracedAsync("restore-backup", request.Operator, request.ManifestPath, request.Admin,
+            runId => ExecuteAsync(runId, request.Admin, request.ManifestPath, request.Operator, request.PgBinDirectory,
+                verification: false, request.TargetDatabase, request.MigratorRole, cancellationToken));
+    }
+
+    private async Task<AdministrationResult> TracedAsync(
+        string verb, string @operator, string manifestPath, PostgreSqlConnectionSettings admin, Func<Guid, Task<AdministrationResult>> body)
+    {
         var runId = Guid.NewGuid();
-        _trace.Write($"OPEN verify-backup {runId} version {ApplicationVersion.Current} opérateur '{request.Operator}' " +
-                     $"manifeste '{request.ManifestPath}' serveur {request.Admin}");
-        var result = await ExecuteAsync(runId, request, cancellationToken);
-        _trace.Write($"CLOSE verify-backup {runId} code {(int)result.ExitCode} {result.Message}");
+        _trace.Write($"OPEN {verb} {runId} version {ApplicationVersion.Current} opérateur '{@operator}' " +
+                     $"manifeste '{manifestPath}' serveur {admin}");
+        var result = await body(runId);
+        _trace.Write($"CLOSE {verb} {runId} code {(int)result.ExitCode} {result.Message}");
         return result;
     }
 
-    private async Task<AdministrationResult> ExecuteAsync(Guid runId, RestoreVerificationRequest request, CancellationToken cancellationToken)
+    private async Task<AdministrationResult> ExecuteAsync(
+        Guid runId, PostgreSqlConnectionSettings adminSettings, string manifestPath, string @operator, string? pgBin,
+        bool verification, string? requestedDatabase, string? owner, CancellationToken cancellationToken)
     {
-        if (!Path.IsPathFullyQualified(request.ManifestPath))
+        var failed = verification ? (Func<string, AdministrationResult>)NotVerified : NotRestored;
+        if (!Path.IsPathFullyQualified(manifestPath))
         {
             return new(MigrationExitCode.InvalidArguments, "--manifest doit être un chemin absolu.");
         }
@@ -74,11 +112,21 @@ public sealed partial class RestoreVerifier
         string proofPath;
         try
         {
-            proofPath = BackupFiles.ProofPathFor(request.ManifestPath);
+            proofPath = BackupFiles.ProofPathFor(manifestPath);
         }
         catch (BackupDocumentException exception)
         {
             return new(MigrationExitCode.InvalidArguments, exception.Message);
+        }
+
+        // Une reprise après sinistre ne part que d'une sauvegarde VÉRIFIÉE (fichiers et preuve, sans contrôle d'âge).
+        if (!verification)
+        {
+            var verified = await new ProofBackupVerification(BackupPolicy.MaximumAgeBeforeMigration).VerifyAsync(manifestPath, cancellationToken);
+            if (!verified.IsVerified)
+            {
+                return failed($"seule une sauvegarde vérifiée est restaurée — {verified.Reason}");
+            }
         }
 
         // 1 — contrôle structurel, sans serveur. Un échec ici laisse une éventuelle preuve antérieure en place : elle
@@ -88,45 +136,46 @@ public sealed partial class RestoreVerifier
         string dumpPath;
         try
         {
-            (manifest, manifestSha256) = await BackupFiles.ReadManifestAsync(request.ManifestPath, cancellationToken);
-            dumpPath = BackupFiles.DumpPathFor(request.ManifestPath, manifest);
+            (manifest, manifestSha256) = await BackupFiles.ReadManifestAsync(manifestPath, cancellationToken);
+            dumpPath = BackupFiles.DumpPathFor(manifestPath, manifest);
             if (!File.Exists(dumpPath))
             {
-                return Failed("fichier de sauvegarde introuvable à côté du manifeste.");
+                return failed("fichier de sauvegarde introuvable à côté du manifeste.");
             }
 
             var (sha256, size) = await BackupFiles.HashFileAsync(dumpPath, cancellationToken);
             if (size != manifest.DumpSizeBytes || sha256 != manifest.DumpSha256)
             {
-                return Failed("fichier de sauvegarde altéré ou incomplet (taille ou SHA-256 différente du manifeste).");
+                return failed("fichier de sauvegarde altéré ou incomplet (taille ou SHA-256 différente du manifeste).");
             }
         }
         catch (BackupDocumentException exception)
         {
-            return Failed($"manifeste refusé : {exception.Message}.");
+            return failed($"manifeste refusé : {exception.Message}.");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            return Failed($"lecture de la sauvegarde impossible : {exception.Message}");
+            return failed($"lecture de la sauvegarde impossible : {exception.Message}");
         }
 
-        var scratch = request.ScratchDatabase ?? $"mmv_restore_check_{manifest.BackupId:N}";
-        var refusal = CheckScratchName(scratch, manifest, request.Admin.Database);
+        var database = requestedDatabase ?? $"mmv_restore_check_{manifest.BackupId:N}";
+        var refusal = CheckDatabaseName(database, verification, manifest, adminSettings.Database);
         if (refusal is not null)
         {
             return new(MigrationExitCode.InvalidArguments, refusal);
         }
 
-        var tools = new PostgreSqlClientTools(request.PgBinDirectory);
+        var tools = new PostgreSqlClientTools(pgBin);
         try
         {
-            var list = await tools.RunAsync("pg_restore", ["--list", dumpPath], request.Admin, cancellationToken);
+            var list = await tools.RunAsync("pg_restore", ["--list", dumpPath], adminSettings, cancellationToken);
             if (!list.Succeeded)
             {
-                return Failed($"contrôle structurel en échec — pg_restore --list (code {list.ExitCode}) : {list.Diagnostics}");
+                return failed($"contrôle structurel en échec — pg_restore --list (code {list.ExitCode}) : {list.Diagnostics}");
             }
 
-            return await OnServerAsync(runId, request, manifest, manifestSha256, dumpPath, proofPath, scratch, tools, cancellationToken);
+            return await OnServerAsync(runId, adminSettings, @operator, manifest, manifestSha256, dumpPath, proofPath,
+                verification, database, owner, tools, failed, cancellationToken);
         }
         catch (Exception exception) when (ServerCommand.IsServerUnreachable(exception))
         {
@@ -134,113 +183,155 @@ public sealed partial class RestoreVerifier
         }
         catch (PostgreSqlClientToolException exception)
         {
-            return Failed(exception.Message);
+            return failed(exception.Message);
         }
         catch (DatabaseConfigurationException exception)
         {
             return new(MigrationExitCode.InvalidArguments, exception.Message);
         }
-        catch (Exception exception) when (exception is System.Data.Common.DbException or IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is DbException or IOException or UnauthorizedAccessException)
         {
-            return Failed(ServerCommand.Describe(exception));
+            return failed(ServerCommand.Describe(exception));
         }
     }
 
     private async Task<AdministrationResult> OnServerAsync(
-        Guid runId, RestoreVerificationRequest request, BackupManifest manifest, string manifestSha256, string dumpPath,
-        string proofPath, string scratch, PostgreSqlClientTools tools, CancellationToken cancellationToken)
+        Guid runId, PostgreSqlConnectionSettings adminSettings, string @operator, BackupManifest manifest, string manifestSha256,
+        string dumpPath, string proofPath, bool verification, string database, string? owner, PostgreSqlClientTools tools,
+        Func<string, AdministrationResult> failed, CancellationToken cancellationToken)
     {
+        var verb = verification ? "verify-backup" : "restore-backup";
         await using var admin = PostgreSqlConnectionSecurity.CreateConnection(
-            BackupCreator.WithoutPooling(PostgreSqlConnectionSecurity.BuildConnectionString(request.Admin)));
+            BackupCreator.WithoutPooling(PostgreSqlConnectionSecurity.BuildConnectionString(adminSettings)));
         await admin.OpenAsync(cancellationToken);
 
-        // 2 — une seule vérification à la fois sur ce serveur.
+        // 2 — une seule restauration à la fois sur ce serveur.
         if (!(bool)(await ServerCommand.ScalarAsync(admin, "SELECT pg_try_advisory_lock(@key)", cancellationToken, ("key", LockKey)))!)
         {
-            return new(MigrationExitCode.LockNotAcquired, "Une autre vérification de sauvegarde est en cours : rien n'a été modifié.");
+            return new(MigrationExitCode.LockNotAcquired, "Une autre vérification ou restauration de sauvegarde est en cours : rien n'a été modifié.");
         }
 
         var created = false;
+        var keep = false;
         try
         {
-            // Sous le verrou seulement : une exécution refusée (code 12) ne retire jamais la preuve qu'une exécution
-            // concurrente vient d'écrire. Dès ici, une vérification en échec ne laisse subsister aucune preuve.
-            File.Delete(proofPath);
+            if (verification)
+            {
+                // Sous le verrou seulement : une exécution refusée (code 12) ne retire jamais la preuve qu'une exécution
+                // concurrente vient d'écrire. Dès ici, une vérification en échec ne laisse subsister aucune preuve.
+                File.Delete(proofPath);
+            }
 
             try
             {
-                await DropLeftoversAsync(admin, runId, cancellationToken);
+                await DropLeftoversAsync(admin, runId, verb, cancellationToken);
 
                 if (Convert.ToInt64(await ServerCommand.ScalarAsync(admin,
-                        "SELECT count(*) FROM pg_catalog.pg_database WHERE datname = @name", cancellationToken, ("name", scratch))) > 0)
+                        "SELECT count(*) FROM pg_catalog.pg_database WHERE datname = @name", cancellationToken, ("name", database))) > 0)
                 {
-                    return new(MigrationExitCode.InvalidArguments,
-                        $"La base de vérification '{scratch}' existe déjà : elle n'est jamais écrasée.");
+                    return new(MigrationExitCode.InvalidArguments, $"La base '{database}' existe déjà : elle n'est jamais écrasée.");
                 }
 
-                // 3 — base neuve, marquée, fermée à PUBLIC.
-                await ServerCommand.ExecuteServerFormattedAsync(admin, "SELECT format('CREATE DATABASE %I TEMPLATE template0', @db)",
-                    cancellationToken, ("db", scratch));
+                if (owner is not null)
+                {
+                    var privileged = await ServerCommand.ScalarAsync(admin,
+                        "SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls " +
+                        "FROM pg_catalog.pg_roles WHERE rolname = @role", cancellationToken, ("role", owner));
+                    if (privileged is not bool isPrivileged)
+                    {
+                        return new(MigrationExitCode.InvalidArguments, $"Le rôle migrateur '{owner}' n'existe pas sur ce serveur.");
+                    }
+
+                    if (isPrivileged)
+                    {
+                        return new(MigrationExitCode.SecurityRefused,
+                            $"Le rôle '{owner}' est privilégié : la base restaurée appartient au migrateur, jamais à un rôle privilégié (DP-5).");
+                    }
+
+                    await ServerCommand.ExecuteServerFormattedAsync(admin,
+                        "SELECT format('CREATE DATABASE %I OWNER %I TEMPLATE template0', @db, @owner)",
+                        cancellationToken, ("db", database), ("owner", owner));
+                }
+                else
+                {
+                    await ServerCommand.ExecuteServerFormattedAsync(admin, "SELECT format('CREATE DATABASE %I TEMPLATE template0', @db)",
+                        cancellationToken, ("db", database));
+                }
+
                 created = true;
-                await ServerCommand.ExecuteServerFormattedAsync(admin, "SELECT format('COMMENT ON DATABASE %I IS %L', @db, @marker)",
-                    cancellationToken, ("db", scratch), ("marker", ScratchMarker + runId.ToString("N")));
+                if (verification)
+                {
+                    await ServerCommand.ExecuteServerFormattedAsync(admin, "SELECT format('COMMENT ON DATABASE %I IS %L', @db, @marker)",
+                        cancellationToken, ("db", database), ("marker", ScratchMarker + runId.ToString("N")));
+                }
+
+                // 3 — base neuve fermée à PUBLIC : aucun poste ne s'y connecte avant décision explicite (provision).
                 await ServerCommand.ExecuteServerFormattedAsync(admin, "SELECT format('REVOKE ALL ON DATABASE %I FROM PUBLIC', @db)",
-                    cancellationToken, ("db", scratch));
+                    cancellationToken, ("db", database));
             }
-            catch (Exception exception) when (!ServerCommand.IsServerUnreachable(exception) && exception is System.Data.Common.DbException)
+            catch (Exception exception) when (!ServerCommand.IsServerUnreachable(exception) && exception is DbException)
             {
-                return Failed($"préparation de la base de vérification refusée : {ServerCommand.Describe(exception)} " +
-                              "(identifiant administrateur requis)");
+                return failed($"préparation de la base refusée : {ServerCommand.Describe(exception)} (identifiant administrateur requis)");
             }
 
-            var scratchTarget = request.Admin with { Database = scratch };
+            var target = adminSettings with { Database = database };
             var restore = await tools.RunAsync("pg_restore",
-                ["--no-password", "--exit-on-error", "--single-transaction", $"--dbname={scratch}", dumpPath],
-                scratchTarget, cancellationToken);
+                ["--no-password", "--exit-on-error", "--single-transaction", $"--dbname={database}", dumpPath],
+                target, cancellationToken);
             if (!restore.Succeeded)
             {
-                return Failed($"restauration réelle en échec — pg_restore (code {restore.ExitCode}) : {restore.Diagnostics}");
+                return failed($"restauration réelle en échec — pg_restore (code {restore.ExitCode}) : {restore.Diagnostics}");
             }
 
-            var scratchConnection = BackupCreator.WithoutPooling(PostgreSqlConnectionSecurity.BuildConnectionString(scratchTarget));
+            var targetConnection = BackupCreator.WithoutPooling(PostgreSqlConnectionSecurity.BuildConnectionString(target));
             if (AfterRestore is not null)
             {
-                await AfterRestore(scratchConnection);
+                await AfterRestore(targetConnection);
             }
 
             // 4 — contenu restauré ⇔ manifeste.
             DatabaseFingerprint restored;
-            string verifier;
-            await using (var connection = PostgreSqlConnectionSecurity.CreateConnection(scratchConnection))
+            string restorer;
+            await using (var connection = PostgreSqlConnectionSecurity.CreateConnection(targetConnection))
             {
                 await connection.OpenAsync(cancellationToken);
                 await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
-                verifier = (string)(await ServerCommand.ScalarAsync(connection, "SELECT current_user::text", cancellationToken))!;
+                restorer = (string)(await ServerCommand.ScalarAsync(connection, "SELECT current_user::text", cancellationToken))!;
                 restored = await new DatabaseFingerprintReader(connection).ReadAsync(cancellationToken);
             }
 
             var difference = BackupConsistency.CompareContent(manifest, restored);
             if (difference is not null)
             {
-                return Failed($"contenu restauré différent du manifeste : {difference}");
+                return failed($"contenu restauré différent du manifeste : {difference}");
+            }
+
+            var summary = $"{restored.Tables.Count} tables, {restored.Tables.Sum(t => t.Rows)} lignes, " +
+                          $"{restored.AppliedMigrations.Count} migration(s)";
+            if (!verification)
+            {
+                keep = true;
+                return new(MigrationExitCode.Success,
+                    $"Sauvegarde {manifest.BackupId} restaurée dans la base neuve '{database}' ({summary}), fermée aux postes. " +
+                    "Suite : provision --database " + database + " (droits de connexion), puis nouvelle sauvegarde vérifiée " +
+                    "avant toute migration, puis configure-workstation des postes vers cette base.");
             }
 
             // 5 — preuve.
             await BackupFiles.WriteProofAsync(proofPath,
-                new BackupProof(manifest.BackupId, manifestSha256, manifest.DumpSha256, restored.ServerTimeUtc, verifier,
-                    request.Operator, ApplicationVersion.Current, restored.SystemIdentifier, scratch,
+                new BackupProof(manifest.BackupId, manifestSha256, manifest.DumpSha256, restored.ServerTimeUtc, restorer,
+                    @operator, ApplicationVersion.Current, restored.SystemIdentifier, database,
                     restored.Tables.Count, restored.Tables.Sum(t => t.Rows)),
                 cancellationToken);
 
             return new(MigrationExitCode.Success,
-                $"Sauvegarde {manifest.BackupId} vérifiée par restauration réelle ({restored.Tables.Count} tables, " +
-                $"{restored.Tables.Sum(t => t.Rows)} lignes, {restored.AppliedMigrations.Count} migration(s)). Preuve : {proofPath}");
+                $"Sauvegarde {manifest.BackupId} vérifiée par restauration réelle ({summary}). Preuve : {proofPath}");
         }
         finally
         {
-            if (created)
+            if (created && !keep)
             {
-                await DropScratchAsync(admin, runId, scratch);
+                await DropAsync(admin, runId, verb, database);
             }
 
             try
@@ -249,14 +340,14 @@ public sealed partial class RestoreVerifier
             }
             catch (Exception exception)
             {
-                _trace.Write($"verify-backup {runId} : libération du verrou en échec ({ServerCommand.Describe(exception)}) — " +
+                _trace.Write($"{verb} {runId} : libération du verrou en échec ({ServerCommand.Describe(exception)}) — " +
                              "le serveur le libère en fin de session");
             }
         }
     }
 
     /// <summary>Bases de vérification laissées par une exécution interrompue : reconnues au marqueur, sous le verrou.</summary>
-    private async Task DropLeftoversAsync(System.Data.Common.DbConnection admin, Guid runId, CancellationToken cancellationToken)
+    private async Task DropLeftoversAsync(DbConnection admin, Guid runId, string verb, CancellationToken cancellationToken)
     {
         var leftovers = new List<string>();
         await using (var command = ServerCommand.Create(admin,
@@ -275,44 +366,50 @@ public sealed partial class RestoreVerifier
         {
             await ServerCommand.ExecuteServerFormattedAsync(admin, "SELECT format('DROP DATABASE %I WITH (FORCE)', @db)",
                 cancellationToken, ("db", name));
-            _trace.Write($"verify-backup {runId} : base de vérification résiduelle '{name}' supprimée");
+            _trace.Write($"{verb} {runId} : base de vérification résiduelle '{name}' supprimée");
         }
     }
 
-    private async Task DropScratchAsync(System.Data.Common.DbConnection admin, Guid runId, string scratch)
+    private async Task DropAsync(DbConnection admin, Guid runId, string verb, string database)
     {
         try
         {
             await ServerCommand.ExecuteServerFormattedAsync(admin, "SELECT format('DROP DATABASE IF EXISTS %I WITH (FORCE)', @db)",
-                CancellationToken.None, ("db", scratch));
+                CancellationToken.None, ("db", database));
         }
         catch (Exception exception)
         {
-            _trace.Write($"verify-backup {runId} : suppression de '{scratch}' en échec ({ServerCommand.Describe(exception)}) — " +
-                         "elle sera supprimée par la prochaine vérification");
+            _trace.Write($"{verb} {runId} : suppression de '{database}' en échec ({ServerCommand.Describe(exception)}) — " +
+                         "à supprimer par l'administrateur (une base de vérification l'est par la prochaine vérification)");
         }
     }
 
-    private static string? CheckScratchName(string scratch, BackupManifest manifest, string adminDatabase)
+    private static string? CheckDatabaseName(string database, bool verification, BackupManifest manifest, string adminDatabase)
     {
-        if (!ScratchNamePattern().IsMatch(scratch))
+        var option = verification ? "--scratch-database" : "--target-database";
+        if (!DatabaseNamePattern().IsMatch(database))
         {
-            return "--scratch-database : minuscules, chiffres et « _ » seulement, 63 octets au plus, sans chiffre en tête.";
+            return $"{option} : minuscules, chiffres et « _ » seulement, 63 octets au plus, sans chiffre en tête.";
         }
 
-        if (string.Equals(scratch, manifest.State.Database, StringComparison.Ordinal)
-            || string.Equals(scratch, adminDatabase, StringComparison.Ordinal)
-            || ReservedDatabases.Contains(scratch, StringComparer.Ordinal))
+        // Une base de vérification n'est jamais la base sauvegardée ; une cible de reprise peut en reprendre le nom
+        // si elle a disparu — l'existence est refusée plus loin, sous le verrou.
+        if ((verification && string.Equals(database, manifest.State.Database, StringComparison.Ordinal))
+            || string.Equals(database, adminDatabase, StringComparison.Ordinal)
+            || ReservedDatabases.Contains(database, StringComparer.Ordinal))
         {
-            return $"--scratch-database '{scratch}' refusée : jamais la base sauvegardée, la base d'administration ni une base système.";
+            return $"{option} '{database}' refusée : jamais la base sauvegardée, la base d'administration ni une base système.";
         }
 
         return null;
     }
 
-    private static AdministrationResult Failed(string message) =>
+    private static AdministrationResult NotVerified(string message) =>
         new(MigrationExitCode.RestoreVerificationFailed, $"Sauvegarde NON vérifiée : {message}");
 
+    private static AdministrationResult NotRestored(string message) =>
+        new(MigrationExitCode.RestoreVerificationFailed, $"Restauration NON effectuée : {message}");
+
     [GeneratedRegex("^[a-z_][a-z0-9_]{0,62}$")]
-    private static partial Regex ScratchNamePattern();
+    private static partial Regex DatabaseNamePattern();
 }
