@@ -74,6 +74,14 @@ public static class PersistenceErrorMapper
         "Une opération concurrente a empêché l'enregistrement. Veuillez réessayer. " +
         "Aucune modification n'a été conservée.";
 
+    /// <summary>
+    /// P4-10 — validation dont la réponse s'est perdue : <b>aucune</b> affirmation sur le résultat, et une consigne
+    /// qui évite la double saisie (aucune nouvelle tentative automatique : O13).
+    /// </summary>
+    private const string CommitOutcomeUnknownMessage =
+        "La connexion à la base de données a été perdue pendant l'enregistrement : il a pu être conservé ou non. " +
+        "Vérifiez avant de le saisir à nouveau.";
+
     /// <summary>Libellé historique de la branche <see cref="DbUpdateException"/> générique.</summary>
     private const string DbUpdateFallbackMessage =
         "L'enregistrement a échoué : les données n'ont pas pu être sauvegardées. " +
@@ -184,6 +192,33 @@ public static class PersistenceErrorMapper
 
         // (G) Pas une erreur de persistance : inchangée.
         return exception;
+    }
+
+    /// <summary>
+    /// P4-10 — erreur levée par la <b>validation</b> (<c>COMMIT</c>) d'une transaction. Si le serveur a répondu par
+    /// une erreur structurée hors classes de connexion (<c>08</c>) et d'arrêt (<c>57P</c>), la validation a
+    /// <b>certainement</b> échoué : classification ordinaire de <see cref="Map"/>. Si la réponse n'est jamais
+    /// arrivée (transport Npgsql, connexion ou arrêt serveur), le serveur a pu valider : catégorie
+    /// <see cref="PersistenceErrorCategory.CommitOutcomeUnknown"/>, message sans affirmation sur le résultat.
+    /// </summary>
+    public static Exception MapCommitFailure(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        if (exception is PersistenceException || IsRequestedClientCancellation(exception))
+        {
+            return Map(exception);
+        }
+
+        var postgres = FindInChain<PostgresException>(exception);
+        var lostResponse = postgres is null
+            ? FindInChain<NpgsqlException>(exception) != null
+            : postgres.SqlState.StartsWith("08", StringComparison.Ordinal)
+              || postgres.SqlState.StartsWith("57P", StringComparison.Ordinal);
+
+        return lostResponse
+            ? new PersistenceException(CommitOutcomeUnknownMessage, PersistenceErrorCategory.CommitOutcomeUnknown, exception)
+            : Map(exception);
     }
 
     /// <summary>

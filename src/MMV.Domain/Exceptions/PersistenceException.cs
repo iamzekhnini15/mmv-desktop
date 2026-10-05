@@ -24,6 +24,12 @@ public enum PersistenceErrorCategory
 
     /// <summary>Conflit de concurrence détecté au commit (écriture concurrente).</summary>
     Concurrency = 5,
+
+    /// <summary>
+    /// P4-10 — connexion perdue <b>pendant la validation</b> : le serveur a pu valider ou non, l'issue est
+    /// <b>inconnue</b>. Seule catégorie dont le message n'affirme pas l'absence de modification.
+    /// </summary>
+    CommitOutcomeUnknown = 6,
 }
 
 /// <summary>

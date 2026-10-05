@@ -60,18 +60,55 @@ public sealed class EfTransactionRunner : ITransactionRunner
             return await operation(cancellationToken).ConfigureAwait(false);
         }
 
-        await using var transaction = await _context.Database
-            .BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        IDbContextTransaction transaction;
+        try
+        {
+            transaction = await _context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception beginFailure)
+        {
+            // P4-10 : serveur injoignable dès l'ouverture — même classification contrôlée que pendant l'opération
+            // (jamais l'exception brute du provider, dont le message peut citer l'hôte).
+            var mapped = PersistenceErrorMapper.Map(beginFailure);
+            if (ReferenceEquals(mapped, beginFailure))
+            {
+                throw;
+            }
 
+            throw mapped;
+        }
+
+        await using var _ = transaction;
         try
         {
             var result = await operation(cancellationToken).ConfigureAwait(false);
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception commitFailure)
+            {
+                // P4-10 : une validation dont la réponse s'est perdue a pu aboutir côté serveur — jamais
+                // présentée comme « aucune modification conservée ». Aucune nouvelle tentative (O13).
+                var mapped = PersistenceErrorMapper.MapCommitFailure(commitFailure);
+                if (ReferenceEquals(mapped, commitFailure))
+                {
+                    throw;
+                }
+
+                throw mapped;
+            }
+
             return result;
         }
         catch (Exception ex)
         {
             await SafeRollbackAsync(transaction).ConfigureAwait(false);
+
+            // P4-10 : le contexte vit toute la session (fournisseur racine). L'unité de travail annulée en base est
+            // aussi abandonnée en mémoire : aucune entité fantôme, aucune écriture rejouée par un SaveChanges
+            // ultérieur sans rapport (généralise le détachement ciblé de CreateUserUseCase).
+            _context.ChangeTracker.Clear();
 
             // Transforme les erreurs de persistance en erreur contrôlée ;
             // toute autre exception est propagée inchangée (stack trace préservée).

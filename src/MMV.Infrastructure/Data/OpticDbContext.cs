@@ -19,6 +19,38 @@ public class OpticDbContext : DbContext
     /// </summary>
     public OpticDbContext(DbContextOptions<OpticDbContext> options) : base(options) { }
 
+    /// <summary>
+    /// P4-10 — une écriture autonome refusée (hors transaction explicite) est <b>abandonnée</b>, jamais retentée par
+    /// un <c>SaveChanges</c> ultérieur sans rapport : le contexte vit toute la session. Dans une transaction
+    /// explicite, c'est la frontière transactionnelle (<c>EfTransactionRunner</c>) qui abandonne l'unité de travail.
+    /// </summary>
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        try
+        {
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+        catch when (Database.CurrentTransaction is null)
+        {
+            ChangeTracker.Clear();
+            throw;
+        }
+    }
+
+    /// <inheritdoc cref="SaveChanges(bool)"/>
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+        catch when (Database.CurrentTransaction is null)
+        {
+            ChangeTracker.Clear();
+            throw;
+        }
+    }
+
     // ========== STAFF ==========
     /// <summary>
     /// Utilisateurs (personnel) du système.
