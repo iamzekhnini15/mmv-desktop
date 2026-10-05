@@ -700,6 +700,17 @@ se termine par **commit + CI verte sur le SHA exact**.
 - **Autorisé** : outil d'import, ordre FK, preuve de complétude (comptes avant/après), rollback.
 - **Interdit** : import partiel silencieux ; perte d'identifiants ; import de `__EFMigrationsHistory` vers une base neuve.
 - **Tests attendus** : import vérifié (lignes, FK, unicité, montants **exacts**), rejouabilité définie, rollback testé.
+- **Décisions** : aucune nouvelle — règles tirées d'O11, ADR-003 §5.1 (montants `ToEven` + réconciliation), ADR-004
+  décision 8 (instants = heure locale du magasin, fuseau **obligatoire**), ADR-005 §5.8 (historique EF jamais
+  importé), DP-10 / B-4 / R-9 (sauvegarde vérifiée actuelle exigée ; retour arrière après validation par
+  `restore-backup` dans une base neuve), P4-5D-R (dates civiles).
+- **État** : **COMPLETE — CLOSED** (05/10/2026). `7c06c23`, CI **`37299060335`** verte sur le SHA exact : verbe
+  `import-sqlite` (source refusée avant tout contact serveur, une transaction, relecture ligne à ligne, totaux relus,
+  cible relue après annulation, `--dry-run`) ; unitaires **2441/2441**, intégration PostgreSQL **212/212** (P4-7 : 17,
+  dont bout en bout TLS avec vrais `pg_dump`/`pg_restore`), 0 ignoré, aucune migration —
+  [rapport](../implementation/P4-7-sqlite-import-report.md),
+  [procédure opérateur](../operations/P4-7-sqlite-import-procedure.md). Ouvert : **Q-P4-7-1** (base SQLite écrite
+  par une version ≥ P4-5D), **Q-P4-7-2** (heure ambiguë), RR4 et preuve Windows native → P4-11.
 
 ### P4-8 — Configuration, secrets et déploiement de la base centrale
 
@@ -869,7 +880,8 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 | **P4-6** — application des migrations en multi-poste | **`IN PROGRESS — NOT CLOSE`** — **P4-6A COMPLETE** : [**ADR-PROD-DB-009 = ACCEPTED**](ADR-PROD-DB-009.md) le 22/09/2026 (dix points de décision arrêtés, dix-sept obligations H1 … H17, vingt alternatives rejetées) ; [ADR-APP-DISTRIBUTION-001](adr-app-distribution-001-installation-and-updates.md) **reste PROPOSED** — décisions validées, mais SD-1/2/3/5 non exécutés et QD-1/QD-10 ouverts. **Strictement documentaire** : aucun code, aucun test, aucune migration, aucune CI ([consolidation](../implementation/P4-6-architecture-consolidation-report.md) · [acceptation](../implementation/P4-6A-adr-acceptance-report.md)). **P4-6B** **`COMPLETE — CLOSED`** — `3d00af8`, CI `37226388128` ([rapport](../implementation/P4-6B-database-lifecycle-report.md)). **P4-6C** `FUTURE` — dépend de **P4-9** (Q-24), elle-même dépendante de **P4-8** |
 | **P4-NET10** — montée vers .NET 10 (LTS) | **`COMPLETED`** — lot **transverse**, sans dépendance dans P4. **DI-8 / OI-10 satisfaites** : plus aucun projet de la solution sur .NET 8, qui sort de support le **10/11/2026**. SDK **10.0.401**, EF Core **10.0.12**, Npgsql **10.0.3**, `dotnet-ef` **10.0.12**. **1953** tests verts, **0** avertissement, **0** vulnérabilité, **migrations inchangées** (14 SQLite + 1 PostgreSQL). ([plan d'exécution](net10-migration-execution-plan.md) · [baseline E-1](../implementation/P4-NET10-E1-baseline-report.md) · [rapport de clôture](../implementation/P4-NET10-final-report.md)) |
 | **P4-8** — configuration, secrets et déploiement de la base centrale | **`COMPLETE — CLOSED`** — `3dea70c` (CI `37236625898`) ; audit indépendant `PASS WITH CONDITIONS` (05/10/2026) ; conditions M1 + M3 corrigées `f6ac102` (CI `37241752620`), M2 `aa2dfea` (CI `37242171263`, `37242549564`) ; **audit final read-only `READY TO CLOSE`** (05/10/2026) ([ADR-PROD-DB-010](adr-prod-db-010-provisioning-and-connection-security.md) · [rapport](../implementation/P4-8-provisioning-and-connection-security-report.md)) |
-| **P4-7, P4-9 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** |
+| **P4-7** — import SQLite → PostgreSQL | **`COMPLETE — CLOSED`** — `7c06c23`, CI `37299060335` ([rapport](../implementation/P4-7-sqlite-import-report.md)) |
+| **P4-10 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** |
 
 **État courant en vigueur** *(les blocs d'état antérieurs marqués `[HISTORIQUE]` plus haut sont remplacés par
 celui-ci)* :
@@ -963,7 +975,12 @@ P4-NET10 BLOCKER            = NONE — NUGET.ORG REGISTERED BY VERSIONED NuGet.c
 Q-6 (ADR-PROD-DB-009)       = DECIDABLE — LK-5 AVAILABLE — NPGSQL IMPLEMENTS IT AS
                               'LOCK TABLE ... IN ACCESS EXCLUSIVE MODE', NOT pg_advisory_lock
                               — ARCHITECT RULING REQUIRED, ADR NOT MODIFIED BY THIS LOT
-P4-7                        = NOT STARTED
+P4-7 IMPLEMENTATION         = 7c06c23 — CI 37299060335 SUCCESS — UNIT 2441 — PG IT 212 / 212 (P4-7: 17)
+P4-7 RULES                  = O11 + ADR-003 §5.1 + ADR-004 D8 + ADR-005 §5.8 + DP-10/B-4/R-9 + P4-5D-R — NO NEW DECISION
+P4-7 ROLLBACK               = ONE TRANSACTION + TARGET RE-READ; AFTER COMMIT: restore-backup INTO A NEW DATABASE (R-9)
+P4-7 SCHEMA                 = NO EF MODEL CHANGE — NO MIGRATION / SNAPSHOT CHANGE — EF DRIFT GREEN (SQLITE + POSTGRESQL)
+P4-7 OPEN                   = Q-P4-7-1 (SOURCE WRITTEN BY >= P4-5D), Q-P4-7-2 (AMBIGUOUS HOUR) — RR4 + WINDOWS NATIVE → P4-11
+P4-7                        = COMPLETE — CLOSED
 P4-8 IMPLEMENTATION         = 3dea70c — CI 37236625898 SUCCESS — UNIT 2289 — PG IT 147 / 147
 P4-8 INDEPENDENT AUDIT      = PASS WITH CONDITIONS — 2026-10-05 — M1, M2, M3
 P4-8 M1 REVERSE MEMBERSHIP  = FIXED — f6ac102 — CI 37241752620 SUCCESS — REFUSED AT PREFLIGHT, NEVER REVOKED
@@ -981,7 +998,7 @@ P4-9 TESTS                  = UNIT 2373 / 2373 — PG IT 185 / 185 (P4-9: 28, RE
 P4-9 SCHEMA                 = NO EF MODEL CHANGE — NO MIGRATION / SNAPSHOT CHANGE — EF DRIFT GREEN (SQLITE + POSTGRESQL)
 P4-9 OPEN QUESTIONS         = Q-P4-9-1 WINDOWS NATIVE PROOF, Q-P4-9-2 FAILED-BACKUP ALERTING — NON-BLOCKING
 P4-9                        = COMPLETE — CLOSED
-P4-10 … P4-12               = NOT STARTED
+P4-10 … P4-12               = NOT STARTED — P4-10 UNBLOCKED
 V1 MULTI-POSTE              = NOT GO
 ```
 
