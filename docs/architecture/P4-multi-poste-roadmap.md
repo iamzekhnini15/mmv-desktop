@@ -767,18 +767,33 @@ se termine par **commit + CI verte sur le SHA exact**.
   courante · validant le QC · réglant le même solde · créant la même alerte LowStock · créant le même login normalisé ·
   suppression fournisseur vs création produit · migration pendant qu'un poste travaille · perte de connexion en
   transaction · reconnexion après redémarrage · timeout · deadlock · retry · sauvegarde puis restauration.
+- **Décisions** : aucune nouvelle — O13 (aucun retry sans clé d'idempotence), D-15, ADR-008 §5.11, Q-13.
+- **État** : **COMPLETE — CLOSED** (05/10/2026). `c2f6395` (correctifs) + `2c647bb` (preuves), CI **`37302429560`**
+  verte sur le SHA exact : les 15 scénarios de la roadmap couverts — concurrence en **processus OS distincts**,
+  perte réseau réelle (proxy TCP),
+  **redémarrage réel** d'un serveur dédié (nouvelle étape CI), migration et sauvegarde **sous charge** ; trois
+  défauts trouvés et corrigés — validation perdue annoncée comme « aucune modification conservée » (catégorie
+  `CommitOutcomeUnknown`), ouverture de transaction non classée, unité de travail en échec rejouée par le contexte
+  de session ; unitaires **2457/2457**, intégration PostgreSQL **232/232** (P4-10 : 20), 0 ignoré, aucune migration —
+  [rapport](../implementation/P4-10-resilience-report.md). Ouvert : Q-P4-10-1 … Q-P4-10-4 (non bloquantes),
+  Windows natif → P4-11.
 
 ### P4-11 — Recette plusieurs postes
 
 - **Objectif** : recette fonctionnelle réelle sur plusieurs postes d'un même magasin.
 - **Dépendances** : P4-6 … P4-10.
 - **Tests attendus** : parcours métier complets simultanés (comptoir + atelier + back-office).
+- **État** : **PRÉPARÉE — NON EXÉCUTÉE** (05/10/2026) : exige le laboratoire Windows (MMV-SRV / MMV-CLI + un second
+  client) et un opérateur — [checklist reproductible](../operations/P4-11-multi-workstation-acceptance-checklist.md).
+  Porte aussi O12 (Windows natif), RR4 (dry-run sur copie de production) et la volumétrie réelle de P4-7.
 
 ### P4-12 — Audit final P4
 
 - **Objectif** : vérifier **tous** les critères de sortie et prononcer le verdict V1 multi-poste.
 - **Dépendances** : toutes les étapes retenues.
 - **Sortie** : `P4 = CLOSED` / `V1 MULTI-POSTE = GO` **uniquement** si §4 est intégralement satisfait.
+- **État** : **NON DÉMARRÉ** ; préparation : [état des 18 critères](../implementation/P4-12-exit-criteria-readiness.md)
+  (15 prouvés en CI, 2 et 3 partiellement, 18 dépend de P4-11 ; aucun verdict prononcé).
 
 > **Note de découpage** : P4-4 fusionne « portage des primitives » et « traduction des erreurs » car l'audit montre
 > qu'ils portent sur les **mêmes fichiers** et la **même frontière** (Infrastructure), et qu'un portage sans
@@ -881,7 +896,9 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 | **P4-NET10** — montée vers .NET 10 (LTS) | **`COMPLETED`** — lot **transverse**, sans dépendance dans P4. **DI-8 / OI-10 satisfaites** : plus aucun projet de la solution sur .NET 8, qui sort de support le **10/11/2026**. SDK **10.0.401**, EF Core **10.0.12**, Npgsql **10.0.3**, `dotnet-ef` **10.0.12**. **1953** tests verts, **0** avertissement, **0** vulnérabilité, **migrations inchangées** (14 SQLite + 1 PostgreSQL). ([plan d'exécution](net10-migration-execution-plan.md) · [baseline E-1](../implementation/P4-NET10-E1-baseline-report.md) · [rapport de clôture](../implementation/P4-NET10-final-report.md)) |
 | **P4-8** — configuration, secrets et déploiement de la base centrale | **`COMPLETE — CLOSED`** — `3dea70c` (CI `37236625898`) ; audit indépendant `PASS WITH CONDITIONS` (05/10/2026) ; conditions M1 + M3 corrigées `f6ac102` (CI `37241752620`), M2 `aa2dfea` (CI `37242171263`, `37242549564`) ; **audit final read-only `READY TO CLOSE`** (05/10/2026) ([ADR-PROD-DB-010](adr-prod-db-010-provisioning-and-connection-security.md) · [rapport](../implementation/P4-8-provisioning-and-connection-security-report.md)) |
 | **P4-7** — import SQLite → PostgreSQL | **`COMPLETE — CLOSED`** — `7c06c23`, CI `37299060335` ([rapport](../implementation/P4-7-sqlite-import-report.md)) |
-| **P4-10 … P4-12** | trajectoire officielle issue de l'audit, **découpage réévaluable** |
+| **P4-10** — multi-processus et résilience | **`COMPLETE — CLOSED`** — `c2f6395` + `2c647bb`, CI `37302429560` ([rapport](../implementation/P4-10-resilience-report.md)) |
+| **P4-11** — recette plusieurs postes | **PRÉPARÉE — NON EXÉCUTÉE** — infrastructure Windows et opérateur requis ([checklist](../operations/P4-11-multi-workstation-acceptance-checklist.md)) |
+| **P4-12** — audit final | **NON DÉMARRÉ** — [préparation](../implementation/P4-12-exit-criteria-readiness.md), aucun verdict |
 
 **État courant en vigueur** *(les blocs d'état antérieurs marqués `[HISTORIQUE]` plus haut sont remplacés par
 celui-ci)* :
@@ -998,8 +1015,16 @@ P4-9 TESTS                  = UNIT 2373 / 2373 — PG IT 185 / 185 (P4-9: 28, RE
 P4-9 SCHEMA                 = NO EF MODEL CHANGE — NO MIGRATION / SNAPSHOT CHANGE — EF DRIFT GREEN (SQLITE + POSTGRESQL)
 P4-9 OPEN QUESTIONS         = Q-P4-9-1 WINDOWS NATIVE PROOF, Q-P4-9-2 FAILED-BACKUP ALERTING — NON-BLOCKING
 P4-9                        = COMPLETE — CLOSED
-P4-10 … P4-12               = NOT STARTED — P4-10 UNBLOCKED
-V1 MULTI-POSTE              = NOT GO
+P4-10 IMPLEMENTATION        = c2f6395 (FIXES) + 2c647bb (PROOFS) — CI 37302429560 SUCCESS — UNIT 2457 — PG IT 232 / 232 (P4-10: 20)
+P4-10 PROOFS                = 15 ROADMAP SCENARIOS COVERED — CONCURRENCY IN SEPARATE OS PROCESSES — REAL NETWORK CUT (TCP PROXY) — REAL SERVER RESTART (DEDICATED CONTAINER, CI STEP)
+P4-10 FIXES                 = COMMIT OUTCOME UNKNOWN NEVER REPORTED AS "NOTHING KEPT" — BEGIN TRANSACTION MAPPED — FAILED UNIT OF WORK DISCARDED (SESSION-WIDE DbContext)
+P4-10 RETRY                 = NONE (O13) — RetriesOnFailure = false — ONE CONNECTION PER FAILED ATTEMPT, TESTED
+P4-10 SCHEMA                = NO EF MODEL CHANGE — NO MIGRATION / SNAPSHOT CHANGE — EF DRIFT GREEN (SQLITE + POSTGRESQL)
+P4-10 OPEN                  = Q-P4-10-1 IDEMPOTENCY KEY, Q-P4-10-2 PER-OPERATION DbContext, Q-P4-10-3 BACKUP ALERT, Q-P4-10-4 CLOCK DRIFT — NON-BLOCKING
+P4-10                       = COMPLETE — CLOSED
+P4-11                       = PREPARED — NOT EXECUTED — WINDOWS LAB + OPERATOR REQUIRED (CHECKLIST)
+P4-12                       = NOT STARTED — READINESS MATRIX PREPARED — NO VERDICT
+V1 MULTI-POSTE              = NOT GO — READY FOR FINAL ACCEPTANCE ONLY AFTER P4-11 IS EXECUTED
 ```
 
 > **P4-5A et P4-5B — nature exacte.** Les deux lots sont **strictement documentaires** : **aucun fichier
