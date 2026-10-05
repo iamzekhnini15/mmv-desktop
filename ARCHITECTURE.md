@@ -60,7 +60,9 @@ MMV.DatabaseManager ──► MMV.Infrastructure ──► MMV.Domain
 
 Côté Infrastructure, la **garde de compatibilité** (`Data/ServerSchemaCompatibilityGuard`, lecture seule) et
 la **version applicative** (`Configuration/ApplicationVersion`, source unique `Directory.Build.props`) sont
-partagées par l'application et l'outil. La garde n'est **pas** branchée au démarrage des postes avant P4-6C.
+partagées par l'application et l'outil. Depuis **P4-6C**, un poste PostgreSQL démarre par
+`Data/ServerStartupCheck` (disponibilité D-15, puis garde en lecture seule) : non servi ⇒ écran de blocage
+(`Views/DatabaseBlockedView`, DP-4) ; servi ⇒ connexion, sans cycle de vie SQLite ni seed.
 
 ---
 

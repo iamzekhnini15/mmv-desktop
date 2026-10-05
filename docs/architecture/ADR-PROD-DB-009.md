@@ -1263,6 +1263,20 @@ appliqué une migration.
 5. §4.6.2 étape 2 et §4.6.3 étape 5 (« par restauration ») sont **outillés** : `backup`, `verify-backup`,
    `restore-backup` (base neuve, jamais d'écrasement).
 
+## 13. Addendum P4-6C — 5 octobre 2026
+
+> Aucune décision du §5.2 n'est rouverte ; mise en œuvre de DP-4 et clôture de questions dont P4-6C était
+> propriétaire.
+
+1. **DP-4 branché** : `ServerStartupCheck` (disponibilité D-15, puis garde) s'exécute au démarrage de chaque poste
+   PostgreSQL, hors de tout `try` (K-13). E1 et E3a démarrent ; E2, E3b, E3c, E4, E5, E7 et E6 affichent un écran de
+   blocage distinct (constat + action), sans nouvelle tentative ni écriture.
+2. **Q-16 — CLOSED** : le seed (`DatabaseSeeder`, `EnsureCreated`) n'est **pas** un chemin de production serveur ;
+   il n'est jamais exécuté sur PostgreSQL (ADR-PROD-DB-010 D-12.3 : premier administrateur par `bootstrap-admin`).
+3. **§4.6.1 étape 4** : les invariants physiques de `VerifyAfterPreparation` (P3-8, P3-10) sont vérifiés par
+   l'outil à l'étape 9 dès que la baseline de production est appliquée.
+4. **Q-11** reste close : pas de revérification en cours de session en V1.
+
 ---
 
 **ACCEPTED — 22 septembre 2026.** Dix points de décision arrêtés, dix-sept obligations (H1 … H17), vingt
