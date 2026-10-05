@@ -13,7 +13,8 @@
 |---|---|---|
 | `c2f6395` | `fix(P4-10)` : issue de validation inconnue, ouverture de transaction classée, unité de travail en échec abandonnée | voir `2c647bb` |
 | `2c647bb` | `test(P4-10)` : processus poste, proxy de panne réseau, serveur de redémarrage, preuves sous charge, étape CI | **`37302429560`** verte sur le SHA exact — job Linux : serveur de redémarrage démarré, intégration **232/232** ; job Windows : unitaires **2457/2457**, audit ; 0 ignoré |
-| *(ce commit)* | `docs(P4-10)` : rapport, roadmap | roadmap §6 |
+| `c1f4516` | `docs(P4-10, P4-11, P4-12)` : rapport, roadmap, checklist, préparation de l'audit | **`37303113348` ROUGE** : `Workstation_starting_while_the_server_is_down_…` — le test arrêtait le serveur puis, dans son `finally`, appelait le redémarrage qui envoyait un **second** SIGINT ; sur le runner le conteneur était déjà arrêté (`container is not running`). Défaut du test, pas du produit |
+| `9c94f42` | `fix(P4-10)` : arrêt et démarrage séparés, jamais de second signal ; démarrage seulement après arrêt complet (3/3 en local) | CI du SHA final (roadmap §6) |
 
 Base : `origin/p4-multi-poste` = `3745be6` (P4-7 clos). Branche `p4-10`.
 
