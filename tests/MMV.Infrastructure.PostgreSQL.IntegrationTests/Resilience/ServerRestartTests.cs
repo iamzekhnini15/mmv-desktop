@@ -94,11 +94,32 @@ public sealed class ServerRestartTests : IAsyncLifetime
     /// <summary>Arrêt rapide (SIGINT au postmaster : transactions en cours annulées), puis démarrage et attente.</summary>
     private async Task RestartAsync()
     {
+        await StopAsync();
+        await StartAsync();
+    }
+
+    /// <summary>Arrêt rapide, attendu jusqu'à ce que le conteneur soit réellement arrêté.</summary>
+    private async Task StopAsync()
+    {
         await DockerAsync("kill", "--signal=SIGINT", _container);
         var clock = Stopwatch.StartNew();
-        while ((await DockerAsync("inspect", "-f", "{{.State.Running}}", _container)).Trim() == "true")
+        while (await IsRunningAsync())
         {
             clock.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(60), "arrêt du serveur");
+            await Task.Delay(200);
+        }
+    }
+
+    private async Task<bool> IsRunningAsync() =>
+        (await DockerAsync("inspect", "-f", "{{.State.Running}}", _container)).Trim() == "true";
+
+    /// <summary>Démarrage d'un serveur ARRÊTÉ (jamais un second signal d'arrêt), puis attente qu'il réponde.</summary>
+    private async Task StartAsync()
+    {
+        var clock = Stopwatch.StartNew();
+        while (await IsRunningAsync())
+        {
+            clock.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(60), "fin de l'arrêt en cours");
             await Task.Delay(200);
         }
 
@@ -185,7 +206,7 @@ public sealed class ServerRestartTests : IAsyncLifetime
     [PostgreSqlRestartFact]
     public async Task Workstation_starting_while_the_server_is_down_is_refused_then_starts_once_it_is_back()
     {
-        await DockerAsync("kill", "--signal=SIGINT", _container);
+        await StopAsync();
         try
         {
             var probe = () => PostgreSqlConnectivityProbe.EnsureAvailableAsync(Cs);
@@ -194,7 +215,7 @@ public sealed class ServerRestartTests : IAsyncLifetime
         }
         finally
         {
-            await RestartAsync();
+            await StartAsync();
         }
 
         await PostgreSqlConnectivityProbe.EnsureAvailableAsync(Cs);
