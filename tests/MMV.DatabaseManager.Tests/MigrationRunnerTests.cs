@@ -94,10 +94,40 @@ public sealed class MigrationRunnerTests
     {
         var ports = Installed();
 
-        var result = await Runner(ports, new RefusingBackupVerification()).Runner.RunAsync(Request());
+        var result = await Runner(ports, new ProofBackupVerification(BackupPolicy.MaximumAgeBeforeMigration))
+            .Runner.RunAsync(Request(backupReference: Path.Combine(Path.GetTempPath(), $"absent-{Guid.NewGuid():N}.manifest.json")));
 
         result.ExitCode.Should().Be(MigrationExitCode.BackupNotVerified);
         ports.Calls.Should().BeEmpty("le refus précède le verrou : aucune entrée en base, aucun verrou pris");
+    }
+
+    // ---- étape 3a : sauvegarde ⇔ base courante (P4-9) ----------------------------------------------------
+
+    [Fact]
+    public async Task Backup_not_matching_the_current_database_is_code_11_under_the_lock_and_before_any_write()
+    {
+        var ports = Installed();
+        ports.BackupMismatch = "la base a changé depuis la sauvegarde";
+
+        var result = await Runner(ports).Runner.RunAsync(Request());
+
+        result.ExitCode.Should().Be(MigrationExitCode.BackupNotVerified);
+        result.Message.Should().Contain("la base a changé depuis la sauvegarde");
+        ports.Calls.Should().Equal("backup.verify", "lock.acquire", "state.read", "backup.confirm", "lock.release");
+        ShouldNotWriteAnything(ports);
+    }
+
+    [Fact]
+    public async Task Backup_is_confirmed_against_the_current_database_first_under_the_lock()
+    {
+        var ports = Installed();
+
+        (await Runner(ports).Runner.RunAsync(Request())).ExitCode.Should().Be(MigrationExitCode.Success);
+
+        ShouldBeInOrder(ports, "backup.verify", "lock.acquire", "state.read", "backup.confirm", "migrator.applied",
+            "metadata.ensure", "migrator.migrate");
+        ports.Calls.IndexOf("backup.confirm").Should().Be(ports.Calls.IndexOf("lock.acquire") + 2,
+            "le rapprochement est le premier contrôle sous verrou");
     }
 
     [Fact]

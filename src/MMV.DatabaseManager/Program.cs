@@ -9,8 +9,8 @@ namespace MMV.DatabaseManager;
 /// <summary>
 /// Point d'entrée de <c>MMV.DatabaseManager</c> (P4-6B, C3) : arguments → composition → runner → code de
 /// sortie. Aucune logique de migration ici. Racine de composition : la <b>seule</b> vérification de
-/// sauvegarde construite est <see cref="RefusingBackupVerification"/> (H12) ; P4-9 la remplacera ici, par un
-/// commit revu.
+/// sauvegarde construite est <see cref="ProofBackupVerification"/> (H12, DP-10, P4-9) — aucune option, variable
+/// ni configuration ne la remplace.
 /// </summary>
 public static class Program
 {
@@ -34,7 +34,7 @@ public static class Program
         bool interactiveInput = false)
     {
         // P4-8 (ADR-PROD-DB-010) : verbes d'administration — provisioning, rotation, premier administrateur,
-        // configuration de poste. Ils ne touchent ni à la vérification de sauvegarde ni aux migrations.
+        // configuration de poste ; P4-9 : sauvegarde et vérification par restauration. Aucun n'applique de migration.
         if (AdministrationOptions.IsAdministrationVerb(args))
         {
             return await AdministrationCommands.RunAsync(args, MigratorConnectionString(environment), output, error,
@@ -99,7 +99,7 @@ public static class Program
                 ConnectionString = connectionString
             }),
             MigrationRunner.DefaultLockTimeout);
-        var runner = new MigrationRunner(session.Ports, new RefusingBackupVerification(), localTrace);
+        var runner = new MigrationRunner(session.Ports, new ProofBackupVerification(BackupPolicy.MaximumAgeBeforeMigration), localTrace);
 
         if (options.Verb == MigrationVerb.Status)
         {

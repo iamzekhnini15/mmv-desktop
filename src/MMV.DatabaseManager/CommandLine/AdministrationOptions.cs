@@ -16,7 +16,13 @@ public enum AdministrationVerb
     BootstrapAdmin,
 
     /// <summary>Écrit la configuration protégée (DPAPI) d'un poste après l'avoir vérifiée (D-13).</summary>
-    ConfigureWorkstation
+    ConfigureWorkstation,
+
+    /// <summary>P4-9 : sauvegarde <c>pg_dump</c> + manifeste. Rôle de sauvegarde (lecture seule).</summary>
+    Backup,
+
+    /// <summary>P4-9 : restauration réelle dans une base de vérification, puis preuve. Identifiant administrateur.</summary>
+    VerifyBackup
 }
 
 /// <summary>
@@ -43,7 +49,14 @@ public sealed record AdministrationOptions(
         MigrationToolOptions.ConnectionStringVariableName + ")\n" +
         "      secrets : mot de passe initial, confirmation\n" +
         "  configure-workstation --host <h> [--port <p>] [--root-certificate <ca.crt>] --database <db> --username <r>\n" +
-        "      secret : secret du rôle applicatif";
+        "      secret : secret du rôle applicatif\n" +
+        "Sauvegarde (P4-9) — chemins absolus :\n" +
+        "  backup --host <h> [--port <p>] [--root-certificate <ca.crt>] --database <db> --username <rôle de sauvegarde>\n" +
+        "            --output-directory <dossier> --operator <ref> [--pg-bin <dossier>]\n" +
+        "      secret : secret du rôle de sauvegarde\n" +
+        "  verify-backup --host <h> [--port <p>] [--root-certificate <ca.crt>] --admin-user <u> [--admin-database <db>]\n" +
+        "            --manifest <fichier .manifest.json> --operator <ref> [--pg-bin <dossier>] [--scratch-database <db>]\n" +
+        "      secret : administrateur";
 
     private static readonly IReadOnlyDictionary<AdministrationVerb, (string[] Required, string[] Optional)> Shapes =
         new Dictionary<AdministrationVerb, (string[], string[])>
@@ -57,7 +70,13 @@ public sealed record AdministrationOptions(
             [AdministrationVerb.BootstrapAdmin] = (["--username", "--operator"], []),
             [AdministrationVerb.ConfigureWorkstation] = (
                 ["--host", "--database", "--username"],
-                ["--port", "--root-certificate"])
+                ["--port", "--root-certificate"]),
+            [AdministrationVerb.Backup] = (
+                ["--host", "--database", "--username", "--output-directory", "--operator"],
+                ["--port", "--root-certificate", "--pg-bin"]),
+            [AdministrationVerb.VerifyBackup] = (
+                ["--host", "--admin-user", "--manifest", "--operator"],
+                ["--port", "--root-certificate", "--admin-database", "--pg-bin", "--scratch-database"])
         };
 
     /// <summary>Le premier argument désigne-t-il un verbe P4-8 ?</summary>
@@ -123,12 +142,15 @@ public sealed record AdministrationOptions(
             return AdministrationParseResult.Invalid("--port attend un entier entre 1 et 65535.");
         }
 
-        if (values.TryGetValue("--root-certificate", out var root) && !Path.IsPathFullyQualified(root))
+        foreach (var pathOption in new[] { "--root-certificate", "--output-directory", "--manifest", "--pg-bin" })
         {
-            return AdministrationParseResult.Invalid("--root-certificate attend un chemin absolu.");
+            if (values.TryGetValue(pathOption, out var path) && !Path.IsPathFullyQualified(path))
+            {
+                return AdministrationParseResult.Invalid($"{pathOption} attend un chemin absolu.");
+            }
         }
 
-        foreach (var identifier in new[] { "--database", "--admin-database", "--migrator-role", "--app-role", "--backup-role", "--role", "--admin-user", "--username" })
+        foreach (var identifier in new[] { "--database", "--admin-database", "--migrator-role", "--app-role", "--backup-role", "--role", "--admin-user", "--username", "--scratch-database" })
         {
             if (values.TryGetValue(identifier, out var name) && !PostgreSqlConnectionSettings.IsUsableIdentifier(name))
             {
@@ -148,6 +170,8 @@ public sealed record AdministrationOptions(
             case "rotate-role-password": verb = AdministrationVerb.RotateRolePassword; return true;
             case "bootstrap-admin": verb = AdministrationVerb.BootstrapAdmin; return true;
             case "configure-workstation": verb = AdministrationVerb.ConfigureWorkstation; return true;
+            case "backup": verb = AdministrationVerb.Backup; return true;
+            case "verify-backup": verb = AdministrationVerb.VerifyBackup; return true;
             default: verb = default; return false;
         }
     }

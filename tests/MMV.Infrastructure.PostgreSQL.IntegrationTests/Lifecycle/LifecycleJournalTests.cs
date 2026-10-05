@@ -199,7 +199,7 @@ public sealed class LifecycleJournalTests : LifecycleTestBase
             new Dictionary<string, string?> { ["MMV_MIGRATOR_CONNECTION_STRING"] = Db.MigratorConnectionString },
             new StringWriter(), new StringWriter(), Path.Combine(Path.GetTempPath(), $"mmv-it-{Guid.NewGuid():N}.log"));
 
-        code.Should().Be(11, "RefusingBackupVerification reste l'implémentation de production jusqu'à P4-9");
+        code.Should().Be(11, "« dump » n'est pas le chemin d'un manifeste vérifié (P4-9) : refus avant tout contact serveur");
         (await Db.AdminScalarAsync<bool>("SELECT to_regnamespace('mmv_meta') IS NULL")).Should().BeTrue();
         (await Db.AdminScalarAsync<bool>("SELECT to_regclass('\"__EFMigrationsHistory\"') IS NULL")).Should().BeTrue();
     }

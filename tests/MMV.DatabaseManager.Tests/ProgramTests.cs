@@ -65,12 +65,24 @@ public sealed class ProgramTests
     public async Task Migrate_is_refused_with_code_11_before_any_server_contact()
     {
         // Le serveur est injoignable : un contact donnerait 20. Le code 11 prouve que la sauvegarde est refusée
-        // AVANT toute connexion (étape 1 avant étape 2) — et RefusingBackupVerification refuse toujours.
+        // AVANT toute connexion (étape 1 avant étape 2) — une référence qui n'est pas un manifeste vérifié est refusée.
         var (code, _, error) = await Run(UnreachableServer,
             "migrate", "--operator", "OP", "--backup-ref", "dump-1", "--app-role", "mmv_app");
 
         code.Should().Be(11);
-        error.Should().Contain("P4-9");
+        error.Should().Contain("--backup-ref");
+    }
+
+    [Fact]
+    public async Task Migrate_with_an_absent_manifest_is_refused_with_code_11_before_any_server_contact()
+    {
+        var absent = Path.Combine(Path.GetTempPath(), $"mmv-absent-{Guid.NewGuid():N}.manifest.json");
+
+        var (code, _, error) = await Run(UnreachableServer,
+            "migrate", "--operator", "OP", "--backup-ref", absent, "--app-role", "mmv_app");
+
+        code.Should().Be(11);
+        error.Should().Contain("introuvable");
     }
 
     [Fact]
@@ -121,5 +133,7 @@ public sealed class ProgramTests
         ((int)MigrationExitCode.VerificationFailed).Should().Be(14);
         ((int)MigrationExitCode.MetadataInconsistent).Should().Be(15);
         ((int)MigrationExitCode.ServerUnreachable).Should().Be(20);
+        ((int)MigrationExitCode.BackupFailed).Should().Be(21);
+        ((int)MigrationExitCode.RestoreVerificationFailed).Should().Be(22);
     }
 }

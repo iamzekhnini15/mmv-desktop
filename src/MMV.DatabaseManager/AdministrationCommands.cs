@@ -1,3 +1,4 @@
+using MMV.DatabaseManager.Backup;
 using MMV.DatabaseManager.CommandLine;
 using MMV.DatabaseManager.Provisioning;
 using MMV.Infrastructure.Configuration;
@@ -6,9 +7,10 @@ using MMV.Infrastructure.Data;
 namespace MMV.DatabaseManager;
 
 /// <summary>
-/// Verbes d'administration P4-8 (ADR-PROD-DB-010) : arguments → secrets (entrée standard) → composant → code de
-/// sortie. Aucune logique ici. Ces verbes ne construisent <b>aucune</b> vérification de sauvegarde et n'appliquent
-/// <b>aucune</b> migration : <c>migrate</c> reste le seul chemin de DDL de schéma (DP-1).
+/// Verbes d'administration P4-8 (ADR-PROD-DB-010) et de sauvegarde P4-9 : arguments → secrets (entrée standard) →
+/// composant → code de sortie. Aucune logique ici. Ces verbes n'appliquent <b>aucune</b> migration : <c>migrate</c>
+/// reste le seul chemin de DDL de schéma (DP-1). <c>verify-backup</c> produit la preuve que <c>migrate</c> exige ;
+/// il ne la contourne pas.
 /// </summary>
 internal static class AdministrationCommands
 {
@@ -134,6 +136,39 @@ internal static class AdministrationCommands
                 result = await new WorkstationConfigurator(WorkstationDatabaseSettingsFile.CreateDefault(), trace).RunAsync(
                     new PostgreSqlConnectionSettings(options.Require("--host"), options.Port, options.Require("--database"),
                         options.Require("--username"), values[0], options.Get("--root-certificate")));
+                break;
+            }
+
+            case AdministrationVerb.Backup:
+            {
+                if (!TryRead(secrets, error, out var values, "Secret du rôle de sauvegarde"))
+                {
+                    return (int)MigrationExitCode.InvalidArguments;
+                }
+
+                result = await new BackupCreator(trace).RunAsync(new BackupRequest(
+                    new PostgreSqlConnectionSettings(options.Require("--host"), options.Port, options.Require("--database"),
+                        options.Require("--username"), values[0], options.Get("--root-certificate")),
+                    options.Require("--output-directory"),
+                    options.Require("--operator"),
+                    options.Get("--pg-bin")));
+                break;
+            }
+
+            case AdministrationVerb.VerifyBackup:
+            {
+                if (!TryRead(secrets, error, out var values, "Secret de l'administrateur PostgreSQL"))
+                {
+                    return (int)MigrationExitCode.InvalidArguments;
+                }
+
+                result = await new RestoreVerifier(trace).RunAsync(new RestoreVerificationRequest(
+                    new PostgreSqlConnectionSettings(options.Require("--host"), options.Port, options.AdminDatabase,
+                        options.Require("--admin-user"), values[0], options.Get("--root-certificate")),
+                    options.Require("--manifest"),
+                    options.Require("--operator"),
+                    options.Get("--pg-bin"),
+                    options.Get("--scratch-database")));
                 break;
             }
 

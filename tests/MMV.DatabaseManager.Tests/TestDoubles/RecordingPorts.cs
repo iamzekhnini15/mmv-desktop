@@ -25,6 +25,9 @@ public sealed class RecordingPorts
     public HashSet<string> Failing { get; } = new();
 
     public bool BackupVerified { get; set; } = true;
+
+    /// <summary>Refus programmé du rapprochement sauvegarde ⇔ base courante (P4-9).</summary>
+    public string? BackupMismatch { get; set; }
     public bool LockAvailable { get; set; } = true;
     public bool RoleExists { get; set; } = true;
     public string? VerificationFailure { get; set; }
@@ -47,7 +50,7 @@ public sealed class RecordingPorts
 
     public MigrationPorts Ports => new(
         new LockDouble(this), new MigratorDouble(this), new MetadataDouble(this),
-        new JournalDouble(this), new GrantsDouble(this), new VerificationDouble(this));
+        new JournalDouble(this), new GrantsDouble(this), new VerificationDouble(this), new FingerprintDouble(this));
 
     private void Record(string call)
     {
@@ -66,6 +69,22 @@ public sealed class RecordingPorts
             return Task.FromResult(p.BackupVerified
                 ? BackupVerificationResult.Verified()
                 : BackupVerificationResult.Refused("refus programmé"));
+        }
+
+        public BackupVerificationResult ConfirmCurrent(BackupVerificationResult verified, DatabaseFingerprint live)
+        {
+            p.Record("backup.confirm");
+            return p.BackupMismatch is null ? verified : BackupVerificationResult.Refused(p.BackupMismatch);
+        }
+    }
+
+    private sealed class FingerprintDouble(RecordingPorts p) : IDatabaseFingerprintReader
+    {
+        public Task<DatabaseFingerprint> ReadAsync(CancellationToken cancellationToken)
+        {
+            p.Record("state.read");
+            return Task.FromResult(new DatabaseFingerprint("7000000000000000001", "mmv", 16384,
+                DateTimeOffset.UnixEpoch, p.Applied.ToArray(), []));
         }
     }
 

@@ -226,6 +226,18 @@ jobs:
           bash tests/MMV.Infrastructure.PostgreSQL.IntegrationTests/Tls/start-tls-servers.sh "$RUNNER_TEMP/mmv-tls"
           cat "$RUNNER_TEMP/mmv-tls/tls.env" >> "$GITHUB_ENV"
 
+      # P4-9 : pg_dump / pg_restore de la MÊME version majeure que le serveur (17) — le client 16 du runner refuse
+      # de sauvegarder un serveur 17. Dépôt officiel PGDG ; dossier exporté pour les tests (MMV_TEST_PG_BIN).
+      - name: Outils clients PostgreSQL 17 (P4-9)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -q postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
+          /usr/lib/postgresql/17/bin/pg_restore --version
+          echo "MMV_TEST_PG_BIN=/usr/lib/postgresql/17/bin" >> "$GITHUB_ENV"
+
       - name: Restore
         run: dotnet restore tests/MMV.Infrastructure.PostgreSQL.IntegrationTests
 
@@ -252,3 +264,7 @@ jobs:
           $notPassed | ForEach-Object { Write-Host ("  - [{0}] {1}" -f $_.outcome, $_.testName) }
           if ($results.Count -eq 0) { Write-Error "Zero test d'integration execute : faux vert refuse."; exit 1 }
           if ($notPassed.Count -gt 0) { Write-Error "Test(s) d'integration ignore(s) ou en echec : un skip en CI est un echec."; exit 1 }
+          # P4-9 : la preuve sauvegarde -> restauration reelle -> verification doit avoir REELLEMENT tourne.
+          $backup = @($results | Where-Object { $_.testName -like '*Backup.BackupRestoreTests*' -and $_.outcome -eq 'Passed' })
+          Write-Host ("Tests sauvegarde/restauration P4-9 : {0} reussi(s)." -f $backup.Count)
+          if ($backup.Count -lt 23) { Write-Error "Preuve P4-9 absente ou incomplete : $($backup.Count) test(s) BackupRestoreTests (23 attendus)."; exit 1 }

@@ -44,5 +44,14 @@ public enum MigrationExitCode
     ProvisioningFailed = 18,
 
     /// <summary>Serveur injoignable ou authentification refusée.</summary>
-    ServerUnreachable = 20
+    ServerUnreachable = 20,
+
+    /// <summary>P4-9 : sauvegarde en échec (<c>pg_dump</c>, droits, disque) ; aucun manifeste n'est écrit.</summary>
+    BackupFailed = 21,
+
+    /// <summary>
+    /// P4-9 : vérification de sauvegarde en échec — fichier altéré, contrôle structurel, restauration réelle ou
+    /// contenu restauré non conforme, privilège insuffisant ; aucune preuve n'est écrite.
+    /// </summary>
+    RestoreVerificationFailed = 22
 }

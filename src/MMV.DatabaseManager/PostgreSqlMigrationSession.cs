@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
+using MMV.DatabaseManager.Backup;
 using MMV.DatabaseManager.Journal;
 using MMV.DatabaseManager.Locking;
 using MMV.DatabaseManager.Permissions;
@@ -34,7 +35,8 @@ public sealed class PostgreSqlMigrationSession : IAsyncDisposable
             new CompatibilityMetadataWriter(_connection),
             new ServerMigrationJournal(_connection),
             new ApplicationRoleGrants(_connection),
-            new ServerSchemaVerification(migrator, _connection));
+            new ServerSchemaVerification(migrator, _connection),
+            new DatabaseFingerprintReader(_connection));
     }
 
     public MigrationPorts Ports { get; }

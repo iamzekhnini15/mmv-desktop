@@ -55,6 +55,12 @@ public static class PostgreSqlTestEnvironment
     /// <summary>Port d'un serveur TLS dont le certificat, signé par la bonne autorité, est expiré.</summary>
     public const string TlsExpiredPortVariableName = "MMV_TEST_POSTGRESQL_TLS_EXPIRED_PORT";
 
+    /// <summary>
+    /// P4-9 : dossier des binaires <c>pg_dump</c> / <c>pg_restore</c> de même version majeure que le serveur. Exigé
+    /// par tout test de sauvegarde qui s'exécute : absent ⇒ échec, jamais un skip.
+    /// </summary>
+    public const string PgBinVariableName = "MMV_TEST_PG_BIN";
+
     /// <summary>Raison d'ignorer un test TLS, ou <c>null</c> s'il doit s'exécuter.</summary>
     public static string? TlsSkipReason(IReadOnlyDictionary<string, string?>? environment = null)
     {

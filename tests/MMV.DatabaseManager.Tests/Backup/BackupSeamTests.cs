@@ -6,39 +6,61 @@ using MMV.DatabaseManager.CommandLine;
 namespace MMV.DatabaseManager.Tests.Backup;
 
 /// <summary>
-/// P4-6B (H12, R-1 ; §6.2 du plan) — U-C9 : aucun contournement de la vérification de sauvegarde. La seule
-/// implémentation de production refuse toujours ; <c>Program.cs</c> ne construit qu'elle ; ni option, ni
-/// variable d'environnement, ni compilation conditionnelle ne l'évitent. Le vérificateur réel est P4-9.
+/// P4-6B (H12, R-1 ; §6.2 du plan), P4-9 — aucun contournement de la vérification de sauvegarde. La seule
+/// implémentation de production est <see cref="ProofBackupVerification"/> ; <c>Program.cs</c> ne construit
+/// qu'elle, avec l'âge maximal de <see cref="BackupPolicy"/> ; ni option, ni variable d'environnement, ni
+/// compilation conditionnelle ne l'évitent.
 /// </summary>
 public sealed class BackupSeamTests
 {
     [Theory]
     [InlineData("dump-2026-10-04")]
-    [InlineData("")]
     [InlineData("verified")]
-    public async Task Refusing_verification_always_refuses(string reference)
+    [InlineData("relative/path.manifest.json")]
+    public async Task A_reference_that_is_not_an_absolute_manifest_path_is_refused(string reference)
     {
-        var result = await new RefusingBackupVerification().VerifyAsync(reference, CancellationToken.None);
+        var result = await new ProofBackupVerification(BackupPolicy.MaximumAgeBeforeMigration).VerifyAsync(reference, CancellationToken.None);
 
         result.IsVerified.Should().BeFalse();
-        result.Reason.Should().Contain("P4-9");
+        result.Reason.Should().Contain("chemin absolu");
     }
 
     [Fact]
-    public void Refusing_verification_is_the_only_implementation_in_the_tool()
+    public void Proof_verification_is_the_only_implementation_in_the_tool()
     {
-        typeof(RefusingBackupVerification).Assembly.GetTypes()
+        typeof(ProofBackupVerification).Assembly.GetTypes()
             .Where(t => typeof(IBackupVerification).IsAssignableFrom(t) && !t.IsInterface)
-            .Should().Equal(typeof(RefusingBackupVerification));
+            .Should().Equal(typeof(ProofBackupVerification));
     }
 
     [Fact]
-    public void Program_constructs_only_the_refusing_verification()
+    public void Program_constructs_only_the_proof_verification_with_the_policy_age()
     {
         var program = ToolSource("Program.cs");
 
-        Regex.Matches(program, @"new\s+RefusingBackupVerification\s*\(").Should().HaveCount(1);
-        program.Should().NotMatchRegex(@"IBackupVerification\s+\w+\s*=\s*(?!new\s+RefusingBackupVerification)");
+        Regex.Matches(program, @"new\s+ProofBackupVerification\s*\(\s*BackupPolicy\.MaximumAgeBeforeMigration\s*\)")
+            .Should().HaveCount(1);
+        Regex.Matches(program, @"new\s+\w*BackupVerification\s*\(").Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void The_maximum_age_is_a_positive_constant_and_never_an_option()
+    {
+        BackupPolicy.MaximumAgeBeforeMigration.Should().BePositive();
+        ToolSource(Path.Combine("CommandLine", "MigrationToolOptions.cs")).Should()
+            .NotMatchRegex(@"""--[a-z-]*(age|old|stale|skip|force)", "aucune option ne relâche la vérification ni l'âge");
+        var act = () => new ProofBackupVerification(TimeSpan.Zero);
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void A_verification_result_without_manifest_is_never_confirmed_by_the_production_verifier()
+    {
+        var verifier = new ProofBackupVerification(BackupPolicy.MaximumAgeBeforeMigration);
+        var live = new DatabaseFingerprint("1", "mmv", 1, DateTimeOffset.UnixEpoch, [], []);
+
+        verifier.ConfirmCurrent(BackupVerificationResult.Verified(), live).IsVerified.Should().BeFalse();
+        verifier.ConfirmCurrent(BackupVerificationResult.Refused("x"), live).IsVerified.Should().BeFalse();
     }
 
     [Fact]
@@ -65,7 +87,8 @@ public sealed class BackupSeamTests
     public void Options_expose_no_bypass()
     {
         typeof(MigrationToolOptions).GetProperties().Select(p => p.Name)
-            .Should().NotContain(n => n.Contains("Skip") || n.Contains("Force") || n.Contains("Verified") || n.Contains("NoBackup"));
+            .Should().NotContain(n => n.Contains("Skip") || n.Contains("Force") || n.Contains("Verified") || n.Contains("NoBackup")
+                                      || n.Contains("Age"));
     }
 
     internal static string ToolSource(string relativePath) =>

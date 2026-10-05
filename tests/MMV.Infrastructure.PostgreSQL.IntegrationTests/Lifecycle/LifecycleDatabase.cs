@@ -215,12 +215,15 @@ public sealed class LifecycleDatabase : IAsyncDisposable
 
 /// <summary>
 /// Double de test qui <b>accepte</b> la sauvegarde (§6.2 : seam de test). N'existe que dans ce projet de tests ;
-/// la production ne construit que <see cref="RefusingBackupVerification"/>.
+/// la production ne construit que <see cref="ProofBackupVerification"/>, prouvée de bout en bout par
+/// <c>Backup/BackupRestoreTests</c> (P4-9).
 /// </summary>
 public sealed class AcceptingBackupVerification : IBackupVerification
 {
     public Task<BackupVerificationResult> VerifyAsync(string backupReference, CancellationToken cancellationToken) =>
         Task.FromResult(BackupVerificationResult.Verified());
+
+    public BackupVerificationResult ConfirmCurrent(BackupVerificationResult verified, DatabaseFingerprint live) => verified;
 }
 
 /// <summary>Base de test de la famille Lifecycle : une base vide neuve et ses rôles PAR TEST.</summary>

@@ -15,7 +15,8 @@ public sealed record MigrationPorts(
     ICompatibilityMetadataWriter Metadata,
     IServerMigrationJournal Journal,
     IApplicationRoleGrants Grants,
-    IServerSchemaVerification Verification);
+    IServerSchemaVerification Verification,
+    IDatabaseFingerprintReader State);
 
 /// <summary>Demande d'exécution d'un verbe qui écrit (<c>migrate</c> ou <c>adopt-compatibility</c>).</summary>
 public sealed record MigrationRunRequest(
@@ -34,9 +35,9 @@ public sealed record MigrationRunResult(MigrationExitCode ExitCode, Guid? RunId,
 /// <b>normatif</b>) :
 /// <code>
 ///  0  options validées + trace locale OPEN                       échec ⇒ 10, aucun contact serveur
-///  1  vérification de sauvegarde                                  échec ⇒ 11, aucune écriture
+///  1  vérification de sauvegarde (fichiers, preuve)              échec ⇒ 11, aucune écriture
 ///  2  verrou consultatif                                          échec ⇒ 12, aucune écriture
-///  3  contrôles en lecture seule : Q-22, existence du rôle        15 / 10, aucune écriture
+///  3  sauvegarde ⇔ base courante (P4-9), puis Q-22, rôle          11 / 15 / 10, aucune écriture
 ///  4  DDL de métadonnée idempotent + GRANT au rôle applicatif     échec ⇒ 13
 ///  5  NETTOYAGE d'un marqueur de maintenance périmé (sous verrou)
 ///  6  maintenance_started_at ← now() (ligne d'initialisation si absente)
@@ -192,7 +193,7 @@ public sealed class MigrationRunner
 
         try
         {
-            return await UnderLockAsync(runId, request, cancellationToken);
+            return await UnderLockAsync(runId, request, backup, cancellationToken);
         }
         finally
         {
@@ -209,9 +210,41 @@ public sealed class MigrationRunner
         }
     }
 
-    private async Task<MigrationRunResult> UnderLockAsync(Guid runId, MigrationRunRequest request, CancellationToken cancellationToken)
+    private async Task<MigrationRunResult> UnderLockAsync(
+        Guid runId, MigrationRunRequest request, BackupVerificationResult backup, CancellationToken cancellationToken)
     {
-        // 3 — contrôles de cohérence, lecture seule.
+        // 3a — P4-9 : la sauvegarde vérifiée est celle de CETTE base, dans son état ACTUEL. Sous le verrou : aucune
+        // autre exécution ne peut migrer entre ce constat et la migration. Lecture seule.
+        DatabaseFingerprint live;
+        try
+        {
+            live = await _ports.State.ReadAsync(cancellationToken);
+        }
+        catch (Exception exception) when (ServerCommand.IsServerUnreachable(exception))
+        {
+            return Result(MigrationExitCode.ServerUnreachable, runId, "Serveur injoignable ou authentification refusée.");
+        }
+        catch (Exception exception)
+        {
+            return Result(MigrationExitCode.BackupNotVerified, runId,
+                $"Sauvegarde non rapprochable : état de la base illisible ({ServerCommand.Describe(exception)}).");
+        }
+
+        var current = _backupVerification.ConfirmCurrent(backup, live);
+        if (!current.IsVerified)
+        {
+            return Result(MigrationExitCode.BackupNotVerified, runId, $"Sauvegarde non vérifiée : {current.Reason}");
+        }
+
+        if (current.Manifest is { } manifest)
+        {
+            // DP-8 : le journal porte l'identifiant de la sauvegarde VÉRIFIÉE, pas seulement l'emplacement donné.
+            request = request with { BackupReference = $"{manifest.BackupId:D} {request.BackupReference}" };
+        }
+
+        _localTrace.Write($"run {runId} : sauvegarde rapprochée de la base courante — {request.BackupReference}");
+
+        // 3b — contrôles de cohérence, lecture seule.
         IReadOnlyList<string> appliedBefore;
         ServerCompatibilityMetadata metadata;
         bool roleExists;
