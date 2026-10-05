@@ -16,8 +16,8 @@ namespace MMV.Infrastructure.Data;
 /// </para>
 ///
 /// <para>
-/// <b>Non branchée en P4-6B</b> : aucun poste ne l'appelle ; le garde-fou de démarrage reste en place. Son
-/// branchement, l'écran de blocage et la levée du garde-fou appartiennent à P4-6C.
+/// <b>Branchée en P4-6C</b> au démarrage de chaque poste PostgreSQL, par <see cref="ServerStartupCheck"/> : un
+/// verdict qui ne permet pas de démarrer devient l'écran de blocage (DP-4).
 /// </para>
 /// </summary>
 public static class ServerSchemaCompatibilityGuard

@@ -1,31 +1,24 @@
 using System;
 using System.IO;
 using System.Text.RegularExpressions;
+using MMV.App.ViewModels;
 using Xunit;
 
 namespace MMV.App.Tests.Architecture;
 
 /// <summary>
-/// P4-5E — Non-régression du garde-fou de démarrage serveur (risque R-E16, ADR-PROD-DB-005).
+/// P4-6C — démarrage d'un poste PostgreSQL (ADR-PROD-DB-009 DP-1, DP-4 ; ADR-PROD-DB-010 D-12.3, D-15). Remplace la
+/// preuve du garde-fou P4-3 / P4-5E, levé délibérément par ce lot.
 ///
 /// <para>
-/// P4-5E ajoute une chaîne de migrations PostgreSQL et modifie <c>DatabaseProviderResolver.Configure</c>,
-/// mais <b>ne lève pas</b> le garde-fou : la préparation d'une base serveur n'existe pas encore (P4-5G,
-/// après P4-5F). Tant qu'il est actif, un poste configuré sur PostgreSQL refuse de démarrer au lieu
-/// d'exécuter le cycle de vie SQLite (sauvegarde, migrations, adoption) contre un serveur.
-/// </para>
-///
-/// <para>
-/// <b>Preuve statique, volontairement.</b> Le garde-fou vit dans la composition privée de
-/// <c>App.axaml.cs</c>, que P4-5E n'a pas le droit de modifier ; l'exécuter exigerait de muter
-/// l'environnement du processus, partagé par les tests parallèles. Ce test lit donc le source et vérifie
-/// que le blocage existe et qu'il précède toute préparation de base. Il doit être <b>mis à jour
-/// délibérément</b> par le lot qui lèvera le garde-fou (P4-5G), jamais contourné.
+/// <b>Preuve statique, volontairement</b> (même motif qu'en P4-5E) : la composition privée de <c>App.axaml.cs</c>
+/// dépend de l'environnement du processus, partagé par les tests parallèles. Le comportement du contrôle lui-même
+/// (<c>ServerStartupCheck</c>) est prouvé contre un vrai PostgreSQL par la suite d'intégration.
 /// </para>
 /// </summary>
 public sealed class ServerStartupGuardTests
 {
-    private const string Guard = "if (!usesSqlite)";
+    private const string ServerBranch = "if (!usesSqlite)";
 
     [Fact]
     public void ProviderSelection_ComesFromTheRuntimeResolver()
@@ -38,47 +31,55 @@ public sealed class ServerStartupGuardTests
     }
 
     [Fact]
-    public void ServerProvider_IsBlocked_BeforeAnyDatabasePreparation()
+    public void ServerProvider_RunsTheStartupCheck_OutsideAnyTry_AndNeverReachesTheSqliteLifecycle()
     {
         var source = AppCompositionSource();
 
-        var guard = source.IndexOf(Guard, StringComparison.Ordinal);
-        Assert.True(guard >= 0, "Le garde-fou de démarrage serveur a disparu de App.axaml.cs.");
+        var branch = source.IndexOf(ServerBranch, StringComparison.Ordinal);
+        Assert.True(branch >= 0, "La branche serveur de App.axaml.cs a disparu.");
+        var block = source.Substring(branch, source.IndexOf("return serviceProvider;", branch, StringComparison.Ordinal) - branch);
 
-        var block = source.Substring(guard, source.IndexOf('}', guard) - guard);
-        Assert.Contains("throw new DatabaseConfigurationException(", block);
+        Assert.Contains("ServerStartupCheck.Run(", block);
+        Assert.DoesNotContain("throw new DatabaseConfigurationException(", block);
 
-        // Le blocage n'est enveloppé dans aucun try : aucun catch générique ne peut le masquer.
+        // Hors de tout try : aucun catch générique ne peut avaler un blocage (K-13).
         var firstTry = Regex.Match(source, @"^\s*try\s*$", RegexOptions.Multiline);
-        Assert.True(firstTry.Success && firstTry.Index > guard,
-            "Le garde-fou serveur doit précéder le premier bloc try de App.axaml.cs.");
+        Assert.True(firstTry.Success && firstTry.Index > branch, "Le contrôle serveur doit précéder le premier bloc try.");
 
-        // Et il précède toute étape du cycle de vie SQLite.
-        foreach (var sqliteStep in new[] { "new SqliteDatabaseManager(", ".PrepareDatabase(", ".Seed(" })
+        // La branche serveur se termine avant tout le cycle de vie SQLite et tout seed (DP-1, D-12.3).
+        var exit = source.IndexOf("return serviceProvider;", branch, StringComparison.Ordinal);
+        foreach (var sqliteStep in new[] { "new SqliteDatabaseManager(", ".PrepareDatabase(", ".Seed(", "LegacyDatabaseRecoveryService" })
         {
             var position = source.IndexOf(sqliteStep, StringComparison.Ordinal);
-            Assert.True(position > guard, $"« {sqliteStep} » doit suivre le garde-fou serveur.");
+            Assert.True(position > exit, $"« {sqliteStep} » ne doit être atteint que par la branche SQLite.");
+        }
+
+        foreach (var forbidden in new[] { "Migrate(", "EnsureCreated(", "DatabaseSeeder" })
+        {
+            Assert.DoesNotContain(forbidden, block);
         }
     }
 
-    /// <summary>
-    /// P4-8 (D-15) : base centrale injoignable ⇒ arrêt explicite AVANT le garde-fou et AVANT tout bloc try — aucune
-    /// opération, aucune nouvelle tentative, aucun catch qui l'avalerait.
-    /// </summary>
     [Fact]
-    public void ServerAvailability_IsChecked_BeforeTheGuard_AndOutsideAnyTry()
+    public void BlockedStartup_ShowsTheBlockingWindow_InsteadOfTheLogin()
     {
         var source = AppCompositionSource();
 
-        var probe = source.IndexOf("PostgreSqlConnectivityProbe.EnsureAvailable(", StringComparison.Ordinal);
-        Assert.True(probe >= 0, "La vérification de disponibilité serveur (D-15) a disparu de App.axaml.cs.");
-        Assert.True(probe < source.IndexOf(Guard, StringComparison.Ordinal),
-            "La vérification de disponibilité doit précéder le garde-fou serveur.");
+        Assert.Matches(new Regex(@"if \(_startupBlock is not null\)\s*\{\s*ShowBlockingWindow\(desktop, _startupBlock\);\s*\}\s*else\s*\{\s*ShowLoginWindow\(desktop\);"), source);
+        Assert.Contains("new DatabaseBlockedView", source);
+    }
 
-        var firstTry = Regex.Match(source, @"^\s*try\s*$", RegexOptions.Multiline);
-        Assert.True(firstTry.Success && firstTry.Index > probe,
-            "La vérification de disponibilité ne doit être enveloppée dans aucun try.");
-        Assert.DoesNotContain("EnsureAvailableAsync", source);
+    [Fact]
+    public void BlockingScreen_OnlyOffersToQuit()
+    {
+        var quitCalls = 0;
+        var viewModel = new DatabaseBlockedViewModel("Titre", "Constat", "Action", () => quitCalls++);
+
+        viewModel.QuitCommand.Execute(null);
+
+        Assert.Equal(1, quitCalls);
+        Assert.Equal(("Titre", "Constat", "Action"), (viewModel.Title, viewModel.Message, viewModel.Action));
+        Assert.DoesNotContain(typeof(DatabaseBlockedViewModel).GetProperties(), p => p.Name.Contains("Retry", StringComparison.Ordinal));
     }
 
     private static string AppCompositionSource()

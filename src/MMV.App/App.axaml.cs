@@ -30,6 +30,9 @@ public partial class App : Avalonia.Application
 {
     private IServiceProvider? _serviceProvider;
 
+    /// <summary>P4-6C : écran de blocage d'un poste PostgreSQL non servi ; <c>null</c> ⇒ démarrage normal.</summary>
+    private ServerStartupBlock? _startupBlock;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -42,10 +45,36 @@ public partial class App : Avalonia.Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            ShowLoginWindow(desktop);
+            if (_startupBlock is not null)
+            {
+                ShowBlockingWindow(desktop, _startupBlock);
+            }
+            else
+            {
+                ShowLoginWindow(desktop);
+            }
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// P4-6C (DP-4) : écran de blocage — constat, action attendue, Quitter. Aucune fenêtre de connexion, aucune
+    /// session métier, aucune nouvelle tentative (D-15).
+    /// </summary>
+    private static void ShowBlockingWindow(IClassicDesktopStyleApplicationLifetime desktop, ServerStartupBlock block)
+    {
+        desktop.MainWindow = new Window
+        {
+            Title = $"{block.Title} - ManageMyVision",
+            Width = 760,
+            Height = 440,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            Content = new DatabaseBlockedView
+            {
+                DataContext = new DatabaseBlockedViewModel(block.Title, block.Message, block.Action, () => desktop.Shutdown())
+            }
+        };
     }
 
     /// <summary>
@@ -199,29 +228,21 @@ public partial class App : Avalonia.Application
         // démarrage. Une configuration absente/ambiguë retombe sur le défaut sûr (Production, sans seed).
         var seedOptions = SeedOptionsResolver.Resolve();
 
-        // Base centrale injoignable (P4-8, D-15) : ARRÊT EXPLICITE avant toute opération — une seule tentative,
-        // bornée, sans nouvel essai (la résilience appartient à P4-10). Hors de tout try : aucun catch ne peut
-        // l'avaler (K-13). Refuse aussi une identité PostgreSQL privilégiée sur un poste (DP-5). Le garde-fou
-        // P4-3 ci-dessous reste en place : sa levée appartient à P4-6C.
-        if (databaseProviderOptions.Provider == DatabaseProvider.PostgreSql)
-        {
-            PostgreSqlConnectivityProbe.EnsureAvailable(databaseProviderOptions.ConnectionString!);
-        }
-
-        // Garde-fou de démarrage serveur (P4-3), VOLONTAIRE et placé AVANT le bloc try afin qu'aucun
-        // catch générique ne puisse le masquer par un repli silencieux sur SQLite. Le fournisseur est
-        // correctement sélectionné côté EF ; ce qui manque est la chaîne de préparation/migrations
-        // serveur (P4-5/P4-6). Tant qu'elle n'existe pas, on refuse de démarrer plutôt que d'exécuter
-        // un cycle de vie SQLite (sauvegarde, migrations, adoption) contre une base PostgreSQL.
+        // Poste PostgreSQL (P4-6C ; ADR-PROD-DB-009 DP-1, DP-4 ; ADR-PROD-DB-010 D-12.3, D-15) — remplace le
+        // garde-fou P4-3. AVANT toute opération et hors de tout try (K-13) : disponibilité (une tentative bornée,
+        // identité non privilégiée), puis garde de compatibilité, en lecture seule. Non servi ⇒ écran de blocage.
+        // Servi ⇒ connexion directe : le poste ne migre jamais (DP-1), ne sème rien (D-12.3 : premier
+        // administrateur par MMV.DatabaseManager bootstrap-admin) et n'exécute JAMAIS le cycle de vie SQLite
+        // (sauvegarde de fichier, migrations, adoption) contre un serveur.
         if (!usesSqlite)
         {
-            throw new DatabaseConfigurationException(
-                $"Le fournisseur '{databaseProviderOptions.Provider}' est correctement sélectionné comme " +
-                "fournisseur EF, mais la préparation et les migrations serveur ne sont pas encore " +
-                "disponibles : elles arrivent avec P4-5/P4-6. Le démarrage est bloqué volontairement " +
-                "(aucun repli sur SQLite, aucune migration SQLite exécutée contre un serveur). " +
-                $"Pour démarrer aujourd'hui, retirez {DatabaseProviderResolver.ProviderVariableName} " +
-                "ou positionnez-la sur 'sqlite'.");
+            _startupBlock = ServerStartupCheck.Run(databaseProviderOptions.ConnectionString!, () =>
+            {
+                var options = new DbContextOptionsBuilder<OpticDbContext>();
+                DatabaseProviderResolver.Configure(options, databaseProviderOptions, null);
+                return new OpticDbContext(options.Options);
+            });
+            return serviceProvider;
         }
 
         // À partir d'ici, SQLite est le fournisseur retenu : le chemin de fichier est donc résolu.
