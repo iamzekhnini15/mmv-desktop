@@ -381,6 +381,48 @@ public sealed class SupplierBusinessRulesTests : IDisposable
         verify.Products.AsNoTracking().Should().ContainSingle().Which.ProductId.Should().Be(productId);
     }
 
+    /// <summary>Runner qui simule l'issue de persistance du filet FK, sans exécuter l'opération.</summary>
+    private sealed class ThrowingTransactionRunner(Exception failure) : MMV.Domain.Interfaces.Persistence.ITransactionRunner
+    {
+        public Task RunAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken = default)
+            => Task.FromException(failure);
+
+        public Task<TResult> RunAsync<TResult>(Func<CancellationToken, Task<TResult>> operation, CancellationToken cancellationToken = default)
+            => Task.FromException<TResult>(failure);
+    }
+
+    [Fact]
+    public async Task Delete_FiletFK_ViolationDeContrainte_DevientLeMemeRefusMetier()
+    {
+        // P4-12 : sous PostgreSQL, un produit validé pendant que le DELETE attendait son verrou fait rejeter la
+        // suppression par la FK (inatteignable sous SQLite, d'où le runner simulé ; preuve réelle dans
+        // MultiProcessTests). L'utilisateur lit la même règle métier que pour la garde atomique.
+        var dbPath = NewDatabase("delete-fk-net.db");
+        using var ctx = CreateContext(dbPath);
+        var useCase = new DeleteSupplierUseCase(new SupplierRepository(ctx), new ThrowingTransactionRunner(
+            new PersistenceException("violation FK", PersistenceErrorCategory.ConstraintViolation)));
+
+        var exception = (await useCase.Invoking(u => u.ExecuteAsync(new DeleteSupplierCommand { SupplierId = 1 }))
+            .Should().ThrowAsync<BusinessRuleException>()).Which;
+
+        exception.Message.Should().Be(DeleteSupplierUseCase.SupplierHasProductsMessage);
+    }
+
+    [Theory]
+    [InlineData(PersistenceErrorCategory.Unknown)]
+    [InlineData(PersistenceErrorCategory.UniqueConstraint)]
+    [InlineData(PersistenceErrorCategory.DatabaseBusy)]
+    public async Task Delete_FiletFK_AutresCategories_NeSontPasMasquees(PersistenceErrorCategory category)
+    {
+        var dbPath = NewDatabase($"delete-fk-other-{category}.db");
+        using var ctx = CreateContext(dbPath);
+        var failure = new PersistenceException("panne", category);
+        var useCase = new DeleteSupplierUseCase(new SupplierRepository(ctx), new ThrowingTransactionRunner(failure));
+
+        (await useCase.Invoking(u => u.ExecuteAsync(new DeleteSupplierCommand { SupplierId = 1 }))
+            .Should().ThrowAsync<PersistenceException>()).Which.Should().BeSameAs(failure);
+    }
+
     [Fact]
     public async Task Delete_Refuse_NExposeAucunMessageProvider()
     {

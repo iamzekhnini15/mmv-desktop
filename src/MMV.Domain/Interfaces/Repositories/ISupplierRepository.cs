@@ -42,6 +42,17 @@ public interface ISupplierRepository : IGenericRepository<Supplier, long>
     /// La clé étrangère <c>Product → Supplier</c> reste en <c>Restrict</c> : elle demeure le filet ultime contre
     /// une régression de configuration ou un chemin de suppression alternatif.
     /// </para>
+    /// <para>
+    /// <b>Course réelle sous PostgreSQL (P4-12).</b> En <c>READ COMMITTED</c>, la condition est évaluée sur
+    /// l'instantané de l'instruction : un produit inséré par un autre poste mais <b>pas encore validé</b> n'y est pas
+    /// visible. Le <c>DELETE</c> attend alors le verrou que cette insertion tient sur la ligne fournisseur, puis, une
+    /// fois l'insertion validée, la FK <c>Restrict</c> le rejette. La méthode <b>lève</b> dans ce cas l'exception du
+    /// provider (classée <c>PersistenceErrorCategory.ConstraintViolation</c> par
+    /// <c>PersistenceErrorMapper</c>) au lieu de rendre <c>false</c>. Rien n'est supprimé, aucun orphelin n'existe.
+    /// L'exception n'est pas absorbée ici : PostgreSQL a déjà annulé la transaction englobante, qui ne peut plus rien
+    /// écrire. L'appelant traite donc <b>deux formes</b> du même refus — <c>false</c> et cette violation de
+    /// contrainte (c'est ce que fait <c>DeleteSupplierUseCase</c>).
+    /// </para>
     /// </remarks>
     /// <returns>
     /// <c>true</c> si la ligne fournisseur a été supprimée (1 ligne affectée) ; <c>false</c> si rien n'a été
@@ -49,6 +60,10 @@ public interface ISupplierRepository : IGenericRepository<Supplier, long>
     /// booléen ne distingue pas ces deux cas : c'est au use case de les départager par une lecture de diagnostic
     /// <b>a posteriori</b>, qui ne décide jamais de l'écriture.
     /// </returns>
+    /// <exception cref="System.Exception">
+    /// Violation de la FK <c>Restrict</c> par une insertion concurrente de produit, validée pendant que le
+    /// <c>DELETE</c> attendait (voir remarques) : refus, jamais suppression partielle.
+    /// </exception>
     Task<bool> TryDeleteIfUnusedAsync(long supplierId, CancellationToken cancellationToken = default);
 
     /// <summary>

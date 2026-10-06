@@ -157,12 +157,92 @@ public sealed class MultiProcessTests : PostgreSqlTestBase
             }
 
             var results = await Workstations.RaceAsync(Cs, [Run("delete-supplier", supplierId), Run("product", supplierId, $"REF-{round}")]);
+            var outcome = string.Join("/", results);
 
-            string.Join("/", results).Should().BeOneOf("deleted/error:ConstraintViolation", "refused/created");
-            var supplierExists = await ReadAsync(c => c.Suppliers.AnyAsync(s => s.SupplierId == supplierId));
-            var products = await ReadAsync(c => c.Products.CountAsync(p => p.SupplierId == supplierId));
-            (supplierExists ? products == 1 : products == 0).Should().BeTrue($"manche {round} : {string.Join(" | ", results)}");
+            // Invariants d'abord, quelle que soit l'issue : ils sont la garantie, l'issue n'est que son affichage.
+            await AssertSupplierProductInvariantsAsync(supplierId, outcome);
+            // Issues du contrat final (cas d'usage de production) : la suppression gagne et la création perd sur la
+            // FK, ou la création gagne et la suppression est refusée — que le refus vienne de la garde atomique ou
+            // du filet FK (produit validé pendant que le DELETE attendait, entrelacement forcé par le test suivant).
+            outcome.Should().BeOneOf("deleted/error:ConstraintViolation", "refused/created");
         }
+    }
+
+    [PostgreSqlFact]
+    public async Task Supplier_deletion_waiting_on_an_uncommitted_product_is_refused_by_the_fk_net()
+    {
+        long supplierId;
+        await using (var context = NewContext())
+        {
+            supplierId = await Arrange.SupplierAsync(context, "Fournisseur verrouillé");
+        }
+
+        // Entrelacement déterministe de la course P4-12 : le produit est inséré et sa transaction tenue ouverte ; la
+        // suppression démarre, ne voit pas ce produit non validé, et se bloque sur le verrou FK de la ligne
+        // fournisseur ; alors seulement le produit est validé.
+        await using var middle = await Workstations.HoldAsync(Cs, Workstations.MiddleBarrier);
+        var product = Workstations.Start(Cs, new Dictionary<string, string> { ["MMV_WORKER_BARRIER2"] = Workstations.MiddleBarrier.ToString() },
+            Run("product-held", supplierId, "REF-HELD"));
+        var deletion = (System.Diagnostics.Process?)null;
+        try
+        {
+            await Workstations.WaitForWaitersAsync(Cs, Workstations.MiddleBarrier, 1);
+            deletion = Workstations.Start(Cs, null, Run("delete-supplier", supplierId));
+            await WaitForBlockedDeleteAsync();
+            await middle.ReleaseAsync();
+
+            var outcome = $"{await Workstations.ResultAsync(deletion)}/{await Workstations.ResultAsync(product)}";
+
+            await AssertSupplierProductInvariantsAsync(supplierId, outcome);
+            outcome.Should().Be("refused/created", "la FK rejette le DELETE et le cas d'usage rend le refus métier stable");
+        }
+        finally
+        {
+            foreach (var worker in new[] { product, deletion }.Where(w => w is { HasExited: false }))
+            {
+                worker!.Kill(entireProcessTree: true);
+            }
+        }
+    }
+
+    // Un DELETE sur "Suppliers" en attente d'un verrou (celui que l'insertion du produit tient sur la ligne).
+    private async Task WaitForBlockedDeleteAsync()
+    {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        await using var connection = new Npgsql.NpgsqlConnection(new Npgsql.NpgsqlConnectionStringBuilder(Cs) { Pooling = false }.ConnectionString);
+        await connection.OpenAsync();
+        while (true)
+        {
+            await using var command = new Npgsql.NpgsqlCommand(
+                "SELECT count(*) FROM pg_catalog.pg_stat_activity WHERE datname = current_database() " +
+                "AND wait_event_type = 'Lock' AND query ILIKE '%DELETE FROM \"Suppliers\"%'", connection);
+            if ((long)(await command.ExecuteScalarAsync())! >= 1)
+            {
+                return;
+            }
+
+            if (clock.Elapsed > TimeSpan.FromSeconds(90))
+            {
+                throw new TimeoutException("Le DELETE du fournisseur ne s'est jamais bloqué sur le verrou du produit.");
+            }
+
+            await Task.Delay(50);
+        }
+    }
+
+    // Garantie de P3-9 relue par une connexion indépendante : le fournisseur existe si et seulement s'il a gardé son
+    // produit, aucun produit n'est orphelin dans toute la base, et la FK Restrict est toujours en place et validée.
+    private async Task AssertSupplierProductInvariantsAsync(long supplierId, string outcome)
+    {
+        var supplierExists = await ReadAsync(c => c.Suppliers.AnyAsync(s => s.SupplierId == supplierId));
+        var products = await ReadAsync(c => c.Products.CountAsync(p => p.SupplierId == supplierId));
+        (supplierExists ? products == 1 : products == 0).Should().BeTrue($"issue {outcome} : fournisseur {supplierExists}, produits {products}");
+        (await ReadAsync(c => c.Products.CountAsync(p => !c.Suppliers.Any(s => s.SupplierId == p.SupplierId))))
+            .Should().Be(0, $"aucun produit orphelin (issue {outcome})");
+        (await ReadAsync(c => c.Database.SqlQueryRaw<int>(
+                "SELECT count(*)::int AS \"Value\" FROM pg_catalog.pg_constraint WHERE contype = 'f' AND convalidated " +
+                "AND confdeltype = 'r' AND conrelid = '\"Products\"'::regclass AND confrelid = '\"Suppliers\"'::regclass").SingleAsync()))
+            .Should().Be(1, "FK Products → Suppliers en Restrict, validée");
     }
 
     [PostgreSqlFact]

@@ -40,11 +40,14 @@ namespace MMV.Application.UseCases.Suppliers.DeleteSupplier;
 /// <b>Frontière transactionnelle et filet FK.</b> L'instruction atomique est enveloppée dans
 /// <see cref="ITransactionRunner"/> non pour la rendre atomique — elle l'est déjà — mais parce que le runner est
 /// le <b>seul</b> mécanisme du dépôt qui traduit une erreur de persistance en <c>PersistenceException</c> neutre
-/// via <c>PersistenceErrorMapper</c>. La FK <c>Restrict</c> reste le filet ultime (chemin de suppression
-/// alternatif, régression de configuration) : si elle se déclenchait, la violation de contrainte serait convertie
-/// en <b>exactement le même</b> <see cref="SupplierHasProductsMessage"/> que la garde atomique. Chemin normal et
-/// chemin concurrent produisent un résultat public identique ; aucun message EF/SQLite n'est jamais exposé. Les
-/// autres catégories de persistance restent propagées, pour ne pas masquer une panne réelle.
+/// via <c>PersistenceErrorMapper</c>. La FK <c>Restrict</c> est le filet de la garde atomique, et ce filet
+/// <b>se déclenche réellement</b> sous PostgreSQL : un produit inséré sur un autre poste mais pas encore validé
+/// échappe à la condition, le <c>DELETE</c> attend son verrou puis la FK le rejette (course mesurée en CI P4-10,
+/// prouvée de façon déterministe en P4-12 ; contrat sur <see cref="ISupplierRepository.TryDeleteIfUnusedAsync"/>).
+/// La violation de contrainte est convertie en <b>exactement le même</b> <see cref="SupplierHasProductsMessage"/>
+/// que la garde atomique. Chemin normal et chemin concurrent produisent un résultat public identique ; aucun
+/// message EF/provider n'est jamais exposé. Les autres catégories de persistance restent propagées, pour ne pas
+/// masquer une panne réelle.
 /// </para>
 /// <para>
 /// <b>Aucune désactivation, aucun archivage.</b> Un fournisseur sans produit ne porte aucun historique — c'est sa
@@ -85,9 +88,10 @@ public sealed class DeleteSupplierUseCase : IDeleteSupplierUseCase
         }
         catch (PersistenceException ex) when (ex.Category == PersistenceErrorCategory.ConstraintViolation)
         {
-            // Filet FK : la condition atomique rend ce chemin normalement inatteignable, mais si la contrainte
-            // d'intégrité se déclenchait malgré tout, l'utilisateur doit lire la MÊME règle métier — jamais le
-            // message du provider. Seule la catégorie « contrainte » est convertie ; les autres remontent.
+            // Filet FK : chemin ATTEIGNABLE sous PostgreSQL (produit concurrent validé pendant que le DELETE
+            // attendait son verrou — voir remarques). Le fournisseur est intact, il a un produit : c'est le même
+            // refus métier que la garde atomique, jamais le message du provider. Seule la catégorie « contrainte »
+            // est convertie ; les autres remontent.
             throw new BusinessRuleException(SupplierHasProductsMessage);
         }
 

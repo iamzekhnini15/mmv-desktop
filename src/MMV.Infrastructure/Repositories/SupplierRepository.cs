@@ -50,9 +50,13 @@ public class SupplierRepository : BaseRepository<Supplier, long>, ISupplierRepos
         // Suppression conditionnelle atomique (P3-9) : « ce fournisseur existe ET aucun produit ne le référence »
         // est évalué par la MÊME instruction SQL que le DELETE — traduit en
         // DELETE FROM "Suppliers" WHERE "SupplierId" = @p AND NOT EXISTS (SELECT 1 FROM "Products" …).
-        // Aucun « check-then-act » : un produit créé concurremment entre une vérification et l'écriture est vu par
-        // la condition elle-même. s.Products couvre les produits ACTIFS ET INACTIFS (aucun filtre IsActive) : un
-        // produit désactivé garde sa ligne, donc sa FK.
+        // Aucun « check-then-act » : un produit déjà validé est vu par la condition elle-même. Sous PostgreSQL
+        // (READ COMMITTED), un produit inséré mais pas encore validé au moment de l'instantané échappe à la
+        // condition : le DELETE attend le verrou de cette insertion, puis la FK Restrict le rejette et l'exception
+        // remonte (refus, rien de supprimé — contrat détaillé sur ISupplierRepository, preuve déterministe P4-12).
+        // Elle n'est pas absorbée : la transaction englobante est déjà annulée par le serveur.
+        // s.Products couvre les produits ACTIFS ET INACTIFS (aucun filtre IsActive) : un produit désactivé garde sa
+        // ligne, donc sa FK.
         //
         // ExecuteDeleteAsync contourne délibérément le change tracker : la décision porte sur l'état réel de la
         // base, jamais sur une navigation déjà chargée en mémoire.

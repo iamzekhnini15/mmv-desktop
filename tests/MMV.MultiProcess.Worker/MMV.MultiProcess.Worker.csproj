@@ -17,6 +17,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- P4-12 : la suppression de fournisseur passe par le cas d'usage de production (refus métier, filet FK). -->
+    <ProjectReference Include="..\..\src\MMV.Application\MMV.Application.csproj" />
     <ProjectReference Include="..\..\src\MMV.Infrastructure\MMV.Infrastructure.csproj" />
     <!-- Chaîne de migrations PostgreSQL chargée par nom : copiée en sortie comme pour l'application. -->
     <ProjectReference Include="..\..\src\MMV.Infrastructure.PostgreSQL.Migrations\MMV.Infrastructure.PostgreSQL.Migrations.csproj" />

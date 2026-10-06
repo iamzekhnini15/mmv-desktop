@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using MMV.Application.UseCases.Suppliers.DeleteSupplier;
 using MMV.Domain.Constants;
 using MMV.Domain.Entities;
 using MMV.Domain.Enums;
@@ -142,8 +143,9 @@ await using (var context = NewContext())
                 CreatedAt = DateTime.UtcNow
             }) ? "created" : "exists",
             "user" => await UserAsync(p[0]),
-            "delete-supplier" => await new SupplierRepository(context).TryDeleteIfUnusedAsync(Arg(0)) ? "deleted" : "refused",
+            "delete-supplier" => await DeleteSupplierAsync(Arg(0)),
             "product" => await ProductAsync(Arg(0), p[1]),
+            "product-held" => await HeldProductAsync(Arg(0), p[1]),
             "loop-sales" => await LoopAsync(Arg(0), (int)Arg(1)),
             "hold-sale" => await HoldAsync(Arg(0)),
             _ => throw new ArgumentException($"Scénario inconnu : {scenario}")
@@ -182,19 +184,49 @@ await using (var context = NewContext())
         return "created";
     }
 
+    // Chemin de production complet (cas d'usage + runner + dépôt) : l'issue est celle que lit l'utilisateur.
+    async Task<string> DeleteSupplierAsync(long supplierId)
+    {
+        try
+        {
+            var deletion = await new DeleteSupplierUseCase(new SupplierRepository(context), new EfTransactionRunner(context))
+                .ExecuteAsync(new DeleteSupplierCommand { SupplierId = supplierId });
+            return deletion.SupplierFound ? "deleted" : "absent";
+        }
+        catch (BusinessRuleException exception) when (exception.Message == DeleteSupplierUseCase.SupplierHasProductsMessage)
+        {
+            return "refused";
+        }
+    }
+
+    Product NewProduct(long supplierId, string reference) => new()
+    {
+        Reference = reference,
+        Name = "Produit " + reference,
+        Category = ProductCategoryEnum.MONTURE,
+        SupplierId = supplierId,
+        PurchasePrice = 20m,
+        SalePrice = 60m,
+        StockQuantity = 1
+    };
+
     async Task<string> ProductAsync(long supplierId, string reference)
     {
-        context.Products.Add(new Product
-        {
-            Reference = reference,
-            Name = "Produit " + reference,
-            Category = ProductCategoryEnum.MONTURE,
-            SupplierId = supplierId,
-            PurchasePrice = 20m,
-            SalePrice = 60m,
-            StockQuantity = 1
-        });
+        context.Products.Add(NewProduct(supplierId, reference));
         await context.SaveChangesAsync();
+        return "created";
+    }
+
+    // Produit inséré puis transaction TENUE ouverte au rendez-vous MMV_WORKER_BARRIER2 : l'insertion verrouille la
+    // ligne fournisseur (FK) sans être visible des autres postes tant que le test ne relâche pas la barrière.
+    async Task<string> HeldProductAsync(long supplierId, string reference)
+    {
+        await new EfTransactionRunner(context).RunAsync(async ct =>
+        {
+            context.Products.Add(NewProduct(supplierId, reference));
+            await context.SaveChangesAsync(ct);
+            await BarrierAsync("MMV_WORKER_BARRIER2");
+        });
         return "created";
     }
 
