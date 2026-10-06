@@ -783,7 +783,7 @@ se termine par **commit + CI verte sur le SHA exact**.
 - **Objectif** : recette fonctionnelle réelle sur plusieurs postes d'un même magasin.
 - **Dépendances** : P4-6 … P4-10.
 - **Tests attendus** : parcours métier complets simultanés (comptoir + atelier + back-office).
-- **État** : **PRÉPARÉE — NON EXÉCUTÉE** (05/10/2026) : exige le laboratoire Windows (MMV-SRV / MMV-CLI + un second
+- **État** : **MISE EN ATTENTE — `DEFERRED / BLOCKED`** (06/10/2026 : contraintes du laboratoire Windows, NTP) ; **PRÉPARÉE — NON EXÉCUTÉE** (05/10/2026) : exige le laboratoire Windows (MMV-SRV / MMV-CLI + un second
   client) et un opérateur — [checklist reproductible](../operations/P4-11-multi-workstation-acceptance-checklist.md).
   Porte aussi O12 (Windows natif), RR4 (dry-run sur copie de production) et la volumétrie réelle de P4-7.
 
@@ -792,8 +792,11 @@ se termine par **commit + CI verte sur le SHA exact**.
 - **Objectif** : vérifier **tous** les critères de sortie et prononcer le verdict V1 multi-poste.
 - **Dépendances** : toutes les étapes retenues.
 - **Sortie** : `P4 = CLOSED` / `V1 MULTI-POSTE = GO` **uniquement** si §4 est intégralement satisfait.
-- **État** : **NON DÉMARRÉ** ; préparation : [état des 18 critères](../implementation/P4-12-exit-criteria-readiness.md)
-  (15 prouvés en CI, 2 et 3 partiellement, 18 dépend de P4-11 ; aucun verdict prononcé).
+- **État** : **PRÉ-AUDIT FAIT** (06/10/2026) — [rapport](../implementation/P4-12-exit-criteria-readiness.md) :
+  `P4 = NOT CLOSED`, `V1 MULTI-POSTE = NOT GO`. CI rouge de `p4-multi-poste` (`37304770469`, oracle incomplet de la
+  course suppression fournisseur / création produit) corrigée par `7df0d01` ; second test instable (P4-7, journal `-wal`, CI rouge `37459291267`) corrigé par
+  `da311dd` (CI `37464003636`) ; critères 8 et 15
+  réévalués PASS (CI Linux). Restent bloqués par P4-11 seule : 3, 18 et le volet Windows natif de 2, 5, 7 … 13.
 
 > **Note de découpage** : P4-4 fusionne « portage des primitives » et « traduction des erreurs » car l'audit montre
 > qu'ils portent sur les **mêmes fichiers** et la **même frontière** (Infrastructure), et qu'un portage sans
@@ -897,8 +900,8 @@ décidée. Elle **n'est pas** incluse dans P4-0.
 | **P4-8** — configuration, secrets et déploiement de la base centrale | **`COMPLETE — CLOSED`** — `3dea70c` (CI `37236625898`) ; audit indépendant `PASS WITH CONDITIONS` (05/10/2026) ; conditions M1 + M3 corrigées `f6ac102` (CI `37241752620`), M2 `aa2dfea` (CI `37242171263`, `37242549564`) ; **audit final read-only `READY TO CLOSE`** (05/10/2026) ([ADR-PROD-DB-010](adr-prod-db-010-provisioning-and-connection-security.md) · [rapport](../implementation/P4-8-provisioning-and-connection-security-report.md)) |
 | **P4-7** — import SQLite → PostgreSQL | **`COMPLETE — CLOSED`** — `7c06c23`, CI `37299060335` ([rapport](../implementation/P4-7-sqlite-import-report.md)) |
 | **P4-10** — multi-processus et résilience | **`COMPLETE — CLOSED`** — `c2f6395` + `2c647bb`, CI `37302429560` ([rapport](../implementation/P4-10-resilience-report.md)) |
-| **P4-11** — recette plusieurs postes | **PRÉPARÉE — NON EXÉCUTÉE** — infrastructure Windows et opérateur requis ([checklist](../operations/P4-11-multi-workstation-acceptance-checklist.md)) |
-| **P4-12** — audit final | **NON DÉMARRÉ** — [préparation](../implementation/P4-12-exit-criteria-readiness.md), aucun verdict |
+| **P4-11** — recette plusieurs postes | **MISE EN ATTENTE (`DEFERRED / BLOCKED`)** — préparée, non exécutée ; laboratoire Windows (NTP, licences) et opérateur requis ([checklist](../operations/P4-11-multi-workstation-acceptance-checklist.md)) |
+| **P4-12** — audit final | **PRÉ-AUDIT FAIT (06/10/2026)** — `P4 = NOT CLOSED` ; CI rouge `37304770469` corrigée par `7df0d01` ; second test instable (P4-7, CI rouge `37459291267`) corrigé par `da311dd` (CI `37464003636`) ; [rapport](../implementation/P4-12-exit-criteria-readiness.md) |
 
 **État courant en vigueur** *(les blocs d'état antérieurs marqués `[HISTORIQUE]` plus haut sont remplacés par
 celui-ci)* :
@@ -1022,8 +1025,9 @@ P4-10 RETRY                 = NONE (O13) — RetriesOnFailure = false — ONE CO
 P4-10 SCHEMA                = NO EF MODEL CHANGE — NO MIGRATION / SNAPSHOT CHANGE — EF DRIFT GREEN (SQLITE + POSTGRESQL)
 P4-10 OPEN                  = Q-P4-10-1 IDEMPOTENCY KEY, Q-P4-10-2 PER-OPERATION DbContext, Q-P4-10-3 BACKUP ALERT, Q-P4-10-4 CLOCK DRIFT — NON-BLOCKING
 P4-10                       = COMPLETE — CLOSED
-P4-11                       = PREPARED — NOT EXECUTED — WINDOWS LAB + OPERATOR REQUIRED (CHECKLIST)
-P4-12                       = NOT STARTED — READINESS MATRIX PREPARED — NO VERDICT
+P4-11                       = DEFERRED / BLOCKED — PREPARED, NOT EXECUTED — WINDOWS LAB (NTP, LICENCES) + OPERATOR REQUIRED
+P4-12 PRE-AUDIT             = 2026-10-06 — CI RED ON p4-multi-poste 8a505ce (37304770469, SUPPLIER-DELETION RACE ORACLE) — FIXED 7df0d01 — SECOND FLAKE (P4-7 SQLITE WAL, CI 37459291267) FIXED da311dd, CI 37464003636
+P4-12                       = P4 NOT CLOSED — CRITERIA 3, 18 + WINDOWS-NATIVE PARTS OF 2, 5, 7-13 BLOCKED BY P4-11 ONLY
 V1 MULTI-POSTE              = NOT GO — READY FOR FINAL ACCEPTANCE ONLY AFTER P4-11 IS EXECUTED
 ```
 

@@ -56,7 +56,7 @@ Tests vus **en échec avant** correction : `Lost_commit_acknowledgement_…` (me
 | réglant le même solde | `Four_workstations_settling_the_same_balance_…` | 1 règlement, reste 0 |
 | créant la même alerte LowStock | `Four_workstations_raising_the_same_low_stock_alert_…` | 1 alerte active |
 | créant le même login normalisé | `Four_workstations_creating_the_same_normalized_login_…` | 1 utilisateur, 3 `UniqueConstraint` |
-| suppression fournisseur vs création produit | `Supplier_deletion_racing_a_product_creation_…` (6 manches) | jamais d'orphelin |
+| suppression fournisseur vs création produit | `Supplier_deletion_racing_a_product_creation_…` (6 manches) ; **P4-12** : `Supplier_deletion_waiting_on_an_uncommitted_product_…` (entrelacement forcé) | jamais d'orphelin. **Correction P4-12** : l'oracle d'origine ignorait un entrelacement réel (CI rouge `37304770469` : produit non validé invisible du `DELETE`, rejet par la FK) ; le scénario passe désormais par le cas d'usage de production et l'issue est le refus métier — voir [P4-12](P4-12-exit-criteria-readiness.md) |
 | migration pendant qu'un poste travaille | `Additive_migration_applied_while_workstations_sell_…` | migration additive sur `Products` appliquée **pendant** les ventes (chevauchement prouvé), aucune vente perdue ni dupliquée |
 | perte de connexion en transaction | `Network_loss_inside_a_transaction_…`, `Lost_commit_acknowledgement_…` | rien conservé avant `COMMIT` ; issue inconnue annoncée après |
 | reconnexion après redémarrage | `Server_restart_aborts_the_in_flight_transaction_…` | transaction en vol annulée ; **même** contexte repris ; mesure : **0** échec avant reprise |
