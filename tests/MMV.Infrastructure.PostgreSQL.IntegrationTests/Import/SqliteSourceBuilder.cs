@@ -34,9 +34,13 @@ public sealed class SqliteSourceBuilder : IDisposable
     public static SqliteSourceBuilder CreateMigrated()
     {
         var builder = new SqliteSourceBuilder(Directory.CreateTempSubdirectory("mmv-import-").FullName);
-        using var context = builder.Context();
-        context.Database.Migrate();
+        using (var context = builder.Context())
+        {
+            context.Database.Migrate();
+        }
+
         SqliteConnection.ClearAllPools();
+        builder.EnsureCold();
         return builder;
     }
 
@@ -61,7 +65,11 @@ public sealed class SqliteSourceBuilder : IDisposable
         foreach (var table in Ordered(model.Tables))
         {
             var columns = table.Columns.ToArray();
-            var command = connection.CreateCommand();
+            // Libérée à chaque table (P4-12) : une commande abandonnée garde ses instructions préparées jusqu'à leur
+            // finalisation par le GC ; fermée entre-temps, la connexion devient « zombie », SQLite ne fait pas le
+            // point de contrôle et le journal -wal reste — la source serait refusée comme base non fermée (CI
+            // 37459291267). Reproduit à coup sûr par un GC.Collect() avant la fermeture.
+            using var command = connection.CreateCommand();
             command.Transaction = transaction;
             command.CommandText = $"INSERT INTO \"{table.Name}\" ({string.Join(", ", columns.Select(c => $"\"{c.Name}\""))}) " +
                                   $"VALUES ({string.Join(", ", columns.Select((_, k) => "$p" + k))})";
@@ -79,13 +87,35 @@ public sealed class SqliteSourceBuilder : IDisposable
 
         Execute(connection, transaction, "UPDATE \"DocumentSequences\" SET \"CurrentValue\" = 42 WHERE \"SequenceName\" = 'ORDER'");
         transaction.Commit();
+        connection.Close();
+        EnsureCold();
     }
 
     /// <summary>SQL brut sur la source ; <paramref name="foreignKeys"/> = false permet d'écrire des orphelins.</summary>
     public void Execute(string sql, bool foreignKeys = true)
     {
-        using var connection = Open(foreignKeys);
-        Execute(connection, null, sql);
+        using (var connection = Open(foreignKeys))
+        {
+            Execute(connection, null, sql);
+        }
+
+        EnsureCold();
+    }
+
+    /// <summary>
+    /// Toute écriture du builder rend une source <b>froide</b> (aucun journal non vide) : un journal restant
+    /// signale une connexion encore ouverte et ferait refuser la source pour une autre raison que celle testée.
+    /// </summary>
+    private void EnsureCold()
+    {
+        foreach (var suffix in new[] { "-journal", "-wal" })
+        {
+            var side = new FileInfo(Path + suffix);
+            if (side.Exists && side.Length > 0)
+            {
+                throw new InvalidOperationException($"Source de test non froide : {side.Name} ({side.Length} octets) après fermeture.");
+            }
+        }
     }
 
     public List<string> Strings(string sql)
